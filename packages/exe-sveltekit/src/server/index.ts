@@ -4,39 +4,92 @@ import path from "node:path";
 import { execPath } from "process";
 
 // ============================================
-// Load .env file from binary directory FIRST
+// Parse command line arguments
 // ============================================
 const binaryDir = path.dirname(execPath);
-const envPath = path.join(binaryDir, ".env");
-const envFile = file(envPath);
+// In compiled Bun binaries:
+// Bun.argv[0] = actual binary path
+// Bun.argv[1] = internal bundle path (/$bunfs/root/...)
+// Bun.argv[2+] = actual CLI arguments
+const args = Bun.argv.filter(arg => !arg.startsWith("/$bunfs/")).slice(1);
 
-if (await envFile.exists()) {
-	const content = await envFile.text();
-	for (const line of content.split("\n")) {
-		const trimmed = line.trim();
-		// Skip empty lines and comments
-		if (!trimmed || trimmed.startsWith("#")) continue;
+function parseArgs() {
+	let envFilePath: string | null = null;
+	let showHelp = false;
 
-		const eqIndex = trimmed.indexOf("=");
-		if (eqIndex === -1) continue;
-
-		const key = trimmed.slice(0, eqIndex).trim();
-		let value = trimmed.slice(eqIndex + 1).trim();
-
-		// Handle quoted values
-		if ((value.startsWith('"') && value.endsWith('"')) ||
-			(value.startsWith("'") && value.endsWith("'"))) {
-			value = value.slice(1, -1);
-		}
-
-		if (key) {
-			process.env[key] = value;
-			// Also set to Bun.env for SvelteKit's $env/dynamic/* modules
-			Bun.env[key] = value;
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === "--env-file" || arg === "-e") {
+			envFilePath = args[i + 1];
+			i++;
+		} else if (arg?.startsWith("--env-file=")) {
+			envFilePath = arg.split("=")[1];
+		} else if (arg === "--help" || arg === "-h") {
+			showHelp = true;
 		}
 	}
-	console.log(`Loaded .env from ${envPath}`);
+
+	return { envFilePath, showHelp };
 }
+
+const { envFilePath, showHelp } = parseArgs();
+
+if (showHelp) {
+	console.log(`
+Usage: ./biubiu [options]
+
+Options:
+  -e, --env-file <path>  Path to .env file (default: .env in binary directory)
+  -h, --help             Show this help message
+
+Environment variables:
+  PORT                   Server port (default: 3000)
+  BUN_IDLE_TIMEOUT       Idle timeout in seconds (default: 255)
+`);
+	process.exit(0);
+}
+
+// ============================================
+// Load .env file
+// ============================================
+async function loadEnvFile(envPath: string) {
+	const envFile = file(envPath);
+	if (await envFile.exists()) {
+		const content = await envFile.text();
+		for (const line of content.split("\n")) {
+			const trimmed = line.trim();
+			// Skip empty lines and comments
+			if (!trimmed || trimmed.startsWith("#")) continue;
+
+			const eqIndex = trimmed.indexOf("=");
+			if (eqIndex === -1) continue;
+
+			const key = trimmed.slice(0, eqIndex).trim();
+			let value = trimmed.slice(eqIndex + 1).trim();
+
+			// Handle quoted values
+			if ((value.startsWith('"') && value.endsWith('"')) ||
+				(value.startsWith("'") && value.endsWith("'"))) {
+				value = value.slice(1, -1);
+			}
+
+			if (key) {
+				process.env[key] = value;
+				Bun.env[key] = value;
+			}
+		}
+		console.log(`Loaded .env from ${envPath}`);
+		return true;
+	}
+	return false;
+}
+
+// Determine env file path: CLI arg > default (.env in binary dir)
+const resolvedEnvPath = envFilePath
+	? path.isAbsolute(envFilePath) ? envFilePath : path.join(process.cwd(), envFilePath)
+	: path.join(binaryDir, ".env");
+
+await loadEnvFile(resolvedEnvPath);
 
 // @ts-ignore
 import { assetMap } from "./assets.generated.ts";

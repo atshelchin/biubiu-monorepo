@@ -3,7 +3,7 @@
     "license": "MIT",
     "scripts": {
         "biubiutools": "bun run --filter 'biubiu.tools' dev",
-        "build:biubiu": "bun run --filter 'biubiu.tools' build",
+        "build:biubiu": "bun run --filter '@shelchin/exe-sveltekit' build && bun run --filter 'biubiu.tools' build",
         "preview:biubiu":"bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu"
     },
     "workspaces": [

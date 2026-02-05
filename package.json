@@ -1,0 +1,11 @@
+{
+    "name": "biubiu.tools",
+    "license": "MIT",
+    "scripts": {
+        "biubiutools": "bun run --filter 'biubiu.tools' dev"
+    },
+    "workspaces": [
+        "packages/*",
+        "apps/*"
+    ]
+}

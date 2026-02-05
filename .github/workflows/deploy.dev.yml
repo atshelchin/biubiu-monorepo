@@ -20,6 +20,7 @@ jobs:
   deploy-dev:
     runs-on: ubuntu-latest
     env:
+      PROJECT_NAME: 'BiuBiu.Tools (Develop)'
       SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
       SSH_USER: ${{ secrets.DEV_SSH_USER }}
       SSH_KEY:  ${{ secrets.DEV_SSH_KEY }}
@@ -270,14 +271,15 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           if [ "${{ steps.release_info.outputs.is_rollback }}" = "true" ]; then
-            MESSAGE="🔄 *Rollback Successful*%0ARelease: \`${{ steps.release_info.outputs.release_name }}\`"
+            MESSAGE="🔄 *Rollback Successful*%0A%0A📦 *Project:* ${{ env.PROJECT_NAME }}%0A🏷 *Release:* \`${{ steps.release_info.outputs.release_name }}\`%0A👤 *Triggered by:* ${{ github.actor }}%0A🔗 *Repo:* [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})"
           else
-            MESSAGE="✅ *Deploy Successful*%0ARelease: \`${{ steps.release_info.outputs.release_name }}\`%0ACommit: \`${GITHUB_SHA::7}\`"
+            MESSAGE="✅ *Deploy Successful*%0A%0A📦 *Project:* ${{ env.PROJECT_NAME }}%0A🏷 *Release:* \`${{ steps.release_info.outputs.release_name }}\`%0A📝 *Commit:* [\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})%0A👤 *Triggered by:* ${{ github.actor }}%0A🔗 *Repo:* [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})"
           fi
           curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true" || true
 
       - name: Notify Failure
         if: failure()
@@ -285,8 +287,9 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          MESSAGE="❌ *Deploy Failed*%0ACommit: \`${GITHUB_SHA::7}\`%0A[View Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          MESSAGE="❌ *Deploy Failed*%0A%0A📦 *Project:* ${{ env.PROJECT_NAME }}%0A📝 *Commit:* [\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})%0A👤 *Triggered by:* ${{ github.actor }}%0A🔗 *Repo:* [${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})%0A🔍 *Workflow:* [View Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "text=${MESSAGE}" \
-            -d "parse_mode=Markdown" || true
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true" || true

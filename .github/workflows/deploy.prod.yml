@@ -1,9 +1,9 @@
-name: Deploy BiuBiu.Tools EXE (Develop)
+name: Deploy BiuBiu.Tools EXE (Production)
 
 on:
   push:
     branches:
-      - develop
+      - main
   workflow_dispatch:
     inputs:
       rollback_to:
@@ -13,22 +13,22 @@ on:
 
 # Prevent concurrent deployments
 concurrency:
-  group: deploy-dev
+  group: deploy-prod
   cancel-in-progress: false
 
 jobs:
-  deploy-dev:
+  deploy-prod:
     runs-on: ubuntu-latest
     env:
-      PROJECT_NAME: 'BiuBiu.Tools (Develop)'
-      SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
-      SSH_USER: ${{ secrets.DEV_SSH_USER }}
-      SSH_KEY:  ${{ secrets.DEV_SSH_KEY }}
+      PROJECT_NAME: 'BiuBiu.Tools (Production)'
+      SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      SSH_KEY:  ${{ secrets.PROD_SSH_KEY }}
       EXE_NAME: 'biubiu'
-      BASE_PATH: '/opt/biubiu.tools/develop'
-      SERVICE_NAME: 'biubiu-develop.service'
+      BASE_PATH: '/opt/biubiu.tools/production'
+      SERVICE_NAME: 'biubiu-production.service'
       SOURCE_PATH: "apps/biubiu.tools/dist/biubiu"
-      ENV_CONTENT: ${{ secrets.DEV_ENV_FILE }}
+      ENV_CONTENT: ${{ secrets.PROD_ENV_FILE }}
       KEEP_RELEASES: 10
     steps:
       - name: Checkout code
@@ -108,7 +108,7 @@ jobs:
               echo "First deploy, creating systemd service..."
               sudo tee /etc/systemd/system/${{ env.SERVICE_NAME }} > /dev/null << 'EOF'
             [Unit]
-            Description=BiuBiu.Tools Develop Service
+            Description=BiuBiu.Tools Production Service
             After=network.target
 
             [Service]

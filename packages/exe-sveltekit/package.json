@@ -1,0 +1,23 @@
+{
+  "name": "@shelchin/exe-sveltekit",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "version": "0.1.8",
+  "description": "SvelteKit adapter to build standalone executable with .env support",
+  "license": "MIT",
+  "scripts": {
+    "build": "bun build.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@sveltejs/kit": "^2.22.2",
+    "@types/bun": "latest",
+    "@types/node": "^24.0.10"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "type": "module"
+}

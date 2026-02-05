@@ -2,7 +2,9 @@
     "name": "biubiu.tools",
     "license": "MIT",
     "scripts": {
-        "biubiutools": "bun run --filter 'biubiu.tools' dev"
+        "biubiutools": "bun run --filter 'biubiu.tools' dev",
+        "build:biubiu": "bun run --filter 'biubiu.tools' build",
+        "preview:biubiu":"bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu"
     },
     "workspaces": [
         "packages/*",

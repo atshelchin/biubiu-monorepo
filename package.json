@@ -1,13 +1,18 @@
 {
     "name": "biubiu.tools",
+    "packageManager": "bun@1.3.8",
     "license": "MIT",
     "scripts": {
-        "biubiutools": "bun run --filter 'biubiu.tools' dev",
-        "build:biubiu": "bun run --filter '@shelchin/exe-sveltekit' build && bun run --filter 'biubiu.tools' build",
-        "preview:biubiu":"bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu"
+        "build": "turbo run build",
+        "build:biubiu": "turbo run build --filter=biubiu.tools",
+        "dev:biubiu": "turbo run dev --filter=biubiu.tools",
+        "preview:biubiu": "bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu --env-file envs/biubiu.env"
     },
     "workspaces": [
         "packages/*",
         "apps/*"
-    ]
+    ],
+    "devDependencies": {
+        "turbo": "^2.8.3"
+    }
 }

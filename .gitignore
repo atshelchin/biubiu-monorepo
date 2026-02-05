@@ -1,2 +1,6 @@
 node_modules
 examples
+.turbo/cache
+turbo-build.log
+biubiu.env
+.turbo

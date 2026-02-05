@@ -1,4 +1,4 @@
-import adapter from "@jesterkit/exe-sveltekit";
+import adapter from "@shelchin/exe-sveltekit";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

@@ -1,0 +1,194 @@
+name: Deploy BiuBiu.Tools EXE (Develop)
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
+      SSH_USER: ${{ secrets.DEV_SSH_USER }}
+      SSH_KEY:  ${{ secrets.DEV_SSH_KEY }}
+      EXE_NAME: 'biubiu'
+      BASE_PATH: '/opt/biubiu.tools/develop'
+      SERVICE_NAME: 'biubiu-develop.service'
+      SOURCE_PATH: "apps/biubiu.tools/dist/biubiu"
+      ENV_CONTENT: ${{ secrets.DEV_ENV_FILE }}
+      KEEP_RELEASES: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.8
+
+      - name: Install & Build
+        run: |
+          bun install
+          bun run build:${{ env.EXE_NAME }}
+
+      - name: Prepare Release Info
+        id: release_info
+        run: |
+          RELEASE_NAME="$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Release: $RELEASE_NAME"
+
+      - name: Setup Directory Structure (First Deploy Only)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          script: |
+            # Only create if directory doesn't exist
+            if [ ! -d "${{ env.BASE_PATH }}/releases" ]; then
+              echo "First deploy, creating directory structure..."
+              sudo mkdir -p ${{ env.BASE_PATH }}/releases
+              sudo chown -R ${{ env.SSH_USER }}:${{ env.SSH_USER }} ${{ env.BASE_PATH }}
+            else
+              echo "Directory structure exists, skipping"
+            fi
+
+      - name: Setup Systemd Service (First Deploy Only)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          script: |
+            # Only create if service file doesn't exist
+            if [ ! -f "/etc/systemd/system/${{ env.SERVICE_NAME }}" ]; then
+              echo "First deploy, creating systemd service..."
+              sudo tee /etc/systemd/system/${{ env.SERVICE_NAME }} > /dev/null << 'EOF'
+            [Unit]
+            Description=BiuBiu.Tools Develop Service
+            After=network.target
+
+            [Service]
+            ExecStart=${{ env.BASE_PATH }}/current/${{ env.EXE_NAME }}
+            WorkingDirectory=${{ env.BASE_PATH }}/current
+            Restart=always
+            User=${{ env.SSH_USER }}
+            EnvironmentFile=${{ env.BASE_PATH }}/current/.env
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+              sudo systemctl daemon-reload
+              sudo systemctl enable ${{ env.SERVICE_NAME }}
+            else
+              echo "Systemd service exists, skipping"
+            fi
+
+      - name: Create Release Directory
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          RELEASE_NAME: ${{ steps.release_info.outputs.release_name }}
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          envs: RELEASE_NAME
+          script: |
+            mkdir -p ${{ env.BASE_PATH }}/releases/$RELEASE_NAME
+            echo "📁 Created release directory: $RELEASE_NAME"
+
+      - name: Copy Binary to Server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          source: ${{ env.SOURCE_PATH }}
+          target: ${{ env.BASE_PATH }}/releases/${{ steps.release_info.outputs.release_name }}
+          strip_components: 3
+
+      - name: Deploy & Activate Release
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          RELEASE_NAME: ${{ steps.release_info.outputs.release_name }}
+          ENV_CONTENT: ${{ env.ENV_CONTENT }}
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          envs: RELEASE_NAME,ENV_CONTENT
+          script: |
+            RELEASE_PATH="${{ env.BASE_PATH }}/releases/$RELEASE_NAME"
+            CURRENT_LINK="${{ env.BASE_PATH }}/current"
+
+            # Record current version for rollback
+            PREVIOUS_RELEASE=""
+            if [ -L "$CURRENT_LINK" ]; then
+              PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
+              echo "Current version: $(basename $PREVIOUS_RELEASE)"
+            fi
+
+            # Write env vars to new release directory
+            echo "$ENV_CONTENT" > "$RELEASE_PATH/.env"
+            echo ".env file written"
+
+            # Set executable permission
+            chmod +x "$RELEASE_PATH/${{ env.EXE_NAME }}"
+
+            # Update symlink to new release
+            ln -sfn "$RELEASE_PATH" "$CURRENT_LINK"
+            echo "Symlink updated -> $RELEASE_NAME"
+
+            # Restart service
+            sudo systemctl restart ${{ env.SERVICE_NAME }}
+
+            # Health check with countdown
+            echo -n "Waiting for service to start: "
+            for i in 10 9 8 7 6 5 4 3 2 1; do
+              echo -n "$i "
+              sleep 1
+            done
+            echo ""
+
+            if sudo systemctl is-active --quiet ${{ env.SERVICE_NAME }}; then
+              echo "New version deployed successfully"
+            else
+              echo "New version failed to start, rolling back..."
+              if [ -n "$PREVIOUS_RELEASE" ] && [ -d "$PREVIOUS_RELEASE" ]; then
+                ln -sfn "$PREVIOUS_RELEASE" "$CURRENT_LINK"
+                sudo systemctl restart ${{ env.SERVICE_NAME }}
+                echo "Rolled back to: $(basename $PREVIOUS_RELEASE)"
+              fi
+              echo "Check logs: journalctl -u ${{ env.SERVICE_NAME }} -n 50"
+              exit 1
+            fi
+
+      - name: Cleanup Old Releases
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          script: |
+            RELEASES_DIR="${{ env.BASE_PATH }}/releases"
+            KEEP=${{ env.KEEP_RELEASES }}
+
+            # Get all release directories, sort by time, keep latest N
+            cd "$RELEASES_DIR"
+            RELEASE_COUNT=$(ls -1d */ 2>/dev/null | wc -l)
+
+            if [ "$RELEASE_COUNT" -gt "$KEEP" ]; then
+              echo "Cleaning old releases (keeping latest $KEEP)..."
+              ls -1dt */ | tail -n +$((KEEP + 1)) | while read dir; do
+                echo "  Deleting: $dir"
+                rm -rf "$dir"
+              done
+            else
+              echo "Current $RELEASE_COUNT releases, no cleanup needed"
+            fi
+
+            # Show currently retained releases
+            echo "Current releases:"
+            ls -1dt */ | head -n $KEEP

@@ -11,15 +11,12 @@ const VALID_TEXT_SCALES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
 
-// Server-side message loader
+// Server-side message loader using dynamic imports (works with compiled binary)
 async function serverMessageLoader(locale: string, namespace: string) {
   try {
-    const { readFile } = await import('node:fs/promises');
-    const { join } = await import('node:path');
-    const messagesDir = join(process.cwd(), 'src/messages');
-    const filePath = join(messagesDir, locale, `${namespace}.json`);
-    const content = await readFile(filePath, 'utf-8');
-    return JSON.parse(content);
+    // Use dynamic import - Vite will bundle these at build time
+    const module = await import(`./messages/${locale}/${namespace}.json`);
+    return module.default;
   } catch {
     // Try fallback
     if (locale !== DEFAULT_LOCALE) {

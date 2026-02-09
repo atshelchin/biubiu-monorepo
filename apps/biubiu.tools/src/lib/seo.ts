@@ -25,6 +25,7 @@ export function getBaseSEO(
     defaultLocale: seoConfig.defaultLocale,
     twitterCard: 'summary_large_image',
     twitterSite: seoConfig.twitterSite,
+    // OG images are now generated dynamically via /api/og (using WASM)
     ...props
   };
 }

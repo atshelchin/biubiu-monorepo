@@ -42,6 +42,11 @@ async function loadAndMergeMessages(locale: string, namespaces: string[]) {
 export const handle: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url;
 
+  // Skip i18n for API routes (they don't need locale prefix)
+  if (pathname.startsWith('/api/')) {
+    return resolve(event);
+  }
+
   // Get locale from URL
   const pathParts = pathname.split('/').filter(Boolean);
   const pathLocale = pathParts[0];

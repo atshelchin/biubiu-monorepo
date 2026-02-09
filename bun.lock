@@ -13,6 +13,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@shelchin/i18n": "workspace:*",
+        "@shelchin/seo": "workspace:*",
       },
       "devDependencies": {
         "@eslint/compat": "^2.0.1",

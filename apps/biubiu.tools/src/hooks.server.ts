@@ -4,6 +4,9 @@ import { routeMessages } from '$i18n/routes';
 
 const SUPPORTED_LOCALES = ['en', 'zh'];
 const DEFAULT_LOCALE = 'en';
+const DEFAULT_THEME = 'dark';
+const DEFAULT_TEXT_SCALE = 'md';
+const VALID_TEXT_SCALES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
@@ -89,10 +92,23 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Load messages
   await loadAndMergeMessages(locale, namespaces);
 
+  // Get theme from cookie (default to dark)
+  const themeCookie = event.cookies.get('theme');
+  const theme = themeCookie === 'light' ? 'light' : DEFAULT_THEME;
+
+  // Get text-scale from cookie (default to md)
+  const textScaleCookie = event.cookies.get('text-scale');
+  const textScale = textScaleCookie && VALID_TEXT_SCALES.includes(textScaleCookie)
+    ? textScaleCookie
+    : DEFAULT_TEXT_SCALE;
+
   // Handle request
   const response = await resolve(event, {
     transformPageChunk: ({ html }) => {
-      return html.replace('%lang%', locale);
+      return html
+        .replace('%lang%', locale)
+        .replace('%theme%', theme)
+        .replace('%text-scale%', textScale);
     },
   });
 

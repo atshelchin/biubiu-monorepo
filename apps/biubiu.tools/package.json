@@ -17,7 +17,8 @@
 		"test:e2e": "playwright test"
 	},
 	"dependencies": {
-		"@shelchin/i18n": "workspace:*"
+		"@shelchin/i18n": "workspace:*",
+		"@shelchin/seo": "workspace:*"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",

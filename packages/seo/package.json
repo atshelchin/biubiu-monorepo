@@ -20,6 +20,10 @@
       "types": "./dist/og/index.d.ts",
       "default": "./dist/og/index.js"
     },
+    "./og/templates": {
+      "types": "./dist/og/templates/index.d.ts",
+      "default": "./dist/og/templates/index.js"
+    },
     "./jsonld": {
       "types": "./dist/jsonld/index.d.ts",
       "default": "./dist/jsonld/index.js"

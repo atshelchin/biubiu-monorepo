@@ -60,7 +60,7 @@
   --gradient-accent: linear-gradient(135deg, #36a07a 0%, #2dd4bf 100%);
   --gradient-hero: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(54, 160, 122, 0.2), transparent);
   --gradient-glow: radial-gradient(ellipse at center, rgba(54, 160, 122, 0.15), transparent 70%);
-  --gradient-text: linear-gradient(135deg, #36a07a 0%, #2dd4bf 50%, #818cf8 100%);
+  --gradient-text: linear-gradient(90deg, #4ade80 0%, #166534 100%);
 
   /* Glow Effects */
   --glow-accent: 0 0 40px rgba(54, 160, 122, 0.3);

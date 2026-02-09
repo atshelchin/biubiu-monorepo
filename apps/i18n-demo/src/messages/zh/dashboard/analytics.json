@@ -1,0 +1,9 @@
+{
+  "analytics.title": "数据分析",
+  "analytics.pageViews": "页面浏览量",
+  "analytics.visitors": "独立访客",
+  "analytics.bounceRate": "跳出率",
+  "analytics.avgDuration": "平均停留时间",
+  "analytics.lastUpdated": "最后更新: {time}",
+  "analytics.trend": "相比上周 {percent}"
+}

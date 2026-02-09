@@ -4,3 +4,4 @@ examples
 turbo-build.log
 biubiu.env
 .turbo
+.VSCodeCounter

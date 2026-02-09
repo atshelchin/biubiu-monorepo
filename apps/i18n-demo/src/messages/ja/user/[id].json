@@ -1,0 +1,10 @@
+{
+  "user.profile": "ユーザープロフィール",
+  "user.id": "ユーザーID: {id}",
+  "user.name": "ユーザー名",
+  "user.email": "メールアドレス",
+  "user.bio": "自己紹介",
+  "user.joined": "登録日: {date}",
+  "user.posts": "投稿数: {count}",
+  "user.followers": "フォロワー: {count}"
+}

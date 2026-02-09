@@ -1,0 +1,13 @@
+{
+  "title": "仪表盘",
+  "stats.users": "用户数",
+  "stats.revenue": "收入",
+  "stats.orders": "订单数",
+  "stats.growth": "增长率",
+  "chart.daily": "日统计",
+  "chart.weekly": "周统计",
+  "chart.monthly": "月统计",
+  "notifications": "{count, plural, =0 {暂无通知} =1 {1 条新通知} other {# 条新通知}}",
+  "nav.analytics": "数据分析",
+  "pluralHint": "调整数字查看复数变化"
+}

@@ -1,0 +1,13 @@
+{
+  "title": "Dashboard",
+  "stats.users": "Users",
+  "stats.revenue": "Revenue",
+  "stats.orders": "Orders",
+  "stats.growth": "Growth",
+  "chart.daily": "Daily",
+  "chart.weekly": "Weekly",
+  "chart.monthly": "Monthly",
+  "notifications": "{count, plural, =0 {No notifications} =1 {1 new notification} other {# new notifications}}",
+  "nav.analytics": "Analytics",
+  "pluralHint": "Adjust the number to see plural variations"
+}

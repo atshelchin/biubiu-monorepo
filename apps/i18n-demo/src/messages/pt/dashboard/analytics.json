@@ -1,0 +1,9 @@
+{
+  "analytics.title": "Análise",
+  "analytics.pageViews": "Visualizações de Página",
+  "analytics.visitors": "Visitantes Únicos",
+  "analytics.bounceRate": "Taxa de Rejeição",
+  "analytics.avgDuration": "Duração Média da Sessão",
+  "analytics.lastUpdated": "Última atualização: {time}",
+  "analytics.trend": "{percent} em relação à semana passada"
+}

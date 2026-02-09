@@ -1,0 +1,9 @@
+{
+  "analytics.title": "Analytics",
+  "analytics.pageViews": "Page Views",
+  "analytics.visitors": "Unique Visitors",
+  "analytics.bounceRate": "Bounce Rate",
+  "analytics.avgDuration": "Avg. Session Duration",
+  "analytics.lastUpdated": "Last updated: {time}",
+  "analytics.trend": "{percent} vs last week"
+}

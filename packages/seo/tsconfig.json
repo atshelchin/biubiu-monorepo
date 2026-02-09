@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["bun-types", "node"],
+    "lib": ["ESNext", "DOM"],
+    "paths": {
+      "$app/stores": ["./node_modules/@sveltejs/kit/types/runtime/$app/stores"],
+      "$app/environment": ["./node_modules/@sveltejs/kit/types/runtime/$app/environment"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

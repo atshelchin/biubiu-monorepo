@@ -50,7 +50,7 @@ export const load: LayoutLoad = async ({ url, data, depends }) => {
   const locale = parts[0] && SUPPORTED_LOCALES.includes(parts[0]) ? parts[0] : 'en';
   const routePath = getRoutePathFromUrl(pathname);
 
-  // On browser, load messages
+  // On browser, load messages (don't set i18nState here - let +layout.svelte handle it)
   if (browser) {
     const messages = await loadMessagesForRoute(routePath, locale);
     return { ...data, messages, locale };

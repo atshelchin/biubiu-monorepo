@@ -1,15 +1,30 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import { initTheme, initTextScale } from '$lib/theme';
 	import { i18nState } from '@shelchin/i18n';
+	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
+
+	// Import CSS (order matters: tokens first, then themes, then global)
+	import '../style/tokens.css';
+	import '../style/theme-dark.css';
+	import '../style/theme-light.css';
+	import '../style/global.css';
 
 	let { children, data } = $props();
 
-	// Update i18n state when data changes (client-side navigation)
+	// Update i18nState when navigation completes (not during preload)
 	$effect(() => {
-		if (data.messages && data.locale) {
+		if (browser && data.messages && data.locale) {
 			i18nState.setMessages(data.messages);
 			i18nState.locale = data.locale;
 		}
+	});
+
+	// Initialize theme and text-scale on client mount
+	onMount(() => {
+		initTheme();
+		initTextScale();
 	});
 </script>
 

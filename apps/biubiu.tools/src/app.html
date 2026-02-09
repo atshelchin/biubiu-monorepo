@@ -1,8 +1,22 @@
 <!doctype html>
-<html lang="%lang%">
+<html lang="%lang%" data-theme="%theme%" data-text-scale="%text-scale%">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Blocking script to prevent theme and text-scale flash
+			(function() {
+				var theme = localStorage.getItem('theme');
+				if (theme === 'dark' || theme === 'light') {
+					document.documentElement.setAttribute('data-theme', theme);
+				}
+				var textScale = localStorage.getItem('text-scale');
+				var validScales = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+				if (textScale && validScales.indexOf(textScale) !== -1) {
+					document.documentElement.setAttribute('data-text-scale', textScale);
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

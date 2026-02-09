@@ -5,14 +5,16 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { i18nPlugin } from '@shelchin/i18n/vite';
 
 export default defineConfig({
+	server: {
+		// Allow all hosts (for Cloudflare Tunnel, ngrok, etc.)
+		allowedHosts: true,
+	},
 	plugins: [
 		sveltekit(),
 		devtoolsJson(),
 		i18nPlugin({
-			messagesDir: 'src/messages',
-			defaultLocale: 'en',
-			locales: ['en', 'zh']
-		})
+			messagesDir: 'src/messages'
+		}),
 	],
 	test: {
 		expect: { requireAssertions: true },

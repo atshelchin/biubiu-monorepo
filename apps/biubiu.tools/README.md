@@ -1,6 +1,89 @@
-# sv
+# biubiu.tools
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A SvelteKit project with i18n support.
+
+## i18n (Internationalization)
+
+This project uses `@shelchin/i18n` for internationalization, supporting English (default) and Chinese.
+
+### Basic Usage
+
+```svelte
+<script lang="ts">
+  import { t, locale, localizeHref } from '$lib/i18n';
+</script>
+
+<!-- Translation -->
+<h1>{t('welcome')}</h1>
+
+<!-- Localized links -->
+<a href={localizeHref('/about')}>{t('nav.about')}</a>
+
+<!-- Current locale -->
+<p>Current: {locale.value}</p>
+
+<!-- Language switch -->
+<a href="/en">English</a>
+<a href="/zh">中文</a>
+```
+
+### Adding Translations
+
+Add translation keys to `src/messages/{locale}/_global.json`:
+
+```json
+// src/messages/en/_global.json
+{
+  "welcome": "Welcome to biubiu.tools",
+  "nav.about": "About"
+}
+
+// src/messages/zh/_global.json
+{
+  "welcome": "欢迎来到 biubiu.tools",
+  "nav.about": "关于"
+}
+```
+
+### Route-specific Translations
+
+Create message files matching your route structure:
+
+```
+src/messages/
+├── en/
+│   ├── _global.json      # Global translations
+│   ├── dashboard.json    # /dashboard route
+│   └── user/
+│       └── [id].json     # /user/[id] dynamic route
+└── zh/
+    └── ...
+```
+
+### Formatting
+
+```svelte
+<script lang="ts">
+  import { formatNumber, formatCurrency, formatDate } from '$lib/i18n';
+</script>
+
+<!-- Number formatting (locale-aware) -->
+<p>{formatNumber(1234567.89)}</p>
+
+<!-- Currency formatting -->
+<p>{formatCurrency(99.99, 'USD')}</p>
+
+<!-- Date formatting -->
+<p>{formatDate(new Date())}</p>
+```
+
+### URL Structure
+
+- `/en/...` - English pages
+- `/zh/...` - Chinese pages
+- Visiting `/` redirects to default locale (`/en`)
+
+---
 
 ## Creating a project
 

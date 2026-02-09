@@ -4,7 +4,7 @@
 	import SEO from '@shelchin/seo/SEO.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-	const seoProps = getBaseSEO({
+	const seoProps = $derived(getBaseSEO({
 		title: t('meta.title'),
 		description: t('meta.description'),
 		currentLocale: locale.value,
@@ -13,7 +13,7 @@
 			type: 'website',
 			subtitle: t('hero.description')
 		}
-	});
+	}));
 </script>
 
 <SEO {...seoProps} />

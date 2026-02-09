@@ -1,0 +1,9 @@
+{
+  "analytics.title": "分析",
+  "analytics.pageViews": "ページビュー",
+  "analytics.visitors": "ユニークビジター",
+  "analytics.bounceRate": "直帰率",
+  "analytics.avgDuration": "平均セッション時間",
+  "analytics.lastUpdated": "最終更新: {time}",
+  "analytics.trend": "先週比 {percent}"
+}

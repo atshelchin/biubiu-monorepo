@@ -1,0 +1,9 @@
+{
+  "analytics.title": "Analytik",
+  "analytics.pageViews": "Seitenaufrufe",
+  "analytics.visitors": "Eindeutige Besucher",
+  "analytics.bounceRate": "Absprungrate",
+  "analytics.avgDuration": "Durchschn. Sitzungsdauer",
+  "analytics.lastUpdated": "Zuletzt aktualisiert: {time}",
+  "analytics.trend": "{percent} gegenüber letzter Woche"
+}

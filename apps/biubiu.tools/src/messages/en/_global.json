@@ -1,0 +1,18 @@
+{
+  "nav.home": "Home",
+  "nav.tools": "Tools",
+  "nav.about": "About",
+  "welcome": "Welcome to biubiu.tools",
+  "language": "Language",
+  "theme": "Theme",
+  "common.loading": "Loading...",
+  "common.error": "An error occurred",
+  "common.retry": "Retry",
+  "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
+  "common.save": "Save",
+  "common.delete": "Delete",
+  "common.edit": "Edit",
+  "common.search": "Search",
+  "common.noResults": "No results found"
+}

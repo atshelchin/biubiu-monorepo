@@ -11,6 +11,9 @@
     "apps/biubiu.tools": {
       "name": "biubiu.tools",
       "version": "0.0.1",
+      "dependencies": {
+        "@shelchin/i18n": "workspace:*",
+      },
       "devDependencies": {
         "@eslint/compat": "^2.0.1",
         "@eslint/js": "^9.39.2",

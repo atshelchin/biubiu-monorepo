@@ -1,0 +1,10 @@
+{
+  "user.profile": "Benutzerprofil",
+  "user.id": "Benutzer-ID: {id}",
+  "user.name": "Benutzername",
+  "user.email": "E-Mail-Adresse",
+  "user.bio": "Biografie",
+  "user.joined": "Beigetreten: {date}",
+  "user.posts": "Beiträge: {count}",
+  "user.followers": "Follower: {count}"
+}

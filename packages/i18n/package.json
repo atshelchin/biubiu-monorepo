@@ -1,0 +1,41 @@
+{
+  "name": "@shelchin/i18n",
+  "version": "0.1.0",
+  "description": "SvelteKit i18n library with financial-grade precision and Alt+Click source mapping",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.svelte.d.ts",
+      "svelte": "./dist/index.svelte.js",
+      "default": "./dist/index.svelte.js"
+    },
+    "./vite": {
+      "types": "./dist/vite-plugin/index.d.ts",
+      "default": "./dist/vite-plugin/index.js"
+    },
+    "./sveltekit": {
+      "types": "./dist/sveltekit/index.d.ts",
+      "default": "./dist/sveltekit/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.22.2",
+    "@types/bun": "latest",
+    "@types/node": "^25.2.2",
+    "svelte": "^5.0.0",
+    "vite": "^6.0.0"
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "^2.0.0",
+    "svelte": "^5.0.0",
+    "vite": "^5.0.0 || ^6.0.0"
+  }
+}

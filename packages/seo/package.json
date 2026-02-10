@@ -1,0 +1,54 @@
+{
+  "name": "@shelchin/seo",
+  "version": "0.1.0",
+  "description": "SvelteKit SEO toolkit with dynamic OG image generation and JSON-LD support",
+  "license": "MIT",
+  "type": "module",
+  "svelte": "./dist/components/SEO.svelte",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./SEO.svelte": {
+      "types": "./dist/components/SEO.svelte.d.ts",
+      "svelte": "./dist/components/SEO.svelte",
+      "default": "./dist/components/SEO.svelte"
+    },
+    "./og": {
+      "types": "./dist/og/index.d.ts",
+      "default": "./dist/og/index.js"
+    },
+    "./og/templates": {
+      "types": "./dist/og/templates/index.d.ts",
+      "default": "./dist/og/templates/index.js"
+    },
+    "./jsonld": {
+      "types": "./dist/jsonld/index.d.ts",
+      "default": "./dist/jsonld/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch"
+  },
+  "dependencies": {
+    "satori": "^0.12.0",
+    "@resvg/resvg-js": "^2.6.0"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.22.2",
+    "@types/bun": "latest",
+    "@types/node": "^25.2.2",
+    "svelte": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "^2.0.0",
+    "svelte": "^5.0.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Panel",
+  "stats.users": "Usuarios",
+  "stats.revenue": "Ingresos",
+  "stats.orders": "Pedidos",
+  "stats.growth": "Crecimiento",
+  "notifications": "{count, plural, =0 {Sin notificaciones} =1 {1 nueva notificación} other {# nuevas notificaciones}}",
+  "nav.analytics": "Analítica",
+  "pluralHint": "Ajusta el número para ver variaciones de plural"
+}

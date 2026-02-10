@@ -2,9 +2,20 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { i18nPlugin } from '@shelchin/i18n/vite';
 
 export default defineConfig({
-	plugins: [sveltekit(), devtoolsJson()],
+	server: {
+		// Allow all hosts (for Cloudflare Tunnel, ngrok, etc.)
+		allowedHosts: true,
+	},
+	plugins: [
+		sveltekit(),
+		devtoolsJson(),
+		i18nPlugin({
+			messagesDir: 'src/messages'
+		}),
+	],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

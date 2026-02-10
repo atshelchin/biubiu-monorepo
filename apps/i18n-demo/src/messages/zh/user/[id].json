@@ -1,0 +1,10 @@
+{
+  "user.profile": "用户资料",
+  "user.id": "用户 ID: {id}",
+  "user.name": "用户名",
+  "user.email": "邮箱地址",
+  "user.bio": "个人简介",
+  "user.joined": "加入时间: {date}",
+  "user.posts": "发帖数: {count}",
+  "user.followers": "粉丝: {count}"
+}

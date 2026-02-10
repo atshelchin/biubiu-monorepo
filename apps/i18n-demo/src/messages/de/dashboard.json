@@ -1,0 +1,10 @@
+{
+  "title": "Dashboard",
+  "stats.users": "Benutzer",
+  "stats.revenue": "Umsatz",
+  "stats.orders": "Bestellungen",
+  "stats.growth": "Wachstum",
+  "notifications": "{count, plural, =0 {Keine Benachrichtigungen} =1 {1 neue Benachrichtigung} other {# neue Benachrichtigungen}}",
+  "nav.analytics": "Analytik",
+  "pluralHint": "Passen Sie die Zahl an, um Pluralvarianten zu sehen"
+}

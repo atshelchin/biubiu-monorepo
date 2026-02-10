@@ -49,6 +49,11 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
 
+      - name: Setup Environment
+        if: ${{ github.event.inputs.rollback_to == '' }}
+        run: |
+          echo "${{ env.ENV_CONTENT }}" > apps/biubiu.tools/.env
+
       - name: Install & Build
         if: ${{ github.event.inputs.rollback_to == '' }}
         run: |

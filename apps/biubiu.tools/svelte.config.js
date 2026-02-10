@@ -6,6 +6,9 @@ const config = {
 		adapter: adapter({
 			binaryName: "biubiu",
 		}),
+		alias: {
+			$i18n: "./.svelte-kit/types/$i18n",
+		},
 	},
 };
 

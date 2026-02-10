@@ -213,13 +213,22 @@
 				<h2 class="section-title">{t('featured.title')}</h2>
 			</div>
 
-			<a href={localizeHref('/tools/balance-radar')} class="tool-card glass-card" target="_blank" rel="noopener noreferrer">
-				<h3 class="tool-name">{t('featured.balanceRadar.name')}</h3>
-				<p class="tool-description">{t('featured.balanceRadar.description')}</p>
-				<div class="tool-tags">
-					<span class="tool-tag">{t('featured.balanceRadar.feature1')}</span>
-					<span class="tool-tag">{t('featured.balanceRadar.feature2')}</span>
-					<span class="tool-tag">{t('featured.balanceRadar.feature3')}</span>
+			<a href={localizeHref('/tools/balance-radar')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.balanceRadar.name')}</h3>
+					<p class="tool-description">{t('featured.balanceRadar.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.balanceRadar.feature1')}</span>
+						<span class="tool-tag">{t('featured.balanceRadar.feature2')}</span>
+						<span class="tool-tag">{t('featured.balanceRadar.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.balanceRadar.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
 				</div>
 			</a>
 		</section>
@@ -623,7 +632,10 @@
 	}
 
 	.tool-card {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-6);
 		padding: var(--space-6);
 		border-radius: var(--radius-xl);
 		text-decoration: none;
@@ -634,6 +646,18 @@
 		transform: translateY(-2px);
 		background: rgba(255, 255, 255, 0.08);
 		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+	}
+
+	.tool-card:hover .tool-cta-arrow {
+		transform: translateX(4px);
+	}
+
+	.tool-card:hover .tool-cta-text {
+		color: var(--accent);
+	}
+
+	.tool-content {
+		flex: 1;
 	}
 
 	.tool-name {
@@ -662,6 +686,27 @@
 		padding: var(--space-1) var(--space-2);
 		background: var(--bg-raised);
 		border-radius: var(--radius-sm);
+	}
+
+	.tool-cta {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-2);
+		flex-shrink: 0;
+	}
+
+	.tool-cta-text {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-muted);
+		white-space: nowrap;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.tool-cta-arrow {
+		color: var(--fg-subtle);
+		transition: transform var(--motion-fast) var(--easing);
 	}
 
 	/* Coming Tools Section */
@@ -889,7 +934,15 @@
 
 		.tool-card {
 			flex-direction: column;
+			align-items: flex-start;
 			padding: var(--space-6);
+		}
+
+		.tool-cta {
+			flex-direction: row;
+			width: 100%;
+			justify-content: flex-start;
+			margin-top: var(--space-2);
 		}
 
 		.tools-grid {

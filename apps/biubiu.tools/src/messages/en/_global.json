@@ -66,5 +66,8 @@
   "settings.dateFormat": "Date",
   "settings.currency": "Currency",
   "settings.theme.light": "Light",
-  "settings.theme.dark": "Dark"
+  "settings.theme.dark": "Dark",
+  "settings.helpTranslate": "Help improve translation",
+  "settings.helpTranslate.hint": "{key} + Click any text to edit on GitHub",
+  "settings.helpTranslate.enabled": "Translation mode enabled"
 }

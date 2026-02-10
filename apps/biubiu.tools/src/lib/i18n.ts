@@ -2,9 +2,13 @@ import {
   createI18n,
   setMessageLoader,
   localizeHref as _localizeHref,
+  enableProductionDevTools,
+  disableProductionDevTools,
+  isProductionDevToolsEnabled,
 } from '@shelchin/i18n';
 import type { TranslationKey, InterpolateParams } from '$i18n';
 import { routeMessages } from '$i18n/routes';
+import { lineIndex } from '$i18n/line-index';
 
 // Client-side message loader
 async function clientMessageLoader(locale: string, namespace: string) {
@@ -32,6 +36,12 @@ export const i18n = createI18n({
   },
   messageLoader: clientMessageLoader,
   routeMessages,
+  devTools: {
+    repoUrl: 'https://github.com/atshelchin/biubiu-monorepo',
+    repoMessagesPath: 'apps/biubiu.tools/src/messages',
+    branch: 'main',
+    lineIndex,
+  },
 });
 
 const {
@@ -53,3 +63,6 @@ export { locale, preferences, formatNumber, formatCurrency, formatDate, formatDa
 
 // Export localizeHref helper
 export const localizeHref = (path: string) => _localizeHref(path);
+
+// Export devTools functions for translation debugging
+export { enableProductionDevTools, disableProductionDevTools, isProductionDevToolsEnabled };

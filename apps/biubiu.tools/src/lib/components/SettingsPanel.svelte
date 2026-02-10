@@ -14,6 +14,7 @@
 		type TextScale,
 		type Settings
 	} from '$lib/settings';
+	import { translateMode, shortcutKey } from '$lib/translate-mode.svelte';
 
 	const SUPPORTED_LOCALES = ['en', 'zh'];
 
@@ -122,17 +123,26 @@
 			</svg>
 			<span>{t('settings.language')}</span>
 		</div>
-		<div class="button-group">
-			{#each Object.entries(locales) as [code, loc]}
-				<button
-					class="option-btn"
-					class:active={locale.value === code}
-					onclick={() => switchLocale(code)}
-				>
-					<span class="option-flag">{loc.flag}</span>
-					<span>{loc.label}</span>
-				</button>
-			{/each}
+		<div class="language-row">
+			<div class="button-group">
+				{#each Object.entries(locales) as [code, loc]}
+					<button
+						class="option-btn"
+						class:active={locale.value === code}
+						onclick={() => switchLocale(code)}
+					>
+						<span class="option-flag">{loc.flag}</span>
+						<span>{loc.label}</span>
+					</button>
+				{/each}
+			</div>
+			<button
+				class="help-translate-link"
+				class:active={translateMode.enabled}
+				onclick={() => translateMode.toggle()}
+			>
+				{t('settings.helpTranslate')}
+			</button>
 		</div>
 	</section>
 
@@ -558,6 +568,35 @@
 		.currency-grid {
 			grid-template-columns: repeat(3, 1fr);
 		}
+	}
+
+	/* Language Row */
+	.language-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	/* Help Translate Link */
+	.help-translate-link {
+		margin-left: auto;
+		padding: 0;
+		border: none;
+		background: none;
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.help-translate-link:hover {
+		color: var(--fg-base);
+	}
+
+	.help-translate-link.active {
+		color: var(--accent);
 	}
 
 </style>

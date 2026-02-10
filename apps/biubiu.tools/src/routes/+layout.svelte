@@ -4,6 +4,7 @@
 	import { i18nState } from '@shelchin/i18n';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
+	import TranslateModeBar from '$lib/components/TranslateModeBar.svelte';
 
 	// Import CSS (order matters: tokens first, then themes, then global)
 	import '../style/tokens.css';
@@ -31,4 +32,5 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+<TranslateModeBar />
 {@render children()}

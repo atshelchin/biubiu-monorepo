@@ -31,6 +31,11 @@
 			name: 'Base',
 			color: '#0052FF',
 			icon: `<svg viewBox="0 0 111 111" preserveAspectRatio="xMidYMid"><circle fill="currentColor" cx="55.5" cy="55.5" r="55.5"/><path fill="var(--bg-base)" d="M55.4 93.3c20.9 0 37.8-16.9 37.8-37.8S76.3 17.7 55.4 17.7c-19.5 0-35.5 14.7-37.6 33.6h49.7v12.4H17.8c2.1 18.9 18.1 33.6 37.6 29.6z"/></svg>`
+		},
+		{
+			name: 'Avalanche',
+			color: '#E84142',
+			icon: `<svg viewBox="0 0 254 254" preserveAspectRatio="xMidYMid"><circle fill="currentColor" cx="127" cy="127" r="127"/><path fill="var(--bg-base)" d="M171.8 130.3c4.4-7.6 11.5-7.6 15.9 0l27.4 48.1c4.4 7.6.8 13.8-8 13.8h-55.2c-8.7 0-12.3-6.2-8-13.8l27.9-48.1zm-53.7-93.9c4.4-7.6 11.4-7.6 15.8 0l8.3 14.7 19.5 34.8c3.5 7.3 3.5 16 0 23.3l-52 89.7c-4.4 7.1-11.9 11.5-20.2 12H46.4c-8.8 0-12.4-6.1-8-13.7l79.7-140.8z"/></svg>`
 		}
 	];
 </script>
@@ -55,7 +60,6 @@
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-4);
-		margin-top: var(--space-10);
 	}
 
 	.chains-label {

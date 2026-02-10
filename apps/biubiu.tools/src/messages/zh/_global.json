@@ -66,5 +66,8 @@
   "settings.dateFormat": "日期",
   "settings.currency": "货币",
   "settings.theme.light": "浅色",
-  "settings.theme.dark": "深色"
+  "settings.theme.dark": "深色",
+  "settings.helpTranslate": "帮助改进翻译",
+  "settings.helpTranslate.hint": "{key} + 点击任意文字，即可跳转 GitHub 编辑",
+  "settings.helpTranslate.enabled": "翻译模式已开启"
 }

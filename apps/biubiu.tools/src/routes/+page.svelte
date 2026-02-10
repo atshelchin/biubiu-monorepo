@@ -663,7 +663,6 @@
 	}
 
 	.hero-cta {
-		position: relative;
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
@@ -676,67 +675,25 @@
 		border: none;
 		cursor: pointer;
 		border-radius: var(--radius-lg);
-		box-shadow: var(--glow-accent);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 		transition: all var(--motion-fast) var(--easing);
-		overflow: hidden;
-	}
-
-	.hero-cta::before {
-		content: '';
-		position: absolute;
-		inset: -2px;
-		border-radius: inherit;
-		background: var(--gradient-accent);
-		filter: blur(8px);
-		opacity: 0;
-		z-index: -1;
-		animation: pulse-glow 2s ease-in-out infinite;
-	}
-
-	@keyframes pulse-glow {
-		0%, 100% { opacity: 0.3; transform: scale(1); }
-		50% { opacity: 0.6; transform: scale(1.02); }
 	}
 
 	.hero-cta:hover {
 		background: var(--accent-hover);
-		transform: translateY(-2px);
-		box-shadow: var(--glow-intense);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 	}
 
-	/* Glass Card - Premium glass morphism */
+	/* Glass Card - Apple style */
 	.glass-card {
 		position: relative;
-		background: linear-gradient(
-			135deg,
-			rgba(255, 255, 255, 0.08) 0%,
-			rgba(255, 255, 255, 0.02) 100%
-		);
-		backdrop-filter: blur(20px) saturate(180%);
-		-webkit-backdrop-filter: blur(20px) saturate(180%);
-		border: 1px solid rgba(255, 255, 255, 0.12);
-		box-shadow:
-			0 8px 32px rgba(0, 0, 0, 0.4),
-			0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-			0 1px 0 rgba(255, 255, 255, 0.1) inset;
+		background: rgba(255, 255, 255, 0.05);
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 		transition: all var(--motion-normal) var(--easing);
-	}
-
-	/* Top highlight line */
-	.glass-card::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 20%;
-		right: 20%;
-		height: 1px;
-		background: linear-gradient(
-			90deg,
-			transparent 0%,
-			rgba(255, 255, 255, 0.3) 50%,
-			transparent 100%
-		);
-		pointer-events: none;
 	}
 
 	/* Featured Section */
@@ -765,49 +722,12 @@
 		gap: var(--space-8);
 		padding: var(--space-8);
 		border-radius: var(--radius-xl);
-		overflow: hidden;
-	}
-
-	/* Shine sweep effect */
-	.tool-card::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 60%;
-		height: 100%;
-		background: linear-gradient(
-			90deg,
-			transparent 0%,
-			rgba(255, 255, 255, 0.03) 20%,
-			rgba(255, 255, 255, 0.08) 40%,
-			rgba(255, 255, 255, 0.15) 50%,
-			rgba(255, 255, 255, 0.08) 60%,
-			rgba(255, 255, 255, 0.03) 80%,
-			transparent 100%
-		);
-		transform: skewX(-20deg);
-		transition: left 0.7s var(--easing-smooth);
-		pointer-events: none;
 	}
 
 	.tool-card:hover {
-		transform: translateY(-6px);
-		border-color: rgba(54, 160, 122, 0.4);
-		background: linear-gradient(
-			135deg,
-			rgba(255, 255, 255, 0.12) 0%,
-			rgba(255, 255, 255, 0.04) 100%
-		);
-		box-shadow:
-			0 20px 50px rgba(0, 0, 0, 0.5),
-			0 0 80px rgba(54, 160, 122, 0.2),
-			0 0 0 1px rgba(54, 160, 122, 0.25) inset,
-			0 1px 0 rgba(255, 255, 255, 0.15) inset;
-	}
-
-	.tool-card:hover::after {
-		left: 150%;
+		transform: translateY(-2px);
+		background: rgba(255, 255, 255, 0.08);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.tool-icon {
@@ -913,49 +833,12 @@
 		padding: var(--space-8);
 		border-radius: var(--radius-xl);
 		transition: all var(--motion-normal) var(--easing);
-		overflow: hidden;
-	}
-
-	/* Shine sweep effect on hover */
-	.coming-card::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 60%;
-		height: 100%;
-		background: linear-gradient(
-			90deg,
-			transparent 0%,
-			rgba(255, 255, 255, 0.03) 20%,
-			rgba(255, 255, 255, 0.08) 40%,
-			rgba(255, 255, 255, 0.15) 50%,
-			rgba(255, 255, 255, 0.08) 60%,
-			rgba(255, 255, 255, 0.03) 80%,
-			transparent 100%
-		);
-		transform: skewX(-20deg);
-		transition: left 0.7s var(--easing-smooth);
-		pointer-events: none;
 	}
 
 	.coming-card:hover {
-		transform: translateY(-6px);
-		border-color: rgba(54, 160, 122, 0.3);
-		background: linear-gradient(
-			135deg,
-			rgba(255, 255, 255, 0.1) 0%,
-			rgba(255, 255, 255, 0.03) 100%
-		);
-		box-shadow:
-			0 16px 48px rgba(0, 0, 0, 0.4),
-			0 0 60px rgba(54, 160, 122, 0.15),
-			0 0 0 1px rgba(54, 160, 122, 0.2) inset,
-			0 1px 0 rgba(255, 255, 255, 0.12) inset;
-	}
-
-	.coming-card:hover::after {
-		left: 150%;
+		transform: translateY(-2px);
+		background: rgba(255, 255, 255, 0.08);
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.coming-icon {
@@ -1187,15 +1070,9 @@
 
 	/* Reduced Motion */
 	@media (prefers-reduced-motion: reduce) {
-		.hero-cta::before,
 		.hero-orb,
 		.gradient-text {
 			animation: none;
-		}
-
-		.tool-card::after,
-		.coming-card::after {
-			display: none;
 		}
 	}
 </style>

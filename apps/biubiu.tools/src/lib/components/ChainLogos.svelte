@@ -39,8 +39,11 @@
 	<p class="chains-label">{t('hero.chainsSupported')}</p>
 	<div class="chains-logos">
 		{#each chains as chain}
-			<div class="chain-logo" title={chain.name} style="--chain-color: {chain.color}">
-				{@html chain.icon}
+			<div class="chain-chip" title={chain.name} style="--chain-color: {chain.color}">
+				<span class="chain-icon">
+					{@html chain.icon}
+				</span>
+				<span class="chain-name">{chain.name}</span>
 			</div>
 		{/each}
 	</div>
@@ -51,54 +54,93 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		/* align-items: flex-start; */
-		gap: var(--space-3);
-		margin-top: var(--space-8);
+		gap: var(--space-4);
+		margin-top: var(--space-10);
 	}
 
 	.chains-label {
-		font-size: var(--text-sm);
-		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		font-weight: var(--weight-medium);
 	}
 
 	.chains-logos {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: var(--space-5);
+		gap: var(--space-2);
 		flex-wrap: wrap;
 	}
 
-	.chain-logo {
+	/* Capsule/Chip style for chain logos */
+	.chain-chip {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: var(--radius-full);
+		color: var(--fg-muted);
+		transition: all var(--motion-normal) var(--easing);
+		cursor: default;
+	}
+
+	.chain-chip:hover {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: color-mix(in srgb, var(--chain-color) 30%, transparent);
+		transform: translateY(-2px);
+	}
+
+	.chain-chip:hover .chain-icon {
+		color: var(--chain-color);
+	}
+
+	.chain-chip:hover .chain-name {
+		color: var(--fg-base);
+	}
+
+	.chain-icon {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
-		color: var(--fg-muted);
-		opacity: 0.5;
-		transition: all var(--motion-fast) var(--easing);
+		width: 18px;
+		height: 18px;
+		color: var(--fg-subtle);
+		transition: color var(--motion-fast) var(--easing);
 	}
 
-	.chain-logo:hover {
-		color: var(--chain-color);
-		opacity: 1;
-		transform: scale(1.15);
-	}
-
-	.chain-logo :global(svg) {
+	.chain-icon :global(svg) {
 		width: 100%;
 		height: 100%;
 	}
 
+	.chain-name {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		transition: color var(--motion-fast) var(--easing);
+	}
+
 	@media (max-width: 768px) {
 		.chains-logos {
-			gap: var(--space-4);
+			gap: var(--space-2);
+			max-width: 100%;
 		}
 
-		.chain-logo {
-			width: 24px;
-			height: 24px;
+		.chain-chip {
+			padding: var(--space-1) var(--space-2);
+		}
+
+		.chain-name {
+			display: none;
+		}
+
+		.chain-icon {
+			width: 20px;
+			height: 20px;
 		}
 	}
 </style>

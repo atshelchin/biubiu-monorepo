@@ -54,9 +54,13 @@
   "footer.madeWith": "Made with {love}",
   "footer.openSource": "Open Source",
   "settings.title": "Settings",
+  "settings.language": "Language",
+  "settings.appearance": "Appearance",
+  "settings.theme.title": "Theme",
   "settings.textSize": "Text Size",
-  "settings.numberFormat": "Number Format",
-  "settings.dateFormat": "Date Format",
+  "settings.format": "Format",
+  "settings.numberFormat": "Number",
+  "settings.dateFormat": "Date",
   "settings.theme.light": "Light",
   "settings.theme.dark": "Dark"
 }

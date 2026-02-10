@@ -25,6 +25,26 @@
 		zh: { label: '中文', flag: '🇨🇳' }
 	};
 
+	// Supported currencies
+	const currencies: { code: string; symbol: string; name: string }[] = [
+		{ code: 'USD', symbol: '$', name: 'US Dollar' },
+		{ code: 'CNY', symbol: '¥', name: '人民币' },
+		{ code: 'EUR', symbol: '€', name: 'Euro' },
+		{ code: 'GBP', symbol: '£', name: 'British Pound' },
+		{ code: 'JPY', symbol: '¥', name: '日本円' },
+		{ code: 'KRW', symbol: '₩', name: '한국 원' },
+		{ code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+		{ code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+		{ code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+		{ code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+		{ code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+		{ code: 'BRL', symbol: 'R$', name: 'Real Brasileiro' },
+		{ code: 'MXN', symbol: 'MX$', name: 'Peso Mexicano' },
+		{ code: 'TRY', symbol: '₺', name: 'Türk Lirası' },
+		{ code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
+		{ code: 'IDR', symbol: 'Rp', name: 'Rupiah Indonesia' },
+	];
+
 	// Initialize theme and text scale from DOM
 	$effect(() => {
 		if (browser) {
@@ -43,6 +63,7 @@
 					const parsed = JSON.parse(saved);
 					if (parsed.numberLocale) preferences.numberLocale = parsed.numberLocale;
 					if (parsed.dateLocale) preferences.dateLocale = parsed.dateLocale;
+					if (parsed.currency) preferences.currency = parsed.currency;
 				} catch {
 					// ignore
 				}
@@ -57,6 +78,7 @@
 			const data = {
 				numberLocale: preferences.numberLocale,
 				dateLocale: preferences.dateLocale,
+				currency: preferences.currency,
 			};
 			localStorage.setItem('biubiu-format-prefs', JSON.stringify(data));
 		}
@@ -227,6 +249,24 @@
 					<span class="format-value">10.2.2026</span>
 					<span class="format-hint">D.M.Y</span>
 				</button>
+			</div>
+		</div>
+
+		<!-- Currency -->
+		<div class="setting-block">
+			<span class="setting-label">{t('settings.currency')}</span>
+			<div class="currency-grid">
+				{#each currencies as currency}
+					<button
+						class="currency-btn"
+						class:active={preferences.currency === currency.code}
+						onclick={() => (preferences.currency = currency.code)}
+						title={currency.name}
+					>
+						<span class="currency-symbol">{currency.symbol}</span>
+						<span class="currency-code">{currency.code}</span>
+					</button>
+				{/each}
 			</div>
 		</div>
 	</section>
@@ -440,6 +480,75 @@
 	.format-btn.active .format-hint {
 		color: inherit;
 		opacity: 0.7;
+	}
+
+	/* Setting Block (full width label + content) */
+	.setting-block {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	/* Currency Grid */
+	.currency-grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: var(--space-1);
+		padding: var(--space-1);
+		background: var(--bg-raised);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+	}
+
+	.currency-btn {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		padding: var(--space-2) var(--space-1);
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.currency-btn:hover {
+		background: var(--accent-muted);
+	}
+
+	.currency-btn.active {
+		background: var(--accent);
+	}
+
+	.currency-symbol {
+		font-size: var(--text-base);
+		font-weight: var(--weight-bold);
+		color: var(--fg-base);
+		line-height: 1;
+	}
+
+	.currency-code {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		font-weight: var(--weight-medium);
+	}
+
+	.currency-btn:hover .currency-symbol,
+	.currency-btn:hover .currency-code {
+		color: var(--fg-base);
+	}
+
+	.currency-btn.active .currency-symbol,
+	.currency-btn.active .currency-code {
+		color: var(--bg-base);
+	}
+
+	@media (max-width: 360px) {
+		.currency-grid {
+			grid-template-columns: repeat(3, 1fr);
+		}
 	}
 
 </style>

@@ -1,6 +1,9 @@
 {
   "nav.home": "首页",
   "nav.tools": "工具",
+  "nav.docs": "文档",
+  "nav.github": "GitHub",
+  "nav.menu": "菜单",
   "nav.about": "关于",
   "welcome": "欢迎来到 biubiu.tools",
   "language": "语言",

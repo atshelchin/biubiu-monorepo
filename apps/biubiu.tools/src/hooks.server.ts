@@ -8,6 +8,12 @@ const DEFAULT_THEME = 'dark';
 const DEFAULT_TEXT_SCALE = 'md';
 const VALID_TEXT_SCALES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 
+// Format preferences defaults
+const DEFAULT_NUMBER_LOCALE = 'en-US';
+const DEFAULT_DATE_LOCALE = 'en-US';
+const DEFAULT_CURRENCY = 'USD';
+const DEFAULT_TIMEZONE = 'UTC';
+
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
 
@@ -103,6 +109,19 @@ export const handle: Handle = async ({ event, resolve }) => {
   const textScale = textScaleCookie && VALID_TEXT_SCALES.includes(textScaleCookie)
     ? textScaleCookie
     : DEFAULT_TEXT_SCALE;
+
+  // Get format preferences from cookies and set in i18nState
+  const numberLocale = event.cookies.get('number-locale') || DEFAULT_NUMBER_LOCALE;
+  const dateLocale = event.cookies.get('date-locale') || DEFAULT_DATE_LOCALE;
+  const currency = event.cookies.get('currency') || DEFAULT_CURRENCY;
+  const timezoneCookie = event.cookies.get('timezone');
+  const timezone = timezoneCookie ? decodeURIComponent(timezoneCookie) : DEFAULT_TIMEZONE;
+
+  // Apply format preferences to i18nState for SSR
+  i18nState.preferences.numberLocale = numberLocale;
+  i18nState.preferences.dateLocale = dateLocale;
+  i18nState.preferences.currency = currency;
+  i18nState.preferences.timezone = timezone;
 
   // Handle request
   const response = await resolve(event, {

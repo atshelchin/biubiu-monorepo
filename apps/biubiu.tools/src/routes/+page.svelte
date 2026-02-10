@@ -209,14 +209,18 @@
 	<main class="main">
 		<!-- Hero Section -->
 		<section class="hero">
-			<!-- Background Gradient Orbs -->
+			<!-- Grid Pattern Background -->
+			<div class="hero-grid"></div>
+
+			<!-- Background Gradient Orbs (Multi-layer) -->
 			<div class="hero-orb hero-orb-1"></div>
 			<div class="hero-orb hero-orb-2"></div>
+			<div class="hero-orb hero-orb-3"></div>
 			<div class="hero-glow"></div>
 
 			<div class="hero-content">
 				<h1 class="hero-title">
-					{t('hero.tagline')}
+					<span class="title-line">{t('hero.tagline')}</span>
 					<span class="gradient-text">{t('hero.taglineHighlight')}</span>
 				</h1>
 
@@ -534,30 +538,63 @@
 		padding: calc(80px + var(--space-12)) var(--space-6) var(--space-12);
 	}
 
-	/* Hero Background Orbs */
-	.hero-orb {
+	/* Grid Pattern Background */
+	.hero-grid {
 		position: absolute;
-		border-radius: 50%;
-		filter: blur(80px);
+		inset: 0;
+		background-image:
+			linear-gradient(rgba(54, 160, 122, 0.03) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(54, 160, 122, 0.03) 1px, transparent 1px);
+		background-size: 60px 60px;
+		mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 70%);
+		-webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 70%);
 		pointer-events: none;
 	}
 
+	/* Hero Background Orbs (Multi-layer depth) */
+	.hero-orb {
+		position: absolute;
+		border-radius: 50%;
+		filter: blur(100px);
+		pointer-events: none;
+		animation: float 20s ease-in-out infinite;
+	}
+
+	@keyframes float {
+		0%, 100% { transform: translate(0, 0); }
+		25% { transform: translate(10px, -15px); }
+		50% { transform: translate(-5px, 10px); }
+		75% { transform: translate(-10px, -5px); }
+	}
+
 	.hero-orb-1 {
-		top: -10%;
-		right: 0;
-		width: 700px;
-		height: 700px;
-		background: radial-gradient(circle, var(--accent) 0%, transparent 65%);
+		top: -15%;
+		right: -5%;
+		width: 800px;
+		height: 800px;
+		background: radial-gradient(circle, var(--accent) 0%, transparent 60%);
 		opacity: 0.25;
+		animation-delay: 0s;
 	}
 
 	.hero-orb-2 {
-		bottom: 0;
-		left: -15%;
-		width: 600px;
-		height: 600px;
-		background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 65%);
-		opacity: 0.2;
+		bottom: -10%;
+		left: -20%;
+		width: 700px;
+		height: 700px;
+		background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 60%);
+		opacity: 0.18;
+		animation-delay: -7s;
+	}
+
+	.hero-orb-3 {
+		top: 30%;
+		right: -25%;
+		width: 500px;
+		height: 500px;
+		background: radial-gradient(circle, var(--accent-tertiary) 0%, transparent 60%);
+		opacity: 0.12;
+		animation-delay: -14s;
 	}
 
 	.hero-glow {
@@ -576,26 +613,44 @@
 	}
 
 	.hero-title {
-		font-size: var(--text-6xl);
-		font-weight: var(--weight-bold);
-		line-height: var(--leading-tight);
+		font-size: calc(var(--text-6xl) * 1.2);
+		font-weight: 800;
+		line-height: 1.1;
+		letter-spacing: -0.03em;
 		color: var(--fg-base);
 		margin-bottom: var(--space-6);
 	}
 
-	.gradient-text {
-		background: var(--gradient-text);
+	.title-line {
+		display: block;
+		background: linear-gradient(180deg, var(--fg-base) 0%, var(--fg-muted) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
 	}
 
+	.gradient-text {
+		display: block;
+		background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 50%, var(--accent-tertiary) 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		background-size: 200% 200%;
+		animation: gradient-shift 8s ease-in-out infinite;
+	}
+
+	@keyframes gradient-shift {
+		0%, 100% { background-position: 0% 50%; }
+		50% { background-position: 100% 50%; }
+	}
+
 	.hero-description {
-		font-size: var(--text-xl);
-		color: var(--fg-muted);
-		max-width: 700px;
+		font-size: var(--text-lg);
+		color: var(--fg-subtle);
+		max-width: 600px;
 		margin: 0 auto var(--space-10);
 		line-height: var(--leading-relaxed);
+		letter-spacing: 0.01em;
 	}
 
 	.hero-actions {
@@ -649,13 +704,39 @@
 		box-shadow: var(--glow-intense);
 	}
 
-	/* Glass Card */
+	/* Glass Card - Premium glass morphism */
 	.glass-card {
-		background: var(--glass-bg);
-		backdrop-filter: blur(var(--blur-md));
-		-webkit-backdrop-filter: blur(var(--blur-md));
-		border: 0.5px solid var(--border-base);
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+		position: relative;
+		background: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.08) 0%,
+			rgba(255, 255, 255, 0.02) 100%
+		);
+		backdrop-filter: blur(20px) saturate(180%);
+		-webkit-backdrop-filter: blur(20px) saturate(180%);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		box-shadow:
+			0 8px 32px rgba(0, 0, 0, 0.4),
+			0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+			0 1px 0 rgba(255, 255, 255, 0.1) inset;
+		transition: all var(--motion-normal) var(--easing);
+	}
+
+	/* Top highlight line */
+	.glass-card::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 20%;
+		right: 20%;
+		height: 1px;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.3) 50%,
+			transparent 100%
+		);
+		pointer-events: none;
 	}
 
 	/* Featured Section */
@@ -684,12 +765,49 @@
 		gap: var(--space-8);
 		padding: var(--space-8);
 		border-radius: var(--radius-xl);
-		transition: all var(--motion-normal) var(--easing);
+		overflow: hidden;
+	}
+
+	/* Shine sweep effect */
+	.tool-card::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 60%;
+		height: 100%;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.03) 20%,
+			rgba(255, 255, 255, 0.08) 40%,
+			rgba(255, 255, 255, 0.15) 50%,
+			rgba(255, 255, 255, 0.08) 60%,
+			rgba(255, 255, 255, 0.03) 80%,
+			transparent 100%
+		);
+		transform: skewX(-20deg);
+		transition: left 0.7s var(--easing-smooth);
+		pointer-events: none;
 	}
 
 	.tool-card:hover {
-		border-color: var(--border-strong);
-		box-shadow: var(--shadow-lg);
+		transform: translateY(-6px);
+		border-color: rgba(54, 160, 122, 0.4);
+		background: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.12) 0%,
+			rgba(255, 255, 255, 0.04) 100%
+		);
+		box-shadow:
+			0 20px 50px rgba(0, 0, 0, 0.5),
+			0 0 80px rgba(54, 160, 122, 0.2),
+			0 0 0 1px rgba(54, 160, 122, 0.25) inset,
+			0 1px 0 rgba(255, 255, 255, 0.15) inset;
+	}
+
+	.tool-card:hover::after {
+		left: 150%;
 	}
 
 	.tool-icon {
@@ -795,11 +913,49 @@
 		padding: var(--space-8);
 		border-radius: var(--radius-xl);
 		transition: all var(--motion-normal) var(--easing);
+		overflow: hidden;
+	}
+
+	/* Shine sweep effect on hover */
+	.coming-card::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 60%;
+		height: 100%;
+		background: linear-gradient(
+			90deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.03) 20%,
+			rgba(255, 255, 255, 0.08) 40%,
+			rgba(255, 255, 255, 0.15) 50%,
+			rgba(255, 255, 255, 0.08) 60%,
+			rgba(255, 255, 255, 0.03) 80%,
+			transparent 100%
+		);
+		transform: skewX(-20deg);
+		transition: left 0.7s var(--easing-smooth);
+		pointer-events: none;
 	}
 
 	.coming-card:hover {
-		border-color: var(--border-strong);
-		transform: translateY(-4px);
+		transform: translateY(-6px);
+		border-color: rgba(54, 160, 122, 0.3);
+		background: linear-gradient(
+			135deg,
+			rgba(255, 255, 255, 0.1) 0%,
+			rgba(255, 255, 255, 0.03) 100%
+		);
+		box-shadow:
+			0 16px 48px rgba(0, 0, 0, 0.4),
+			0 0 60px rgba(54, 160, 122, 0.15),
+			0 0 0 1px rgba(54, 160, 122, 0.2) inset,
+			0 1px 0 rgba(255, 255, 255, 0.12) inset;
+	}
+
+	.coming-card:hover::after {
+		left: 150%;
 	}
 
 	.coming-icon {
@@ -969,22 +1125,34 @@
 			padding: calc(64px + var(--space-8)) var(--space-4) var(--space-8);
 		}
 
+		.hero-grid {
+			background-size: 40px 40px;
+		}
+
 		.hero-orb-1 {
-			width: 300px;
-			height: 300px;
-			top: 0;
-			right: -10%;
+			width: 350px;
+			height: 350px;
+			top: -5%;
+			right: -15%;
 		}
 
 		.hero-orb-2 {
-			width: 250px;
-			height: 250px;
-			bottom: 10%;
-			left: -15%;
+			width: 300px;
+			height: 300px;
+			bottom: 5%;
+			left: -20%;
+		}
+
+		.hero-orb-3 {
+			width: 200px;
+			height: 200px;
+			top: 40%;
+			right: -30%;
 		}
 
 		.hero-title {
-			font-size: var(--text-3xl);
+			font-size: calc(var(--text-3xl) * 1.1);
+			letter-spacing: -0.02em;
 		}
 
 		.hero-description {
@@ -1019,8 +1187,15 @@
 
 	/* Reduced Motion */
 	@media (prefers-reduced-motion: reduce) {
-		.hero-cta::before {
+		.hero-cta::before,
+		.hero-orb,
+		.gradient-text {
 			animation: none;
+		}
+
+		.tool-card::after,
+		.coming-card::after {
+			display: none;
 		}
 	}
 </style>

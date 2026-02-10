@@ -64,6 +64,7 @@
   "settings.format": "格式",
   "settings.numberFormat": "数字",
   "settings.dateFormat": "日期",
+  "settings.currency": "货币",
   "settings.theme.light": "浅色",
   "settings.theme.dark": "深色"
 }

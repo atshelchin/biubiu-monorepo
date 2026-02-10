@@ -64,6 +64,7 @@
   "settings.format": "Format",
   "settings.numberFormat": "Number",
   "settings.dateFormat": "Date",
+  "settings.currency": "Currency",
   "settings.theme.light": "Light",
   "settings.theme.dark": "Dark"
 }

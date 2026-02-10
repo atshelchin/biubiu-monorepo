@@ -1,6 +1,9 @@
 {
   "nav.home": "Home",
   "nav.tools": "Tools",
+  "nav.docs": "Docs",
+  "nav.github": "GitHub",
+  "nav.menu": "Menu",
   "nav.about": "About",
   "welcome": "Welcome to biubiu.tools",
   "language": "Language",

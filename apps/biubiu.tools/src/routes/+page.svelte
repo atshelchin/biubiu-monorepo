@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { t, localizeHref, locale } from '$lib/i18n';
+	import type { TranslationKey } from '$i18n';
 	import { getBaseSEO, buildSiteJsonLd } from '$lib/seo';
 	import SEO from '@shelchin/seo/SEO.svelte';
 	import ChainLogos from '$lib/components/ChainLogos.svelte';
 	import ResponsiveModal from '$lib/components/ResponsiveModal.svelte';
+	import ResponsiveDrawer from '$lib/components/ResponsiveDrawer.svelte';
 	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import logo from '$lib/assets/logo.svg';
@@ -11,18 +13,19 @@
 	// Settings modal state
 	let showSettings = $state(false);
 
-	// Mobile drawer state (reserved for future use)
+	// Mobile drawer state
 	let showMobileDrawer = $state(false);
 
-	function closeMobileDrawer() {
-		showMobileDrawer = false;
-	}
+	// Navigation links
+	const navLinks: { key: TranslationKey; href: string; icon: string; external?: boolean }[] = [
+		{ key: 'nav.tools', href: '/tools/balance-radar', icon: 'tools' },
+		{ key: 'nav.docs', href: '/docs', icon: 'docs', external: false },
+		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu.tools', icon: 'github', external: true }
+	];
 
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('.mobile-drawer') && !target.closest('.mobile-menu-btn')) {
-			showMobileDrawer = false;
-		}
+	function openSettings() {
+		showMobileDrawer = false;
+		showSettings = true;
 	}
 
 	const seoProps = $derived(getBaseSEO({
@@ -36,7 +39,7 @@
 		}
 	}));
 
-	const comingTools = [
+	const comingTools: { id: string; nameKey: TranslationKey; descKey: TranslationKey; icon: string }[] = [
 		{
 			id: 'token-sender',
 			nameKey: 'coming.tools.tokenSender.name',
@@ -64,8 +67,6 @@
 	];
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
 <SEO {...seoProps} />
 
 <div class="page">
@@ -78,11 +79,44 @@
 				<span class="logo-accent">Tools</span>
 			</a>
 
+			<!-- Desktop Navigation -->
+			<nav class="nav-desktop">
+				{#each navLinks as link}
+					{#if link.external}
+						<a href={link.href} class="nav-link" target="_blank" rel="noopener noreferrer">
+							{#if link.icon === 'github'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+									<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+								</svg>
+							{/if}
+							<span>{t(link.key)}</span>
+						</a>
+					{:else}
+						<a href={localizeHref(link.href)} class="nav-link">
+							{#if link.icon === 'tools'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+								</svg>
+							{:else if link.icon === 'docs'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+									<polyline points="14 2 14 8 20 8"/>
+									<line x1="16" y1="13" x2="8" y2="13"/>
+									<line x1="16" y1="17" x2="8" y2="17"/>
+									<polyline points="10 9 9 9 8 9"/>
+								</svg>
+							{/if}
+							<span>{t(link.key)}</span>
+						</a>
+					{/if}
+				{/each}
+			</nav>
+
 			<!-- Header Actions -->
 			<div class="header-actions">
-				<!-- Settings Button -->
+				<!-- Settings Button (Desktop) -->
 				<button
-					class="settings-btn"
+					class="settings-btn desktop-only"
 					onclick={() => (showSettings = true)}
 					aria-label={t('settings.title')}
 					title={t('settings.title')}
@@ -90,6 +124,19 @@
 					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<circle cx="12" cy="12" r="3"/>
 						<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+					</svg>
+				</button>
+
+				<!-- Mobile Menu Button -->
+				<button
+					class="menu-btn mobile-only"
+					onclick={() => (showMobileDrawer = true)}
+					aria-label={t('nav.menu')}
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="3" y1="12" x2="21" y2="12"/>
+						<line x1="3" y1="6" x2="21" y2="6"/>
+						<line x1="3" y1="18" x2="21" y2="18"/>
 					</svg>
 				</button>
 			</div>
@@ -102,24 +149,62 @@
 		<SettingsPanel />
 	</ResponsiveModal>
 
-	<!-- Mobile Drawer (reserved for future use) -->
-	{#if showMobileDrawer}
-		<div class="mobile-overlay" onclick={closeMobileDrawer}></div>
-		<div class="mobile-drawer open">
-			<div class="drawer-header">
-				<span class="drawer-title">Menu</span>
-				<button class="drawer-close" onclick={closeMobileDrawer} aria-label="Close menu">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="18" y1="6" x2="6" y2="18"/>
-						<line x1="6" y1="6" x2="18" y2="18"/>
-					</svg>
-				</button>
-			</div>
-			<div class="drawer-content">
-				<!-- Reserved for future navigation items -->
-			</div>
+	<!-- Mobile Drawer -->
+	<ResponsiveDrawer open={showMobileDrawer} onClose={() => (showMobileDrawer = false)} title={t('nav.menu')}>
+		<div class="drawer-nav">
+			<!-- Navigation Links -->
+			<nav class="drawer-links">
+				{#each navLinks as link}
+					{#if link.external}
+						<a href={link.href} class="drawer-link" target="_blank" rel="noopener noreferrer" onclick={() => (showMobileDrawer = false)}>
+							{#if link.icon === 'github'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+									<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+								</svg>
+							{/if}
+							<span>{t(link.key)}</span>
+							<svg class="external-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+								<polyline points="15 3 21 3 21 9"/>
+								<line x1="10" y1="14" x2="21" y2="3"/>
+							</svg>
+						</a>
+					{:else}
+						<a href={localizeHref(link.href)} class="drawer-link" onclick={() => (showMobileDrawer = false)}>
+							{#if link.icon === 'tools'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+								</svg>
+							{:else if link.icon === 'docs'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+									<polyline points="14 2 14 8 20 8"/>
+									<line x1="16" y1="13" x2="8" y2="13"/>
+									<line x1="16" y1="17" x2="8" y2="17"/>
+									<polyline points="10 9 9 9 8 9"/>
+								</svg>
+							{/if}
+							<span>{t(link.key)}</span>
+						</a>
+					{/if}
+				{/each}
+			</nav>
+
+			<div class="drawer-divider"></div>
+
+			<!-- Settings Button -->
+			<button class="drawer-settings-btn" onclick={openSettings}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="3"/>
+					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+				</svg>
+				<span>{t('settings.title')}</span>
+				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="9 18 15 12 9 6"/>
+				</svg>
+			</button>
 		</div>
-	{/if}
+	</ResponsiveDrawer>
 
 	<main class="main">
 		<!-- Hero Section -->
@@ -328,10 +413,35 @@
 		color: var(--accent);
 	}
 
+	/* Desktop Navigation */
+	.nav-desktop {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.nav-link {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		text-decoration: none;
+		border-radius: var(--radius-md);
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.nav-link:hover {
+		color: var(--fg-base);
+		background: var(--bg-raised);
+	}
+
 	.header-actions {
 		display: flex;
 		align-items: center;
-		gap: var(--space-4);
+		gap: var(--space-2);
 	}
 
 	/* Settings Button */
@@ -353,6 +463,50 @@
 		background: var(--bg-elevated);
 		border-color: var(--border-strong);
 		color: var(--fg-base);
+	}
+
+	/* Mobile Menu Button */
+	.menu-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		background: var(--bg-raised);
+		color: var(--fg-muted);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.menu-btn:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-strong);
+		color: var(--fg-base);
+	}
+
+	/* Desktop/Mobile visibility */
+	.desktop-only {
+		display: flex;
+	}
+
+	.mobile-only {
+		display: none;
+	}
+
+	@media (max-width: 768px) {
+		.nav-desktop {
+			display: none;
+		}
+
+		.desktop-only {
+			display: none;
+		}
+
+		.mobile-only {
+			display: flex;
+		}
 	}
 
 	/* Main */
@@ -727,66 +881,79 @@
 		color: var(--fg-subtle);
 	}
 
-	/* Mobile Overlay (reserved for future use) */
-	.mobile-overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: var(--z-modal);
-	}
-
-	/* Mobile Drawer (reserved for future use) */
-	.mobile-drawer {
-		position: fixed;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		width: 280px;
-		max-width: 85vw;
-		background: var(--bg-elevated);
-		border-left: 1px solid var(--border-base);
-		z-index: calc(var(--z-modal) + 1);
+	/* Drawer Content */
+	.drawer-nav {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-2);
 	}
 
-	.drawer-header {
+	.drawer-links {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.drawer-link {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4);
-		border-bottom: 1px solid var(--border-subtle);
-	}
-
-	.drawer-title {
-		font-size: var(--text-lg);
-		font-weight: var(--weight-semibold);
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
 		color: var(--fg-base);
+		font-size: var(--text-base);
+		font-weight: var(--weight-medium);
+		text-decoration: none;
+		border-radius: var(--radius-lg);
+		transition: all var(--motion-fast) var(--easing);
 	}
 
-	.drawer-close {
+	.drawer-link:hover {
+		background: var(--bg-raised);
+	}
+
+	.drawer-link:active {
+		background: var(--accent-muted);
+	}
+
+	.drawer-link .external-icon {
+		margin-left: auto;
+		color: var(--fg-faint);
+	}
+
+	.drawer-divider {
+		height: 1px;
+		background: var(--border-subtle);
+		margin: var(--space-3) 0;
+	}
+
+	.drawer-settings-btn {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
+		gap: var(--space-3);
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
 		border: none;
-		border-radius: var(--radius-md);
 		background: transparent;
-		color: var(--fg-muted);
+		color: var(--fg-base);
+		font-size: var(--text-base);
+		font-weight: var(--weight-medium);
+		text-align: left;
+		border-radius: var(--radius-lg);
 		cursor: pointer;
 		transition: all var(--motion-fast) var(--easing);
 	}
 
-	.drawer-close:hover {
+	.drawer-settings-btn:hover {
 		background: var(--bg-raised);
-		color: var(--fg-base);
 	}
 
-	.drawer-content {
-		flex: 1;
-		padding: var(--space-4);
-		overflow-y: auto;
+	.drawer-settings-btn:active {
+		background: var(--accent-muted);
+	}
+
+	.drawer-settings-btn .chevron-icon {
+		margin-left: auto;
+		color: var(--fg-faint);
 	}
 
 	/* Responsive */

@@ -4,13 +4,28 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { removeLocaleFromPathname } from '@shelchin/i18n';
-	import { toggleTheme, setTextScale, getTextScales, type Theme, type TextScale } from '$lib/theme';
+	import {
+		loadSettings,
+		saveSettings,
+		setTheme,
+		setTextScale,
+		getTextScales,
+		type Theme,
+		type TextScale,
+		type Settings
+	} from '$lib/settings';
 
 	const SUPPORTED_LOCALES = ['en', 'zh'];
 
-	// Theme and text scale state
-	let currentTheme = $state<Theme>('dark');
-	let currentTextScale = $state<TextScale>('md');
+	// Unified settings state
+	let settings = $state<Settings>({
+		theme: 'dark',
+		textScale: 'md',
+		numberLocale: 'en-US',
+		dateLocale: 'en-US',
+		currency: 'USD',
+		timezone: 'UTC',
+	});
 
 	const textScales = getTextScales();
 
@@ -45,42 +60,17 @@
 		{ code: 'IDR', symbol: 'Rp', name: 'Rupiah Indonesia' },
 	];
 
-	// Initialize theme and text scale from DOM
+	// Load settings on mount
+	let settingsLoaded = $state(false);
 	$effect(() => {
-		if (browser) {
-			currentTheme = (document.documentElement.getAttribute('data-theme') as Theme) || 'dark';
-			currentTextScale = (document.documentElement.getAttribute('data-text-scale') as TextScale) || 'md';
-		}
-	});
-
-	// Load preferences from localStorage
-	let prefsLoaded = $state(false);
-	$effect(() => {
-		if (browser && !prefsLoaded) {
-			const saved = localStorage.getItem('biubiu-format-prefs');
-			if (saved) {
-				try {
-					const parsed = JSON.parse(saved);
-					if (parsed.numberLocale) preferences.numberLocale = parsed.numberLocale;
-					if (parsed.dateLocale) preferences.dateLocale = parsed.dateLocale;
-					if (parsed.currency) preferences.currency = parsed.currency;
-				} catch {
-					// ignore
-				}
-			}
-			prefsLoaded = true;
-		}
-	});
-
-	// Save preferences to localStorage
-	$effect(() => {
-		if (browser && prefsLoaded) {
-			const data = {
-				numberLocale: preferences.numberLocale,
-				dateLocale: preferences.dateLocale,
-				currency: preferences.currency,
-			};
-			localStorage.setItem('biubiu-format-prefs', JSON.stringify(data));
+		if (browser && !settingsLoaded) {
+			settings = loadSettings();
+			// Sync i18n preferences
+			preferences.numberLocale = settings.numberLocale;
+			preferences.dateLocale = settings.dateLocale;
+			preferences.currency = settings.currency;
+			preferences.timezone = settings.timezone;
+			settingsLoaded = true;
 		}
 	});
 
@@ -90,15 +80,34 @@
 		goto(`/${lang}${pathWithoutLocale}`);
 	}
 
-	function handleToggleTheme(theme: Theme) {
-		if (currentTheme !== theme) {
-			currentTheme = toggleTheme();
+	function handleSetTheme(theme: Theme) {
+		if (settings.theme !== theme) {
+			setTheme(theme);
+			settings = { ...settings, theme };
 		}
 	}
 
-	function handleSelectTextScale(scale: TextScale) {
+	function handleSetTextScale(scale: TextScale) {
 		setTextScale(scale);
-		currentTextScale = scale;
+		settings = { ...settings, textScale: scale };
+	}
+
+	function handleSetNumberLocale(loc: string) {
+		settings = { ...settings, numberLocale: loc };
+		preferences.numberLocale = loc;
+		saveSettings(settings);
+	}
+
+	function handleSetDateLocale(loc: string) {
+		settings = { ...settings, dateLocale: loc };
+		preferences.dateLocale = loc;
+		saveSettings(settings);
+	}
+
+	function handleSetCurrency(code: string) {
+		settings = { ...settings, currency: code };
+		preferences.currency = code;
+		saveSettings(settings);
 	}
 </script>
 
@@ -145,8 +154,8 @@
 			<div class="button-group compact">
 				<button
 					class="option-btn icon-btn"
-					class:active={currentTheme === 'light'}
-					onclick={() => handleToggleTheme('light')}
+					class:active={settings.theme === 'light'}
+					onclick={() => handleSetTheme('light')}
 					title={t('settings.theme.light')}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -156,8 +165,8 @@
 				</button>
 				<button
 					class="option-btn icon-btn"
-					class:active={currentTheme === 'dark'}
-					onclick={() => handleToggleTheme('dark')}
+					class:active={settings.theme === 'dark'}
+					onclick={() => handleSetTheme('dark')}
 					title={t('settings.theme.dark')}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -174,8 +183,8 @@
 				{#each textScales as scale}
 					<button
 						class="scale-btn"
-						class:active={currentTextScale === scale}
-						onclick={() => handleSelectTextScale(scale)}
+						class:active={settings.textScale === scale}
+						onclick={() => handleSetTextScale(scale)}
 						title={scale.toUpperCase()}
 					>
 						<span class="scale-letter" style="font-size: {scaleFontSizes[scale]}px;">A</span>
@@ -206,15 +215,15 @@
 			<div class="format-group">
 				<button
 					class="format-btn"
-					class:active={preferences.numberLocale === 'en-US'}
-					onclick={() => (preferences.numberLocale = 'en-US')}
+					class:active={settings.numberLocale === 'en-US'}
+					onclick={() => handleSetNumberLocale('en-US')}
 				>
 					1<span class="sep-thousand">,</span>234<span class="sep-decimal">.</span>56
 				</button>
 				<button
 					class="format-btn"
-					class:active={preferences.numberLocale === 'de-DE'}
-					onclick={() => (preferences.numberLocale = 'de-DE')}
+					class:active={settings.numberLocale === 'de-DE'}
+					onclick={() => handleSetNumberLocale('de-DE')}
 				>
 					1<span class="sep-thousand">.</span>234<span class="sep-decimal">,</span>56
 				</button>
@@ -227,24 +236,24 @@
 			<div class="format-group">
 				<button
 					class="format-btn with-hint"
-					class:active={preferences.dateLocale === 'en-US'}
-					onclick={() => (preferences.dateLocale = 'en-US')}
+					class:active={settings.dateLocale === 'en-US'}
+					onclick={() => handleSetDateLocale('en-US')}
 				>
 					<span class="format-value">2/10/2026</span>
 					<span class="format-hint">M/D/Y</span>
 				</button>
 				<button
 					class="format-btn with-hint"
-					class:active={preferences.dateLocale === 'zh-CN'}
-					onclick={() => (preferences.dateLocale = 'zh-CN')}
+					class:active={settings.dateLocale === 'zh-CN'}
+					onclick={() => handleSetDateLocale('zh-CN')}
 				>
 					<span class="format-value">2026/2/10</span>
 					<span class="format-hint">Y/M/D</span>
 				</button>
 				<button
 					class="format-btn with-hint"
-					class:active={preferences.dateLocale === 'de-DE'}
-					onclick={() => (preferences.dateLocale = 'de-DE')}
+					class:active={settings.dateLocale === 'de-DE'}
+					onclick={() => handleSetDateLocale('de-DE')}
 				>
 					<span class="format-value">10.2.2026</span>
 					<span class="format-hint">D.M.Y</span>
@@ -259,8 +268,8 @@
 				{#each currencies as currency}
 					<button
 						class="currency-btn"
-						class:active={preferences.currency === currency.code}
-						onclick={() => (preferences.currency = currency.code)}
+						class:active={settings.currency === currency.code}
+						onclick={() => handleSetCurrency(currency.code)}
 						title={currency.name}
 					>
 						<span class="currency-symbol">{currency.symbol}</span>

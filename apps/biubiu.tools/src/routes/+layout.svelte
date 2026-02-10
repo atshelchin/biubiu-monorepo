@@ -1,6 +1,6 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
-	import { initTheme, initTextScale } from '$lib/theme';
+	import { initSettings } from '$lib/settings';
 	import { i18nState } from '@shelchin/i18n';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -21,10 +21,9 @@
 		}
 	});
 
-	// Initialize theme and text-scale on client mount
+	// Initialize settings (theme, text-scale, etc.) on client mount
 	onMount(() => {
-		initTheme();
-		initTextScale();
+		initSettings();
 	});
 </script>
 

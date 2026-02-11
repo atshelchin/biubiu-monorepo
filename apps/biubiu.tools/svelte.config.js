@@ -5,6 +5,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			binaryName: "biubiu",
+			target: process.env.BUILD_TARGET || undefined,
 		}),
 		alias: {
 			$i18n: "./.svelte-kit/types/$i18n",

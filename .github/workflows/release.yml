@@ -1,0 +1,108 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            target: windows-x64
+            artifact: biubiu.exe
+
+          # macOS
+          - os: macos-latest
+            target: darwin-arm64
+            artifact: biubiu
+          - os: macos-13
+            target: darwin-x64
+            artifact: biubiu
+
+          # Linux
+          - os: ubuntu-latest
+            target: linux-x64
+            artifact: biubiu
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build for ${{ matrix.target }}
+        run: bun run build:biubiu
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          cd apps/biubiu.tools/dist
+          if [ "${{ matrix.target }}" = "windows-x64" ]; then
+            mv biubiu.exe biubiu-${{ matrix.target }}.exe
+          else
+            mv biubiu biubiu-${{ matrix.target }}
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: biubiu-${{ matrix.target }}
+          path: apps/biubiu.tools/dist/biubiu-${{ matrix.target }}*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Get version and short SHA
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' apps/biubiu.tools/package.json)
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION-$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: biubiu.tools ${{ steps.version.outputs.tag }}
+          body: |
+            ## Downloads
+
+            | Platform | Architecture | File |
+            |----------|--------------|------|
+            | Windows | x64 | `biubiu-windows-x64.exe` |
+            | macOS | ARM64 (Apple Silicon) | `biubiu-darwin-arm64` |
+            | macOS | x64 (Intel) | `biubiu-darwin-x64` |
+            | Linux | x64 | `biubiu-linux-x64` |
+
+            ---
+            Commit: ${{ github.sha }}
+          files: artifacts/*
+          draft: false
+          prerelease: false

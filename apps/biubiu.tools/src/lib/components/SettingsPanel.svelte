@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { removeLocaleFromPathname } from '@shelchin/i18n';
+	import { removeLocaleFromPathname } from '@shelchin/i18n-sveltekit';
 	import {
 		loadSettings,
 		saveSettings,

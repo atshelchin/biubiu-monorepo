@@ -1,11 +1,11 @@
 <script lang="ts">
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
 </script>
 
 <SEO
   title="Getting Started with SvelteKit SEO"
-  description="Learn how to implement comprehensive SEO in your SvelteKit application using @shelchin/seo package. Covers meta tags, Open Graph, and structured data."
+  description="Learn how to implement comprehensive SEO in your SvelteKit application using @shelchin/seo-sveltekit package. Covers meta tags, Open Graph, and structured data."
   siteName={SITE_NAME}
   domain={DOMAIN}
   ogType="article"
@@ -73,7 +73,7 @@
     <p>
       Search Engine Optimization (SEO) is crucial for any web application. This guide covers
       how to implement comprehensive SEO in your SvelteKit application using the
-      <code>@shelchin/seo</code> package.
+      <code>@shelchin/seo-sveltekit</code> package.
     </p>
 
     <h3>Prerequisites</h3>
@@ -86,15 +86,15 @@
 
   <section>
     <h2>Installation</h2>
-    <pre><code>npm install @shelchin/seo
+    <pre><code>npm install @shelchin/seo-sveltekit
 # or
-bun add @shelchin/seo</code></pre>
+bun add @shelchin/seo-sveltekit</code></pre>
   </section>
 
   <section>
     <h2>Basic Usage</h2>
     <pre><code>{`<script>
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 </script>
 
 <SEO

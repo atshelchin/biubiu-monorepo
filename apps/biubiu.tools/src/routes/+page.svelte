@@ -2,7 +2,7 @@
 	import { t, localizeHref, locale } from '$lib/i18n';
 	import type { TranslationKey } from '$i18n';
 	import { getBaseSEO, buildSiteJsonLd } from '$lib/seo';
-	import SEO from '@shelchin/seo/SEO.svelte';
+	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import ChainLogos from '$lib/components/ChainLogos.svelte';
 	import ResponsiveModal from '$lib/components/ResponsiveModal.svelte';
 	import ResponsiveDrawer from '$lib/components/ResponsiveDrawer.svelte';

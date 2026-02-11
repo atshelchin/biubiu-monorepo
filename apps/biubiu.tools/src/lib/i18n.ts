@@ -5,7 +5,7 @@ import {
   enableProductionDevTools,
   disableProductionDevTools,
   isProductionDevToolsEnabled,
-} from '@shelchin/i18n';
+} from '@shelchin/i18n-sveltekit';
 import type { TranslationKey, InterpolateParams } from '$i18n';
 import { routeMessages } from '$i18n/routes';
 import { lineIndex } from '$i18n/line-index';

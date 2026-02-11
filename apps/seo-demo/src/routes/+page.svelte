@@ -1,11 +1,11 @@
 <script lang="ts">
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
 </script>
 
 <SEO
   title="Welcome to SEO Demo"
-  description="A comprehensive demonstration of @shelchin/seo package capabilities including meta tags, Open Graph, Twitter Cards, and JSON-LD structured data."
+  description="A comprehensive demonstration of @shelchin/seo-sveltekit package capabilities including meta tags, Open Graph, Twitter Cards, and JSON-LD structured data."
   siteName={SITE_NAME}
   domain={DOMAIN}
   ogType="website"

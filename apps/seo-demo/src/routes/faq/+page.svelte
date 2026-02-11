@@ -1,15 +1,15 @@
 <script lang="ts">
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
 
   const faqItems = [
     {
-      question: 'What is @shelchin/seo?',
-      answer: '@shelchin/seo is a comprehensive SEO toolkit for SvelteKit applications. It provides components for meta tags, Open Graph, Twitter Cards, and JSON-LD structured data.',
+      question: 'What is @shelchin/seo-sveltekit?',
+      answer: '@shelchin/seo-sveltekit is a comprehensive SEO toolkit for SvelteKit applications. It provides components for meta tags, Open Graph, Twitter Cards, and JSON-LD structured data.',
     },
     {
-      question: 'How do I install @shelchin/seo?',
-      answer: 'You can install it via npm: npm install @shelchin/seo, or using bun: bun add @shelchin/seo. Then import the SEO component in your Svelte files.',
+      question: 'How do I install @shelchin/seo-sveltekit?',
+      answer: 'You can install it via npm: npm install @shelchin/seo-sveltekit, or using bun: bun add @shelchin/seo-sveltekit. Then import the SEO component in your Svelte files.',
     },
     {
       question: 'Does it support multi-language websites?',
@@ -28,7 +28,7 @@
 
 <SEO
   title="Frequently Asked Questions"
-  description="Find answers to common questions about @shelchin/seo package, installation, features, and usage."
+  description="Find answers to common questions about @shelchin/seo-sveltekit package, installation, features, and usage."
   siteName={SITE_NAME}
   domain={DOMAIN}
   ogType="website"

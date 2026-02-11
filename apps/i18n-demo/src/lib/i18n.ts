@@ -6,7 +6,7 @@ import {
   isProductionDevToolsEnabled,
   initDevTools,
   localizeHref as _localizeHref,
-} from '@shelchin/i18n';
+} from '@shelchin/i18n-sveltekit';
 // Auto-generated types and route messages from Vite plugin
 import type { TranslationKey, InterpolateParams } from '$i18n';
 import { routeMessages } from '$i18n/routes';

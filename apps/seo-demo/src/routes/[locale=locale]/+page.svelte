@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
 
   const locale = $derived($page.params.locale || 'en');

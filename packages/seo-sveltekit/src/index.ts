@@ -20,4 +20,4 @@ export type {
 } from './types.js';
 
 // Re-export SEO component (Svelte files are compiled by consumer)
-// Note: Import as: import SEO from '@shelchin/seo/SEO.svelte'
+// Note: Import as: import SEO from '@shelchin/seo-sveltekit/SEO.svelte'

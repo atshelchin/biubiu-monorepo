@@ -18,6 +18,6 @@
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "@shelchin/seo": "workspace:*"
+    "@shelchin/seo-sveltekit": "workspace:*"
   }
 }

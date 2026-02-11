@@ -10,6 +10,6 @@ export default defineConfig({
   ssr: {
     // Mark native modules as external for SSR
     external: ['@resvg/resvg-js'],
-    noExternal: ['@shelchin/seo'],
+    noExternal: ['@shelchin/seo-sveltekit'],
   },
 });

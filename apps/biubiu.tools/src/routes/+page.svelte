@@ -10,6 +10,10 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import logo from '$lib/assets/logo.svg';
 
+	declare const __COMMIT_HASH__: string;
+	const commitHash = __COMMIT_HASH__;
+	const commitUrl = `https://github.com/atshelchin/biubiu-monorepo/tree/${commitHash}`;
+
 	// Settings modal state
 	let showSettings = $state(false);
 
@@ -283,6 +287,9 @@
 			<p class="footer-text">
 				{@html t('footer.madeWith',{love:`<span style="color: var(--error);">&#9829;</span>`})}  · {t('footer.openSource')}
 			</p>
+			<a href={commitUrl} target="_blank" rel="noopener noreferrer" class="commit-link">
+				{commitHash}
+			</a>
 		</div>
 	</footer>
 </div>
@@ -792,6 +799,20 @@
 	.footer-text {
 		font-size: var(--text-sm);
 		color: var(--fg-subtle);
+	}
+
+	.commit-link {
+		display: inline-block;
+		margin-top: var(--space-2);
+		font-size: var(--text-xs);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-faint);
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.commit-link:hover {
+		color: var(--fg-muted);
 	}
 
 	/* Drawer Content */

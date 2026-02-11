@@ -18,11 +18,11 @@ jobs:
             target: windows-x64
             artifact: biubiu.exe
 
-          # macOS
+          # macOS (cross-compile on ARM64 runner)
           - os: macos-latest
             target: darwin-arm64
             artifact: biubiu
-          - os: macos-13
+          - os: macos-latest
             target: darwin-x64
             artifact: biubiu
 

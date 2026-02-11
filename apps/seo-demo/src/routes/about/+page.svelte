@@ -1,7 +1,7 @@
 <script lang="ts">
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
-  import { buildJsonLd } from '@shelchin/seo/jsonld';
+  import { buildJsonLd } from '@shelchin/seo-sveltekit/jsonld';
 
   // Build multiple JSON-LD schemas manually for demonstration
   const breadcrumbSchema = buildJsonLd(

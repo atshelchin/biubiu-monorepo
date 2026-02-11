@@ -301,7 +301,7 @@ Styles are loaded in `+layout.svelte`:
 <script lang="ts">
   import { t, locale } from '$lib/i18n';
   import { getBaseSEO } from '$lib/seo';
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 
   const seoProps = $derived(getBaseSEO({
     title: t('page.title'),
@@ -357,7 +357,7 @@ Styles are loaded in `+layout.svelte`:
   import { t, localizeHref, locale } from '$lib/i18n';
   import type { TranslationKey } from '$i18n';
   import { getBaseSEO } from '$lib/seo';
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { fadeInUp } from '$lib/actions/fadeInUp';
 
   // SEO

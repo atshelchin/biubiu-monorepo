@@ -1,4 +1,4 @@
-import { createOgHandler } from '@shelchin/seo/og';
+import { createOgHandler } from '@shelchin/seo-sveltekit/og';
 import { SITE_NAME, DOMAIN } from '$lib/config';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

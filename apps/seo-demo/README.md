@@ -1,6 +1,6 @@
 # SEO Demo
 
-A comprehensive demonstration of `@shelchin/seo` package capabilities.
+A comprehensive demonstration of `@shelchin/seo-sveltekit` package capabilities.
 
 ## Features Demonstrated
 

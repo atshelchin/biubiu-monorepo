@@ -1,5 +1,5 @@
 import { PUBLIC_DOMAIN } from '$env/static/public';
-import type { SEOProps, SoftwareApplicationData } from '@shelchin/seo';
+import type { SEOProps, SoftwareApplicationData } from '@shelchin/seo-sveltekit';
 
 /**
  * Site-wide SEO configuration

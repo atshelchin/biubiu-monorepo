@@ -1,7 +1,7 @@
 import satori from 'satori';
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
-import { getTemplate } from '@shelchin/seo/og/templates';
-import type { OgImageParams } from '@shelchin/seo';
+import { getTemplate } from '@shelchin/seo-sveltekit/og/templates';
+import type { OgImageParams } from '@shelchin/seo-sveltekit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { seoConfig } from '$lib/seo';
 

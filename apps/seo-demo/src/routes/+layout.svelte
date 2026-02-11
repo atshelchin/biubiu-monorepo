@@ -17,5 +17,5 @@
 </main>
 
 <footer style="margin-top: 2rem; padding: 1rem; background: #f5f5f5; text-align: center;">
-  <p>SEO Demo - @shelchin/seo Package Showcase</p>
+  <p>SEO Demo - @shelchin/seo-sveltekit Package Showcase</p>
 </footer>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
 	import { initSettings } from '$lib/settings';
-	import { i18nState } from '@shelchin/i18n';
+	import { i18nState } from '@shelchin/i18n-sveltekit';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import TranslateModeBar from '$lib/components/TranslateModeBar.svelte';

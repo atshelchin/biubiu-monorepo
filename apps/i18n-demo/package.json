@@ -17,6 +17,6 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "@shelchin/i18n": "workspace:*"
+    "@shelchin/i18n-sveltekit": "workspace:*"
   }
 }

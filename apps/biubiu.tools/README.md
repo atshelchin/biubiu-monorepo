@@ -4,7 +4,7 @@ A SvelteKit project with i18n support.
 
 ## i18n (Internationalization)
 
-This project uses `@shelchin/i18n` for internationalization, supporting English (default) and Chinese.
+This project uses `@shelchin/i18n-sveltekit` for internationalization, supporting English (default) and Chinese.
 
 ### Basic Usage
 

@@ -13,7 +13,7 @@
     parseNumberToFloat,
     isValidLocalizedNumber,
     maskNumberInput,
-  } from '@shelchin/i18n';
+  } from '@shelchin/i18n-sveltekit';
 
   // BigInt 示例 (超过 JavaScript Number 精度)
   const bigAmount = 1234567890123456789n;

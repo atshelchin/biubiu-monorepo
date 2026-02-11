@@ -1,5 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { i18nPlugin } from '@shelchin/i18n/vite';
+import { i18nPlugin } from '@shelchin/i18n-sveltekit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({

@@ -2,7 +2,7 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { i18nPlugin } from '@shelchin/i18n/vite';
+import { i18nPlugin } from '@shelchin/i18n-sveltekit/vite';
 
 export default defineConfig({
 	server: {

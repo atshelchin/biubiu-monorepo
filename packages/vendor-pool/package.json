@@ -1,0 +1,39 @@
+{
+  "name": "@shelchin/vendor-pool",
+  "version": "0.1.0",
+  "description": "High-availability vendor pool with adaptive rate limiting and automatic failover",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "examples"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "example:basic": "bun examples/basic.ts",
+    "example:failover": "bun examples/failover.ts",
+    "example:rate-limit": "bun examples/rate-limit.ts",
+    "example:escalation": "bun examples/escalation.ts",
+    "example:weight": "bun examples/weight.ts",
+    "example:concurrent": "bun examples/concurrent.ts",
+    "example:persistence": "bun examples/persistence.ts",
+    "example:error-types": "bun examples/error-types.ts",
+    "example:timeout": "bun examples/timeout.ts",
+    "example:custom-classifier": "bun examples/custom-classifier.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "dependencies": {
+    "bottleneck": "^2.19.5"
+  }
+}

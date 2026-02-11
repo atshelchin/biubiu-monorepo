@@ -1,5 +1,5 @@
 {
-  "name": "@shelchin/seo",
+  "name": "@shelchin/seo-sveltekit",
   "version": "0.1.0",
   "description": "SvelteKit SEO toolkit with dynamic OG image generation and JSON-LD support",
   "license": "MIT",

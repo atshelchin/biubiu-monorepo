@@ -1,15 +1,15 @@
 <script lang="ts">
-  import SEO from '@shelchin/seo/SEO.svelte';
+  import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
   import { SITE_NAME, DOMAIN } from '$lib/config';
 
   const steps = [
     {
       name: 'Install the package',
-      text: 'Run npm install @shelchin/seo or bun add @shelchin/seo in your SvelteKit project directory.',
+      text: 'Run npm install @shelchin/seo-sveltekit or bun add @shelchin/seo-sveltekit in your SvelteKit project directory.',
     },
     {
       name: 'Import the SEO component',
-      text: 'Add import SEO from "@shelchin/seo/SEO.svelte" at the top of your Svelte component.',
+      text: 'Add import SEO from "@shelchin/seo-sveltekit/SEO.svelte" at the top of your Svelte component.',
     },
     {
       name: 'Add basic SEO props',
@@ -21,7 +21,7 @@
     },
     {
       name: 'Set up OG image API',
-      text: 'Create an API route at /api/og/+server.ts using createOgHandler from @shelchin/seo/og to generate dynamic Open Graph images.',
+      text: 'Create an API route at /api/og/+server.ts using createOgHandler from @shelchin/seo-sveltekit/og to generate dynamic Open Graph images.',
     },
     {
       name: 'Test your implementation',
@@ -31,8 +31,8 @@
 </script>
 
 <SEO
-  title="Setup Guide - Install and Configure @shelchin/seo"
-  description="Step-by-step guide to setting up @shelchin/seo in your SvelteKit project. Learn how to configure meta tags, JSON-LD, and OG image generation."
+  title="Setup Guide - Install and Configure @shelchin/seo-sveltekit"
+  description="Step-by-step guide to setting up @shelchin/seo-sveltekit in your SvelteKit project. Learn how to configure meta tags, JSON-LD, and OG image generation."
   siteName={SITE_NAME}
   domain={DOMAIN}
   ogType="website"
@@ -44,8 +44,8 @@
   jsonLd={{
     type: 'HowTo',
     data: {
-      name: 'How to Set Up @shelchin/seo in SvelteKit',
-      description: 'A comprehensive guide to installing and configuring the @shelchin/seo package for optimal SEO in your SvelteKit application.',
+      name: 'How to Set Up @shelchin/seo-sveltekit in SvelteKit',
+      description: 'A comprehensive guide to installing and configuring the @shelchin/seo-sveltekit package for optimal SEO in your SvelteKit application.',
       image: `${DOMAIN}/api/og?title=Setup Guide&type=howto&subtitle=Step-by-Step Installation`,
       totalTime: 'PT15M',
       estimatedCost: {

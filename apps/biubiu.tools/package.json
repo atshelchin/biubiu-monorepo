@@ -19,7 +19,7 @@
 	"dependencies": {
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@shelchin/i18n-sveltekit": "workspace:*",
-		"@shelchin/seo": "workspace:*",
+		"@shelchin/seo-sveltekit": "workspace:*",
 		"satori": "^0.19.1"
 	},
 	"devDependencies": {

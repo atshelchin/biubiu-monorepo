@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { i18nState } from '@shelchin/i18n';
+import { i18nState } from '@shelchin/i18n-sveltekit';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   return {

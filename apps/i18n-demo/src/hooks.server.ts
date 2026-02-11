@@ -1,5 +1,5 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n';
+import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
 
 const SUPPORTED_LOCALES = ['zh', 'en', 'de', 'es', 'ja', 'pt'];

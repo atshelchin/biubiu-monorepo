@@ -1,6 +1,6 @@
 import type { LayoutLoad } from './$types';
 import { browser } from '$app/environment';
-import { matchRoute } from '@shelchin/i18n';
+import { matchRoute } from '@shelchin/i18n-sveltekit';
 
 const SUPPORTED_LOCALES = ['zh', 'en', 'de', 'es', 'ja', 'pt'];
 

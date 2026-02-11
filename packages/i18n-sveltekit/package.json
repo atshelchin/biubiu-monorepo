@@ -1,5 +1,5 @@
 {
-  "name": "@shelchin/i18n",
+  "name": "@shelchin/i18n-sveltekit",
   "version": "0.1.0",
   "description": "SvelteKit i18n library with financial-grade precision and Alt+Click source mapping",
   "license": "MIT",

@@ -43,6 +43,10 @@ export { t } from './transfer.js';
 // Error types
 export { WorkerError, TimeoutError, InitError, UnsupportedRuntimeError } from './errors.js';
 
+// Runtime detection utilities
+export { detectRuntime, isWorkerContext } from './adapters/index.js';
+
 // Types
 export type { WrapOptions, WrappedWorker, WorkerState } from './types.js';
 export type { TransferDescriptor } from './transfer.js';
+export type { RuntimeEnvironment } from './adapters/types.js';

@@ -1,7 +1,7 @@
 {
   "name": "@shelchin/threadx",
-  "version": "0.1.0",
-  "description": "Seamless Worker communication - call Workers like async functions",
+  "version": "0.2.0",
+  "description": "Seamless Worker communication - call Workers like async functions. Supports Web Workers and Node.js worker_threads.",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -24,7 +24,27 @@
     "test": "bun test",
     "test:watch": "bun test --watch"
   },
+  "keywords": [
+    "worker",
+    "web-worker",
+    "worker-threads",
+    "rpc",
+    "thread",
+    "parallel",
+    "async",
+    "streaming",
+    "generator"
+  ],
+  "peerDependencies": {
+    "@types/node": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0"
   }
 }

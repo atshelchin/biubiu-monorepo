@@ -47,6 +47,7 @@ for (const file of files) {
     sourcemap: 'external',
     minify: false,
     naming: '[name].[ext]',
+    external: ['worker_threads'],
   });
 
   if (!result.success) {

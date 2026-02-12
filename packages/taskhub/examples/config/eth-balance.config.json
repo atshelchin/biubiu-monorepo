@@ -1,0 +1,67 @@
+{
+  "networks": {
+    "ethereum": {
+      "name": "Ethereum",
+      "chainId": 1,
+      "rpc": "https://eth.llamarpc.com",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "polygon": {
+      "name": "Polygon",
+      "chainId": 137,
+      "rpc": "https://polygon.llamarpc.com",
+      "symbol": "MATIC",
+      "decimals": 18
+    },
+    "arbitrum": {
+      "name": "Arbitrum",
+      "chainId": 42161,
+      "rpc": "https://arbitrum.llamarpc.com",
+      "symbol": "ETH",
+      "decimals": 18
+    }
+  },
+  "tokens": {
+    "ethereum": [
+      {
+        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "symbol": "USDT",
+        "decimals": 6
+      },
+      {
+        "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        "symbol": "USDC",
+        "decimals": 6
+      }
+    ],
+    "polygon": [
+      {
+        "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+        "symbol": "USDT",
+        "decimals": 6
+      },
+      {
+        "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        "symbol": "USDC",
+        "decimals": 6
+      }
+    ],
+    "arbitrum": [
+      {
+        "address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+        "symbol": "USDT",
+        "decimals": 6
+      },
+      {
+        "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "symbol": "USDC",
+        "decimals": 6
+      }
+    ]
+  },
+  "addresses": [
+    "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"
+  ]
+}

@@ -1,0 +1,16 @@
+example-batch.db
+example-batch.db-shm
+example-batch.db-wal
+*.db2
+*.db2-shm
+*.db2-wal
+
+*.db
+*.db-shm
+*.db-wal
+
+*.result.json
+examples/results
+data-finder-results
+dist
+data-finder-results

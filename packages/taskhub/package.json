@@ -1,0 +1,41 @@
+{
+  "name": "@shelchin/taskhub",
+  "version": "0.1.0",
+  "description": "Adaptive batch task processing engine with intelligent concurrency control",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "build:data-finder": "bun run scripts/build-data-finder.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/bun": "latest",
+    "bip39": "^3.1.0",
+    "viem": "^2.45.3"
+  },
+  "peerDependencies": {
+    "better-sqlite3": ">=9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "better-sqlite3": {
+      "optional": true
+    }
+  }
+}

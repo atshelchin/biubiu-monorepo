@@ -6,6 +6,7 @@ import type { WorkerToMainMessage, CallMessage, CancelMessage, SerializedError }
 import { WorkerError, TimeoutError, InitError } from './errors.js';
 import { prepareArgs } from './transfer.js';
 import type { WorkerState, WrapOptions, WrappedWorker } from './types.js';
+import { createMainThreadAdapter, type MainThreadAdapter } from './adapters/index.js';
 
 /** Default timeout in milliseconds */
 const DEFAULT_TIMEOUT = 30000;
@@ -48,7 +49,7 @@ interface QueuedCall {
  * Create an AsyncIterable for streaming results
  */
 function createAsyncIterable<T>(
-  worker: Worker,
+  adapter: MainThreadAdapter,
   id: number,
   pending: Map<number, PendingStream>,
   timeout: number,
@@ -78,7 +79,7 @@ function createAsyncIterable<T>(
       }
       pending.delete(id);
       // Send cancel to worker
-      worker.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
+      adapter.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
     }, timeout);
   }
 
@@ -97,7 +98,7 @@ function createAsyncIterable<T>(
             waitingReject = null;
           }
           pending.delete(id);
-          worker.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
+          adapter.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
         }, timeout);
       }
 
@@ -162,7 +163,7 @@ function createAsyncIterable<T>(
           if (timeoutId) clearTimeout(timeoutId);
           pending.delete(id);
           // Send cancel to worker
-          worker.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
+          adapter.postMessage({ $type: 'CANCEL', $id: id } satisfies CancelMessage);
           return { value: undefined as T, done: true };
         },
       };
@@ -174,8 +175,16 @@ function createAsyncIterable<T>(
  * Wrap a Worker for seamless RPC communication
  *
  * @example
+ * // Web Worker (Browser/Bun/Deno)
  * import { wrap } from '@shelchin/threadx'
  * import type * as CalcMethods from './calc.worker'
+ *
+ * const calc = wrap<typeof CalcMethods>(new Worker('./calc.worker.js'))
+ *
+ * @example
+ * // Node.js worker_threads
+ * import { wrap } from '@shelchin/threadx'
+ * import { Worker } from 'worker_threads'
  *
  * const calc = wrap<typeof CalcMethods>(new Worker('./calc.worker.js'))
  *
@@ -187,8 +196,11 @@ function createAsyncIterable<T>(
  *   console.log(progress)
  * }
  */
-export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T> {
+export function wrap<T>(worker: unknown, options?: WrapOptions): WrappedWorker<T> {
   const timeout = options?.timeout ?? DEFAULT_TIMEOUT;
+
+  // Create adapter for the worker
+  const adapter = createMainThreadAdapter(worker);
 
   // State
   let state: WorkerState = 'init';
@@ -196,12 +208,11 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
   const pendingCalls = new Map<number, PendingCall>();
   const pendingStreams = new Map<number, PendingStream>();
   const queue: QueuedCall[] = [];
-  let methods: Set<string> = new Set();
 
   // Flush queued calls after ready
   function flushQueue(): void {
     for (const { message, transfer } of queue) {
-      worker.postMessage(message, transfer);
+      adapter.postMessage(message, transfer);
     }
     queue.length = 0;
   }
@@ -212,13 +223,12 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
   }
 
   // Handle messages from worker
-  worker.onmessage = (event: MessageEvent<WorkerToMainMessage>) => {
-    const msg = event.data;
+  adapter.onMessage((data: unknown) => {
+    const msg = data as WorkerToMainMessage;
 
     // Handle ready message
     if (msg.$type === 'READY') {
       state = 'ready';
-      methods = new Set(msg.methods);
       flushQueue();
       return;
     }
@@ -269,7 +279,7 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
       }
       return;
     }
-  };
+  });
 
   // Function to reject all pending calls (including queued)
   function rejectAllPending(error: Error): void {
@@ -292,11 +302,11 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
   }
 
   // Handle worker errors
-  worker.onerror = (event) => {
-    const error = new InitError(event.message || 'Worker error');
-    rejectAllPending(error);
+  adapter.onError((error) => {
+    const initError = new InitError(error.message || 'Worker error');
+    rejectAllPending(initError);
     state = 'dead';
-  };
+  });
 
   // Create proxy
   const proxy = new Proxy({} as WrappedWorker<T>, {
@@ -304,7 +314,7 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
       // State hooks
       if (prop === '$state') return state;
       if (prop === '$pending') return pendingCalls.size + pendingStreams.size;
-      if (prop === '$worker') return worker;
+      if (prop === '$worker') return adapter.raw;
 
       // Symbol properties
       if (typeof prop === 'symbol') return undefined;
@@ -320,24 +330,6 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
           method: prop,
           args: processedArgs,
         };
-
-        // Check if we know it's a streaming method (we don't at compile time)
-        // So we need a heuristic or always return a promise that can be iterated
-        // For simplicity, we'll use a convention: methods starting with $ or
-        // containing 'stream', 'progress', 'iterate' are streaming
-        // Actually, let's just return a special object that can be both awaited and iterated
-
-        // Better approach: Return a "dual" object that works as both Promise and AsyncIterable
-        // The user's code pattern determines which is used
-
-        // Simpler approach for now: all methods return Promise
-        // Streaming methods must be called with forAwait pattern explicitly
-        // We detect streaming by checking if YIELD messages come back
-
-        // Actually, the cleanest approach: return an object that:
-        // - Has .then() for promise behavior
-        // - Has [Symbol.asyncIterator]() for streaming behavior
-        // The first YIELD or RESOLVE determines which path
 
         const callSite = new Error();
 
@@ -402,7 +394,7 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
 
         // Send or queue the message
         if (state === 'ready') {
-          worker.postMessage(message, transfer);
+          adapter.postMessage(message, transfer);
         } else if (state === 'init') {
           queue.push({ message, transfer });
         } else {
@@ -446,7 +438,7 @@ export function wrap<T>(worker: Worker, options?: WrapOptions): WrappedWorker<T>
 
               // Create streaming iterable
               streamIterable = createAsyncIterable(
-                worker,
+                adapter,
                 currentId,
                 pendingStreams,
                 timeout,
@@ -484,5 +476,5 @@ export function kill<T>(proxy: WrappedWorker<T>): void {
     internals.rejectAll(error);
     internals.setState('dead');
   }
-  proxy.$worker.terminate();
+  (proxy.$worker as { terminate(): void }).terminate();
 }

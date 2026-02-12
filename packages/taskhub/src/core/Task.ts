@@ -127,7 +127,6 @@ export class Task<TInput = unknown, TOutput = unknown> extends EventEmitter<Task
 
   private async ingestDeterministicData(data: TInput[]): Promise<void> {
     const jobIdsForMerkle: string[] = [];
-    const jobs: Job<TInput, TOutput>[] = [];
     const now = Date.now();
 
     // Process in batches to avoid memory issues
@@ -155,9 +154,8 @@ export class Task<TInput = unknown, TOutput = unknown> extends EventEmitter<Task
         });
       }
 
-      // Write batch to storage
+      // Write batch to storage immediately (don't accumulate in memory)
       await this.storage.createJobs(batchJobs as Job[]);
-      jobs.push(...batchJobs);
     }
 
     // Compute merkle root from input hashes (not storage job IDs)

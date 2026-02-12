@@ -700,6 +700,7 @@ describe('Dispatcher', () => {
           return adapter.completeJob(jobId, output);
         },
         failJob: adapter.failJob.bind(adapter),
+        getJobCounts: adapter.getJobCounts.bind(adapter),
       };
 
       const config: DispatcherConfig = {
@@ -736,13 +737,14 @@ describe('Dispatcher', () => {
       const mockStorage = {
         claimJobs: adapter.claimJobs.bind(adapter),
         completeJob: adapter.completeJob.bind(adapter),
-        failJob: async (jobId: string, error: string, canRetry: boolean) => {
+        failJob: async (jobId: string, error: string, canRetry: boolean, retryAfterMs?: number) => {
           failCount++;
           if (failCount > 1) {
             throw new Error('Database closed');
           }
-          return adapter.failJob(jobId, error, canRetry);
+          return adapter.failJob(jobId, error, canRetry, retryAfterMs);
         },
+        getJobCounts: adapter.getJobCounts.bind(adapter),
       };
 
       const config: DispatcherConfig = {

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at INTEGER NOT NULL,
   started_at INTEGER,
   completed_at INTEGER,
+  scheduled_at INTEGER,
   FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 `;

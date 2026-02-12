@@ -141,10 +141,25 @@ export class Dispatcher extends EventEmitter<DispatcherEvents> {
       }
 
       if (jobs.length === 0) {
-        // No more jobs to process
+        // No jobs claimed - either all done or waiting for scheduled retries
         if (this.activeJobs.size === 0) {
-          // All done
-          break;
+          // Check if there are still pending jobs (possibly with future scheduled_at)
+          try {
+            const counts = await this.config.storage.getJobCounts(this.config.taskId);
+            if (counts.pending === 0) {
+              // All done
+              break;
+            }
+            // Jobs exist but not ready yet - wait for scheduled_at to expire
+            await this.sleep(50);
+            continue;
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('closed')) {
+              this.stopped = true;
+              break;
+            }
+            throw error;
+          }
         }
         // Wait for active jobs to complete
         await this.sleep(50);
@@ -189,6 +204,7 @@ export class Dispatcher extends EventEmitter<DispatcherEvents> {
       // Create timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
+          controller.abort(); // Abort the handler on timeout
           reject(new Error(`Job timeout after ${this.config.timeout}ms`));
         }, this.config.timeout);
       });
@@ -235,8 +251,16 @@ export class Dispatcher extends EventEmitter<DispatcherEvents> {
       const isRetryable = this.config.source.isRetryable?.(error) ?? this.defaultIsRetryable(error);
       const canRetry = isRetryable && job.attempts < this.config.retry.maxAttempts;
 
+      // Calculate retry delay for exponential backoff
+      const retryAfterMs = canRetry
+        ? Math.min(
+            this.config.retry.baseDelay * Math.pow(2, job.attempts - 1),
+            this.config.retry.maxDelay
+          )
+        : undefined;
+
       try {
-        await this.config.storage.failJob(job.id, err.message, canRetry);
+        await this.config.storage.failJob(job.id, err.message, canRetry, retryAfterMs);
       } catch (storageError) {
         // Storage closed during shutdown, job state will be recovered on restart
         if (storageError instanceof Error && storageError.message.includes('closed')) {
@@ -247,13 +271,8 @@ export class Dispatcher extends EventEmitter<DispatcherEvents> {
 
       if (canRetry) {
         this.emit('job:retry', { job, attempt: job.attempts });
-
-        // Exponential backoff delay
-        const delay = Math.min(
-          this.config.retry.baseDelay * Math.pow(2, job.attempts - 1),
-          this.config.retry.maxDelay
-        );
-        await this.sleep(delay);
+        // Note: Retry delay is handled by storage via scheduledAt field
+        // The job will be available for claiming after the delay expires
       } else {
         const failedJob: Job = { ...job, status: 'failed', error: err.message, completedAt: Date.now() };
         this.emit('job:failed', { job: failedJob, error: err });

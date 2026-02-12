@@ -207,12 +207,16 @@ export class IndexedDBAdapter implements StorageAdapter {
     const now = Date.now();
     const claimed: Job[] = [];
 
-    for (const job of pendingJobs.slice(0, limit)) {
+    // Only claim jobs that are ready (scheduledAt is null or in the past)
+    const readyJobs = pendingJobs.filter(job => !job.scheduledAt || job.scheduledAt <= now);
+
+    for (const job of readyJobs.slice(0, limit)) {
       const updated: Job = {
         ...job,
         status: 'active',
         startedAt: now,
         attempts: job.attempts + 1,
+        scheduledAt: undefined,
       };
       store.put(updated);
       claimed.push(updated);
@@ -240,7 +244,7 @@ export class IndexedDBAdapter implements StorageAdapter {
     await this.promisifyTransaction(tx);
   }
 
-  async failJob(jobId: string, error: string, canRetry: boolean): Promise<void> {
+  async failJob(jobId: string, error: string, canRetry: boolean, retryAfterMs?: number): Promise<void> {
     const db = this.getDb();
     const tx = db.transaction(JOBS_STORE, 'readwrite');
     const store = tx.objectStore(JOBS_STORE);
@@ -253,7 +257,10 @@ export class IndexedDBAdapter implements StorageAdapter {
       status: canRetry ? 'pending' : 'failed',
       error,
       // Don't set completedAt for retryable failures - job will be retried
-      ...(canRetry ? { startedAt: undefined } : { completedAt: Date.now() }),
+      // Set scheduledAt for delayed retry (exponential backoff)
+      ...(canRetry
+        ? { startedAt: undefined, scheduledAt: retryAfterMs ? Date.now() + retryAfterMs : undefined }
+        : { completedAt: Date.now() }),
     };
     store.put(updated);
     await this.promisifyTransaction(tx);

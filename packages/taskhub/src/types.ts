@@ -19,6 +19,7 @@ export interface Job<TInput = unknown, TOutput = unknown> {
   createdAt: number;
   startedAt?: number;
   completedAt?: number;
+  scheduledAt?: number; // For delayed retry - job won't be claimed until this time
 }
 
 export interface JobRecord {
@@ -32,6 +33,7 @@ export interface JobRecord {
   created_at: number;
   started_at: number | null;
   completed_at: number | null;
+  scheduled_at: number | null; // For delayed retry
 }
 
 // ============================================================================
@@ -194,7 +196,7 @@ export interface StorageAdapter {
   // Atomic operations for dispatcher
   claimJobs(taskId: string, limit: number): Promise<Job[]>;
   completeJob(jobId: string, output: unknown): Promise<void>;
-  failJob(jobId: string, error: string, canRetry: boolean): Promise<void>;
+  failJob(jobId: string, error: string, canRetry: boolean, retryAfterMs?: number): Promise<void>;
   resetActiveJobs(taskId: string): Promise<number>; // For crash recovery
   resetFailedJobs(taskId: string): Promise<number>; // For retrying failed jobs
 

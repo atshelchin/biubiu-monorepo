@@ -85,9 +85,12 @@ export class MemoryAdapter implements StorageAdapter {
       if (claimed.length >= limit) break;
 
       const job = this.jobs.get(jobId);
-      if (job && job.status === 'pending') {
+      // Only claim jobs that are ready (scheduledAt is null or in the past)
+      if (job && job.status === 'pending' && (!job.scheduledAt || job.scheduledAt <= now)) {
         job.status = 'active';
         job.startedAt = now;
+        job.attempts++;
+        job.scheduledAt = undefined;
         claimed.push({ ...job });
       }
     }
@@ -118,15 +121,16 @@ export class MemoryAdapter implements StorageAdapter {
     }
   }
 
-  async failJob(jobId: string, error: string, canRetry: boolean): Promise<void> {
+  async failJob(jobId: string, error: string, canRetry: boolean, retryAfterMs?: number): Promise<void> {
     const job = this.jobs.get(jobId);
     if (job) {
-      job.attempts++;
       job.error = error;
 
       if (canRetry) {
         job.status = 'pending';
-        job.startedAt = null;
+        job.startedAt = undefined;
+        // Set scheduledAt for delayed retry (exponential backoff)
+        job.scheduledAt = retryAfterMs ? Date.now() + retryAfterMs : undefined;
       } else {
         // 更新任务计数
         const task = this.tasks.get(job.taskId);

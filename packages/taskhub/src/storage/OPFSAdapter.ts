@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   attempts INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   started_at INTEGER,
-  completed_at INTEGER
+  completed_at INTEGER,
+  scheduled_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_task_id ON jobs(task_id);
@@ -252,8 +253,8 @@ export class OPFSAdapter implements StorageAdapter {
     try {
       for (const job of jobs) {
         db.exec({
-          sql: `INSERT INTO jobs (id, task_id, input, output, error, status, attempts, created_at, started_at, completed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          sql: `INSERT INTO jobs (id, task_id, input, output, error, status, attempts, created_at, started_at, completed_at, scheduled_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           bind: [
             job.id,
             job.taskId,
@@ -264,7 +265,8 @@ export class OPFSAdapter implements StorageAdapter {
             job.attempts,
             job.createdAt,
             job.startedAt ?? null,
-            job.completedAt ?? null
+            job.completedAt ?? null,
+            job.scheduledAt ?? null
           ]
         });
       }
@@ -335,11 +337,14 @@ export class OPFSAdapter implements StorageAdapter {
 
     db.exec('BEGIN TRANSACTION;');
     try {
-      // Select pending jobs
+      // Select pending jobs that are ready (scheduled_at is null or in the past)
       const jobs: Record<string, unknown>[] = [];
       db.exec({
-        sql: `SELECT * FROM jobs WHERE task_id = ? AND status = 'pending' LIMIT ?`,
-        bind: [taskId, limit],
+        sql: `SELECT * FROM jobs
+              WHERE task_id = ? AND status = 'pending'
+                AND (scheduled_at IS NULL OR scheduled_at <= ?)
+              LIMIT ?`,
+        bind: [taskId, now, limit],
         rowMode: 'object',
         callback: (row) => { jobs.push(row); }
       });
@@ -353,7 +358,7 @@ export class OPFSAdapter implements StorageAdapter {
       const ids = jobs.map(j => j.id);
       for (const id of ids) {
         db.exec({
-          sql: `UPDATE jobs SET status = 'active', started_at = ?, attempts = attempts + 1 WHERE id = ?`,
+          sql: `UPDATE jobs SET status = 'active', started_at = ?, attempts = attempts + 1, scheduled_at = NULL WHERE id = ?`,
           bind: [now, id]
         });
       }
@@ -365,6 +370,7 @@ export class OPFSAdapter implements StorageAdapter {
         status: 'active' as const,
         startedAt: now,
         attempts: (row.attempts as number) + 1,
+        scheduledAt: undefined,
       }));
     } catch (err) {
       db.exec('ROLLBACK;');
@@ -380,14 +386,16 @@ export class OPFSAdapter implements StorageAdapter {
     });
   }
 
-  async failJob(jobId: string, error: string, canRetry: boolean): Promise<void> {
+  async failJob(jobId: string, error: string, canRetry: boolean, retryAfterMs?: number): Promise<void> {
     const db = this.getDb();
     const newStatus = canRetry ? 'pending' : 'failed';
     if (canRetry) {
       // Don't set completed_at for retryable failures - job will be retried
+      // Set scheduled_at for delayed retry (exponential backoff)
+      const scheduledAt = retryAfterMs ? Date.now() + retryAfterMs : null;
       db.exec({
-        sql: `UPDATE jobs SET status = ?, error = ?, started_at = NULL WHERE id = ?`,
-        bind: [newStatus, error, jobId]
+        sql: `UPDATE jobs SET status = ?, error = ?, started_at = NULL, scheduled_at = ? WHERE id = ?`,
+        bind: [newStatus, error, scheduledAt, jobId]
       });
     } else {
       db.exec({
@@ -484,6 +492,7 @@ export class OPFSAdapter implements StorageAdapter {
       createdAt: row.created_at as number,
       startedAt: (row.started_at as number) ?? undefined,
       completedAt: (row.completed_at as number) ?? undefined,
+      scheduledAt: (row.scheduled_at as number) ?? undefined,
     };
   }
 }

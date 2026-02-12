@@ -134,8 +134,8 @@ export class BunSQLiteAdapter implements StorageAdapter {
 
     const db = this.getDb();
     const stmt = db.prepare(`
-      INSERT INTO jobs (id, task_id, input, output, error, status, attempts, created_at, started_at, completed_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO jobs (id, task_id, input, output, error, status, attempts, created_at, started_at, completed_at, scheduled_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((jobs: Job[]) => {
@@ -150,7 +150,8 @@ export class BunSQLiteAdapter implements StorageAdapter {
           job.attempts,
           job.createdAt,
           job.startedAt ?? null,
-          job.completedAt ?? null
+          job.completedAt ?? null,
+          job.scheduledAt ?? null
         );
       }
     });
@@ -199,10 +200,14 @@ export class BunSQLiteAdapter implements StorageAdapter {
     const now = Date.now();
 
     // Atomic: select and update in transaction
+    // Only claim jobs that are ready (scheduled_at is null or in the past)
     const claimTransaction = db.transaction(() => {
       const rows = db.prepare(`
-        SELECT * FROM jobs WHERE task_id = ? AND status = 'pending' LIMIT ?
-      `).all(taskId, limit) as JobRecord[];
+        SELECT * FROM jobs
+        WHERE task_id = ? AND status = 'pending'
+          AND (scheduled_at IS NULL OR scheduled_at <= ?)
+        LIMIT ?
+      `).all(taskId, now, limit) as JobRecord[];
 
       if (rows.length === 0) return [];
 
@@ -210,7 +215,7 @@ export class BunSQLiteAdapter implements StorageAdapter {
       const placeholders = ids.map(() => '?').join(',');
 
       db.prepare(`
-        UPDATE jobs SET status = 'active', started_at = ?, attempts = attempts + 1
+        UPDATE jobs SET status = 'active', started_at = ?, attempts = attempts + 1, scheduled_at = NULL
         WHERE id IN (${placeholders})
       `).run(now, ...ids);
 
@@ -219,6 +224,7 @@ export class BunSQLiteAdapter implements StorageAdapter {
         status: 'active' as const,
         startedAt: now,
         attempts: row.attempts + 1,
+        scheduledAt: undefined,
       }));
     });
 
@@ -232,14 +238,16 @@ export class BunSQLiteAdapter implements StorageAdapter {
     `).run(JSON.stringify(output), Date.now(), jobId);
   }
 
-  async failJob(jobId: string, error: string, canRetry: boolean): Promise<void> {
+  async failJob(jobId: string, error: string, canRetry: boolean, retryAfterMs?: number): Promise<void> {
     const db = this.getDb();
     const newStatus = canRetry ? 'pending' : 'failed';
     if (canRetry) {
       // Don't set completed_at for retryable failures - job will be retried
+      // Set scheduled_at for delayed retry (exponential backoff)
+      const scheduledAt = retryAfterMs ? Date.now() + retryAfterMs : null;
       db.prepare(`
-        UPDATE jobs SET status = ?, error = ?, started_at = NULL WHERE id = ?
-      `).run(newStatus, error, jobId);
+        UPDATE jobs SET status = ?, error = ?, started_at = NULL, scheduled_at = ? WHERE id = ?
+      `).run(newStatus, error, scheduledAt, jobId);
     } else {
       db.prepare(`
         UPDATE jobs SET status = ?, error = ?, completed_at = ? WHERE id = ?
@@ -308,6 +316,7 @@ export class BunSQLiteAdapter implements StorageAdapter {
       createdAt: row.created_at,
       startedAt: row.started_at ?? undefined,
       completedAt: row.completed_at ?? undefined,
+      scheduledAt: row.scheduled_at ?? undefined,
     };
   }
 }

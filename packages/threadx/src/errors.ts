@@ -6,10 +6,14 @@ import type { SerializedError } from './protocol.js';
 export class WorkerError extends Error {
   /** Stack trace from the Worker side */
   workerStack?: string;
+  /** Original error name from the Worker (e.g., 'TypeError', 'RangeError') */
+  originalName: string;
 
   constructor(serialized: SerializedError, callSite?: Error) {
     super(serialized.message);
+    // Preserve original error name for backward compatibility
     this.name = serialized.name || 'WorkerError';
+    this.originalName = serialized.name || 'Error';
     this.workerStack = serialized.stack;
 
     // Combine stacks: Worker error + call site

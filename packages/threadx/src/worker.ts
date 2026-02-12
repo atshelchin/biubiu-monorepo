@@ -5,6 +5,7 @@
 import type { MainToWorkerMessage, WorkerToMainMessage } from './protocol.js';
 import { serializeError } from './protocol.js';
 import { isTransferDescriptor } from './transfer.js';
+import { createWorkerSideAdapter, type WorkerSideAdapter } from './adapters/index.js';
 
 // Re-export t() for Worker-side use
 export { t } from './transfer.js';
@@ -46,20 +47,46 @@ function isGenerator(value: unknown): value is Generator | AsyncGenerator {
 }
 
 /**
- * Post a message with optional transferables
+ * Unwrap value if it's a TransferDescriptor, returning actual value and transferables
  */
-function postMessage(message: WorkerToMainMessage, value?: unknown): void {
+function unwrapValue(value: unknown): { actualValue: unknown; transferables: Transferable[] } {
   if (isTransferDescriptor(value)) {
-    self.postMessage(message, value.transferables);
-  } else {
-    self.postMessage(message);
+    return { actualValue: value.value, transferables: value.transferables };
   }
+  return { actualValue: value, transferables: [] };
+}
+
+/**
+ * Post a message with optional transferables via adapter
+ * Handles TransferDescriptor unwrapping for both message value and transfer list
+ */
+function postMessageWithValue(
+  adapter: WorkerSideAdapter,
+  $type: 'RESOLVE' | 'YIELD',
+  $id: number,
+  value: unknown
+): void {
+  const { actualValue, transferables } = unwrapValue(value);
+  const message: WorkerToMainMessage = { $type, $id, value: actualValue };
+  if (transferables.length > 0) {
+    adapter.postMessage(message, transferables);
+  } else {
+    adapter.postMessage(message);
+  }
+}
+
+/**
+ * Post a non-value message
+ */
+function postMessage(adapter: WorkerSideAdapter, message: WorkerToMainMessage): void {
+  adapter.postMessage(message);
 }
 
 /**
  * Expose methods to the main thread
  *
  * @example
+ * // Web Worker
  * import { expose } from '@shelchin/threadx/worker'
  *
  * expose({
@@ -78,19 +105,32 @@ function postMessage(message: WorkerToMainMessage, value?: unknown): void {
  *     }
  *   }
  * })
+ *
+ * @example
+ * // Node.js worker_threads
+ * import { expose } from '@shelchin/threadx/worker'
+ *
+ * expose({
+ *   add(a: number, b: number) {
+ *     return a + b
+ *   }
+ * })
  */
 export function expose<T extends MethodMap>(methods: T): void {
   const methodNames = Object.keys(methods);
+
+  // Create adapter for this worker context
+  const adapter = createWorkerSideAdapter();
 
   // Track active generators for cancellation
   const activeGenerators = new Map<number, Generator | AsyncGenerator>();
 
   // Send ready message
-  self.postMessage({ $type: 'READY', methods: methodNames } satisfies WorkerToMainMessage);
+  adapter.postMessage({ $type: 'READY', methods: methodNames } satisfies WorkerToMainMessage);
 
   // Handle incoming messages
-  self.onmessage = async (event: MessageEvent<MainToWorkerMessage>) => {
-    const msg = event.data;
+  adapter.onMessage(async (data: unknown) => {
+    const msg = data as MainToWorkerMessage;
 
     // Handle cancellation
     if (msg.$type === 'CANCEL') {
@@ -113,7 +153,7 @@ export function expose<T extends MethodMap>(methods: T): void {
 
       // Method not found
       if (!fn) {
-        postMessage({
+        postMessage(adapter, {
           $type: 'REJECT',
           $id,
           error: { name: 'Error', message: `Method '${method}' not found` },
@@ -135,12 +175,12 @@ export function expose<T extends MethodMap>(methods: T): void {
               if (!activeGenerators.has($id)) {
                 break;
               }
-              postMessage({ $type: 'YIELD', $id, value }, value);
+              postMessageWithValue(adapter, 'YIELD', $id, value);
             }
 
             // Only send DONE if not cancelled
             if (activeGenerators.has($id)) {
-              postMessage({ $type: 'DONE', $id });
+              postMessage(adapter, { $type: 'DONE', $id });
             }
           } finally {
             activeGenerators.delete($id);
@@ -148,15 +188,15 @@ export function expose<T extends MethodMap>(methods: T): void {
         } else {
           // Handle Promise/value → single response
           const value = await result;
-          postMessage({ $type: 'RESOLVE', $id, value }, value);
+          postMessageWithValue(adapter, 'RESOLVE', $id, value);
         }
       } catch (error) {
-        postMessage({
+        postMessage(adapter, {
           $type: 'REJECT',
           $id,
           error: serializeError(error),
         });
       }
     }
-  };
+  });
 }

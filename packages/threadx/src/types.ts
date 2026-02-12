@@ -70,6 +70,10 @@ export type WrappedWorker<T> = WrapModule<T> & {
   readonly $state: WorkerState;
   /** Number of pending calls */
   readonly $pending: number;
-  /** Original Worker instance (escape hatch) */
-  readonly $worker: Worker;
+  /**
+   * Original Worker instance (escape hatch)
+   * - Browser/Bun/Deno: Web Worker
+   * - Node.js: worker_threads.Worker
+   */
+  readonly $worker: unknown;
 };

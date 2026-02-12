@@ -9,7 +9,7 @@ Seamless Worker communication - call Workers like async functions.
 - **Zero-Copy Transfer** - Transfer ArrayBuffers without copying
 - **Type Safe** - Full TypeScript support with automatic type inference
 - **Cancellation** - Break out of streams to cancel Worker operations
-- **Cross-Platform** - Works in Browser, Bun, and Deno
+- **Cross-Platform** - Works in Browser, Bun, Deno, and Node.js
 
 ## Installation
 
@@ -45,7 +45,7 @@ expose({
 })
 ```
 
-### Main Thread
+### Main Thread - Web Worker (Browser/Bun/Deno)
 
 ```typescript
 // main.ts
@@ -71,18 +71,46 @@ await calc.processBuffer(t(buffer))
 kill(calc)
 ```
 
+### Main Thread - Node.js worker_threads
+
+```typescript
+// main.ts
+import { Worker } from 'worker_threads'
+import { wrap, t, kill } from '@shelchin/threadx'
+import type * as CalcMethods from './calc.worker'
+
+// Use Node.js Worker instead of Web Worker
+const calc = wrap<typeof CalcMethods>(new Worker('./calc.worker.js'))
+
+// Same API as Web Worker!
+const sum = await calc.add(1, 2)
+
+// Streaming works the same way
+for await (const percent of calc.progress(100)) {
+  console.log(`${percent}%`)
+}
+
+kill(calc)
+```
+
 ## API
 
 ### Main Thread
 
 #### `wrap<T>(worker, options?)`
 
-Wrap a Worker for seamless RPC.
+Wrap a Worker for seamless RPC. Works with both Web Workers and Node.js worker_threads.
 
 ```typescript
+// Web Worker
 const api = wrap<typeof WorkerMethods>(new Worker('./worker.js'), {
   timeout: 30000,  // Default timeout in ms
-  name: 'calc'     // Debug name
+})
+
+// Node.js worker_threads
+import { Worker } from 'worker_threads'
+const api = wrap<typeof WorkerMethods>(new Worker('./worker.js'), {
+  timeout: 30000,
 })
 ```
 
@@ -112,6 +140,16 @@ kill(api)
 api.$state    // 'init' | 'ready' | 'dead'
 api.$pending  // Number of pending calls
 api.$worker   // Original Worker instance
+```
+
+#### `detectRuntime()`
+
+Detect the current runtime environment.
+
+```typescript
+import { detectRuntime } from '@shelchin/threadx'
+
+const runtime = detectRuntime()  // 'web' | 'node' | 'bun' | 'deno'
 ```
 
 ### Worker Side
@@ -156,6 +194,7 @@ try {
 } catch (e) {
   if (e instanceof WorkerError) {
     console.log(e.message)      // Error message
+    console.log(e.name)         // Original error name (e.g., 'TypeError')
     console.log(e.workerStack)  // Stack from Worker
   }
   if (e instanceof TimeoutError) {
@@ -198,13 +237,32 @@ api.count(10)           // AsyncIterable<number>
 
 ## Platform Support
 
-| Platform | Support |
-|----------|---------|
-| Browser | Native Worker |
-| Bun | Native Worker |
-| Deno | Native Worker |
-| Node.js | Not supported |
-| Cloudflare Workers | Not supported |
+| Platform | Support | Worker Type |
+|----------|---------|-------------|
+| Browser | ✅ | Web Worker |
+| Bun | ✅ | Web Worker |
+| Deno | ✅ | Web Worker |
+| Node.js | ✅ | worker_threads |
+| Cloudflare Workers | ❌ | Not supported |
+
+## Examples
+
+### Running Examples
+
+```bash
+# Web Worker examples (Browser/Bun)
+bun examples/basic.main.ts
+bun examples/streaming.main.ts
+bun examples/transfer.main.ts
+bun examples/error-handling.main.ts
+
+# Node.js worker_threads examples
+bun examples/node/basic.main.ts
+bun examples/node/streaming.main.ts
+
+# Or with Node.js directly
+npx tsx examples/node/basic.main.ts
+```
 
 ## License
 

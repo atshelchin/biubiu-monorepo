@@ -346,23 +346,22 @@ export class Task<TInput = unknown, TOutput = unknown> extends EventEmitter<Task
       return;
     }
 
-    if (!this.source) {
-      throw new Error('No source set. Call setSourceForResume() first.');
-    }
-
-    // Reset stopped flag for resume
-    this.stopped = false;
-
-    // Reset any active jobs from previous crash
-    await this.storage.resetActiveJobs(this.meta.id);
-
-    this.meta.status = 'running';
-    await this.storage.updateTask(this.meta.id, { status: 'running' });
-
-    this.startTime = Date.now();
-
     // Create dispatcher if it doesn't exist (crash recovery case)
     if (!this.dispatcher) {
+      if (!this.source) {
+        throw new Error('No source set. Call setSourceForResume() first.');
+      }
+
+      // Reset stopped flag for resume
+      this.stopped = false;
+
+      // Reset any active jobs from previous crash (only for crash recovery!)
+      await this.storage.resetActiveJobs(this.meta.id);
+
+      this.meta.status = 'running';
+      await this.storage.updateTask(this.meta.id, { status: 'running' });
+
+      this.startTime = Date.now();
       this.dispatcher = new Dispatcher({
         taskId: this.meta.id,
         source: this.source as TaskSource,
@@ -441,6 +440,11 @@ export class Task<TInput = unknown, TOutput = unknown> extends EventEmitter<Task
       }
     } else {
       // Dispatcher exists - just resume (pause/resume in same session)
+      // Note: Don't reset active jobs here - they're still being processed!
+      // Note: Don't reset startTime - it was set when start() was called
+      this.meta.status = 'running';
+      await this.storage.updateTask(this.meta.id, { status: 'running' });
+
       this.startProgressReporting();
       await this.dispatcher.resume();
     }

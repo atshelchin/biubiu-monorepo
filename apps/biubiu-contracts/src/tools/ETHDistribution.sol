@@ -5,13 +5,14 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
 
 /**
  * @title ETHDistribution
- * @notice Tool for distributing ETH to multiple wallets
+ * @notice Gas-optimized tool for distributing ETH to multiple wallets
  * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
  *
- * Three distribution modes:
+ * Four distribution modes:
  *   1. Equal: total ETH divided equally among recipients
  *   2. Specified: exact amount for each recipient
- *   3. Random: random distribution of total ETH
+ *   3. Random: random distribution based on weights
+ *   4. RandomRange: random amount within min/max range
  */
 contract ETHDistribution is ERC2771Context {
     // ============ Errors ============
@@ -19,19 +20,22 @@ contract ETHDistribution is ERC2771Context {
     error NoRecipients();
     error LengthMismatch();
     error InsufficientValue();
-    error TransferFailed(address recipient);
-    error InvalidTotalAmount();
+    error TransferFailed();
+    error InvalidRange();
 
     // ============ Events ============
 
+    /// @notice Emitted after each distribution
+    /// @param sender The real sender (from ERC2771)
+    /// @param mode Distribution mode (1=equal, 2=specified, 3=random, 4=randomRange)
+    /// @param totalAmount Total ETH distributed
+    /// @param recipientCount Number of recipients
     event Distributed(
         address indexed sender,
-        uint8 mode,
+        uint8 indexed mode,
         uint256 totalAmount,
         uint256 recipientCount
     );
-
-    event Transfer(address indexed recipient, uint256 amount);
 
     // ============ Constructor ============
 
@@ -44,23 +48,24 @@ contract ETHDistribution is ERC2771Context {
      * @param recipients Array of recipient addresses
      */
     function distributeEqual(address[] calldata recipients) external payable {
-        if (recipients.length == 0) revert NoRecipients();
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
 
-        uint256 amountPerRecipient = msg.value / recipients.length;
-        if (amountPerRecipient == 0) revert InsufficientValue();
+        uint256 amount = msg.value / len;
+        if (amount == 0) revert InsufficientValue();
 
-        for (uint256 i = 0; i < recipients.length;) {
-            _transfer(recipients[i], amountPerRecipient);
+        for (uint256 i; i < len;) {
+            _send(recipients[i], amount);
             unchecked { ++i; }
         }
 
-        // Refund dust to sender
-        uint256 dust = msg.value - (amountPerRecipient * recipients.length);
-        if (dust > 0) {
-            _transfer(_msgSender(), dust);
+        // Refund dust
+        uint256 dust = msg.value - (amount * len);
+        if (dust != 0) {
+            _send(_msgSender(), dust);
         }
 
-        emit Distributed(_msgSender(), 1, msg.value, recipients.length);
+        emit Distributed(_msgSender(), 1, msg.value, len);
     }
 
     /**
@@ -72,78 +77,62 @@ contract ETHDistribution is ERC2771Context {
         address[] calldata recipients,
         uint256[] calldata amounts
     ) external payable {
-        if (recipients.length == 0) revert NoRecipients();
-        if (recipients.length != amounts.length) revert LengthMismatch();
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (len != amounts.length) revert LengthMismatch();
 
-        uint256 totalRequired;
-        for (uint256 i = 0; i < amounts.length;) {
-            totalRequired += amounts[i];
-            unchecked { ++i; }
-        }
-
-        if (msg.value < totalRequired) revert InsufficientValue();
-
-        for (uint256 i = 0; i < recipients.length;) {
-            if (amounts[i] > 0) {
-                _transfer(recipients[i], amounts[i]);
+        uint256 totalSent;
+        for (uint256 i; i < len;) {
+            uint256 amt = amounts[i];
+            if (amt != 0) {
+                totalSent += amt;
+                _send(recipients[i], amt);
             }
             unchecked { ++i; }
         }
 
-        // Refund excess to sender
-        uint256 excess = msg.value - totalRequired;
-        if (excess > 0) {
-            _transfer(_msgSender(), excess);
+        if (msg.value < totalSent) revert InsufficientValue();
+
+        // Refund excess
+        uint256 excess = msg.value - totalSent;
+        if (excess != 0) {
+            _send(_msgSender(), excess);
         }
 
-        emit Distributed(_msgSender(), 2, totalRequired, recipients.length);
+        emit Distributed(_msgSender(), 2, totalSent, len);
     }
 
     /**
      * @notice Distribute ETH randomly among recipients
-     * @dev Uses block data for randomness (not cryptographically secure, but sufficient for distribution)
      * @param recipients Array of recipient addresses
      */
     function distributeRandom(address[] calldata recipients) external payable {
-        if (recipients.length == 0) revert NoRecipients();
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
         if (msg.value == 0) revert InsufficientValue();
 
+        // Single hash for randomness seed
+        bytes32 seed = keccak256(abi.encodePacked(
+            block.timestamp,
+            block.prevrandao,
+            msg.sender,
+            msg.value
+        ));
+
         uint256 remaining = msg.value;
-        uint256 len = recipients.length;
 
-        // Generate random weights
-        uint256[] memory weights = new uint256[](len);
-        uint256 totalWeight;
-
-        for (uint256 i = 0; i < len;) {
-            // Generate pseudo-random weight (1-100)
-            uint256 weight = (uint256(keccak256(abi.encodePacked(
-                block.timestamp,
-                block.prevrandao,
-                msg.sender,
-                i
-            ))) % 100) + 1;
-
-            weights[i] = weight;
-            totalWeight += weight;
-            unchecked { ++i; }
-        }
-
-        // Distribute based on weights
-        for (uint256 i = 0; i < len;) {
+        for (uint256 i; i < len;) {
             uint256 amount;
             if (i == len - 1) {
-                // Last recipient gets remaining to avoid dust
                 amount = remaining;
             } else {
-                amount = (msg.value * weights[i]) / totalWeight;
-                if (amount > remaining) {
-                    amount = remaining;
-                }
+                // Random percentage 1-50% of remaining
+                uint256 pct = (uint256(keccak256(abi.encodePacked(seed, i))) % 50) + 1;
+                amount = (remaining * pct) / 100;
             }
 
-            if (amount > 0) {
-                _transfer(recipients[i], amount);
+            if (amount != 0) {
+                _send(recipients[i], amount);
                 remaining -= amount;
             }
             unchecked { ++i; }
@@ -163,51 +152,51 @@ contract ETHDistribution is ERC2771Context {
         uint256 minAmount,
         uint256 maxAmount
     ) external payable {
-        if (recipients.length == 0) revert NoRecipients();
-        if (minAmount > maxAmount) revert InvalidTotalAmount();
-
         uint256 len = recipients.length;
-        uint256 minRequired = minAmount * len;
-        if (msg.value < minRequired) revert InsufficientValue();
+        if (len == 0) revert NoRecipients();
+        if (minAmount > maxAmount) revert InvalidRange();
+        if (msg.value < minAmount * len) revert InsufficientValue();
+
+        bytes32 seed = keccak256(abi.encodePacked(
+            block.timestamp,
+            block.prevrandao,
+            msg.sender
+        ));
 
         uint256 range = maxAmount - minAmount;
         uint256 totalSent;
 
-        for (uint256 i = 0; i < len;) {
+        for (uint256 i; i < len;) {
             uint256 amount;
-            if (i == len - 1) {
-                // Last recipient: ensure we don't exceed msg.value
-                amount = msg.value - totalSent;
-                if (amount > maxAmount) amount = maxAmount;
-                if (amount < minAmount) amount = minAmount;
-            } else {
-                // Random amount between min and max
-                uint256 randomExtra = 0;
-                if (range > 0) {
-                    randomExtra = uint256(keccak256(abi.encodePacked(
-                        block.timestamp,
-                        block.prevrandao,
-                        msg.sender,
-                        i
-                    ))) % (range + 1);
-                }
-                amount = minAmount + randomExtra;
+            uint256 remaining = msg.value - totalSent;
+            uint256 reserveForOthers = minAmount * (len - i - 1);
 
-                // Cap to remaining balance
-                uint256 remaining = msg.value - totalSent;
-                uint256 reserveForOthers = minAmount * (len - i - 1);
+            if (i == len - 1) {
+                // Last recipient
+                amount = remaining;
+                if (amount > maxAmount) amount = maxAmount;
+            } else {
+                // Random within range, capped by available
                 uint256 maxAllowed = remaining - reserveForOthers;
-                if (amount > maxAllowed) amount = maxAllowed;
+                if (maxAllowed > maxAmount) maxAllowed = maxAmount;
+
+                if (range != 0 && maxAllowed > minAmount) {
+                    uint256 actualRange = maxAllowed - minAmount;
+                    uint256 extra = uint256(keccak256(abi.encodePacked(seed, i))) % (actualRange + 1);
+                    amount = minAmount + extra;
+                } else {
+                    amount = minAmount;
+                }
             }
 
-            _transfer(recipients[i], amount);
+            _send(recipients[i], amount);
             totalSent += amount;
             unchecked { ++i; }
         }
 
-        // Refund any excess
+        // Refund excess
         if (msg.value > totalSent) {
-            _transfer(_msgSender(), msg.value - totalSent);
+            _send(_msgSender(), msg.value - totalSent);
         }
 
         emit Distributed(_msgSender(), 4, totalSent, len);
@@ -215,10 +204,14 @@ contract ETHDistribution is ERC2771Context {
 
     // ============ Internal ============
 
-    function _transfer(address to, uint256 amount) private {
-        (bool success,) = payable(to).call{value: amount}("");
-        if (!success) revert TransferFailed(to);
-        emit Transfer(to, amount);
+    /// @dev Optimized ETH transfer without return data check
+    function _send(address to, uint256 amount) private {
+        assembly {
+            if iszero(call(gas(), to, amount, 0, 0, 0, 0)) {
+                mstore(0, 0x90b8ec18) // TransferFailed()
+                revert(0x1c, 0x04)
+            }
+        }
     }
 
     // ============ Receive ============

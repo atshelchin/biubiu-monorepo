@@ -16,8 +16,6 @@ interface IBiuBiuPremium {
     error CallFailed();
     error InvalidPromoCode();
     error PromoCodeExpired();
-    error PromoCodeMaxUsesReached();
-    error PromoCodeAlreadyUsed();
     error PromoCodeChainNotValid();
     error PromoCodeNotAvailable();
     error InvalidDiscountBps();
@@ -56,10 +54,21 @@ interface IBiuBiuPremium {
     event ReferralPaid(address indexed referrer, uint256 amount);
     event Activated(address indexed user, uint256 indexed tokenId);
     event Deactivated(address indexed user, uint256 indexed tokenId);
-    event PromoCodeUsed(bytes32 indexed promoId, address indexed user, uint256 discountBps, uint256 paidAmount);
+    event ToolCalled(
+        address indexed caller,
+        address indexed target,
+        bytes32 indexed toolHash,
+        string toolId,
+        bool isPremiumCall,
+        uint256 paidAmount,
+        address referrer,
+        uint256 referralAmount,
+        bytes32 promoId
+    );
 
     // ============ Pricing ============
 
+    function PER_USE_PRICE() external view returns (uint256);
     function MONTHLY_PRICE() external view returns (uint256);
     function YEARLY_PRICE() external view returns (uint256);
     function MONTHLY_DURATION() external view returns (uint256);
@@ -107,35 +116,29 @@ interface IBiuBiuPremium {
     function subscriptionExpiry(uint256 tokenId) external view returns (uint256);
     function activeSubscription(address user) external view returns (uint256);
 
-    // ============ Tracking Stats ============
+    // ============ Promo Code ============
 
-    function sourceSubscribeCount(bytes32 sourceHash) external view returns (uint256);
-    function toolSubscribeCount(bytes32 toolHash) external view returns (uint256);
-    function sourceRevenue(bytes32 sourceHash) external view returns (uint256);
-    function toolRevenue(bytes32 toolHash) external view returns (uint256);
-
-    // ============ Promo Code State ============
-
-    function promoCodeUsedCount(bytes32 promoId) external view returns (uint256);
-    function promoCodeUsedBy(bytes32 promoId, address user) external view returns (bool);
-    function getDiscountedPrice(SubscriptionTier tier, uint256 discountBps) external view returns (uint256);
     function PROMO_TYPEHASH() external view returns (bytes32);
-    function validatePromoCode(bytes calldata promoCode, address user)
+    function getDiscountedPrice(SubscriptionTier tier, uint256 discountBps) external view returns (uint256);
+    function validatePromoCode(bytes calldata promoCode)
         external
         view
         returns (
             bool isValid,
+            string memory promoName,
             uint256 discountBps,
             uint256 expiry,
-            uint256 maxUses,
-            bool singleUse,
-            uint256[] memory validChainIds,
-            uint256 usedCount,
-            bool usedByUser,
+            uint256 chainId,
             string memory reason
         );
 
     // ============ Tool Proxy ============
 
-    function callTool(address target, bytes calldata data) external payable returns (bytes memory result);
+    function callTool(
+        address target,
+        bytes calldata data,
+        string calldata toolId,
+        address referrer,
+        bytes calldata promoCode
+    ) external payable returns (bytes memory result);
 }

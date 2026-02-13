@@ -6,6 +6,9 @@ import {ERC721Base} from "../libraries/ERC721Base.sol";
 import {ReentrancyGuard} from "../libraries/ReentrancyGuard.sol";
 import {Base64} from "../libraries/Base64.sol";
 import {Strings} from "../libraries/Strings.sol";
+import {DateTime} from "../libraries/DateTime.sol";
+import {PromoCode} from "../libraries/PromoCode.sol";
+import {Referral} from "../libraries/Referral.sol";
 
 /**
  * @title BiuBiuPremium
@@ -17,16 +20,14 @@ import {Strings} from "../libraries/Strings.sol";
 contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
     // ============ Constants ============
 
-    uint256 public constant MONTHLY_PRICE = 0.02 ether;
-    uint256 public constant YEARLY_PRICE = 0.1 ether;
+    uint256 public constant PER_USE_PRICE = 0.02 ether;
+    uint256 public constant MONTHLY_PRICE = 0.1 ether;
+    uint256 public constant YEARLY_PRICE = 0.5 ether;
     uint256 public constant MONTHLY_DURATION = 30 days;
     uint256 public constant YEARLY_DURATION = 365 days;
 
-    bytes4 private constant _EIP1271_MAGIC = 0x1626ba7e;
-
-    bytes32 public constant PROMO_TYPEHASH = keccak256(
-        "PromoCode(uint256 discountBps,uint256 expiry,uint256 maxUses,bool singleUse,uint256[] validChainIds)"
-    );
+    bytes32 public constant PROMO_TYPEHASH =
+        keccak256("PromoCode(string name,uint256 discountBps,uint256 expiry,uint256 chainId)");
 
     address public constant VAULT = 0x7602db7FbBc4f0FD7dfA2Be206B39e002A5C94cA;
 
@@ -39,18 +40,6 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
     uint256 private _nextTokenId = 1;
     mapping(uint256 => TokenAttributes) private _tokenAttributes;
     mapping(address => uint256) public activeSubscription;
-
-    // ============ Tracking Stats ============
-
-    mapping(bytes32 => uint256) public sourceSubscribeCount;
-    mapping(bytes32 => uint256) public toolSubscribeCount;
-    mapping(bytes32 => uint256) public sourceRevenue;
-    mapping(bytes32 => uint256) public toolRevenue;
-
-    // ============ Promo Code State ============
-
-    mapping(bytes32 => uint256) public promoCodeUsedCount;
-    mapping(bytes32 => mapping(address => bool)) public promoCodeUsedBy;
 
     // ============ Constructor ============
 
@@ -251,24 +240,14 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         }
 
         // Referral split (50% of actual paid amount)
-        uint256 referralAmount;
-        if (referrer != address(0) && referrer != msg.sender) {
-            referralAmount = price >> 1;
-            // forge-lint: disable-next-line(unchecked-call)
-            (bool success,) = payable(referrer).call{value: referralAmount}("");
-            if (success) {
-                emit ReferralPaid(referrer, referralAmount);
-            } else {
-                referralAmount = 0;
-            }
+        uint256 referralAmount = Referral.processHalf(referrer, msg.sender, price);
+        if (referralAmount > 0) {
+            emit ReferralPaid(referrer, referralAmount);
         }
 
         // Sweep remaining balance to VAULT
         // forge-lint: disable-next-line(unchecked-call)
         payable(VAULT).call{value: address(this).balance}("");
-
-        // Update tracking stats
-        _updateTrackingStats(source, toolId, price);
 
         emit Subscribed(
             msg.sender, tokenId, tier, newExpiry, referrer, referralAmount, price, source, toolId, promoId, discountBps
@@ -287,96 +266,25 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
 
     function _applyPromoCode(bytes calldata promoCode, uint256 basePrice)
         private
+        view
         returns (uint256 discountedPrice, bytes32 promoId_, uint256 discountBps_)
     {
-        // Decode promo code: (discountBps, expiry, maxUses, singleUse, validChainIds, signature)
-        (
-            uint256 discountBps,
-            uint256 expiry,
-            uint256 maxUses,
-            bool singleUse,
-            uint256[] memory validChainIds,
-            bytes memory signature
-        ) = abi.decode(promoCode, (uint256, uint256, uint256, bool, uint256[], bytes));
+        PromoCode.Data memory data = PromoCode.decode(promoCode);
 
-        if (discountBps == 0 || discountBps >= 10000) revert InvalidDiscountBps();
+        if (!PromoCode.isValidDiscount(data)) revert InvalidDiscountBps();
 
-        // Compute EIP-712 struct hash (also serves as promoId)
-        bytes32 structHash = keccak256(
-            abi.encode(
-                PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds))
-            )
-        );
+        bytes32 hash = PromoCode.structHash(PROMO_TYPEHASH, data);
 
-        // Compute EIP-712 digest
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-
-        // EIP-1271 verification: VAULT must have code deployed on this chain
-        if (VAULT.code.length == 0) revert PromoCodeNotAvailable();
-
-        // Call isValidSignature on VAULT (Safe wallet)
-        // forge-lint: disable-next-line(unchecked-call)
-        (bool success, bytes memory returnData) =
-            VAULT.staticcall(abi.encodeWithSelector(_EIP1271_MAGIC, digest, signature));
-
-        if (!success || returnData.length < 32) revert InvalidPromoCode();
-
-        bytes4 magicValue = abi.decode(returnData, (bytes4));
-        if (magicValue != _EIP1271_MAGIC) revert InvalidPromoCode();
-
-        // Check expiry
-        if (expiry != 0 && block.timestamp > expiry) revert PromoCodeExpired();
-
-        // Check chain validity
-        if (validChainIds.length > 0) {
-            bool chainValid;
-            for (uint256 i; i < validChainIds.length; ++i) {
-                if (validChainIds[i] == block.chainid) {
-                    chainValid = true;
-                    break;
-                }
-            }
-            if (!chainValid) revert PromoCodeChainNotValid();
+        if (!PromoCode.verifyEIP1271(VAULT, PromoCode.digest(DOMAIN_SEPARATOR, hash), data.signature)) {
+            revert InvalidPromoCode();
         }
 
-        // Check max uses
-        bytes32 promoId = structHash;
-        if (maxUses != 0 && promoCodeUsedCount[promoId] >= maxUses) revert PromoCodeMaxUsesReached();
+        if (PromoCode.isExpired(data)) revert PromoCodeExpired();
+        if (!PromoCode.isValidChain(data)) revert PromoCodeChainNotValid();
 
-        // Check per-address usage
-        if (singleUse && promoCodeUsedBy[promoId][msg.sender]) revert PromoCodeAlreadyUsed();
-
-        // Update usage tracking
-        promoCodeUsedCount[promoId] += 1;
-        if (singleUse) {
-            promoCodeUsedBy[promoId][msg.sender] = true;
-        }
-
-        // Calculate discounted price
-        discountedPrice = basePrice * (10000 - discountBps) / 10000;
-        promoId_ = promoId;
-        discountBps_ = discountBps;
-
-        emit PromoCodeUsed(promoId, msg.sender, discountBps, discountedPrice);
-    }
-
-    // ============ Tracking Stats ============
-
-    function _updateTrackingStats(string calldata source, string calldata toolId, uint256 paidAmount) private {
-        if (bytes(source).length > 0) {
-            bytes32 sourceHash = keccak256(bytes(source));
-            unchecked {
-                sourceSubscribeCount[sourceHash] += 1;
-            }
-            sourceRevenue[sourceHash] += paidAmount;
-        }
-        if (bytes(toolId).length > 0) {
-            bytes32 toolHash = keccak256(bytes(toolId));
-            unchecked {
-                toolSubscribeCount[toolHash] += 1;
-            }
-            toolRevenue[toolHash] += paidAmount;
-        }
+        discountedPrice = PromoCode.applyDiscount(basePrice, data.discountBps);
+        promoId_ = hash;
+        discountBps_ = data.discountBps;
     }
 
     // ============ View Functions ============
@@ -388,133 +296,59 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
     }
 
     /// @notice Validate a promo code without executing. Returns decoded parameters and validity status.
-    function validatePromoCode(bytes calldata promoCode, address user)
+    function validatePromoCode(bytes calldata promoCode)
         external
         view
         returns (
             bool isValid,
+            string memory promoName,
             uint256 discountBps,
             uint256 expiry,
-            uint256 maxUses,
-            bool singleUse,
-            uint256[] memory validChainIds,
-            uint256 usedCount,
-            bool usedByUser,
+            uint256 chainId,
             string memory reason
         )
     {
-        // Decode
-        bytes memory signature;
-        (discountBps, expiry, maxUses, singleUse, validChainIds, signature) =
-            abi.decode(promoCode, (uint256, uint256, uint256, bool, uint256[], bytes));
+        PromoCode.Data memory data = PromoCode.decode(promoCode);
+        promoName = data.name;
+        discountBps = data.discountBps;
+        expiry = data.expiry;
+        chainId = data.chainId;
 
-        // Check discount range
-        if (discountBps == 0 || discountBps >= 10000) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "invalid discount bps");
-        }
-
-        // Compute EIP-712 digest
-        bytes32 structHash = keccak256(
-            abi.encode(
-                PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds))
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-
-        // EIP-1271 signature verification
-        if (VAULT.code.length == 0) {
-            return (
-                false,
-                discountBps,
-                expiry,
-                maxUses,
-                singleUse,
-                validChainIds,
-                0,
-                false,
-                "vault not deployed on this chain"
-            );
-        }
-
-        (bool success, bytes memory returnData) =
-            VAULT.staticcall(abi.encodeWithSelector(_EIP1271_MAGIC, digest, signature));
-        if (!success || returnData.length < 32) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "invalid signature");
-        }
-        bytes4 magicValue = abi.decode(returnData, (bytes4));
-        if (magicValue != _EIP1271_MAGIC) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "invalid signature");
-        }
-
-        // Check expiry
-        if (expiry != 0 && block.timestamp > expiry) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "expired");
-        }
-
-        // Check chain validity
-        if (validChainIds.length > 0) {
-            bool chainValid;
-            for (uint256 i; i < validChainIds.length; ++i) {
-                if (validChainIds[i] == block.chainid) {
-                    chainValid = true;
-                    break;
-                }
-            }
-            if (!chainValid) {
-                return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "chain not valid");
-            }
-        }
-
-        // Check usage
-        bytes32 promoId = structHash;
-        usedCount = promoCodeUsedCount[promoId];
-        usedByUser = promoCodeUsedBy[promoId][user];
-
-        if (maxUses != 0 && usedCount >= maxUses) {
-            return
-                (
-                    false,
-                    discountBps,
-                    expiry,
-                    maxUses,
-                    singleUse,
-                    validChainIds,
-                    usedCount,
-                    usedByUser,
-                    "max uses reached"
-                );
-        }
-        if (singleUse && usedByUser) {
-            return (
-                false,
-                discountBps,
-                expiry,
-                maxUses,
-                singleUse,
-                validChainIds,
-                usedCount,
-                usedByUser,
-                "already used by user"
-            );
-        }
-
-        isValid = true;
-        reason = "valid";
+        (isValid, reason) = PromoCode.verify(data, PROMO_TYPEHASH, DOMAIN_SEPARATOR, VAULT);
     }
 
     // ============ Tool Proxy ============
 
-    function callTool(address target, bytes calldata data) external payable nonReentrant returns (bytes memory result) {
+    struct CallToolParams {
+        uint256 paidAmount;
+        uint256 referralAmount;
+        bytes32 promoId;
+        bool isPremium;
+    }
+
+    function callTool(
+        address target,
+        bytes calldata data,
+        string calldata toolId,
+        address referrer,
+        bytes calldata promoCode
+    ) external payable nonReentrant returns (bytes memory result) {
+        if (target == address(this) || target == address(0)) revert InvalidTarget();
+
+        CallToolParams memory p;
         uint256 activeTokenId = activeSubscription[msg.sender];
-        if (activeTokenId == 0 || _tokenAttributes[activeTokenId].expiry <= block.timestamp) {
-            revert NotPremiumMember();
+        p.isPremium = activeTokenId != 0 && _tokenAttributes[activeTokenId].expiry > block.timestamp;
+
+        uint256 forwardValue = msg.value;
+
+        if (!p.isPremium) {
+            (p.paidAmount, p.referralAmount, p.promoId, forwardValue) =
+                _processToolPayment(referrer, promoCode);
         }
 
-        if (target == address(this)) revert InvalidTarget();
-        if (target == address(0)) revert InvalidTarget();
-
+        // Call target
         bool success;
-        (success, result) = target.call{value: msg.value}(data);
+        (success, result) = target.call{value: forwardValue}(data);
 
         if (!success) {
             if (result.length > 0) {
@@ -524,6 +358,36 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
             }
             revert CallFailed();
         }
+
+        // Emit event for tracking
+        bytes32 toolHash = bytes(toolId).length > 0 ? keccak256(bytes(toolId)) : bytes32(0);
+        emit ToolCalled(msg.sender, target, toolHash, toolId, p.isPremium, p.paidAmount, referrer, p.referralAmount, p.promoId);
+    }
+
+    function _processToolPayment(address referrer, bytes calldata promoCode)
+        private
+        returns (uint256 paidAmount, uint256 referralAmount, bytes32 promoId, uint256 forwardValue)
+    {
+        paidAmount = PER_USE_PRICE;
+
+        // Apply promo code if provided
+        if (promoCode.length != 0) {
+            (paidAmount, promoId,) = _applyPromoCode(promoCode, PER_USE_PRICE);
+        }
+
+        if (msg.value < paidAmount) revert IncorrectPaymentAmount();
+
+        // Referral split (50%)
+        referralAmount = Referral.processHalf(referrer, msg.sender, paidAmount);
+        if (referralAmount > 0) {
+            emit ReferralPaid(referrer, referralAmount);
+        }
+
+        // Send remaining fee to VAULT
+        // forge-lint: disable-next-line(unchecked-call)
+        payable(VAULT).call{value: paidAmount - referralAmount}("");
+
+        forwardValue = msg.value - paidAmount;
     }
 
     receive() external payable {}
@@ -532,7 +396,7 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
 
     function _generateSVG(uint256 tokenId, bool isActive, uint256 mintedAt) private pure returns (string memory) {
         string memory tokenIdStr = Strings.toString(tokenId);
-        string memory dateStr = _formatDate(mintedAt);
+        string memory dateStr = DateTime.formatDate(mintedAt);
         uint256 idLen = bytes(tokenIdStr).length;
         string memory fontSize;
         if (idLen <= 2) fontSize = "72";
@@ -684,29 +548,5 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         );
 
         return svg;
-    }
-
-    function _formatDate(uint256 timestamp) private pure returns (string memory) {
-        uint256 z = timestamp / 86400 + 719468;
-        uint256 era = z / 146097;
-        uint256 doe = z - era * 146097;
-        uint256 yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-        uint256 y = yoe + era * 400;
-        uint256 doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-        uint256 mp = (5 * doy + 2) / 153;
-        uint256 d = doy - (153 * mp + 2) / 5 + 1;
-        uint256 m = mp < 10 ? mp + 3 : mp - 9;
-        if (m <= 2) y += 1;
-        return string(
-            abi.encodePacked(
-                Strings.toString(y),
-                ".",
-                m < 10 ? "0" : "",
-                Strings.toString(m),
-                ".",
-                d < 10 ? "0" : "",
-                Strings.toString(d)
-            )
-        );
     }
 }

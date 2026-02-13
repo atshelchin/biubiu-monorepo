@@ -57,9 +57,7 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
     constructor() {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version)"),
-                keccak256("BiuBiuPremium"),
-                keccak256("1")
+                keccak256("EIP712Domain(string name,string version)"), keccak256("BiuBiuPremium"), keccak256("1")
             )
         );
     }
@@ -272,7 +270,9 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         // Update tracking stats
         _updateTrackingStats(source, toolId, price);
 
-        emit Subscribed(msg.sender, tokenId, tier, newExpiry, referrer, referralAmount, price, source, toolId, promoId, discountBps);
+        emit Subscribed(
+            msg.sender, tokenId, tier, newExpiry, referrer, referralAmount, price, source, toolId, promoId, discountBps
+        );
     }
 
     function _getTierInfo(SubscriptionTier tier) private pure returns (uint256 price, uint256 duration) {
@@ -303,7 +303,9 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
 
         // Compute EIP-712 struct hash (also serves as promoId)
         bytes32 structHash = keccak256(
-            abi.encode(PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds)))
+            abi.encode(
+                PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds))
+            )
         );
 
         // Compute EIP-712 digest
@@ -413,13 +415,25 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
 
         // Compute EIP-712 digest
         bytes32 structHash = keccak256(
-            abi.encode(PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds)))
+            abi.encode(
+                PROMO_TYPEHASH, discountBps, expiry, maxUses, singleUse, keccak256(abi.encodePacked(validChainIds))
+            )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         // EIP-1271 signature verification
         if (VAULT.code.length == 0) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, 0, false, "vault not deployed on this chain");
+            return (
+                false,
+                discountBps,
+                expiry,
+                maxUses,
+                singleUse,
+                validChainIds,
+                0,
+                false,
+                "vault not deployed on this chain"
+            );
         }
 
         (bool success, bytes memory returnData) =
@@ -457,10 +471,31 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         usedByUser = promoCodeUsedBy[promoId][user];
 
         if (maxUses != 0 && usedCount >= maxUses) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, usedCount, usedByUser, "max uses reached");
+            return
+                (
+                    false,
+                    discountBps,
+                    expiry,
+                    maxUses,
+                    singleUse,
+                    validChainIds,
+                    usedCount,
+                    usedByUser,
+                    "max uses reached"
+                );
         }
         if (singleUse && usedByUser) {
-            return (false, discountBps, expiry, maxUses, singleUse, validChainIds, usedCount, usedByUser, "already used by user");
+            return (
+                false,
+                discountBps,
+                expiry,
+                maxUses,
+                singleUse,
+                validChainIds,
+                usedCount,
+                usedByUser,
+                "already used by user"
+            );
         }
 
         isValid = true;

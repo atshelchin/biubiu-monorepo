@@ -7,7 +7,9 @@ import {Referral} from "../libraries/Referral.sol";
 /**
  * @title BiuBiuToolProxy
  * @notice Tool proxy: callTool for premium/per-use access
- * @dev Inherits BiuBiuSubscription for subscription state
+ * @dev Inherits BiuBiuSubscription for subscription state.
+ *      Implements ERC-2771 Trusted Forwarder: appends msg.sender to calldata.
+ *      Target tools should inherit ERC2771Context to extract real sender.
  */
 abstract contract BiuBiuToolProxy is BiuBiuSubscription {
     // ============ Structs ============
@@ -40,9 +42,9 @@ abstract contract BiuBiuToolProxy is BiuBiuSubscription {
             (p.paidAmount, p.referralAmount, p.promoId, forwardValue) = _processToolPayment(referrer, promoCode);
         }
 
-        // Call target
+        // Call target with ERC-2771: append msg.sender to calldata
         bool success;
-        (success, result) = target.call{value: forwardValue}(data);
+        (success, result) = target.call{value: forwardValue}(abi.encodePacked(data, msg.sender));
 
         if (!success) {
             if (result.length > 0) {

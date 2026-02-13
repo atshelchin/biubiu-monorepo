@@ -14,9 +14,9 @@ import {PromoCode} from "../libraries/PromoCode.sol";
 abstract contract BiuBiuCore is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
     // ============ Constants ============
 
-    uint256 public constant PER_USE_PRICE = 0.02 ether;
-    uint256 public constant MONTHLY_PRICE = 0.1 ether;
-    uint256 public constant YEARLY_PRICE = 0.5 ether;
+    uint256 public constant PER_USE_PRICE = 0.1 ether;
+    uint256 public constant MONTHLY_PRICE = 0.5 ether;
+    uint256 public constant YEARLY_PRICE = 2.5 ether;
     uint256 public constant MONTHLY_DURATION = 30 days;
     uint256 public constant YEARLY_DURATION = 365 days;
 

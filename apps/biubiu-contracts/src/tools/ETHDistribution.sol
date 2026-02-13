@@ -30,12 +30,7 @@ contract ETHDistribution is ERC2771Context {
     /// @param mode Distribution mode (1=equal, 2=specified, 3=random, 4=randomRange)
     /// @param totalAmount Total ETH distributed
     /// @param recipientCount Number of recipients
-    event Distributed(
-        address indexed sender,
-        uint8 indexed mode,
-        uint256 totalAmount,
-        uint256 recipientCount
-    );
+    event Distributed(address indexed sender, uint8 indexed mode, uint256 totalAmount, uint256 recipientCount);
 
     // ============ Constructor ============
 
@@ -56,7 +51,9 @@ contract ETHDistribution is ERC2771Context {
 
         for (uint256 i; i < len;) {
             _send(recipients[i], amount);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         // Refund dust
@@ -73,10 +70,7 @@ contract ETHDistribution is ERC2771Context {
      * @param recipients Array of recipient addresses
      * @param amounts Array of amounts for each recipient
      */
-    function distributeSpecified(
-        address[] calldata recipients,
-        uint256[] calldata amounts
-    ) external payable {
+    function distributeSpecified(address[] calldata recipients, uint256[] calldata amounts) external payable {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
@@ -88,7 +82,9 @@ contract ETHDistribution is ERC2771Context {
                 totalSent += amt;
                 _send(recipients[i], amt);
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         if (msg.value < totalSent) revert InsufficientValue();
@@ -112,12 +108,7 @@ contract ETHDistribution is ERC2771Context {
         if (msg.value == 0) revert InsufficientValue();
 
         // Single hash for randomness seed
-        bytes32 seed = keccak256(abi.encodePacked(
-            block.timestamp,
-            block.prevrandao,
-            msg.sender,
-            msg.value
-        ));
+        bytes32 seed = keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, msg.value));
 
         uint256 remaining = msg.value;
 
@@ -135,7 +126,9 @@ contract ETHDistribution is ERC2771Context {
                 _send(recipients[i], amount);
                 remaining -= amount;
             }
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         emit Distributed(_msgSender(), 3, msg.value, len);
@@ -148,11 +141,10 @@ contract ETHDistribution is ERC2771Context {
      * @param minAmount Minimum amount per recipient
      * @param maxAmount Maximum amount per recipient
      */
-    function distributeRandomRange(
-        address[] calldata recipients,
-        uint256 minAmount,
-        uint256 maxAmount
-    ) external payable {
+    function distributeRandomRange(address[] calldata recipients, uint256 minAmount, uint256 maxAmount)
+        external
+        payable
+    {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (minAmount > maxAmount) revert InvalidRange();
@@ -160,25 +152,21 @@ contract ETHDistribution is ERC2771Context {
         uint256 maxRequired = maxAmount * len;
         if (msg.value < maxRequired) revert InsufficientValue();
 
-        bytes32 seed = keccak256(abi.encodePacked(
-            block.timestamp,
-            block.prevrandao,
-            msg.sender
-        ));
+        bytes32 seed = keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender));
 
         uint256 range = maxAmount - minAmount;
         uint256 totalSent;
 
         for (uint256 i; i < len;) {
             // Random amount between min and max (guaranteed to have funds)
-            uint256 extra = range != 0
-                ? uint256(keccak256(abi.encodePacked(seed, i))) % (range + 1)
-                : 0;
+            uint256 extra = range != 0 ? uint256(keccak256(abi.encodePacked(seed, i))) % (range + 1) : 0;
             uint256 amount = minAmount + extra;
 
             _send(recipients[i], amount);
             totalSent += amount;
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         // Refund unused (guaranteed: msg.value >= maxRequired >= totalSent)

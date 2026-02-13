@@ -1,56 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IBiuBiuPremium} from "../interfaces/IBiuBiuPremium.sol";
-import {ERC721Base} from "../libraries/ERC721Base.sol";
-import {ReentrancyGuard} from "../libraries/ReentrancyGuard.sol";
+import {BiuBiuToolProxy} from "./BiuBiuToolProxy.sol";
 import {Base64} from "../libraries/Base64.sol";
 import {Strings} from "../libraries/Strings.sol";
 import {DateTime} from "../libraries/DateTime.sol";
-import {PromoCode} from "../libraries/PromoCode.sol";
-import {Referral} from "../libraries/Referral.sol";
 
 /**
  * @title BiuBiuPremium
- * @notice A subscription NFT contract with two tiers (Monthly/Yearly), referral system,
- *         source/tool tracking, and EIP-712 + EIP-1271 promo code discounts
- * @dev Subscription info is bound to NFT tokenId. Users can hold multiple NFTs but only activate one at a time.
- *      Inherits ERC721Base for standard NFT functionality.
+ * @notice Main contract with NFT metadata and ERC721 hooks
+ * @dev Final layer inheriting all functionality
+ *
+ * Inheritance chain:
+ *   ERC721Base + IBiuBiuPremium + ReentrancyGuard
+ *       ↓
+ *   BiuBiuCore (constants, storage, promo code)
+ *       ↓
+ *   BiuBiuSubscription (subscribe, renew, activate)
+ *       ↓
+ *   BiuBiuToolProxy (callTool)
+ *       ↓
+ *   BiuBiuPremium (NFT metadata, tokenURI)
  */
-contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
-    // ============ Constants ============
-
-    uint256 public constant PER_USE_PRICE = 0.02 ether;
-    uint256 public constant MONTHLY_PRICE = 0.1 ether;
-    uint256 public constant YEARLY_PRICE = 0.5 ether;
-    uint256 public constant MONTHLY_DURATION = 30 days;
-    uint256 public constant YEARLY_DURATION = 365 days;
-
-    bytes32 public constant PROMO_TYPEHASH =
-        keccak256("PromoCode(string name,uint256 discountBps,uint256 expiry,uint256 chainId)");
-
-    address public constant VAULT = 0x7602db7FbBc4f0FD7dfA2Be206B39e002A5C94cA;
-
-    // ============ Immutables ============
-
-    bytes32 public immutable DOMAIN_SEPARATOR;
-
-    // ============ State Variables ============
-
-    uint256 private _nextTokenId = 1;
-    mapping(uint256 => TokenAttributes) private _tokenAttributes;
-    mapping(address => uint256) public activeSubscription;
-
-    // ============ Constructor ============
-
-    constructor() {
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version)"), keccak256("BiuBiuPremium"), keccak256("1")
-            )
-        );
-    }
-
+contract BiuBiuPremium is BiuBiuToolProxy {
     // ============ ERC721 Overrides ============
 
     function name() public pure override returns (string memory) {
@@ -126,273 +98,11 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         }
     }
 
-    // ============ Subscription ============
-
-    function nextTokenId() external view returns (uint256) {
-        return _nextTokenId;
-    }
-
-    function getSubscriptionInfo(address user)
-        external
-        view
-        returns (bool isPremium, uint256 expiryTime, uint256 remainingTime)
-    {
-        uint256 activeTokenId = activeSubscription[user];
-        if (activeTokenId == 0) return (false, 0, 0);
-        expiryTime = _tokenAttributes[activeTokenId].expiry;
-        isPremium = expiryTime > block.timestamp;
-        remainingTime = isPremium ? expiryTime - block.timestamp : 0;
-    }
-
-    function getTokenSubscriptionInfo(uint256 tokenId)
-        external
-        view
-        returns (uint256 expiryTime, bool isExpired, address tokenOwner)
-    {
-        tokenOwner = _owners[tokenId];
-        if (tokenOwner == address(0)) revert TokenNotExists();
-        expiryTime = _tokenAttributes[tokenId].expiry;
-        isExpired = expiryTime <= block.timestamp;
-    }
-
-    function getTokenAttributes(uint256 tokenId)
-        external
-        view
-        returns (uint256 mintedAt, address mintedBy, uint256 renewalCount, uint256 expiry)
-    {
-        if (_owners[tokenId] == address(0)) revert TokenNotExists();
-        TokenAttributes storage attrs = _tokenAttributes[tokenId];
-        return (attrs.mintedAt, attrs.mintedBy, attrs.renewalCount, attrs.expiry);
-    }
-
-    function subscriptionExpiry(uint256 tokenId) external view returns (uint256) {
-        return _tokenAttributes[tokenId].expiry;
-    }
-
-    function subscribe(
-        SubscriptionTier tier,
-        address referrer,
-        address recipient,
-        string calldata source,
-        string calldata toolId,
-        bytes calldata promoCode
-    ) external payable nonReentrant {
-        address to = recipient == address(0) ? msg.sender : recipient;
-        uint256 activeTokenId = activeSubscription[to];
-
-        if (activeTokenId != 0) {
-            _renewSubscription(activeTokenId, tier, referrer, source, toolId, promoCode);
-        } else {
-            uint256 tokenId = _nextTokenId++;
-            _safeMint(to, tokenId);
-            _renewSubscription(tokenId, tier, referrer, source, toolId, promoCode);
-        }
-    }
-
-    function subscribeToToken(
-        uint256 tokenId,
-        SubscriptionTier tier,
-        address referrer,
-        string calldata source,
-        string calldata toolId,
-        bytes calldata promoCode
-    ) external payable nonReentrant {
-        if (_owners[tokenId] == address(0)) revert TokenNotExists();
-        _renewSubscription(tokenId, tier, referrer, source, toolId, promoCode);
-    }
-
-    function activate(uint256 tokenId) external {
-        if (_owners[tokenId] != msg.sender) revert NotTokenOwner();
-        activeSubscription[msg.sender] = tokenId;
-        emit Activated(msg.sender, tokenId);
-    }
-
-    function _renewSubscription(
-        uint256 tokenId,
-        SubscriptionTier tier,
-        address referrer,
-        string calldata source,
-        string calldata toolId,
-        bytes calldata promoCode
-    ) private {
-        if (_owners[tokenId] == address(0)) revert TokenNotExists();
-
-        (uint256 basePrice, uint256 duration) = _getTierInfo(tier);
-
-        // Apply promo code discount if provided
-        uint256 price = basePrice;
-        bytes32 promoId;
-        uint256 discountBps;
-        if (promoCode.length > 0) {
-            (price, promoId, discountBps) = _applyPromoCode(promoCode, basePrice);
-        }
-
-        if (msg.value != price) revert IncorrectPaymentAmount();
-
-        // Update subscription expiry
-        TokenAttributes storage attrs = _tokenAttributes[tokenId];
-        uint256 currentExpiry = attrs.expiry;
-        uint256 newExpiry = currentExpiry > block.timestamp ? currentExpiry + duration : block.timestamp + duration;
-        attrs.expiry = newExpiry;
-
-        unchecked {
-            attrs.renewalCount += 1;
-        }
-
-        // Referral split (50% of actual paid amount)
-        uint256 referralAmount = Referral.processHalf(referrer, msg.sender, price);
-        if (referralAmount > 0) {
-            emit ReferralPaid(referrer, referralAmount);
-        }
-
-        // Sweep remaining balance to VAULT
-        // forge-lint: disable-next-line(unchecked-call)
-        payable(VAULT).call{value: address(this).balance}("");
-
-        emit Subscribed(
-            msg.sender, tokenId, tier, newExpiry, referrer, referralAmount, price, source, toolId, promoId, discountBps
-        );
-    }
-
-    function _getTierInfo(SubscriptionTier tier) private pure returns (uint256 price, uint256 duration) {
-        if (tier == SubscriptionTier.Monthly) {
-            return (MONTHLY_PRICE, MONTHLY_DURATION);
-        } else {
-            return (YEARLY_PRICE, YEARLY_DURATION);
-        }
-    }
-
-    // ============ Promo Code Verification (EIP-712 + EIP-1271) ============
-
-    function _applyPromoCode(bytes calldata promoCode, uint256 basePrice)
-        private
-        view
-        returns (uint256 discountedPrice, bytes32 promoId_, uint256 discountBps_)
-    {
-        PromoCode.Data memory data = PromoCode.decode(promoCode);
-
-        if (!PromoCode.isValidDiscount(data)) revert InvalidDiscountBps();
-
-        bytes32 hash = PromoCode.structHash(PROMO_TYPEHASH, data);
-
-        if (!PromoCode.verifyEIP1271(VAULT, PromoCode.digest(DOMAIN_SEPARATOR, hash), data.signature)) {
-            revert InvalidPromoCode();
-        }
-
-        if (PromoCode.isExpired(data)) revert PromoCodeExpired();
-        if (!PromoCode.isValidChain(data)) revert PromoCodeChainNotValid();
-
-        discountedPrice = PromoCode.applyDiscount(basePrice, data.discountBps);
-        promoId_ = hash;
-        discountBps_ = data.discountBps;
-    }
-
-    // ============ View Functions ============
-
-    function getDiscountedPrice(SubscriptionTier tier, uint256 discountBps) external pure returns (uint256) {
-        (uint256 basePrice,) = _getTierInfo(tier);
-        if (discountBps == 0 || discountBps >= 10000) return basePrice;
-        return basePrice * (10000 - discountBps) / 10000;
-    }
-
-    /// @notice Validate a promo code without executing. Returns decoded parameters and validity status.
-    function validatePromoCode(bytes calldata promoCode)
-        external
-        view
-        returns (
-            bool isValid,
-            string memory promoName,
-            uint256 discountBps,
-            uint256 expiry,
-            uint256 chainId,
-            string memory reason
-        )
-    {
-        PromoCode.Data memory data = PromoCode.decode(promoCode);
-        promoName = data.name;
-        discountBps = data.discountBps;
-        expiry = data.expiry;
-        chainId = data.chainId;
-
-        (isValid, reason) = PromoCode.verify(data, PROMO_TYPEHASH, DOMAIN_SEPARATOR, VAULT);
-    }
-
-    // ============ Tool Proxy ============
-
-    struct CallToolParams {
-        uint256 paidAmount;
-        uint256 referralAmount;
-        bytes32 promoId;
-        bool isPremium;
-    }
-
-    function callTool(
-        address target,
-        bytes calldata data,
-        string calldata toolId,
-        address referrer,
-        bytes calldata promoCode
-    ) external payable nonReentrant returns (bytes memory result) {
-        if (target == address(this) || target == address(0)) revert InvalidTarget();
-
-        CallToolParams memory p;
-        uint256 activeTokenId = activeSubscription[msg.sender];
-        p.isPremium = activeTokenId != 0 && _tokenAttributes[activeTokenId].expiry > block.timestamp;
-
-        uint256 forwardValue = msg.value;
-
-        if (!p.isPremium) {
-            (p.paidAmount, p.referralAmount, p.promoId, forwardValue) =
-                _processToolPayment(referrer, promoCode);
-        }
-
-        // Call target
-        bool success;
-        (success, result) = target.call{value: forwardValue}(data);
-
-        if (!success) {
-            if (result.length > 0) {
-                assembly {
-                    revert(add(result, 32), mload(result))
-                }
-            }
-            revert CallFailed();
-        }
-
-        // Emit event for tracking
-        bytes32 toolHash = bytes(toolId).length > 0 ? keccak256(bytes(toolId)) : bytes32(0);
-        emit ToolCalled(msg.sender, target, toolHash, toolId, p.isPremium, p.paidAmount, referrer, p.referralAmount, p.promoId);
-    }
-
-    function _processToolPayment(address referrer, bytes calldata promoCode)
-        private
-        returns (uint256 paidAmount, uint256 referralAmount, bytes32 promoId, uint256 forwardValue)
-    {
-        paidAmount = PER_USE_PRICE;
-
-        // Apply promo code if provided
-        if (promoCode.length != 0) {
-            (paidAmount, promoId,) = _applyPromoCode(promoCode, PER_USE_PRICE);
-        }
-
-        if (msg.value < paidAmount) revert IncorrectPaymentAmount();
-
-        // Referral split (50%)
-        referralAmount = Referral.processHalf(referrer, msg.sender, paidAmount);
-        if (referralAmount > 0) {
-            emit ReferralPaid(referrer, referralAmount);
-        }
-
-        // Send remaining fee to VAULT
-        // forge-lint: disable-next-line(unchecked-call)
-        payable(VAULT).call{value: paidAmount - referralAmount}("");
-
-        forwardValue = msg.value - paidAmount;
-    }
+    // ============ Receive ETH ============
 
     receive() external payable {}
 
-    // ============ Internal Helpers ============
+    // ============ SVG Generation ============
 
     function _generateSVG(uint256 tokenId, bool isActive, uint256 mintedAt) private pure returns (string memory) {
         string memory tokenIdStr = Strings.toString(tokenId);

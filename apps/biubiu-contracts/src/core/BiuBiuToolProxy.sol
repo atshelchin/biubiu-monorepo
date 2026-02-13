@@ -37,8 +37,7 @@ abstract contract BiuBiuToolProxy is BiuBiuSubscription {
         uint256 forwardValue = msg.value;
 
         if (!p.isPremium) {
-            (p.paidAmount, p.referralAmount, p.promoId, forwardValue) =
-                _processToolPayment(referrer, promoCode);
+            (p.paidAmount, p.referralAmount, p.promoId, forwardValue) = _processToolPayment(referrer, promoCode);
         }
 
         // Call target
@@ -56,7 +55,9 @@ abstract contract BiuBiuToolProxy is BiuBiuSubscription {
 
         // Emit event for tracking
         bytes32 toolHash = bytes(toolId).length > 0 ? keccak256(bytes(toolId)) : bytes32(0);
-        emit ToolCalled(msg.sender, target, toolHash, toolId, p.isPremium, p.paidAmount, referrer, p.referralAmount, p.promoId);
+        emit ToolCalled(
+            msg.sender, target, toolHash, toolId, p.isPremium, p.paidAmount, referrer, p.referralAmount, p.promoId
+        );
     }
 
     // ============ Internal ============

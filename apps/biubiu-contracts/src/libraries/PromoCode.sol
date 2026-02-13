@@ -28,9 +28,7 @@ library PromoCode {
     /// @param typeHash The PROMO_TYPEHASH constant
     /// @param data The promo code data
     function structHash(bytes32 typeHash, Data memory data) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encode(typeHash, keccak256(bytes(data.name)), data.discountBps, data.expiry, data.chainId)
-        );
+        return keccak256(abi.encode(typeHash, keccak256(bytes(data.name)), data.discountBps, data.expiry, data.chainId));
     }
 
     /// @notice Compute EIP-712 digest

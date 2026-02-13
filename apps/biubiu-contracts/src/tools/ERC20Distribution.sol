@@ -17,6 +17,10 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  *   2. Specified: exact amount for each recipient
  *   3. Random: random distribution based on weights
  *   4. RandomRange: random amount within min/max range
+ *
+ * Additional features:
+ *   - Validation: detect deflationary tokens and test transfers
+ *   - Continue-on-failure: partial distribution with failure tracking
  */
 contract ERC20Distribution is ERC2771Context {
     // ============ Errors ============
@@ -27,6 +31,24 @@ contract ERC20Distribution is ERC2771Context {
     error TransferFailed();
     error InvalidRange();
     error ZeroAmount();
+
+    // ============ Structs ============
+
+    /// @notice Options for advanced distribution functions
+    /// @param allowPartialFailure If true, continue on failure and return failed indices
+    struct Options {
+        bool allowPartialFailure;
+    }
+
+    /// @notice Result of distribution with allowPartialFailure=true
+    /// @param totalSent Total tokens successfully sent
+    /// @param successCount Number of successful transfers
+    /// @param failedIndices Indices of failed recipients (empty if all succeeded)
+    struct DistributeResult {
+        uint256 totalSent;
+        uint256 successCount;
+        uint256[] failedIndices;
+    }
 
     // ============ Events ============
 
@@ -51,6 +73,19 @@ contract ERC20Distribution is ERC2771Context {
         uint256 totalAmount,
         uint256 recipientCount
     );
+
+    /// @notice Emitted after distribution with partial failures
+    event DistributedPartial(
+        address indexed sender,
+        address indexed token,
+        uint8 indexed mode,
+        uint256 totalSent,
+        uint256 successCount,
+        uint256 failCount
+    );
+
+    /// @notice Emitted for each failed transfer (when allowPartialFailure=true)
+    event TransferSkipped(address indexed token, address indexed recipient, uint256 indexed index, uint256 amount);
 
     // ============ Storage ============
 
@@ -390,7 +425,312 @@ contract ERC20Distribution is ERC2771Context {
         emit Distributed(sender, token, 4, true, totalSent, len);
     }
 
+    // ============ Advanced Distribution (With Options) ============
+
+    /**
+     * @notice Distribute tokens equally with advanced options (from deposit)
+     * @param token The ERC20 token address
+     * @param recipients Array of recipient addresses
+     * @param totalAmount Total amount to distribute
+     * @param options Failure handling options
+     * @return result Distribution result (only meaningful if allowPartialFailure=true)
+     */
+    function distributeEqualEx(
+        address token,
+        address[] calldata recipients,
+        uint256 totalAmount,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (totalAmount == 0) revert ZeroAmount();
+
+        address sender = _msgSender();
+        if (balances[sender][token] < totalAmount) revert InsufficientBalance();
+
+        uint256 amount = totalAmount / len;
+        uint256 dust = totalAmount - (amount * len);
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amount;
+            if (i == 0) amt += dust;
+
+            bool success = _tryTransfer(token, recipients[i], amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(token, recipients[i], i, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Deduct only what was actually sent
+        balances[sender][token] -= result.totalSent;
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(token, 1, result, len);
+    }
+
+    /**
+     * @notice Distribute specified amounts with advanced options (from deposit)
+     * @param token The ERC20 token address
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts for each recipient
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function distributeSpecifiedEx(
+        address token,
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (len != amounts.length) revert LengthMismatch();
+
+        address sender = _msgSender();
+
+        // Calculate total required
+        uint256 totalRequired;
+        for (uint256 i; i < len;) {
+            totalRequired += amounts[i];
+            unchecked {
+                ++i;
+            }
+        }
+        if (balances[sender][token] < totalRequired) revert InsufficientBalance();
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amounts[i];
+            if (amt == 0) {
+                unchecked {
+                    ++i;
+                }
+                continue;
+            }
+
+            bool success = _tryTransfer(token, recipients[i], amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(token, recipients[i], i, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // Deduct only what was actually sent
+        balances[sender][token] -= result.totalSent;
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(token, 2, result, len);
+    }
+
+    /**
+     * @notice Distribute tokens equally via direct transferFrom with options
+     * @param token The ERC20 token address
+     * @param recipients Array of recipient addresses
+     * @param totalAmount Total amount to pull from sender
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function distributeEqualDirectEx(
+        address token,
+        address[] calldata recipients,
+        uint256 totalAmount,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (totalAmount == 0) revert ZeroAmount();
+
+        address sender = _msgSender();
+        uint256 amount = totalAmount / len;
+        uint256 dust = totalAmount - (amount * len);
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amount;
+            if (i == 0) amt += dust;
+
+            bool success = _tryTransferFrom(token, sender, recipients[i], amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(token, recipients[i], i, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(token, 1, result, len);
+    }
+
+    /**
+     * @notice Distribute specified amounts via direct transferFrom with options
+     * @param token The ERC20 token address
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts for each recipient
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function distributeSpecifiedDirectEx(
+        address token,
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (len != amounts.length) revert LengthMismatch();
+
+        address sender = _msgSender();
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amounts[i];
+            if (amt == 0) {
+                unchecked {
+                    ++i;
+                }
+                continue;
+            }
+
+            bool success = _tryTransferFrom(token, sender, recipients[i], amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(token, recipients[i], i, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(token, 2, result, len);
+    }
+
+    // ============ Validation ============
+
+    /**
+     * @notice Test if token is deflationary by checking transfer behavior
+     * @dev Sends 1 token and checks if received amount matches
+     * @param token The ERC20 token address
+     * @param testRecipient Address to test transfer to (will receive 1 token)
+     * @return isDeflationary True if token takes a fee on transfer
+     */
+    function checkDeflationary(address token, address testRecipient) external returns (bool isDeflationary) {
+        address sender = _msgSender();
+
+        uint256 balanceBefore = _balanceOf(token, testRecipient);
+        bool success = _tryTransferFrom(token, sender, testRecipient, 1);
+
+        if (!success) {
+            revert TransferFailed();
+        }
+
+        uint256 received = _balanceOf(token, testRecipient) - balanceBefore;
+        isDeflationary = received != 1;
+    }
+
     // ============ Internal ERC20 Helpers ============
+
+    function _emitResult(address token, uint8 mode, DistributeResult memory result, uint256 recipientCount) private {
+        if (result.failedIndices.length > 0) {
+            emit DistributedPartial(_msgSender(), token, mode, result.totalSent, result.successCount, result.failedIndices.length);
+        } else {
+            emit Distributed(_msgSender(), token, mode, false, result.totalSent, recipientCount);
+        }
+    }
 
     function _transfer(address token, address to, uint256 amount) private {
         (bool success, bytes memory data) =
@@ -402,6 +742,14 @@ contract ERC20Distribution is ERC2771Context {
         }
     }
 
+    function _tryTransfer(address token, address to, uint256 amount) private returns (bool) {
+        (bool success, bytes memory data) =
+            token.call(
+                abi.encodeWithSelector(0xa9059cbb, to, amount) // transfer(address,uint256)
+            );
+        return success && (data.length == 0 || abi.decode(data, (bool)));
+    }
+
     function _transferFrom(address token, address from, address to, uint256 amount) private {
         (bool success, bytes memory data) =
             token.call(
@@ -410,6 +758,14 @@ contract ERC20Distribution is ERC2771Context {
         if (!success || (data.length != 0 && !abi.decode(data, (bool)))) {
             revert TransferFailed();
         }
+    }
+
+    function _tryTransferFrom(address token, address from, address to, uint256 amount) private returns (bool) {
+        (bool success, bytes memory data) =
+            token.call(
+                abi.encodeWithSelector(0x23b872dd, from, to, amount) // transferFrom(address,address,uint256)
+            );
+        return success && (data.length == 0 || abi.decode(data, (bool)));
     }
 
     function _balanceOf(address token, address account) private view returns (uint256) {

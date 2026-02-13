@@ -26,6 +26,24 @@ contract ERC1155Distribution is ERC2771Context {
     error InvalidRange();
     error ZeroAmount();
 
+    // ============ Structs ============
+
+    /// @notice Options for advanced distribution functions
+    /// @param allowPartialFailure If true, continue on failure and return failed indices
+    struct Options {
+        bool allowPartialFailure;
+    }
+
+    /// @notice Result of distribution with allowPartialFailure=true
+    /// @param totalSent Total tokens successfully sent
+    /// @param successCount Number of successful transfers
+    /// @param failedIndices Indices of failed recipients (empty if all succeeded)
+    struct DistributeResult {
+        uint256 totalSent;
+        uint256 successCount;
+        uint256[] failedIndices;
+    }
+
     // ============ Events ============
 
     /// @notice Emitted after each distribution
@@ -42,6 +60,22 @@ contract ERC1155Distribution is ERC2771Context {
         uint256 tokenId,
         uint256 totalAmount,
         uint256 recipientCount
+    );
+
+    /// @notice Emitted after distribution with partial failures
+    event DistributedPartial(
+        address indexed sender,
+        address indexed nft,
+        uint8 indexed mode,
+        uint256 tokenId,
+        uint256 totalSent,
+        uint256 successCount,
+        uint256 failCount
+    );
+
+    /// @notice Emitted for each failed transfer (when allowPartialFailure=true)
+    event TransferSkipped(
+        address indexed nft, address indexed recipient, uint256 indexed index, uint256 tokenId, uint256 amount
     );
 
     // ============ Constructor ============
@@ -270,7 +304,211 @@ contract ERC1155Distribution is ERC2771Context {
         emit Distributed(sender, nft, 5, 0, total, 1);
     }
 
+    // ============ Advanced Distribution (With Options) ============
+
+    /**
+     * @notice Distribute a single tokenId equally with advanced options
+     * @param nft The ERC1155 contract address
+     * @param tokenId The token ID to distribute
+     * @param recipients Array of recipient addresses
+     * @param totalAmount Total amount to distribute
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function distributeSingleEqualEx(
+        address nft,
+        uint256 tokenId,
+        address[] calldata recipients,
+        uint256 totalAmount,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (totalAmount == 0) revert ZeroAmount();
+
+        address sender = _msgSender();
+        uint256 amount = totalAmount / len;
+        uint256 dust = totalAmount - (amount * len);
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amount;
+            if (i == 0) amt += dust;
+
+            bool success = _trySafeTransferFrom(nft, sender, recipients[i], tokenId, amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(nft, recipients[i], i, tokenId, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(nft, 1, tokenId, result, len);
+    }
+
+    /**
+     * @notice Distribute a single tokenId with specified amounts and options
+     * @param nft The ERC1155 contract address
+     * @param tokenId The token ID to distribute
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts for each recipient
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function distributeSingleSpecifiedEx(
+        address nft,
+        uint256 tokenId,
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = recipients.length;
+        if (len == 0) revert NoRecipients();
+        if (len != amounts.length) revert LengthMismatch();
+
+        address sender = _msgSender();
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            uint256 amt = amounts[i];
+            if (amt == 0) {
+                unchecked {
+                    ++i;
+                }
+                continue;
+            }
+
+            bool success = _trySafeTransferFrom(nft, sender, recipients[i], tokenId, amt);
+
+            if (success) {
+                result.totalSent += amt;
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(nft, recipients[i], i, tokenId, amt);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(nft, 2, tokenId, result, len);
+    }
+
+    /**
+     * @notice Batch transfer with advanced options
+     * @param nft The ERC1155 contract address
+     * @param tokenIds Array of token IDs
+     * @param amounts Array of amounts for each token
+     * @param recipients Array of recipient addresses
+     * @param options Failure handling options
+     * @return result Distribution result
+     */
+    function batchTransferEx(
+        address nft,
+        uint256[] calldata tokenIds,
+        uint256[] calldata amounts,
+        address[] calldata recipients,
+        Options calldata options
+    ) external returns (DistributeResult memory result) {
+        uint256 len = tokenIds.length;
+        if (len == 0) revert NoRecipients();
+        if (len != amounts.length || len != recipients.length) revert LengthMismatch();
+
+        address sender = _msgSender();
+
+        uint256[] memory tempFailed = new uint256[](len);
+        uint256 failCount;
+
+        for (uint256 i; i < len;) {
+            bool success = _trySafeTransferFrom(nft, sender, recipients[i], tokenIds[i], amounts[i]);
+
+            if (success) {
+                result.totalSent += amounts[i];
+                unchecked {
+                    ++result.successCount;
+                }
+            } else {
+                if (!options.allowPartialFailure) {
+                    revert TransferFailed();
+                }
+                emit TransferSkipped(nft, recipients[i], i, tokenIds[i], amounts[i]);
+                tempFailed[failCount] = i;
+                unchecked {
+                    ++failCount;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        result.failedIndices = new uint256[](failCount);
+        for (uint256 i; i < failCount;) {
+            result.failedIndices[i] = tempFailed[i];
+            unchecked {
+                ++i;
+            }
+        }
+
+        _emitResult(nft, 5, 0, result, len);
+    }
+
     // ============ Internal ============
+
+    function _emitResult(address nft, uint8 mode, uint256 tokenId, DistributeResult memory result, uint256 recipientCount)
+        private
+    {
+        if (result.failedIndices.length > 0) {
+            emit DistributedPartial(
+                _msgSender(), nft, mode, tokenId, result.totalSent, result.successCount, result.failedIndices.length
+            );
+        } else {
+            emit Distributed(_msgSender(), nft, mode, tokenId, result.totalSent, recipientCount);
+        }
+    }
 
     function _safeTransferFrom(address nft, address from, address to, uint256 tokenId, uint256 amount) private {
         (bool success,) = nft.call(
@@ -284,5 +522,21 @@ contract ERC1155Distribution is ERC2771Context {
             )
         );
         if (!success) revert TransferFailed();
+    }
+
+    function _trySafeTransferFrom(address nft, address from, address to, uint256 tokenId, uint256 amount)
+        private
+        returns (bool success)
+    {
+        (success,) = nft.call(
+            abi.encodeWithSelector(
+                0xf242432a, // safeTransferFrom(address,address,uint256,uint256,bytes)
+                from,
+                to,
+                tokenId,
+                amount,
+                ""
+            )
+        );
     }
 }

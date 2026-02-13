@@ -142,7 +142,8 @@ contract ETHDistribution is ERC2771Context {
     }
 
     /**
-     * @notice Distribute with random amounts within a range
+     * @notice Distribute with random amounts within a range (strict mode)
+     * @dev Requires msg.value >= maxAmount * len to ensure fair randomness
      * @param recipients Array of recipient addresses
      * @param minAmount Minimum amount per recipient
      * @param maxAmount Maximum amount per recipient
@@ -155,7 +156,9 @@ contract ETHDistribution is ERC2771Context {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (minAmount > maxAmount) revert InvalidRange();
-        if (msg.value < minAmount * len) revert InsufficientValue();
+
+        uint256 maxRequired = maxAmount * len;
+        if (msg.value < maxRequired) revert InsufficientValue();
 
         bytes32 seed = keccak256(abi.encodePacked(
             block.timestamp,
@@ -167,36 +170,21 @@ contract ETHDistribution is ERC2771Context {
         uint256 totalSent;
 
         for (uint256 i; i < len;) {
-            uint256 amount;
-            uint256 remaining = msg.value - totalSent;
-            uint256 reserveForOthers = minAmount * (len - i - 1);
-
-            if (i == len - 1) {
-                // Last recipient
-                amount = remaining;
-                if (amount > maxAmount) amount = maxAmount;
-            } else {
-                // Random within range, capped by available
-                uint256 maxAllowed = remaining - reserveForOthers;
-                if (maxAllowed > maxAmount) maxAllowed = maxAmount;
-
-                if (range != 0 && maxAllowed > minAmount) {
-                    uint256 actualRange = maxAllowed - minAmount;
-                    uint256 extra = uint256(keccak256(abi.encodePacked(seed, i))) % (actualRange + 1);
-                    amount = minAmount + extra;
-                } else {
-                    amount = minAmount;
-                }
-            }
+            // Random amount between min and max (guaranteed to have funds)
+            uint256 extra = range != 0
+                ? uint256(keccak256(abi.encodePacked(seed, i))) % (range + 1)
+                : 0;
+            uint256 amount = minAmount + extra;
 
             _send(recipients[i], amount);
             totalSent += amount;
             unchecked { ++i; }
         }
 
-        // Refund excess
-        if (msg.value > totalSent) {
-            _send(_msgSender(), msg.value - totalSent);
+        // Refund unused (guaranteed: msg.value >= maxRequired >= totalSent)
+        uint256 refund = msg.value - totalSent;
+        if (refund != 0) {
+            _send(_msgSender(), refund);
         }
 
         emit Distributed(_msgSender(), 4, totalSent, len);

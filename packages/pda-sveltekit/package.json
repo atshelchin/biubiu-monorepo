@@ -1,0 +1,35 @@
+{
+  "name": "@shelchin/pda-sveltekit",
+  "version": "0.1.0",
+  "description": "Auto-render PDA applications with SvelteKit - schema-driven UI with customizable renderers",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "svelte": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch"
+  },
+  "dependencies": {
+    "@shelchin/pda": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "svelte": "^5.0.0",
+    "typescript": "^5.0.0",
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0",
+    "zod": "^3.23.0"
+  }
+}

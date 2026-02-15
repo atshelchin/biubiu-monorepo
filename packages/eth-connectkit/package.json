@@ -1,0 +1,39 @@
+{
+  "name": "@shelchin/eth-connectkit",
+  "version": "0.1.0",
+  "description": "UI-agnostic Ethereum wallet connection library",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./chains": {
+      "types": "./dist/utils/chains.d.ts",
+      "default": "./dist/utils/chains.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@coinbase/wallet-sdk": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@coinbase/wallet-sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@coinbase/wallet-sdk": "^4.3.4"
+  }
+}

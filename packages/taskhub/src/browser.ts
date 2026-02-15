@@ -4,7 +4,7 @@
  */
 
 // Core
-export { Hub, createTaskHub } from './core/Hub.js';
+export { Hub } from './core/Hub.js';
 export type { CreateTaskOptions } from './core/Hub.js';
 export { Task } from './core/Task.js';
 export { Dispatcher } from './core/Dispatcher.js';

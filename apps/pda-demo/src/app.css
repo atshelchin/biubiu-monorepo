@@ -13,6 +13,18 @@
   --success: #30d158;
   --warning: #ffd60a;
   --error: #ff453a;
+
+  /* Map pda-sveltekit variables to dark theme */
+  --pda-bg-primary: var(--bg-card);
+  --pda-bg-secondary: var(--bg-secondary);
+  --pda-text-primary: var(--text-primary);
+  --pda-text-secondary: var(--text-secondary);
+  --pda-text-muted: var(--text-muted);
+  --pda-border: var(--border-color);
+  --pda-accent: var(--accent);
+  --pda-success: var(--success);
+  --pda-warning: var(--warning);
+  --pda-error: var(--error);
 }
 
 * {

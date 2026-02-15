@@ -1,7 +1,25 @@
-import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import type { PageServerLoad, EntryGenerator } from './$types';
 
 const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
+
+// Enable prerendering for all chain pages
+export const prerender = true;
+
+// Generate entries for all chains at build time
+export const entries: EntryGenerator = async () => {
+	try {
+		const response = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-chains.json`);
+		const json = await response.json();
+		const chains: Array<{ chainId: number }> = json.data || [];
+
+		return chains.map((chain) => ({
+			chainID: String(chain.chainId)
+		}));
+	} catch (error) {
+		console.error('Failed to fetch chains for prerendering:', error);
+		return [];
+	}
+};
 
 export interface ChainData {
 	name: string;

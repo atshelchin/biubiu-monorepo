@@ -1,5 +1,6 @@
 node_modules
 examples
+!packages/pda/examples
 .turbo/cache
 turbo-build.log
 biubiu.env

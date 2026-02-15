@@ -23,6 +23,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@shelchin/taskhub": "workspace:*",
+    "viem": "^2.0.0",
     "@types/bun": "latest",
     "@types/node": "^22.0.0"
   }

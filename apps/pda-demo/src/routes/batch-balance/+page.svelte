@@ -1,7 +1,7 @@
 <script lang="ts">
   import { batchBalanceApp, NETWORKS, type BatchBalanceOutput } from '$lib/batch-balance-app';
   import { createPDAAdapter } from '$lib/pda-svelte-adapter.svelte';
-  import { LineEditor, type LineValidator } from '@shelchin/proeditor-sveltekit';
+  import { LineEditor, FileUploadModal, type LineValidator } from '@shelchin/proeditor-sveltekit';
   import { isAddress } from 'viem';
 
   // Form state - using LineEditor for high-performance address input
@@ -128,7 +128,11 @@
             bind:validCount
             bind:errorCount
             bind:duplicateCount
-          />
+          >
+            {#snippet fileUploadModal({ open, onClose, onConfirm })}
+              <FileUploadModal {open} {onClose} {onConfirm} columnCount={1} columnLabels={['Address']} />
+            {/snippet}
+          </LineEditor>
         </div>
         {#if validCount > 0 || errorCount > 0}
           <div class="input-stats">

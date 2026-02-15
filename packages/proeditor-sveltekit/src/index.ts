@@ -42,37 +42,46 @@ export type {
 export {
 	createEditorState,
 	createDocument,
-	createCursor,
-	createViewport,
+	createCursorManager,
+	createViewportManager,
 	createUndoManager,
-	createTextMeasure
+	createTextMeasurer,
+	createErrorManager
 } from './core/index.js';
 
 export type {
 	EditorState,
 	EditorConfig,
 	Document,
-	Cursor,
+	CursorManager,
 	CursorState,
-	Viewport,
+	ViewportManager,
 	VisibleRange,
 	UndoManager,
-	TextMeasure,
+	TextMeasurer,
 	ValidationError,
 	SearchMatch,
-	EditRange,
 	ErrorManager
 } from './core/index.js';
 
 // ==================== Render ====================
-export { createRenderer, createDOMPool, createLineHighlighter } from './render/index.js';
+export {
+	createRenderer,
+	createLinePool,
+	createGutterPool,
+	createActiveElements,
+	highlightLine,
+	highlightCsvLine,
+	escapeHtml
+} from './render/index.js';
 
 export type {
 	Renderer,
-	RendererConfig,
-	DOMPool,
-	LineHighlighter,
-	HighlightedRange
+	RendererOptions,
+	LinePool,
+	GutterPool,
+	ActiveElements,
+	HighlightOptions
 } from './render/index.js';
 
 // ==================== UI Components ====================

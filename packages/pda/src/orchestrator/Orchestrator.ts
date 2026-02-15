@@ -75,8 +75,9 @@ export class Orchestrator<TInput = unknown, TOutput = unknown> extends EventEmit
 
   /**
    * Start execution
+   * @param preCollectedInput - Optional pre-collected input (skips collectInput call)
    */
-  async run(): Promise<ExecutionResult<TOutput>> {
+  async run(preCollectedInput?: TInput): Promise<ExecutionResult<TOutput>> {
     if (this.state !== 'IDLE') {
       throw new Error(`Cannot start: orchestrator is in ${this.state} state`);
     }
@@ -88,14 +89,24 @@ export class Orchestrator<TInput = unknown, TOutput = unknown> extends EventEmit
       // PRE_FLIGHT: Collect and validate input
       this.transition('PRE_FLIGHT');
 
-      const rawInput = await this.config.adapter.collectInput(this.config.manifest);
-      const parseResult = this.config.manifest.inputSchema.safeParse(rawInput);
+      let input: TInput;
 
-      if (!parseResult.success) {
-        throw new Error(`Input validation failed: ${parseResult.error.message}`);
+      if (preCollectedInput !== undefined) {
+        // Input already provided (GUI mode) - just validate
+        const parseResult = this.config.manifest.inputSchema.safeParse(preCollectedInput);
+        if (!parseResult.success) {
+          throw new Error(`Input validation failed: ${parseResult.error.message}`);
+        }
+        input = parseResult.data as TInput;
+      } else {
+        // Collect input from adapter (CLI mode)
+        const rawInput = await this.config.adapter.collectInput(this.config.manifest);
+        const parseResult = this.config.manifest.inputSchema.safeParse(rawInput);
+        if (!parseResult.success) {
+          throw new Error(`Input validation failed: ${parseResult.error.message}`);
+        }
+        input = parseResult.data as TInput;
       }
-
-      const input = parseResult.data as TInput;
 
       // RUNNING: Execute the generator
       this.transition('RUNNING');

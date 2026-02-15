@@ -197,8 +197,8 @@ export interface App<TInput, TOutput> {
   /** The app's manifest */
   manifest: Manifest;
 
-  /** Run with a specific adapter */
-  run(adapter: Adapter<TInput, TOutput>): Promise<ExecutionResult<TOutput>>;
+  /** Run with a specific adapter, optionally with pre-collected input (for GUI adapters) */
+  run(adapter: Adapter<TInput, TOutput>, input?: TInput): Promise<ExecutionResult<TOutput>>;
 
   /** Run in CLI mode */
   runCLI(args?: string[]): Promise<ExecutionResult<TOutput>>;
@@ -338,7 +338,7 @@ export function createApp<TInput extends z.ZodType, TOutput extends z.ZodType>(
   return {
     manifest,
 
-    async run(adapter) {
+    async run(adapter, input?) {
       const storage = new MemoryStorage();
       const orchestrator = new Orchestrator({
         manifest,
@@ -346,7 +346,7 @@ export function createApp<TInput extends z.ZodType, TOutput extends z.ZodType>(
         storage,
         executor: wrappedExecutor,
       });
-      return orchestrator.run();
+      return orchestrator.run(input);
     },
 
     async runCLI(args = []) {

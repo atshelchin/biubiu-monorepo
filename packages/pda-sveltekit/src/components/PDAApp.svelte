@@ -14,11 +14,26 @@
     OrchestratorState,
     Manifest,
   } from '@shelchin/pda';
-  import type { InputRenderer, OutputRenderer, LayoutMode, LogEntry, ProgressData } from '../types.js';
+  import type {
+    InputRenderer,
+    OutputRenderer,
+    InteractionRenderer,
+    ErrorRenderer as ErrorRendererType,
+    GuidedError,
+    LayoutMode,
+    LogEntry,
+    ProgressData,
+    InputMode,
+  } from '../types.js';
   import { parseObjectSchema, createInitialValues } from '../schema.js';
   import FieldRenderer from './inputs/FieldRenderer.svelte';
   import OutputRendererComponent from './outputs/OutputRenderer.svelte';
   import InteractionModal from './interactions/InteractionModal.svelte';
+  import WorkflowInteraction from './interactions/WorkflowInteraction.svelte';
+  import ErrorPanel from './ErrorPanel.svelte';
+  import InputModeSwitch from './InputModeSwitch.svelte';
+
+  import type { FormRenderer } from '../types.js';
 
   interface Props {
     // The PDA app instance
@@ -32,9 +47,28 @@
     showVersion?: boolean;
     layout?: LayoutMode;
 
+    // Input mode options
+    /** Default input mode */
+    inputMode?: InputMode;
+    /** Show mode switcher (defaults to true if inputMode is set) */
+    showModeSwitch?: boolean;
+    /** Callback when mode changes */
+    onModeChange?: (mode: InputMode) => void;
+
+    // Custom form renderer (replaces default field-by-field rendering)
+    /** A Svelte component that renders the entire input form */
+    formRenderer?: FormRenderer;
+
     // Custom renderers (local to this instance)
     inputRenderers?: Record<string, InputRenderer>;
     outputRenderers?: Record<string, OutputRenderer>;
+
+    // Custom interaction renderers (by interaction type)
+    interactionRenderers?: Record<string, InteractionRenderer>;
+
+    // Custom error renderer (or use ErrorGuideFactory to create guided errors)
+    errorRenderer?: ErrorRendererType;
+    errorGuide?: (error: Error) => GuidedError;
 
     // Submit button customization
     submitLabel?: string;
@@ -51,14 +85,37 @@
     showHeader = true,
     showVersion = true,
     layout = 'vertical',
+    inputMode: initialInputMode,
+    showModeSwitch,
+    onModeChange,
+    formRenderer,
     inputRenderers,
     outputRenderers,
+    interactionRenderers,
+    errorRenderer,
+    errorGuide,
     submitLabel,
     submitDisabled = false,
     onSubmit,
     onComplete,
     onError,
   }: Props = $props();
+
+  // Input mode state (internal, allows switching without losing form state)
+  let inputMode = $state<InputMode>(initialInputMode ?? 'standard');
+  let shouldShowModeSwitch = $derived(showModeSwitch ?? !!initialInputMode);
+
+  // Update mode when external prop changes
+  $effect(() => {
+    if (initialInputMode !== undefined) {
+      inputMode = initialInputMode;
+    }
+  });
+
+  function handleModeChange(mode: InputMode) {
+    inputMode = mode;
+    onModeChange?.(mode);
+  }
 
   // Parse input schema
   let inputFields = $derived(parseObjectSchema(app.manifest.inputSchema));
@@ -210,10 +267,20 @@
   <!-- Header -->
   {#if showHeader}
     <header class="pda-header">
-      <div class="pda-header-main">
-        <h1 class="pda-title">{app.manifest.name}</h1>
-        {#if showVersion && app.manifest.version}
-          <span class="pda-version">v{app.manifest.version}</span>
+      <div class="pda-header-row">
+        <div class="pda-header-main">
+          <h1 class="pda-title">{app.manifest.name}</h1>
+          {#if showVersion && app.manifest.version}
+            <span class="pda-version">v{app.manifest.version}</span>
+          {/if}
+        </div>
+        {#if shouldShowModeSwitch}
+          <InputModeSwitch
+            mode={inputMode}
+            onModeChange={handleModeChange}
+            disabled={isRunning}
+            compact={layout === 'compact'}
+          />
         {/if}
       </div>
       {#if app.manifest.description}
@@ -228,18 +295,31 @@
     class:pda-panel-inactive={isProgressive && activePanel !== 'input'}
   >
     <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-      <div class="pda-fields" class:pda-fields-grid={layout === 'grid'}>
-        {#each inputFields as field}
-          <FieldRenderer
-            {field}
-            value={formValues[field.name]}
-            onChange={(value) => handleFieldChange(field.name, value)}
-            appId={app.manifest.id}
-            disabled={isRunning}
-            localRenderers={inputRenderers}
-          />
-        {/each}
-      </div>
+      {#if formRenderer}
+        <!-- Custom form renderer -->
+        {@const FormComponent = formRenderer}
+        <FormComponent
+          value={formValues}
+          onChange={(newValues: Record<string, unknown>) => { formValues = newValues; }}
+          disabled={isRunning}
+          mode={inputMode}
+        />
+      {:else}
+        <!-- Default field-by-field rendering -->
+        <div class="pda-fields" class:pda-fields-grid={layout === 'grid'}>
+          {#each inputFields as field}
+            <FieldRenderer
+              {field}
+              value={formValues[field.name]}
+              onChange={(value) => handleFieldChange(field.name, value)}
+              appId={app.manifest.id}
+              disabled={isRunning}
+              localRenderers={inputRenderers}
+              mode={inputMode}
+            />
+          {/each}
+        </div>
+      {/if}
 
       <button
         type="submit"
@@ -249,7 +329,7 @@
         {#if isRunning}
           Running...
         {:else}
-          {submitLabel ?? app.manifest.uiHints?.submitLabel ?? 'Run'}
+          {submitLabel ?? 'Run'}
         {/if}
       </button>
     </form>
@@ -334,9 +414,25 @@
           localRenderers={outputRenderers}
         />
       {:else if result?.error}
-        <div class="pda-error-box">
-          <p class="pda-error-message">{result.error}</p>
-        </div>
+        {@const errorObj = new Error(result.error)}
+        {@const guidedErr = errorGuide ? errorGuide(errorObj) : errorObj}
+
+        {#if errorRenderer}
+          <!-- Custom error renderer -->
+          <svelte:component
+            this={errorRenderer}
+            error={guidedErr}
+            onRetry={handleSubmit}
+            onDismiss={reset}
+          />
+        {:else}
+          <!-- Built-in error panel with guidance -->
+          <ErrorPanel
+            error={guidedErr}
+            onRetry={handleSubmit}
+            onDismiss={reset}
+          />
+        {/if}
       {/if}
 
       {#if result?.duration}
@@ -351,10 +447,38 @@
 
   <!-- Interaction Modal -->
   {#if pendingInteraction}
-    <InteractionModal
-      request={pendingInteraction.request}
-      onRespond={handleInteractionResponse}
-    />
+    {@const interactionType = pendingInteraction.request.type}
+    {@const CustomRenderer = interactionRenderers?.[interactionType]}
+
+    {#if CustomRenderer}
+      <!-- Custom interaction renderer -->
+      <CustomRenderer
+        request={pendingInteraction.request}
+        onRespond={(value) => handleInteractionResponse({ requestId: pendingInteraction!.request.requestId, value })}
+        onSkip={() => handleInteractionResponse({
+          requestId: pendingInteraction!.request.requestId,
+          value: pendingInteraction!.request.defaultValue,
+          skipped: true
+        })}
+      />
+    {:else if interactionType === 'workflow'}
+      <!-- Built-in workflow interaction -->
+      <WorkflowInteraction
+        request={pendingInteraction.request}
+        onRespond={(value) => handleInteractionResponse({ requestId: pendingInteraction!.request.requestId, value })}
+        onCancel={() => handleInteractionResponse({
+          requestId: pendingInteraction!.request.requestId,
+          value: { action: 'cancel' },
+          skipped: true
+        })}
+      />
+    {:else}
+      <!-- Default interaction modal -->
+      <InteractionModal
+        request={pendingInteraction.request}
+        onRespond={handleInteractionResponse}
+      />
+    {/if}
   {/if}
 </div>
 
@@ -369,11 +493,19 @@
     margin-bottom: 32px;
   }
 
+  .pda-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
   .pda-header-main {
     display: flex;
     align-items: baseline;
     gap: 12px;
-    margin-bottom: 8px;
   }
 
   .pda-title {
@@ -538,20 +670,6 @@
   .pda-log-time {
     color: var(--pda-text-muted, #aeaeb2);
     flex-shrink: 0;
-  }
-
-  .pda-error-box {
-    background: rgba(255, 59, 48, 0.1);
-    border: 1px solid rgba(255, 59, 48, 0.2);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-
-  .pda-error-message {
-    color: var(--pda-error, #ff3b30);
-    margin: 0;
-    font-size: 14px;
   }
 
   .pda-duration {

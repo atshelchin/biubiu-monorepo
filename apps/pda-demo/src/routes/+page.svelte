@@ -1,5 +1,8 @@
 <script lang="ts">
   import { batchBalanceApp, NETWORKS } from '$lib/batch-balance-app';
+  import { sendTransactionApp, BUILTIN_NETWORKS, BUILTIN_TOKENS } from '$lib/send-transaction-app';
+
+  const totalTokens = Object.values(BUILTIN_TOKENS).reduce((sum, tokens) => sum + tokens.length, 0);
 </script>
 
 <svelte:head>
@@ -69,6 +72,23 @@
       </div>
     </div>
   </a>
+
+  <a href="/send-transaction" class="app-card card">
+    <div class="app-icon send">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </div>
+    <div class="app-info">
+      <h3>{sendTransactionApp.manifest.name}</h3>
+      <p>{sendTransactionApp.manifest.description}</p>
+      <div class="app-meta">
+        <span class="badge send">v{sendTransactionApp.manifest.version}</span>
+        <span class="networks">{BUILTIN_NETWORKS.length} networks, {totalTokens} tokens</span>
+      </div>
+    </div>
+  </a>
 </div>
 
 <style>
@@ -130,6 +150,11 @@
     color: var(--warning, #ff9f0a);
   }
 
+  .app-icon.send {
+    background: rgba(191, 90, 242, 0.1);
+    color: #bf5af2;
+  }
+
   .app-info {
     flex: 1;
   }
@@ -168,6 +193,11 @@
   .badge.custom {
     background: rgba(255, 159, 10, 0.15);
     color: var(--warning, #ff9f0a);
+  }
+
+  .badge.send {
+    background: rgba(191, 90, 242, 0.15);
+    color: #bf5af2;
   }
 
   .networks {

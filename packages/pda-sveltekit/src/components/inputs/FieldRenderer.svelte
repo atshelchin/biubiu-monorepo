@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldDefinition, InputRenderer } from '../../types.js';
+  import type { FieldDefinition, InputRenderer, InputMode } from '../../types.js';
   import { resolveInputRenderer } from '../../registry.js';
   import StringInput from './StringInput.svelte';
   import NumberInput from './NumberInput.svelte';
@@ -15,9 +15,11 @@
     disabled?: boolean;
     error?: string;
     localRenderers?: Record<string, InputRenderer>;
+    /** Input mode: guided, standard, or expert - passed to custom renderers */
+    mode?: InputMode;
   }
 
-  let { field, value, onChange, appId, disabled = false, error, localRenderers }: Props = $props();
+  let { field, value, onChange, appId, disabled = false, error, localRenderers, mode = 'standard' }: Props = $props();
 
   // Resolve custom renderer
   let customRenderer = $derived(resolveInputRenderer(field, appId, localRenderers));
@@ -50,4 +52,5 @@
   {onChange}
   {disabled}
   {error}
+  {mode}
 />

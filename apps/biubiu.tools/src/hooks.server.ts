@@ -17,12 +17,23 @@ const DEFAULT_TIMEZONE = 'UTC';
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
 
-// Server-side message loader using dynamic imports (works with compiled binary)
+// Preload all message modules using import.meta.glob (handles special chars in filenames)
+const messageModules = import.meta.glob('./messages/**/*.json', { eager: false });
+
+// Server-side message loader using import.meta.glob (handles [brackets] in filenames)
 async function serverMessageLoader(locale: string, namespace: string) {
+  const path = `./messages/${locale}/${namespace}.json`;
+  const fallbackPath = `./messages/${DEFAULT_LOCALE}/${namespace}.json`;
+
   try {
-    // Use dynamic import - Vite will bundle these at build time
-    const module = await import(`./messages/${locale}/${namespace}.json`);
-    return module.default;
+    if (messageModules[path]) {
+      const module = (await messageModules[path]()) as { default: Record<string, string> };
+      return module.default;
+    } else if (messageModules[fallbackPath]) {
+      const module = (await messageModules[fallbackPath]()) as { default: Record<string, string> };
+      return module.default;
+    }
+    return {};
   } catch {
     // Try fallback
     if (locale !== DEFAULT_LOCALE) {

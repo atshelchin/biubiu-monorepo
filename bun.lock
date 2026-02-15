@@ -18,7 +18,9 @@
         "@resvg/resvg-wasm": "^2.6.2",
         "@shelchin/i18n-sveltekit": "workspace:*",
         "@shelchin/seo-sveltekit": "workspace:*",
+        "@shelchin/vendor-pool": "workspace:*",
         "satori": "^0.19.1",
+        "viem": "^2.46.0",
       },
       "devDependencies": {
         "@eslint/compat": "^2.0.1",

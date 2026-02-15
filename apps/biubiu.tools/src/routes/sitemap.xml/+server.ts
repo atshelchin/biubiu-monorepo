@@ -7,7 +7,8 @@ const BASE_URL = 'https://biubiu.tools';
 export const GET: RequestHandler = async () => {
 	const sitemaps = [
 		`${BASE_URL}/sitemap-static.xml`,
-		`${BASE_URL}/sitemap-chains.xml`
+		`${BASE_URL}/sitemap-chains.xml`,
+		`${BASE_URL}/sitemap-assets.xml`
 	];
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

@@ -49,9 +49,13 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 
 		const chain: ChainData = await response.json();
 
+		// Chain logo URL (may not exist, handled in frontend)
+		const logoUrl = `${ETHEREUM_DATA_BASE_URL}/chainlogos/eip155-${chainID}.png`;
+
 		return {
 			chain,
 			chainId: chainID,
+			logoUrl,
 			error: null
 		};
 	} catch (err) {

@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - Token Details",
+  "assets.description": "View {name} ({symbol}) token information, contract address, and social links.",
+  "assets.website": "Website",
+  "assets.explorer": "Explorer",
+  "assets.editOnGithub": "Edit",
+  "assets.tokenInfo": "Token Info",
+  "assets.networkInfo": "Network Info",
+  "assets.symbol": "Symbol",
+  "assets.decimals": "Decimals",
+  "assets.type": "Type",
+  "assets.chainId": "Chain ID",
+  "assets.contract": "Contract",
+  "assets.tags": "Tags",
+  "assets.links": "Links",
+  "assets.notFound": "Asset Not Found",
+  "assets.notFound.description": "The asset with address {address} was not found.",
+  "assets.backToHome": "Back to Home",
+  "assets.search.placeholder": "Search tokens by name, symbol, or address...",
+  "assets.search.noResults": "No tokens found"
+}

@@ -14,6 +14,12 @@
 	// Copy state for RPC endpoints
 	let copiedIndex = $state<number | null>(null);
 
+	// Logo fallback state
+	let logoError = $state(false);
+
+	// Default chain icon SVG
+	const defaultLogoUrl = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="24" fill="#2d3748"/><path d="M24 8L32 24L24 32L16 24L24 8Z" fill="#a0aec0"/><path d="M24 36L32 28L24 32L16 28L24 36Z" fill="#718096"/></svg>`);
+
 	// RPC latency state: rpcUrl -> { latency: number | null, status: 'pending' | 'success' | 'error' }
 	let rpcLatencies = $state<Map<string, { latency: number | null; status: 'pending' | 'success' | 'error' }>>(new Map());
 
@@ -190,13 +196,21 @@
 		<!-- Chain Header -->
 		<section class="chain-header" use:fadeInUp={{ delay: 50 }}>
 			<div class="chain-identity">
-				<h1 class="chain-name">{data.chain.name}</h1>
-				<div class="chain-badges">
-					<span class="badge badge-primary">#{data.chain.chainId}</span>
-					<span class="badge">{data.chain.shortName}</span>
-					{#if data.chain.nativeCurrency}
-						<span class="badge">{data.chain.nativeCurrency.symbol}</span>
-					{/if}
+				<img
+					src={logoError ? defaultLogoUrl : data.logoUrl}
+					alt={data.chain.name}
+					class="chain-logo"
+					onerror={() => (logoError = true)}
+				/>
+				<div class="chain-info">
+					<h1 class="chain-name">{data.chain.name}</h1>
+						<div class="chain-badges">
+						<span class="badge badge-primary">#{data.chain.chainId}</span>
+						<span class="badge">{data.chain.shortName}</span>
+						{#if data.chain.nativeCurrency}
+							<span class="badge">{data.chain.nativeCurrency.symbol}</span>
+						{/if}
+					</div>
 				</div>
 			</div>
 			<div class="header-links">
@@ -459,8 +473,22 @@
 
 	.chain-identity {
 		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+	}
+
+	.chain-logo {
+		width: 48px;
+		height: 48px;
+		border-radius: var(--radius-lg);
+		background: var(--bg-raised);
+		object-fit: contain;
+	}
+
+	.chain-info {
+		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
+		gap: var(--space-2);
 	}
 
 	.chain-name {
@@ -865,6 +893,11 @@
 
 		.chain-header {
 			flex-direction: column;
+		}
+
+		.chain-logo {
+			width: 40px;
+			height: 40px;
 		}
 
 		.chain-name {

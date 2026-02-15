@@ -2,69 +2,69 @@
 	import { t, localizeHref } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 
-	interface ChainItem {
+	interface AssetItem {
 		chainId: number;
+		address: string;
 		name: string;
-		shortName: string;
-		nativeCurrencySymbol: string;
+		symbol: string;
+		decimals: number;
 		hasLogo?: boolean;
 	}
 
 	interface Props {
 		currentChainId?: number;
+		currentAddress?: string;
 	}
 
-	let { currentChainId }: Props = $props();
+	let { currentChainId, currentAddress }: Props = $props();
 
 	let searchQuery = $state('');
-	let results = $state<ChainItem[]>([]);
+	let results = $state<AssetItem[]>([]);
 	let isLoading = $state(false);
 	let isFocused = $state(false);
-	let allChains = $state<ChainItem[]>([]);
+	let allAssets = $state<AssetItem[]>([]);
 	let selectedIndex = $state(-1);
 	let inputRef = $state<HTMLInputElement | null>(null);
 
 	const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
 
-	// Load chain data on mount
+	// Load asset data on mount
 	$effect(() => {
-		loadChainData();
+		loadAssetData();
 	});
 
-	async function loadChainData() {
+	async function loadAssetData() {
 		try {
 			isLoading = true;
-			const response = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-chains.json`);
+			const response = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-assets.json`);
 			const json = await response.json();
-			allChains = json.data || [];
+			allAssets = json.data || [];
 		} catch (err) {
-			console.error('Failed to load chain data:', err);
+			console.error('Failed to load asset data:', err);
 		} finally {
 			isLoading = false;
 		}
 	}
 
-	// Search chains
-	function searchChains(query: string): ChainItem[] {
+	// Search assets
+	function searchAssets(query: string): AssetItem[] {
 		if (!query.trim()) return [];
 
 		const lowerQuery = query.toLowerCase();
-		const filtered = allChains.filter((chain) => {
+		const filtered = allAssets.filter((asset) => {
 			return (
-				chain.name.toLowerCase().includes(lowerQuery) ||
-				chain.shortName.toLowerCase().includes(lowerQuery) ||
-				chain.nativeCurrencySymbol.toLowerCase().includes(lowerQuery) ||
-				chain.chainId.toString() === query.trim()
+				asset.name.toLowerCase().includes(lowerQuery) ||
+				asset.symbol.toLowerCase().includes(lowerQuery) ||
+				asset.address.toLowerCase().includes(lowerQuery) ||
+				asset.chainId.toString() === query.trim()
 			);
 		});
 
-		// Sort: exact matches first, then by name
+		// Sort: exact symbol matches first, then by name
 		return filtered
 			.sort((a, b) => {
-				const aExact =
-					a.chainId.toString() === query.trim() || a.shortName.toLowerCase() === lowerQuery;
-				const bExact =
-					b.chainId.toString() === query.trim() || b.shortName.toLowerCase() === lowerQuery;
+				const aExact = a.symbol.toLowerCase() === lowerQuery;
+				const bExact = b.symbol.toLowerCase() === lowerQuery;
 				if (aExact && !bExact) return -1;
 				if (!aExact && bExact) return 1;
 				return a.name.localeCompare(b.name);
@@ -74,12 +74,12 @@
 
 	// Update results when query changes
 	$effect(() => {
-		results = searchChains(searchQuery);
+		results = searchAssets(searchQuery);
 		selectedIndex = -1;
 	});
 
-	function handleSelect(chain: ChainItem) {
-		goto(localizeHref(`/chains/${chain.chainId}`));
+	function handleSelect(asset: AssetItem) {
+		goto(localizeHref(`/assets/${asset.chainId}/${asset.address}`));
 		searchQuery = '';
 		results = [];
 		inputRef?.blur();
@@ -114,9 +114,14 @@
 			isFocused = false;
 		}, 200);
 	}
+
+	function shortenAddress(address: string): string {
+		if (address.length <= 12) return address;
+		return `${address.slice(0, 6)}...${address.slice(-4)}`;
+	}
 </script>
 
-<div class="chain-search">
+<div class="asset-search">
 	<div class="search-input-wrapper">
 		<svg
 			class="search-icon"
@@ -137,7 +142,7 @@
 			bind:this={inputRef}
 			type="text"
 			bind:value={searchQuery}
-			placeholder={t('chains.search.placeholder')}
+			placeholder={t('assets.search.placeholder')}
 			class="search-input"
 			onfocus={handleFocus}
 			onblur={handleBlur}
@@ -151,25 +156,26 @@
 	{#if isFocused && searchQuery.trim().length > 0}
 		<div class="search-results">
 			{#if results.length > 0}
-				{#each results as chain, index}
+				{#each results as asset, index}
 					<button
 						class="result-item"
 						class:selected={index === selectedIndex}
-						class:current={chain.chainId === currentChainId}
-						onclick={() => handleSelect(chain)}
+						class:current={asset.chainId === currentChainId &&
+							asset.address.toLowerCase() === currentAddress?.toLowerCase()}
+						onclick={() => handleSelect(asset)}
 					>
 						<div class="result-info">
-							<span class="result-name">{chain.name}</span>
+							<span class="result-name">{asset.name}</span>
 							<span class="result-meta">
-								{chain.shortName} · {chain.nativeCurrencySymbol}
+								{asset.symbol} · Chain #{asset.chainId}
 							</span>
 						</div>
-						<span class="result-chain-id">#{chain.chainId}</span>
+						<span class="result-address">{shortenAddress(asset.address)}</span>
 					</button>
 				{/each}
 			{:else}
 				<div class="no-results">
-					{t('chains.search.noResults')}
+					{t('assets.search.noResults')}
 				</div>
 			{/if}
 		</div>
@@ -177,7 +183,7 @@
 </div>
 
 <style>
-	.chain-search {
+	.asset-search {
 		position: relative;
 		z-index: 1000;
 		width: 100%;
@@ -292,7 +298,7 @@
 		color: var(--fg-muted);
 	}
 
-	.result-chain-id {
+	.result-address {
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 		font-family: var(--font-mono, ui-monospace, monospace);

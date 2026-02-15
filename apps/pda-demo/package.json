@@ -11,8 +11,10 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@lucide/svelte": "^0.511.0",
     "@shelchin/pda": "workspace:*",
     "@shelchin/pda-sveltekit": "workspace:*",
+    "@shelchin/proeditor-sveltekit": "workspace:*",
     "@shelchin/taskhub": "workspace:*",
     "@shelchin/vendor-pool": "workspace:*",
     "viem": "^2.0.0"

@@ -1,10 +1,52 @@
 <script lang="ts">
   import { batchBalanceApp, NETWORKS, type BatchBalanceOutput } from '$lib/batch-balance-app';
   import { createPDAAdapter } from '$lib/pda-svelte-adapter.svelte';
+  import { LineEditor, type LineValidator } from '@shelchin/proeditor-sveltekit';
+  import { isAddress } from 'viem';
 
-  // Form state
-  let addresses = $state('');
+  // Form state - using LineEditor for high-performance address input
+  let validLines = $state<string[]>([]);
+  let validCount = $state(0);
+  let errorCount = $state(0);
+  let duplicateCount = $state(0);
   let selectedNetworks = $state<string[]>(['ethereum']);
+
+  // Ethereum address validator
+  const validateAddress: LineValidator = (line: string) => {
+    if (!line.trim()) return null;
+    if (!isAddress(line)) return 'Invalid Ethereum address';
+    return null;
+  };
+
+  // Example addresses for demo
+  const exampleAddresses = [
+    '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+    '0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8',
+    '0x742d35Cc6634C0532925a3b844Bc9e7595f1e3b1'
+  ];
+
+  // i18n for LineEditor
+  const lineEditorI18n = {
+    statusBar: {
+      valid: 'valid addresses',
+      loadExamples: 'Load {0} examples',
+      clear: 'Clear'
+    },
+    errorDrawer: {
+      title: 'Invalid Addresses',
+      noErrors: 'All addresses are valid',
+      line: 'Line',
+      error: 'Invalid address',
+      duplicate: 'Duplicate',
+      andMore: '{0} more...',
+      close: 'Close'
+    },
+    validation: {
+      duplicate: 'Duplicate address',
+      emptyLine: 'Empty line'
+    },
+    upload: 'Upload'
+  };
 
   // PDA adapter (runes-based)
   const pda = createPDAAdapter();
@@ -18,7 +60,7 @@
     pda.reset();
     try {
       await batchBalanceApp.run(pda.adapter, {
-        addresses,
+        addresses: validLines.join('\n'),
         networks: selectedNetworks,
       });
     } catch (error) {
@@ -72,13 +114,33 @@
 
       <div class="form-group">
         <label for="addresses">Wallet Addresses</label>
-        <textarea
-          id="addresses"
-          bind:value={addresses}
-          placeholder="Enter addresses, one per line or comma-separated&#10;0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045&#10;0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"
-          rows="4"
-          disabled={isRunning}
-        ></textarea>
+        <div class="editor-wrapper" class:disabled={isRunning}>
+          <LineEditor
+            validate={validateAddress}
+            placeholder="Enter Ethereum addresses, one per line&#10;0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+            examples={exampleAddresses}
+            i18n={lineEditorI18n}
+            detectDuplicates={true}
+            minHeight={120}
+            maxHeight={300}
+            showUploadButton={true}
+            bind:validLines
+            bind:validCount
+            bind:errorCount
+            bind:duplicateCount
+          />
+        </div>
+        {#if validCount > 0 || errorCount > 0}
+          <div class="input-stats">
+            <span class="stat valid">{validCount} valid</span>
+            {#if errorCount > 0}
+              <span class="stat error">{errorCount} invalid</span>
+            {/if}
+            {#if duplicateCount > 0}
+              <span class="stat duplicate">{duplicateCount} duplicates</span>
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <div class="form-group">
@@ -102,7 +164,7 @@
       <button
         class="primary run-btn"
         onclick={runQuery}
-        disabled={isRunning || !addresses.trim() || selectedNetworks.length === 0}
+        disabled={isRunning || validCount === 0 || selectedNetworks.length === 0}
       >
         {#if isRunning}
           Running...
@@ -270,9 +332,43 @@
     margin-bottom: 20px;
   }
 
-  textarea {
-    resize: vertical;
-    min-height: 100px;
+  .editor-wrapper {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+
+  .editor-wrapper.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .input-stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+
+  .input-stats .stat {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .input-stats .stat.valid {
+    background: rgba(48, 209, 88, 0.15);
+    color: var(--success);
+  }
+
+  .input-stats .stat.error {
+    background: rgba(255, 69, 58, 0.15);
+    color: var(--error);
+  }
+
+  .input-stats .stat.duplicate {
+    background: rgba(255, 159, 10, 0.15);
+    color: var(--warning);
   }
 
   .network-grid {

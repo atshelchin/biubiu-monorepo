@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - 代币详情",
+  "assets.description": "查看 {name} ({symbol}) 代币信息、合约地址和社交链接。",
+  "assets.website": "官网",
+  "assets.explorer": "区块浏览器",
+  "assets.editOnGithub": "编辑",
+  "assets.tokenInfo": "代币信息",
+  "assets.networkInfo": "网络信息",
+  "assets.symbol": "符号",
+  "assets.decimals": "精度",
+  "assets.type": "类型",
+  "assets.chainId": "链 ID",
+  "assets.contract": "合约地址",
+  "assets.tags": "标签",
+  "assets.links": "相关链接",
+  "assets.notFound": "代币未找到",
+  "assets.notFound.description": "未找到地址为 {address} 的代币。",
+  "assets.backToHome": "返回首页",
+  "assets.search.placeholder": "搜索代币名称、符号或地址...",
+  "assets.search.noResults": "未找到代币"
+}

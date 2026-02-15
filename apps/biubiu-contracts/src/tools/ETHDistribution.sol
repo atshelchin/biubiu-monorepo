@@ -14,9 +14,8 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  *   3. Random: random distribution based on weights
  *   4. RandomRange: random amount within min/max range
  *
- * Each mode has two versions:
- *   - Basic: simple, reverts on any failure
- *   - Advanced (Ex): with options for gas limit and partial failure handling
+ * All modes support Options for gas limit protection and partial failure handling.
+ * Set allowPartialFailure=false for strict mode (reverts on any failure).
  */
 contract ETHDistribution is ERC2771Context {
     // ============ Errors ============
@@ -29,7 +28,7 @@ contract ETHDistribution is ERC2771Context {
 
     // ============ Structs ============
 
-    /// @notice Options for advanced distribution functions
+    /// @notice Options for distribution
     /// @param gasLimit Gas limit per transfer (0 = unlimited)
     /// @param allowPartialFailure If true, continue on failure and return failed indices
     struct Options {
@@ -37,11 +36,11 @@ contract ETHDistribution is ERC2771Context {
         bool allowPartialFailure;
     }
 
-    /// @notice Result of distribution with allowPartialFailure=true
+    /// @notice Result of distribution
     /// @param totalSent Total ETH successfully sent
     /// @param successCount Number of successful transfers
     /// @param failedIndices Indices of failed recipients (empty if all succeeded)
-    struct DistributeResult {
+    struct Result {
         uint256 totalSent;
         uint256 successCount;
         uint256[] failedIndices;
@@ -49,84 +48,78 @@ contract ETHDistribution is ERC2771Context {
 
     // ============ Events ============
 
-    /// @notice Emitted after each distribution
     event Distributed(address indexed sender, uint8 indexed mode, uint256 totalAmount, uint256 recipientCount);
-
-    /// @notice Emitted after distribution with partial failures
-    event DistributedPartial(
-        address indexed sender, uint8 indexed mode, uint256 totalSent, uint256 successCount, uint256 failCount
-    );
-
-    /// @notice Emitted for each failed transfer (when allowPartialFailure=true)
+    event DistributedPartial(address indexed sender, uint8 indexed mode, uint256 totalSent, uint256 successCount, uint256 failCount);
     event TransferSkipped(address indexed recipient, uint256 indexed index, uint256 amount);
 
     // ============ Constants ============
 
-    /// @notice Default gas limit for protected transfers (enough for EOA, blocks expensive receive())
     uint256 public constant DEFAULT_GAS_LIMIT = 50000;
 
     // ============ Constructor ============
 
     constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
 
-    // ============ Basic Distribution (Simple, reverts on failure) ============
+    // ============ Distribution Methods ============
 
     /**
      * @notice Distribute ETH equally among recipients
      * @param recipients Array of recipient addresses
+     * @param options Gas limit and failure handling options
+     * @return result Distribution result
      */
-    function distributeEqual(address[] calldata recipients) external payable {
+    function distributeEqual(address[] calldata recipients, Options calldata options)
+        external
+        payable
+        returns (Result memory result)
+    {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
 
         uint256 amount = msg.value / len;
         if (amount == 0) revert InsufficientValue();
 
-        for (uint256 i; i < len;) {
-            _send(recipients[i], amount);
-            unchecked {
-                ++i;
-            }
+        result = _distribute(recipients, amount, options);
+
+        uint256 refund = msg.value - result.totalSent;
+        if (refund != 0) {
+            _send(_msgSender(), refund);
         }
 
-        uint256 dust = msg.value - (amount * len);
-        if (dust != 0) {
-            _send(_msgSender(), dust);
-        }
-
-        emit Distributed(_msgSender(), 1, msg.value, len);
+        _emitResult(1, result, len);
     }
 
     /**
      * @notice Distribute specified amounts to each recipient
      * @param recipients Array of recipient addresses
      * @param amounts Array of amounts for each recipient
+     * @param options Gas limit and failure handling options
+     * @return result Distribution result
      */
-    function distributeSpecified(address[] calldata recipients, uint256[] calldata amounts) external payable {
+    function distributeSpecified(
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        Options calldata options
+    ) external payable returns (Result memory result) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
 
-        uint256 totalSent;
+        uint256 totalRequired;
         for (uint256 i; i < len;) {
-            uint256 amt = amounts[i];
-            if (amt != 0) {
-                totalSent += amt;
-                _send(recipients[i], amt);
-            }
-            unchecked {
-                ++i;
-            }
+            totalRequired += amounts[i];
+            unchecked { ++i; }
+        }
+        if (msg.value < totalRequired) revert InsufficientValue();
+
+        result = _distributeAmounts(recipients, amounts, options);
+
+        uint256 refund = msg.value - result.totalSent;
+        if (refund != 0) {
+            _send(_msgSender(), refund);
         }
 
-        if (msg.value < totalSent) revert InsufficientValue();
-
-        uint256 excess = msg.value - totalSent;
-        if (excess != 0) {
-            _send(_msgSender(), excess);
-        }
-
-        emit Distributed(_msgSender(), 2, totalSent, len);
+        _emitResult(2, result, len);
     }
 
     /**
@@ -154,9 +147,7 @@ contract ETHDistribution is ERC2771Context {
                 _send(recipients[i], amount);
                 remaining -= amount;
             }
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
         emit Distributed(_msgSender(), 3, msg.value, len);
@@ -164,7 +155,6 @@ contract ETHDistribution is ERC2771Context {
 
     /**
      * @notice Distribute with random amounts within a range
-     * @dev Requires msg.value >= maxAmount * len
      * @param recipients Array of recipient addresses
      * @param minAmount Minimum amount per recipient
      * @param maxAmount Maximum amount per recipient
@@ -188,9 +178,7 @@ contract ETHDistribution is ERC2771Context {
 
             _send(recipients[i], amount);
             totalSent += amount;
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
         uint256 refund = msg.value - totalSent;
@@ -199,70 +187,6 @@ contract ETHDistribution is ERC2771Context {
         }
 
         emit Distributed(_msgSender(), 4, totalSent, len);
-    }
-
-    // ============ Advanced Distribution (With options) ============
-
-    /**
-     * @notice Distribute ETH equally with advanced options
-     * @param recipients Array of recipient addresses
-     * @param options Gas limit and failure handling options
-     * @return result Distribution result (only meaningful if allowPartialFailure=true)
-     */
-    function distributeEqualEx(address[] calldata recipients, Options calldata options)
-        external
-        payable
-        returns (DistributeResult memory result)
-    {
-        uint256 len = recipients.length;
-        if (len == 0) revert NoRecipients();
-
-        uint256 amount = msg.value / len;
-        if (amount == 0) revert InsufficientValue();
-
-        result = _distributeWithOptions(recipients, amount, options, true);
-
-        uint256 refund = msg.value - result.totalSent;
-        if (refund != 0) {
-            _send(_msgSender(), refund);
-        }
-
-        _emitResult(1, result, len);
-    }
-
-    /**
-     * @notice Distribute specified amounts with advanced options
-     * @param recipients Array of recipient addresses
-     * @param amounts Array of amounts for each recipient
-     * @param options Gas limit and failure handling options
-     * @return result Distribution result
-     */
-    function distributeSpecifiedEx(
-        address[] calldata recipients,
-        uint256[] calldata amounts,
-        Options calldata options
-    ) external payable returns (DistributeResult memory result) {
-        uint256 len = recipients.length;
-        if (len == 0) revert NoRecipients();
-        if (len != amounts.length) revert LengthMismatch();
-
-        uint256 totalRequired;
-        for (uint256 i; i < len;) {
-            totalRequired += amounts[i];
-            unchecked {
-                ++i;
-            }
-        }
-        if (msg.value < totalRequired) revert InsufficientValue();
-
-        result = _distributeSpecifiedWithOptions(recipients, amounts, options);
-
-        uint256 refund = msg.value - result.totalSent;
-        if (refund != 0) {
-            _send(_msgSender(), refund);
-        }
-
-        _emitResult(2, result, len);
     }
 
     // ============ Validation ============
@@ -290,26 +214,18 @@ contract ETHDistribution is ERC2771Context {
         for (uint256 i; i < len;) {
             bool success = _trySend(recipients[i], 1, limit);
             if (success) {
-                unchecked {
-                    ++validCount;
-                }
+                unchecked { ++validCount; }
             } else {
                 tempInvalid[invalidCount] = i;
-                unchecked {
-                    ++invalidCount;
-                }
+                unchecked { ++invalidCount; }
             }
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
         invalidIndices = new uint256[](invalidCount);
         for (uint256 i; i < invalidCount;) {
             invalidIndices[i] = tempInvalid[i];
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
         uint256 refund = msg.value - validCount;
@@ -319,7 +235,7 @@ contract ETHDistribution is ERC2771Context {
     }
 
     /**
-     * @notice Check if address is EOA or contract (view, no gas cost)
+     * @notice Check if address is EOA or contract
      * @param recipient Address to check
      * @return isEOA True if no code (likely EOA)
      * @return codeSize Size of code at address
@@ -333,60 +249,40 @@ contract ETHDistribution is ERC2771Context {
 
     // ============ Internal ============
 
-    function _distributeWithOptions(
+    function _distribute(
         address[] calldata recipients,
         uint256 amount,
-        Options calldata options,
-        bool isEqual
-    ) private returns (DistributeResult memory result) {
+        Options calldata options
+    ) private returns (Result memory result) {
         uint256 len = recipients.length;
         uint256[] memory tempFailed = new uint256[](len);
         uint256 failCount;
 
         for (uint256 i; i < len;) {
-            uint256 amt = isEqual ? amount : amount; // Placeholder for future use
-            bool success;
-
-            if (options.gasLimit > 0) {
-                success = _trySend(recipients[i], amt, options.gasLimit);
-            } else {
-                success = _trySendUnlimited(recipients[i], amt);
-            }
+            bool success = options.gasLimit > 0
+                ? _trySend(recipients[i], amount, options.gasLimit)
+                : _trySendUnlimited(recipients[i], amount);
 
             if (success) {
-                result.totalSent += amt;
-                unchecked {
-                    ++result.successCount;
-                }
+                result.totalSent += amount;
+                unchecked { ++result.successCount; }
             } else {
-                if (!options.allowPartialFailure) {
-                    revert TransferFailed();
-                }
-                emit TransferSkipped(recipients[i], i, amt);
+                if (!options.allowPartialFailure) revert TransferFailed();
+                emit TransferSkipped(recipients[i], i, amount);
                 tempFailed[failCount] = i;
-                unchecked {
-                    ++failCount;
-                }
+                unchecked { ++failCount; }
             }
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
-        result.failedIndices = new uint256[](failCount);
-        for (uint256 i; i < failCount;) {
-            result.failedIndices[i] = tempFailed[i];
-            unchecked {
-                ++i;
-            }
-        }
+        result.failedIndices = _copyArray(tempFailed, failCount);
     }
 
-    function _distributeSpecifiedWithOptions(
+    function _distributeAmounts(
         address[] calldata recipients,
         uint256[] calldata amounts,
         Options calldata options
-    ) private returns (DistributeResult memory result) {
+    ) private returns (Result memory result) {
         uint256 len = recipients.length;
         uint256[] memory tempFailed = new uint256[](len);
         uint256 failCount;
@@ -394,59 +290,45 @@ contract ETHDistribution is ERC2771Context {
         for (uint256 i; i < len;) {
             uint256 amt = amounts[i];
             if (amt == 0) {
-                unchecked {
-                    ++i;
-                }
+                unchecked { ++i; }
                 continue;
             }
 
-            bool success;
-            if (options.gasLimit > 0) {
-                success = _trySend(recipients[i], amt, options.gasLimit);
-            } else {
-                success = _trySendUnlimited(recipients[i], amt);
-            }
+            bool success = options.gasLimit > 0
+                ? _trySend(recipients[i], amt, options.gasLimit)
+                : _trySendUnlimited(recipients[i], amt);
 
             if (success) {
                 result.totalSent += amt;
-                unchecked {
-                    ++result.successCount;
-                }
+                unchecked { ++result.successCount; }
             } else {
-                if (!options.allowPartialFailure) {
-                    revert TransferFailed();
-                }
+                if (!options.allowPartialFailure) revert TransferFailed();
                 emit TransferSkipped(recipients[i], i, amt);
                 tempFailed[failCount] = i;
-                unchecked {
-                    ++failCount;
-                }
+                unchecked { ++failCount; }
             }
-            unchecked {
-                ++i;
-            }
+            unchecked { ++i; }
         }
 
-        result.failedIndices = new uint256[](failCount);
-        for (uint256 i; i < failCount;) {
-            result.failedIndices[i] = tempFailed[i];
-            unchecked {
-                ++i;
-            }
-        }
+        result.failedIndices = _copyArray(tempFailed, failCount);
     }
 
-    function _emitResult(uint8 mode, DistributeResult memory result, uint256 recipientCount) private {
+    function _emitResult(uint8 mode, Result memory result, uint256 recipientCount) private {
         if (result.failedIndices.length > 0) {
-            emit DistributedPartial(
-                _msgSender(), mode, result.totalSent, result.successCount, result.failedIndices.length
-            );
+            emit DistributedPartial(_msgSender(), mode, result.totalSent, result.successCount, result.failedIndices.length);
         } else {
             emit Distributed(_msgSender(), mode, result.totalSent, recipientCount);
         }
     }
 
-    /// @dev Optimized ETH transfer (reverts on failure)
+    function _copyArray(uint256[] memory source, uint256 length) private pure returns (uint256[] memory dest) {
+        dest = new uint256[](length);
+        for (uint256 i; i < length;) {
+            dest[i] = source[i];
+            unchecked { ++i; }
+        }
+    }
+
     function _send(address to, uint256 amount) private {
         assembly {
             if iszero(call(gas(), to, amount, 0, 0, 0, 0)) {
@@ -456,21 +338,17 @@ contract ETHDistribution is ERC2771Context {
         }
     }
 
-    /// @dev Try to send ETH with gas limit, returns success
     function _trySend(address to, uint256 amount, uint256 gasLimit) private returns (bool success) {
         assembly {
             success := call(gasLimit, to, amount, 0, 0, 0, 0)
         }
     }
 
-    /// @dev Try to send ETH without gas limit, returns success
     function _trySendUnlimited(address to, uint256 amount) private returns (bool success) {
         assembly {
             success := call(gas(), to, amount, 0, 0, 0, 0)
         }
     }
-
-    // ============ Receive ============
 
     receive() external payable {}
 }

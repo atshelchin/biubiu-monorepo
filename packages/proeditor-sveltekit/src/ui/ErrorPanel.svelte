@@ -60,7 +60,7 @@
 		onJumpToError?.(line);
 	}
 
-	function handleIgnore(e: MouseEvent, line: number): void {
+	function handleIgnore(e: MouseEvent | KeyboardEvent, line: number): void {
 		e.stopPropagation();
 		onIgnoreError?.(line);
 	}
@@ -105,13 +105,17 @@
 							>
 								{error.type === 'col_count' ? t.error : t.warning}
 							</span>
-							<button
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<span
 								class="ep-ignore"
+								role="button"
+								tabindex="0"
 								onclick={(e) => handleIgnore(e, lineNum)}
+								onkeydown={(e) => e.key === 'Enter' && handleIgnore(e, lineNum)}
 								title={t.ignoreThis}
 							>
 								<EyeOff size={12} />
-							</button>
+							</span>
 						</div>
 						<div class="ep-message">{error.message}</div>
 						{#if error.preview}

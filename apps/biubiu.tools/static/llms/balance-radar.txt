@@ -1,0 +1,151 @@
+# Balance Radar
+
+> Query native token balances for multiple wallet addresses across multiple EVM chains simultaneously.
+
+---
+
+## Overview
+
+Balance Radar takes a list of wallet addresses and a set of networks, queries the native balance of each address on each network in parallel, and returns a structured result table. It handles RPC rate limiting with adaptive concurrency (AIMD) and supports resume from interrupted sessions.
+
+- **App ID**: `balance-radar`
+- **Category**: Read-only (RPC queries)
+- **Wallet required**: No
+- **Framework**: PDA (`@shelchin/pda`) — see `/llms/pda-guide.txt` for framework docs
+
+---
+
+## Input
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `addresses` | string | — | Wallet addresses, comma or newline separated |
+| `networks` | string[] | `['ethereum']` | Networks to query balances on |
+
+### Addresses format
+
+```
+0xAbc...123, 0xDef...456, 0xGhi...789
+```
+
+Or one per line. Addresses must start with `0x` and be 42 characters long.
+
+### Supported networks
+
+Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE).
+
+---
+
+## How It Works
+
+1. **Validate** — Parse addresses (split by comma/newline), validate format, filter valid networks
+2. **Generate queries** — Cross-product: `addresses × networks` = total jobs
+3. **TaskHub setup** — Create or resume task (merkle root idempotency)
+4. **Execute** — Query balances via RPC vendor pool, concurrency 5-10 (AIMD adaptive)
+5. **Handle rate limits** — When all RPCs throttled, prompt user: wait or return partial results
+6. **Resume** — On resume, load previously completed/failed results, continue remaining jobs
+7. **Post-run** — If failures exist, offer to show details
+
+### Query execution
+
+Each job is one RPC call: `eth_getBalance(address)` on the target network. The vendor pool (`$lib/evm/network-pool`) manages multiple RPC endpoints per network and rotates on failure.
+
+### Concurrency
+
+- Initial: 5, Min: 1, Max: 10
+- AIMD algorithm: increases on success, decreases on rate-limit errors
+- Much higher than write apps (token-multisender uses 1) because reads don't require signing
+
+---
+
+## Output
+
+```json
+{
+  "results": [
+    {
+      "address": "0xAbc...123",
+      "network": "ethereum",
+      "symbol": "ETH",
+      "balance": "1.234567890123456789"
+    },
+    {
+      "address": "0xAbc...123",
+      "network": "polygon",
+      "symbol": "MATIC",
+      "balance": "500.0"
+    }
+  ],
+  "stats": {
+    "total": 6,
+    "success": 5,
+    "failed": 1,
+    "duration": 3200
+  }
+}
+```
+
+Balances are formatted with `viem.formatUnits()` using the network's native decimal precision (18 for all currently supported networks).
+
+---
+
+## Security Model
+
+- **Read-only**: No transactions, no wallet connection needed
+- **No private keys**: Only public addresses are used as input
+- **Public RPC endpoints**: Uses free, public RPC URLs (llamarpc, ankr, publicnode)
+- **No data stored externally**: All query state is local (IndexedDB) for resume only
+
+---
+
+## Error Handling
+
+### Rate limiting
+
+When all RPC endpoints for a network are throttled:
+1. TaskHub AIMD reduces concurrency automatically
+2. If concurrency drops to 1 and still rate-limited, an interrupt is triggered
+3. User is prompted: "Wait and retry" or "Stop and return partial results"
+
+### Failed queries
+
+- Individual failures don't stop the batch
+- Failures are tracked with address, network, and error message
+- Post-run: user can view failure details (up to 5 shown, rest summarized)
+
+---
+
+## Differences from Token Multisender
+
+| Aspect | Balance Radar | Token Multisender |
+|--------|--------------|-------------------|
+| Category | Read-only | Write (transactions) |
+| Wallet | Not needed | Required |
+| Concurrency | 5-10 (parallel RPC) | 1 (sequential signing) |
+| Export pattern | Singleton `balanceRadarApp` | Factory `createTokenMultisenderApp(wallet)` |
+| Interrupt type | `rate-limited` | `batch-failed` |
+| External deps | RPC vendor pool | Wallet + RPC |
+| Job unit | 1 balance query | 1 batch of N recipients |
+
+---
+
+## File Structure
+
+```
+apps/biubiu.tools/src/lib/pda-apps/balance-radar/
+├── index.ts              # balanceRadarApp singleton export
+├── schema.ts             # Zod input/output schemas
+├── types.ts              # NetworkConfig, BalanceResult, BalanceQuery, etc.
+├── executor.ts           # validate → run → formatOutput
+├── executor.spec.ts      # Unit tests
+└── infra/
+    ├── networks.ts       # 6 networks with RPC endpoints
+    └── source.ts         # BalanceQuerySource (TaskSource impl, uses network-pool)
+```
+
+### Key design decisions
+
+- **Singleton export**: No external dependencies needed → `export const balanceRadarApp = createApp({...})`
+- **Vendor pool**: `createNetworkPools(NETWORKS, CHAIN_MAP)` creates per-network RPC pools with failover
+- **Cross-product jobs**: `addresses × networks` generates all query combinations upfront
+- **Post-run interaction**: After completion, offers to show failure details if any exist

@@ -23,7 +23,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx svelte-check:*)",
       "Bash(npm run test:unit:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "mcp__chrome-devtools__wait_for"
     ]
   },
   "enableAllProjectMcpServers": true

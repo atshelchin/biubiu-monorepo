@@ -10,7 +10,7 @@ const DEFAULT_LOCALE = 'en';
 const STATIC_PAGES = [
 	'/' // Homepage
 	// Add more static pages here as they are created
-	// '/tools/balance-radar',
+	// '/apps/balance-radar',
 	// '/docs',
 ];
 

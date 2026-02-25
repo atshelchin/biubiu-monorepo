@@ -22,7 +22,7 @@
 
 	// Navigation links
 	const navLinks: { key: TranslationKey; href: string; icon: string; external?: boolean }[] = [
-		{ key: 'nav.tools', href: '/tools/balance-radar', icon: 'tools' },
+		{ key: 'nav.tools', href: '/apps/balance-radar', icon: 'tools' },
 		{ key: 'nav.docs', href: '/docs', icon: 'docs', external: false },
 		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu.tools', icon: 'github', external: true }
 	];
@@ -217,7 +217,7 @@
 				<h2 class="section-title">{t('featured.title')}</h2>
 			</div>
 
-			<a href={localizeHref('/tools/balance-radar')} class="tool-card glass-card">
+			<a href={localizeHref('/apps/balance-radar')} class="tool-card glass-card">
 				<div class="tool-content">
 					<h3 class="tool-name">{t('featured.balanceRadar.name')}</h3>
 					<p class="tool-description">{t('featured.balanceRadar.description')}</p>

@@ -1,0 +1,629 @@
+# PDA App Development Guide
+
+> How to build a PDA (Protocol-Driven Application) in the BiuBiu Tools monorepo. This is the generic framework guide — for app-specific docs, see `/llms/balance-radar.txt`, `/llms/token-multisender.txt`, `/llms/nft-multisender.txt`.
+
+---
+
+## Table of Contents
+
+1. [What is a PDA App](#what-is-a-pda-app)
+2. [File Structure](#file-structure)
+3. [Step-by-Step Guide](#step-by-step-guide)
+4. [The Executor Pattern](#the-executor-pattern)
+5. [ExecutionContext API](#executioncontext-api)
+6. [TaskHub Integration](#taskhub-integration)
+7. [InterruptQueue](#interruptqueue)
+8. [Wallet Integration](#wallet-integration)
+9. [Schemas and Type Safety](#schemas-and-type-safety)
+10. [Testing Patterns](#testing-patterns)
+11. [Checklist](#checklist)
+
+---
+
+## What is a PDA App
+
+A PDA app is a headless, adapter-agnostic application built with `@shelchin/pda`. It separates business logic (executor) from presentation (CLI, GUI, MCP adapters).
+
+```
+Input (Zod schema) → Executor (async generator) → Output (Zod schema)
+```
+
+The executor can pause mid-run to ask user questions, report progress, and handle errors interactively.
+
+### Adapters
+
+The same app works across multiple adapters without code changes:
+
+| Adapter | Use case |
+|---------|----------|
+| GUI (`@shelchin/pda-sveltekit`) | Web form + progressive results display |
+| CLI | Command-line with readline interactions |
+| MCP | AI tool integration (Claude, etc.) |
+
+### App categories
+
+| Category | Concurrency | Wallet | Example |
+|----------|------------|--------|---------|
+| Read-only | High (5-10) | No | balance-radar |
+| Write | Low (1) | Yes | token-multisender, nft-multisender |
+
+---
+
+## File Structure
+
+Every PDA app lives under `apps/biubiu.tools/src/lib/pda-apps/<app-name>/`:
+
+```
+<app-name>/
+├── index.ts              # App entry: createApp() or factory function
+├── schema.ts             # Zod input/output schemas
+├── types.ts              # All TypeScript interfaces
+├── executor.ts           # Core logic: validate → run → formatOutput
+├── executor.spec.ts      # Unit tests (vitest)
+└── infra/
+    ├── networks.ts       # Network/chain configurations
+    ├── source.ts         # TaskSource implementation
+    └── [app-specific].ts # E.g., contracts.ts for ABI definitions
+```
+
+| File | Responsibility | Does NOT contain |
+|------|---------------|-----------------|
+| `types.ts` | Domain interfaces, type aliases | Implementation logic |
+| `schema.ts` | Zod schemas for validation and form generation | Business logic |
+| `infra/networks.ts` | RPCs, chain IDs, contract addresses | App logic |
+| `infra/source.ts` | TaskSource subclass — how one job is processed | Validation, formatting |
+| `executor.ts` | `validate()`, `run()`, `formatOutput()`, executor factory | UI, network config |
+| `index.ts` | `createApp()`, exported types | Implementation details |
+
+---
+
+## Step-by-Step Guide
+
+### Step 1: Define domain types (`types.ts`)
+
+Identify core data shapes:
+- **Job input**: What is one unit of work? (must be JSON-serializable for TaskHub)
+- **Job output**: What does a completed job produce?
+- **Validated input**: Parsed user input with computed fields
+- **External deps**: Does the app need a wallet, API key, etc.?
+
+```typescript
+// Job inputs must be JSON-serializable — use string, not bigint
+export interface JobInput {
+    id: number;
+    data: string;     // NOT bigint
+}
+
+export interface JobOutput {
+    id: number;
+    result: string;
+}
+
+export interface ValidatedInput {
+    jobs: JobInput[];
+    totalCount: number;
+    // bigint is fine here — not stored in TaskHub
+    totalAmount: bigint;
+}
+```
+
+### Step 2: Define schemas (`schema.ts`)
+
+```typescript
+import { z } from '@shelchin/pda';
+
+export const inputSchema = z.object({
+    data: z.string().describe('Human-readable label for form'),
+    mode: z.enum(['a', 'b']).default('a').describe('Mode selection'),
+    count: z.number().min(1).max(100).default(10).describe('Batch count'),
+    optionalField: z.string().optional().describe('Optional input'),
+});
+
+export const outputSchema = z.object({
+    results: z.array(z.object({
+        id: z.number(),
+        value: z.string(),
+    })),
+    stats: z.object({
+        total: z.number(),
+        success: z.number(),
+        failed: z.number(),
+        duration: z.number(),
+    }),
+});
+```
+
+Rules:
+- `.describe()` on every field — becomes form label/tooltip
+- `.default()` for sensible defaults
+- Output values must be JSON-serializable (no `bigint`)
+- Use `z.string()` for large text, `z.enum()` for fixed choices
+
+### Step 3: Configure infrastructure (`infra/`)
+
+**networks.ts** — Supported networks:
+
+```typescript
+export const NETWORKS: Record<string, YourNetworkConfig> = {
+    ethereum: {
+        name: 'Ethereum', chainId: 1,
+        rpcs: ['https://eth.llamarpc.com', ...],
+        symbol: 'ETH', decimals: 18,
+        // app-specific fields (contract addresses, explorer URLs, etc.)
+    },
+};
+```
+
+**source.ts** — TaskSource implementation:
+
+```typescript
+import { TaskSource, type JobContext } from '@shelchin/taskhub/browser';
+
+export class YourSource extends TaskSource<JobInput, JobOutput> {
+    readonly type = 'deterministic' as const;
+
+    getData(): JobInput[] {
+        return this.jobs;  // all jobs known upfront
+    }
+
+    async handler(input: JobInput, ctx: JobContext): Promise<JobOutput> {
+        // Process ONE unit of work
+    }
+
+    getJobId(input: JobInput): string {
+        // Deterministic — used for merkle root
+        return `${input.someUniqueField}`;
+    }
+
+    isRetryable(error: unknown): boolean {
+        // true = transient (network timeout), false = permanent (user rejected)
+    }
+
+    isRateLimited(error: unknown): boolean {
+        // true = should trigger rate-limit interrupt
+    }
+}
+```
+
+### Step 4: Implement executor (`executor.ts`)
+
+See [The Executor Pattern](#the-executor-pattern) below.
+
+### Step 5: Export the app (`index.ts`)
+
+**No external deps** (read-only apps):
+```typescript
+import { createApp } from '@shelchin/pda';
+export const myApp = createApp({ id, name, description, version, inputSchema, outputSchema, executor });
+```
+
+**With external deps** (wallet, API keys):
+```typescript
+export function createMyApp(deps: MyDeps) {
+    return createApp({ ..., executor: createExecutor(deps) });
+}
+```
+
+### Step 6: Write tests (`executor.spec.ts`)
+
+See [Testing Patterns](#testing-patterns) below.
+
+---
+
+## The Executor Pattern
+
+The executor is an **async generator function** with three phases:
+
+```typescript
+// Phase 1: Validate — pure function, no side effects
+export function validate(input: RawInput): ValidatedInput {
+    // Parse raw strings → structured data
+    // Validate addresses, amounts, network names
+    // Split into batches/jobs
+    // Throw descriptive errors for invalid input
+}
+
+// Phase 2: Run — async generator with side effects
+async function* run(validated, ctx, deps):
+    AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
+
+    // 2a. Preflight checks (balance, permissions, etc.)
+    // 2b. User confirmation: yield* ctx.confirm("Proceed?")
+    // 2c. TaskHub setup (Hub, Source, merkle root, resume)
+    // 2d. Event handlers + InterruptQueue
+    // 2e. Launch task, poll interrupts in a loop
+    // 2f. Return aggregated results
+    // 2g. ALWAYS: finally { interrupts.dispose(); hub.close(); }
+}
+
+// Phase 3: Format output — pure function
+export function formatOutput(result: RunResult, validated: ValidatedInput) {
+    // Internal types → output schema
+    // bigint → string, add explorer URLs, compute stats
+}
+
+// Factory that ties it together
+export function createExecutor(deps) {
+    return async function* (input, ctx) {
+        const validated = validate(input);
+        const result = yield* run(validated, ctx, deps);
+        return formatOutput(result, validated);
+    };
+}
+```
+
+### The run() loop pattern
+
+```typescript
+async function* run(validated, ctx) {
+    // ... setup TaskHub, source, interrupts ...
+
+    let taskCompleted = false;
+    let taskError: Error | null = null;
+
+    const launchTask = () => {
+        taskCompleted = false;
+        taskError = null;
+        const done = isResume ? task.resume() : task.start();
+        done
+            .then(() => { taskCompleted = true; })
+            .catch((err: Error) => { taskCompleted = true; taskError = err; });
+    };
+
+    try {
+        launchTask();
+
+        let done = false;
+        while (!done) {
+            // Inner loop: poll interrupts while task runs
+            while (!taskCompleted) {
+                const interrupt = await interrupts.next(2000);
+                if (interrupt) {
+                    // Handle interrupt — yield* ctx.select() for user decision
+                }
+            }
+
+            // Task finished — check for errors
+            if (!taskError) {
+                done = true;
+            } else {
+                const action = yield* ctx.select('Task failed: ...', [
+                    { value: 'retry', label: 'Retry' },
+                    { value: 'partial', label: 'Return partial results' },
+                    { value: 'abort', label: 'Abort' },
+                ]);
+                if (action === 'retry') launchTask();
+                else if (action === 'abort') throw taskError;
+                else done = true;
+            }
+        }
+    } finally {
+        interrupts.dispose();  // MUST cleanup
+        await hub.close();     // MUST cleanup
+    }
+}
+```
+
+---
+
+## ExecutionContext API
+
+```typescript
+interface ExecutionContext {
+    signal: AbortSignal;        // For cancellation
+    storage: FileStorage;       // Persistent file storage
+
+    // Fire-and-forget
+    progress(current: number, total?: number, status?: string): void;
+    info(message: string, level?: 'info' | 'warning' | 'error'): void;
+
+    // Generator yields — use with yield*
+    confirm(message: string): Generator<..., boolean, ...>;
+    select(message: string, options: {value, label}[]): Generator<..., string, ...>;
+    multiselect(message: string, options: {value, label}[]): Generator<..., string[], ...>;
+    prompt(message: string, config?): Generator<..., string, ...>;
+}
+```
+
+Usage:
+```typescript
+ctx.progress(5, 100, 'Processing batch 5...');
+ctx.info('All RPCs are rate-limited', 'warning');
+
+const proceed = yield* ctx.confirm('Send 100 ETH to 500 recipients?');
+const action = yield* ctx.select('What to do?', [
+    { value: 'retry', label: 'Retry' },
+    { value: 'abort', label: 'Abort' },
+]);
+```
+
+---
+
+## TaskHub Integration
+
+TaskHub provides reliable, resumable job processing with IndexedDB persistence.
+
+### Setup pattern
+
+```typescript
+import { Hub, IndexedDBAdapter, computeMerkleRoot, generateJobId } from '@shelchin/taskhub/browser';
+
+const source = new YourSource(jobs, deps);
+const storage = new IndexedDBAdapter();
+const hub = new Hub(storage);
+await hub.initialize();
+
+// 1. Compute merkle root for idempotent task lookup
+const jobIds = jobs.map((j) => source.getJobId!(j));
+const merkleRoot = await computeMerkleRoot(jobIds);
+
+// 2. Try to resume existing task
+const existing = await hub.findTaskByMerkleRoot(merkleRoot);
+let task, isResume = false;
+if (existing) {
+    const resumed = await hub.resumeTask(existing.id, source, { concurrency });
+    if (resumed) { task = resumed; isResume = true; }
+}
+
+// 3. Or create new task
+if (!task) {
+    task = await hub.createTask({ name: '...', source, concurrency });
+}
+
+// 4. Load historical results on resume
+if (isResume) {
+    for (let offset = 0; ; offset += 100) {
+        const batch = await task.getResults({ status: 'completed', limit: 100, offset });
+        for (const job of batch) { results.push(job.output); }
+        if (batch.length < 100) break;
+    }
+}
+```
+
+### Key concepts
+
+- **Merkle root**: Deterministic hash of all job IDs. Same inputs → same merkle root → resume same task
+- **`TaskSource.type`**: `'deterministic'` (all jobs known upfront) or `'dynamic'` (jobs generated on-the-fly)
+- **`getJobId()`**: Must be deterministic for merkle root computation
+- **Job state**: `pending → active → completed | failed`
+- **Task state**: `idle → running → completed | failed | paused`
+
+### Concurrency guidelines
+
+| App type | Config | Reason |
+|----------|--------|--------|
+| RPC reads | `{ min: 1, max: 10, initial: 5 }` | Parallel, AIMD adapts to rate limits |
+| Wallet txs | `{ min: 1, max: 1, initial: 1 }` | Sequential — each tx needs signing |
+| API calls | `{ min: 1, max: 5, initial: 3 }` | Depends on API rate limits |
+
+### Task events
+
+```typescript
+task.on('job:complete', (job) => { /* track results */ });
+task.on('job:failed', (job, error) => { /* track failures */ });
+task.on('rate-limited', (concurrency) => { /* push interrupt */ });
+```
+
+---
+
+## InterruptQueue
+
+Bridges async event callbacks (from TaskHub) to generator yield points (in the executor).
+
+```typescript
+import { InterruptQueue } from '$lib/async/interrupt-queue';
+
+const interrupts = new InterruptQueue();
+
+// Push from event callback
+task.on('rate-limited', (concurrency) => {
+    interrupts.push({ type: 'rate-limited', data: { concurrency } });
+});
+
+// Poll in generator loop
+while (!taskCompleted) {
+    const interrupt = await interrupts.next(2000); // 2s timeout
+    if (interrupt?.type === 'rate-limited') {
+        const action = yield* ctx.select('Rate limited. What to do?', [...]);
+        if (action === 'abort') await task.stop();
+    }
+}
+
+// ALWAYS cleanup in finally block
+interrupts.dispose();
+```
+
+### Interrupt types by app category
+
+| Category | Interrupt type | Trigger |
+|----------|---------------|---------|
+| Read-only (RPC) | `rate-limited` | All RPC endpoints throttled |
+| Write (wallet) | `batch-failed` | Transaction failed/reverted |
+| API-based | `quota-exceeded` | API quota hit |
+
+---
+
+## Wallet Integration
+
+For apps that send blockchain transactions, the wallet is injected via factory pattern.
+
+### WalletDeps interface
+
+```typescript
+interface WalletDeps {
+    account: Address;
+    sendTransaction: (tx: { to: Address; data: Hex; value?: bigint }) => Promise<Hex>;
+    waitForTransactionReceipt: (hash: Hex) => Promise<TransactionReceipt>;
+    readContract: (params: { address: Address; abi: any; functionName: string; args?: any[] }) => Promise<unknown>;
+    getBalance: (address: Address) => Promise<bigint>;
+}
+```
+
+### Svelte page wiring
+
+```svelte
+<script>
+  import { createMyApp } from '$lib/pda-apps/my-app';
+  import { PDAApp } from '@shelchin/pda-sveltekit';
+
+  // walletClient from eth-connectkit
+  const app = $derived(walletClient ? createMyApp({
+      account: walletClient.account.address,
+      sendTransaction: (tx) => walletClient.sendTransaction(tx),
+      waitForTransactionReceipt: (hash) => publicClient.waitForTransactionReceipt({ hash }),
+      readContract: (params) => publicClient.readContract(params),
+      getBalance: (addr) => publicClient.getBalance({ address: addr }),
+  }) : null);
+</script>
+
+{#if app}
+  <PDAApp {app} layout="progressive" />
+{:else}
+  <ConnectWalletButton />
+{/if}
+```
+
+### ERC20 approval flow example
+
+```typescript
+// In executor run():
+const allowance = await wallet.readContract({
+    address: tokenAddress, abi: ERC20_ABI,
+    functionName: 'allowance', args: [wallet.account, spender],
+}) as bigint;
+
+if (allowance < totalAmount) {
+    const approve = yield* ctx.confirm(`Approve ${symbol} for distribution contract?`);
+    if (!approve) throw new Error('Approval declined');
+
+    const approveTx = buildApproveTx(tokenAddress, spender, maxUint256);
+    const hash = await wallet.sendTransaction(approveTx);
+    await wallet.waitForTransactionReceipt(hash);
+}
+```
+
+---
+
+## Schemas and Type Safety
+
+### bigint serialization rule
+
+TaskHub serializes as JSON. `bigint` is NOT JSON-serializable.
+
+| Where | Use `bigint`? | Use `string`? |
+|-------|:---:|:---:|
+| `ValidatedInput` fields | Yes | — |
+| `JobInput` / `JobOutput` (TaskHub) | No | Yes |
+| Output schema (`z.object`) | No | Yes |
+| Handler internal logic | Yes | — |
+
+Convert: `BigInt(stringValue)` to reconstruct, `value.toString()` or `formatUnits(value, decimals)` to serialize.
+
+### Zod conventions
+
+```typescript
+// Input
+z.string().describe('Label')           // Form label
+z.enum(['a', 'b']).default('a')        // Dropdown
+z.number().min(1).max(500).default(200) // Bounded number
+z.string().optional()                   // Optional field
+
+// Output
+z.string()                              // Formatted amounts
+z.number()                              // Counts, durations
+z.array(z.object({ ... }))             // Result lists
+```
+
+---
+
+## Testing Patterns
+
+### Mock setup (vi.hoisted)
+
+```typescript
+const mocks = vi.hoisted(() => {
+    const listeners = new Map<string, Function[]>();
+    const mockTask = {
+        id: 'test-task-id',
+        on: vi.fn((event, cb) => {
+            if (!listeners.has(event)) listeners.set(event, []);
+            listeners.get(event)!.push(cb);
+        }),
+        _emit(event, ...args) {
+            for (const cb of listeners.get(event) ?? []) cb(...args);
+        },
+        start: vi.fn(async () => {}),
+        resume: vi.fn(async () => {}),
+        stop: vi.fn(async () => {}),
+        getResults: vi.fn(async () => []),
+    };
+    const mockHub = {
+        initialize: vi.fn(async () => {}),
+        findTaskByMerkleRoot: vi.fn(async () => null),
+        createTask: vi.fn(async () => mockTask),
+        resumeTask: vi.fn(async () => mockTask),
+        close: vi.fn(async () => {}),
+    };
+    return { mockTask, mockHub, listeners };
+});
+
+vi.mock('@shelchin/taskhub/browser', () => ({
+    Hub: vi.fn(() => mocks.mockHub),
+    IndexedDBAdapter: vi.fn(),
+    computeMerkleRoot: vi.fn(async () => 'mock-root'),
+    generateJobId: vi.fn(async (input) => JSON.stringify(input)),
+}));
+vi.mock('./infra/source', () => ({ YourSource: vi.fn() }));
+vi.mock('$lib/async/interrupt-queue', () => ({
+    InterruptQueue: vi.fn(() => ({
+        push: vi.fn(), next: vi.fn(async () => null), dispose: vi.fn(),
+    })),
+}));
+```
+
+### Helper: drive executor generator
+
+```typescript
+async function driveExecutor(input, ctx, deps) {
+    const executor = createExecutor(deps);
+    const gen = executor(input, ctx);
+    let result = await gen.next();
+    while (!result.done) {
+        result = await gen.next(undefined); // auto-respond to interactions
+    }
+    return result.value;
+}
+```
+
+### Test categories
+
+1. **Input parsing** — CSV parsing, address validation, amount computation, edge cases
+2. **Validation** — Network existence, required fields, zero amounts, empty input
+3. **Output formatting** — bigint→string, explorer URLs, stats aggregation
+4. **Executor integration** — Happy path, user cancellation, error handling, cleanup guarantees
+
+### Cleanup verification
+
+```typescript
+it('should always close hub and dispose interrupts', async () => {
+    // ... run executor (even with errors) ...
+    expect(mocks.mockHub.close).toHaveBeenCalled();
+    expect(mockInterruptQueue.dispose).toHaveBeenCalled();
+});
+```
+
+---
+
+## Checklist
+
+Before shipping a new PDA app:
+
+- [ ] `types.ts` — Job input/output are JSON-serializable (no bigint)
+- [ ] `schema.ts` — Every field has `.describe()`, sensible `.default()`
+- [ ] `infra/source.ts` — `getJobId()` is deterministic, `isRetryable()` handles edge cases
+- [ ] `executor.ts` — `finally` block calls `interrupts.dispose()` and `hub.close()`
+- [ ] `executor.ts` — Preflight checks before user confirmation (fail fast)
+- [ ] `executor.ts` — Progress updates on every job completion
+- [ ] `executor.spec.ts` — Tests cover: parsing, validation, formatting, happy path, cancellation, cleanup
+- [ ] `index.ts` — Exports types for consumers
+- [ ] Contract addresses filled in `infra/networks.ts` (not placeholders)

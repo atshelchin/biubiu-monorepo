@@ -1,0 +1,215 @@
+# NFT Multisender
+
+> Distribute ERC721 or ERC1155 NFTs to multiple recipients in batched on-chain transactions.
+
+---
+
+## Overview
+
+NFT Multisender takes a list of recipients with token IDs (and optional amounts for ERC1155), validates them, splits into batches, and sends each batch via a gas-optimized distribution contract. Supports both ERC721 (one token per recipient) and ERC1155 (multiple copies per token ID). All state is persisted in the browser for resume.
+
+- **App ID**: `nft-multisender`
+- **Category**: Write (on-chain transactions)
+- **Wallet required**: Yes
+- **Framework**: PDA (`@shelchin/pda`) — see `/llms/pda-guide.txt` for framework docs
+
+---
+
+## Supported Networks
+
+Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE).
+
+Each network has deployed ERC721 and ERC1155 distribution contract addresses (see `infra/networks.ts`).
+
+---
+
+## Input
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `recipients` | string (textarea) | — | One `address,tokenId` (ERC721) or `address,tokenId,amount` (ERC1155) per line |
+| `network` | string | `'ethereum'` | Target network |
+| `nftType` | `'erc721'` \| `'erc1155'` | `'erc721'` | NFT standard |
+| `nftAddress` | string | — | NFT contract address |
+| `batchSize` | number (1-200) | `50` | Recipients per transaction batch |
+
+### Recipients format
+
+**ERC721** (one token per recipient):
+```
+0xAbc...123,1001
+0xDef...456,1002
+0xGhi...789,1003
+```
+
+**ERC1155** (multiple copies possible):
+```
+0xAbc...123,1,10
+0xDef...456,1,5
+0xGhi...789,2,20
+```
+
+Tab-separated also accepted. Comments (`#`) and blank lines are skipped.
+
+### Batch size
+
+Default is 50 (lower than token-multisender's 200) because NFT transfers typically consume more gas per recipient due to storage updates per token ID.
+
+---
+
+## How It Works
+
+1. **Validate** — Parse CSV, validate addresses and token IDs, detect duplicate token IDs (ERC721 only), split into batches
+2. **Approval check** — Query `isApprovedForAll(owner, distributionContract)` on the NFT contract
+3. **Set approval** — If not approved, prompt user to sign `setApprovalForAll(distributionContract, true)`
+4. **Confirm** — Show summary: "Send N NFTs to Y recipients in Z batches?"
+5. **Execute** — Send each batch as one on-chain tx, concurrency = 1 (sequential)
+6. **Track** — Progress per-batch; failed batches trigger user choice (skip/abort)
+7. **Resume** — Same TaskHub/merkle root resume mechanism as token-multisender
+
+---
+
+## Smart Contracts
+
+| Contract | Function | NFT type |
+|----------|----------|----------|
+| ERC721 Distribution | `batchTransfer(nftAddress, recipients[], tokenIds[], options)` | ERC721 |
+| ERC1155 Distribution | `batchTransfer(nftAddress, recipients[], tokenIds[], amounts[], options)` | ERC1155 |
+
+Both accept `Options { allowPartialFailure: bool }`. When `true`, individual failures are recorded and `TransferSkipped` events are emitted.
+
+### Approval model
+
+Unlike token-multisender (which uses ERC20 `approve` per amount), NFT multisender uses `setApprovalForAll` — a single approval grants the distribution contract permission to transfer any token ID from the user's collection.
+
+---
+
+## Security Model
+
+### Non-custodial
+
+- The app **never** holds private keys
+- Every transaction signed by the user's own wallet
+- Distribution contract calls `safeTransferFrom` (ERC721) or `safeTransferFrom` (ERC1155) — tokens flow directly from user to recipients
+
+### What the user signs
+
+| Step | Transaction | What happens |
+|------|------------|-------------|
+| 1 | `nft.setApprovalForAll(distributionContract, true)` | Grants contract permission to transfer any NFT |
+| 2..N | `contract.batchTransfer(nft, recipients, tokenIds, [amounts], options)` | Contract transfers NFTs to all recipients |
+
+### Funds flow
+
+```
+User Wallet
+  │
+  ├── (ERC721) ─→ nft.setApprovalForAll(DistributionContract)
+  │                DistributionContract.batchTransfer()
+  │                └── nft.safeTransferFrom(user, recipient, tokenId) × N
+  │
+  └── (ERC1155) ─→ nft.setApprovalForAll(DistributionContract)
+                    DistributionContract.batchTransfer()
+                    └── nft.safeTransferFrom(user, recipient, tokenId, amount, "") × N
+```
+
+---
+
+## Risks and Considerations
+
+### Transaction risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| Token ID doesn't exist or not owned | `allowPartialFailure` skips, `TransferSkipped` emitted | Medium |
+| Recipient contract rejects ERC721/1155 | `safeTransferFrom` reverts per-item; caught by partial failure mode | Low |
+| Gas spike mid-batch | Batches are independent; pause and resume | Medium |
+| Duplicate token ID in ERC721 input | Detected during validation — error thrown before sending | Low |
+
+### Approval risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| `setApprovalForAll` grants broad access | User should revoke after completing all batches | Medium |
+| Malicious NFT contract | Approval is on the NFT contract itself, not the distribution contract | Low |
+
+### Operational risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| Browser crash mid-sending | TaskHub IndexedDB persistence; resume via merkle root | Low |
+| Duplicate sends on resume | Completed jobs skipped; each batch is idempotent | Low |
+
+### Not protected against
+
+- Sending wrong token IDs (user must verify input)
+- NFT contract that blocks transfers (soulbound tokens)
+- Floor price changes between batches
+
+---
+
+## Differences from Token Multisender
+
+| Aspect | NFT Multisender | Token Multisender |
+|--------|----------------|-------------------|
+| Token standard | ERC721 / ERC1155 | Native / ERC20 |
+| Input per recipient | address + tokenId [+ amount] | address + amount |
+| Approval | `setApprovalForAll` (once) | `approve(amount)` (once) |
+| Default batch size | 50 | 200 |
+| Duplicate check | ERC721 tokenId uniqueness | None needed |
+| Amount handling | ERC1155 only (optional) | Always required |
+| `msg.value` | Not used (NFTs are non-payable transfers) | Used for native token distribution |
+
+---
+
+## Output
+
+```json
+{
+  "batches": [
+    {
+      "batchIndex": 0,
+      "txHash": "0xabc...",
+      "totalSent": "50",
+      "successCount": 50,
+      "failedCount": 0,
+      "explorerUrl": "https://etherscan.io/tx/0xabc..."
+    }
+  ],
+  "stats": {
+    "totalBatches": 4,
+    "successBatches": 4,
+    "failedBatches": 0,
+    "totalRecipients": 200,
+    "totalSent": "200",
+    "totalSuccessCount": 200,
+    "totalFailedIndices": 0,
+    "duration": 32100
+  }
+}
+```
+
+---
+
+## File Structure
+
+```
+apps/biubiu.tools/src/lib/pda-apps/nft-multisender/
+├── index.ts              # createNftMultisenderApp(wallet) factory
+├── schema.ts             # Zod input/output schemas
+├── types.ts              # NftRecipient, NftBatchInput, NftBatchOutput, WalletDeps, etc.
+├── executor.ts           # validate → run → formatOutput
+├── executor.spec.ts      # Unit tests
+└── infra/
+    ├── networks.ts       # 6 networks with distribution contract addresses
+    ├── contracts.ts      # ERC721/ERC1155 ABIs + tx builders
+    └── source.ts         # NftTransferBatchSource (TaskSource impl)
+```
+
+### Key design decisions
+
+- **Factory pattern**: `createNftMultisenderApp(wallet: WalletDeps)` — same wallet injection as token-multisender
+- **Concurrency = 1**: Sequential transaction signing
+- **Dual NFT support**: `nftType` field switches between ERC721 and ERC1155 contract calls and validation logic
+- **Lower batch size default**: 50 vs 200, because NFT transfers are more gas-intensive
+- **ERC721 duplicate detection**: Validation rejects duplicate tokenIds since each ERC721 token is unique

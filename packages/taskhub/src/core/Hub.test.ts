@@ -3,7 +3,8 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { Hub, createTaskHub } from './Hub.js';
+import { Hub } from './Hub.js';
+import { createTaskHub } from './createTaskHub.js';
 import { Task } from './Task.js';
 import { BunSQLiteAdapter } from '../storage/BunSQLiteAdapter.js';
 import { TaskSource, type JobContext } from '../types.js';

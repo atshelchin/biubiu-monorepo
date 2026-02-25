@@ -1,4 +1,4 @@
-import { Hub, IndexedDBAdapter, computeMerkleRoot, generateJobId, type Job } from '@shelchin/taskhub/browser';
+import { createTaskHub, computeMerkleRoot, generateJobId, type Job } from '@shelchin/taskhub/browser';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import { inputSchema, outputSchema } from './schema';
 import type { BalanceQuery, BalanceResult, BalanceFailure, ValidatedInput, RunResult } from './types';
@@ -55,9 +55,7 @@ async function* run(
     }
 
     const source = new BalanceQuerySource(queries);
-    const storage = new IndexedDBAdapter();
-    const hub = new Hub(storage);
-    await hub.initialize();
+    const hub = await createTaskHub();
 
     // Compute merkle root (same way Hub does internally) for idempotent lookup
     const jobIds = await Promise.all(queries.map((q) => generateJobId(q)));

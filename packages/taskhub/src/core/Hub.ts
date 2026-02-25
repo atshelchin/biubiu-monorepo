@@ -224,7 +224,7 @@ async function createStorageAdapter(config: HubConfig): Promise<StorageAdapter> 
 
     case 'opfs': {
       const { OPFSAdapter } = await import('../storage/OPFSAdapter.js');
-      return new OPFSAdapter();
+      return new OPFSAdapter(config.opfs);
     }
 
     case 'indexeddb': {
@@ -234,41 +234,47 @@ async function createStorageAdapter(config: HubConfig): Promise<StorageAdapter> 
 
     case 'auto':
     default:
-      return autoDetectStorage(dbPath);
+      return autoDetectStorage(dbPath, config.opfs);
   }
 }
 
 /**
  * Auto-detect the best storage adapter for the current environment
  */
-async function autoDetectStorage(dbPath: string): Promise<StorageAdapter> {
+async function autoDetectStorage(dbPath: string, opfsConfig?: HubConfig['opfs']): Promise<StorageAdapter> {
   // Check if running in Bun
   if (typeof Bun !== 'undefined') {
     const { BunSQLiteAdapter } = await import('../storage/BunSQLiteAdapter.js');
+    console.log('[TaskHub] Storage: BunSQLite (%s)', dbPath);
     return new BunSQLiteAdapter(dbPath);
   }
 
   // Check if running in Node.js
   if (typeof process !== 'undefined' && process.versions?.node) {
     const { NodeSQLiteAdapter } = await import('../storage/NodeSQLiteAdapter.js');
+    console.log('[TaskHub] Storage: NodeSQLite (%s)', dbPath);
     return new NodeSQLiteAdapter(dbPath);
   }
 
   // Browser environment
   if (typeof window !== 'undefined') {
-    // Try OPFS first
+    // Try OPFS first (must verify initialization — construction alone won't fail)
     if (navigator?.storage?.getDirectory) {
       try {
         const { OPFSAdapter } = await import('../storage/OPFSAdapter.js');
-        return new OPFSAdapter();
+        const adapter = new OPFSAdapter(opfsConfig);
+        await adapter.initialize();
+        console.log('[TaskHub] Storage: OPFS SQLite');
+        return adapter;
       } catch {
-        // OPFS not available, fall through to IndexedDB
+        // OPFS not available (sqlite3.js not loaded, etc.), fall through to IndexedDB
       }
     }
 
     // Fall back to IndexedDB
     if (typeof indexedDB !== 'undefined') {
       const { IndexedDBAdapter } = await import('../storage/IndexedDBAdapter.js');
+      console.log('[TaskHub] Storage: IndexedDB');
       return new IndexedDBAdapter();
     }
 

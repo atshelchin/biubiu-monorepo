@@ -7,3 +7,6 @@ biubiu.env
 .turbo
 .VSCodeCounter
 llms
+*.db
+*.db-shm
+*.db-wal

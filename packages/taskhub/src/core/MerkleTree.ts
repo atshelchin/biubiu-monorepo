@@ -5,27 +5,14 @@
 
 /**
  * Hash a string using SHA-256
- * Works in both browser (crypto.subtle) and Node.js/Bun (crypto)
+ * Uses crypto.subtle which works in Browser, Node.js, and Bun
  */
 async function sha256(data: string): Promise<string> {
-  // Prefer Node.js/Bun crypto module when available
-  // Note: crypto.subtle has issues in Bun when used inside async generators
-  // @ts-ignore - Bun global exists in Bun runtime
-  if (typeof process !== 'undefined' && process.versions?.node || typeof globalThis.Bun !== 'undefined') {
-    const { createHash } = await import('crypto');
-    return createHash('sha256').update(data).digest('hex');
-  }
-
-  // Browser environment - use crypto.subtle
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  throw new Error('No crypto implementation available');
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**

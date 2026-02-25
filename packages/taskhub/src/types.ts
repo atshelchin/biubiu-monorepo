@@ -169,6 +169,9 @@ export interface TaskConfig {
 export interface HubConfig {
   storage: 'auto' | 'memory' | 'bun-sqlite' | 'better-sqlite3' | 'opfs' | 'indexeddb';
   dbPath?: string; // For SQLite adapters
+  opfs?: {
+    workerUrl?: string; // Path to opfs-worker.js (default: /lib/sqlite3/opfs-worker.js)
+  };
 }
 
 // ============================================================================

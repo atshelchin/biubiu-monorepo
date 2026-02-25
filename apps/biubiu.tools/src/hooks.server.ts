@@ -1,4 +1,4 @@
-import { redirect, type Handle } from '@sveltejs/kit';
+import { type Handle } from '@sveltejs/kit';
 import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
 
@@ -17,12 +17,23 @@ const DEFAULT_TIMEZONE = 'UTC';
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
 
-// Server-side message loader using dynamic imports (works with compiled binary)
+// Preload all message modules using import.meta.glob (handles special chars in filenames)
+const messageModules = import.meta.glob('./messages/**/*.json', { eager: false });
+
+// Server-side message loader using import.meta.glob (handles [brackets] in filenames)
 async function serverMessageLoader(locale: string, namespace: string) {
+  const path = `./messages/${locale}/${namespace}.json`;
+  const fallbackPath = `./messages/${DEFAULT_LOCALE}/${namespace}.json`;
+
   try {
-    // Use dynamic import - Vite will bundle these at build time
-    const module = await import(`./messages/${locale}/${namespace}.json`);
-    return module.default;
+    if (messageModules[path]) {
+      const module = (await messageModules[path]()) as { default: Record<string, string> };
+      return module.default;
+    } else if (messageModules[fallbackPath]) {
+      const module = (await messageModules[fallbackPath]()) as { default: Record<string, string> };
+      return module.default;
+    }
+    return {};
   } catch {
     // Try fallback
     if (locale !== DEFAULT_LOCALE) {
@@ -57,29 +68,9 @@ export const handle: Handle = async ({ event, resolve }) => {
   const pathParts = pathname.split('/').filter(Boolean);
   const pathLocale = pathParts[0];
 
-  // If no valid locale in path, redirect to default locale
-  if (!pathLocale || !SUPPORTED_LOCALES.includes(pathLocale)) {
-    // Try to get preferred locale from cookie or Accept-Language
-    const cookieLocale = event.cookies.get('locale');
-    const acceptLanguage = event.request.headers.get('accept-language');
-    let preferredLocale = DEFAULT_LOCALE;
-
-    if (cookieLocale && SUPPORTED_LOCALES.includes(cookieLocale)) {
-      preferredLocale = cookieLocale;
-    } else if (acceptLanguage) {
-      // Parse Accept-Language header
-      const langMatch = acceptLanguage.match(/^([a-z]{2})/i);
-      if (langMatch && SUPPORTED_LOCALES.includes(langMatch[1].toLowerCase())) {
-        preferredLocale = langMatch[1].toLowerCase();
-      }
-    }
-
-    // Redirect to locale-prefixed path
-    throw redirect(302, `/${preferredLocale}${pathname}`);
-  }
-
-  // Set locale
-  const locale = pathLocale;
+  // Determine locale: use URL prefix if valid, otherwise default to 'en'
+  // No redirect - URLs without locale prefix are treated as English
+  const locale = SUPPORTED_LOCALES.includes(pathLocale) ? pathLocale : DEFAULT_LOCALE;
   event.locals.locale = locale;
   i18nState.locale = locale;
 
@@ -91,8 +82,11 @@ export const handle: Handle = async ({ event, resolve }) => {
     sameSite: 'lax',
   });
 
-  // Get actual route path (without locale prefix)
-  const routePath = '/' + pathParts.slice(1).join('/') || '/';
+  // Get actual route path (without locale prefix if present)
+  const hasLocalePrefix = SUPPORTED_LOCALES.includes(pathLocale);
+  const routePath = hasLocalePrefix
+    ? '/' + pathParts.slice(1).join('/') || '/'
+    : pathname;
 
   // Use matchRoute to automatically match namespaces (supports dynamic routes)
   const namespaces = matchRoute(routePath);

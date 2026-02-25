@@ -47,7 +47,7 @@ interface TokenConfig {
 interface Config {
   networks: Record<string, NetworkConfig>;
   tokens: Record<string, TokenConfig[]>;
-  addresses: string[];
+  addresses: string[] | string;  // 数组或文件路径
 }
 
 interface BalanceQuery {
@@ -310,6 +310,23 @@ async function main() {
     // 保存默认配置供参考
     await writeFile(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2));
     info(`已生成示例配置文件: ${configPath}`);
+  }
+
+  // 如果 addresses 是文件路径，从文件读取地址
+  if (typeof config.addresses === 'string') {
+    const addressesPath = config.addresses.startsWith('/')
+      ? config.addresses
+      : join(dirname(configPath), config.addresses);
+
+    info(`读取地址文件: ${addressesPath}`);
+    const addressContent = await readFile(addressesPath, 'utf-8');
+    const addresses = addressContent
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && line.startsWith('0x'));
+
+    config.addresses = addresses;
+    success(`已加载 ${addresses.length} 个地址`);
   }
 
   // 显示配置摘要

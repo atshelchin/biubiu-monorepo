@@ -14,13 +14,21 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"pda:balance-radar": "bun src/lib/pda-apps/balance-radar/adapters/cli.ts"
 	},
 	"dependencies": {
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@shelchin/i18n-sveltekit": "workspace:*",
 		"@shelchin/seo-sveltekit": "workspace:*",
-		"satori": "^0.19.1"
+		"@shelchin/vendor-pool": "workspace:*",
+		"satori": "^0.19.1",
+		"viem": "^2.46.0",
+		"@lucide/svelte": "^0.511.0",
+		"@shelchin/pda": "workspace:*",
+		"@shelchin/pda-sveltekit": "workspace:*",
+		"@shelchin/proeditor-sveltekit": "workspace:*",
+		"@shelchin/taskhub": "workspace:*"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",

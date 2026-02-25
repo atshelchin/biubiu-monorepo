@@ -1,0 +1,222 @@
+# Token Multisender
+
+> Distribute native tokens (ETH, MATIC, ACE, etc.) or ERC20 tokens to thousands of recipients in batched on-chain transactions.
+
+---
+
+## Overview
+
+Token Multisender takes a list of recipient addresses with amounts, validates them, splits into configurable batch sizes, and sends each batch as a single on-chain transaction to a gas-optimized distribution contract. All state is persisted in the browser — page refresh resumes where you left off.
+
+- **App ID**: `token-multisender`
+- **Category**: Write (on-chain transactions)
+- **Wallet required**: Yes
+- **Framework**: PDA (`@shelchin/pda`) — see `/llms/pda-guide.txt` for framework docs
+
+---
+
+## Supported Networks
+
+Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE).
+
+Each network has its own deployed distribution contract addresses (see `infra/networks.ts`).
+
+---
+
+## Input
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `recipients` | string (textarea) | — | One `address,amount` per line |
+| `network` | string | `'ethereum'` | Target network |
+| `tokenType` | `'native'` \| `'erc20'` | `'native'` | Token type to distribute |
+| `tokenAddress` | string (optional) | — | ERC20 contract address (required when tokenType = erc20) |
+| `distributionMode` | `'specified'` \| `'equal'` | `'specified'` | How amounts are determined |
+| `totalAmount` | string (optional) | — | Total to split equally (required for equal mode) |
+| `batchSize` | number (1-500) | `200` | Recipients per transaction batch |
+
+### Recipients format
+
+```
+0xAbc...123,1.5
+0xDef...456,2.0
+# comments and blank lines are skipped
+0xGhi...789,0.5
+```
+
+Tab-separated also accepted. For equal mode, omit amounts — they're computed automatically.
+
+### Distribution modes
+
+- **Specified**: each recipient gets the exact amount from the CSV
+- **Equal**: `totalAmount / recipientCount`, dust (remainder) added to the first recipient
+
+---
+
+## How It Works
+
+1. **Validate** — Parse CSV, validate addresses, compute totals, split into batches
+2. **Preflight** — Check wallet balance (native) or balance + allowance (ERC20)
+3. **Approve** (ERC20 only) — If allowance insufficient, prompt user to sign `approve(maxUint256)`
+4. **Confirm** — Show summary: "Send X tokens to Y recipients in Z batches?"
+5. **Execute** — Send each batch as one on-chain tx, concurrency = 1 (sequential)
+6. **Track** — Progress per-batch; failed batches trigger user choice (skip/abort)
+7. **Resume** — All state in IndexedDB via TaskHub; same input resumes same task
+
+---
+
+## Smart Contracts
+
+| Contract | Function | Token type |
+|----------|----------|-----------|
+| `ETHDistribution.sol` | `distributeSpecified(recipients[], amounts[], options)` | Native (ETH) |
+| `ERC20Distribution.sol` | `distributeSpecifiedDirect(token, recipients[], amounts[], options)` | ERC20 |
+
+Both accept `Options { allowPartialFailure: bool }`. When `true`, individual failures are recorded (not reverted), and `TransferSkipped` events are emitted with failed indices.
+
+Source: `apps/biubiu-contracts/src/tools/ETHDistribution.sol`, `ERC20Distribution.sol`
+
+---
+
+## Security Model
+
+### Non-custodial
+
+- The app **never** holds private keys
+- Every transaction is signed by the user's own wallet (MetaMask, WalletConnect, etc.)
+- Funds flow directly: User Wallet → Distribution Contract → Recipients (no intermediate custody)
+
+### What the user signs
+
+| Step | Transaction | What happens |
+|------|------------|-------------|
+| 1 (ERC20 only) | `token.approve(distributionContract, maxUint256)` | Grants contract permission to move tokens |
+| 2..N | `contract.distributeSpecified(recipients, amounts, options)` | Contract sends to all recipients in one tx |
+
+### Funds flow
+
+```
+User Wallet
+  │
+  ├── (ETH) ──→ ETHDistribution.distributeSpecified() ──→ Recipients
+  │              (msg.value = total)
+  │
+  └── (ERC20) ─→ token.approve(ERC20Distribution)
+                  ERC20Distribution.distributeSpecifiedDirect()
+                  └── token.transferFrom(user, recipient, amount) × N
+```
+
+### Contract properties
+
+- No owner, no pause, no upgrade proxy — pure utility contracts
+- Only privileged role: `trustedForwarder` (ERC2771Context for meta-transactions), set at deployment, immutable
+- No `selfdestruct`, no `delegatecall` to external addresses
+- No storage of user funds beyond single transaction scope (ETH) or explicit transferFrom (ERC20)
+
+---
+
+## Contract Verification
+
+### Before using: verify on block explorer
+
+1. Go to `{explorerUrl}/address/{contractAddress}#code`
+2. Confirm **verified** (green checkmark)
+3. Source should match `apps/biubiu-contracts/src/tools/ETHDistribution.sol` or `ERC20Distribution.sol`
+4. Check constructor arg: `_trustedForwarder` should be BiuBiuPremium address or `address(0)`
+
+### Verify yourself
+
+```bash
+cd apps/biubiu-contracts
+forge build
+forge verify-contract <address> src/tools/ETHDistribution.sol:ETHDistribution --chain <chainId>
+```
+
+---
+
+## Risks and Considerations
+
+### Transaction risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| Out of gas / revert | `allowPartialFailure: true` — partial success, failed indices returned | Medium |
+| Wallet rejects signing | User prompted to retry or abort | Low |
+| Gas price spike mid-batch | Batches are independent; user can pause and resume later | Medium |
+| Recipient is a reverting contract | `allowPartialFailure` skips it, `TransferSkipped` event emitted | Low |
+
+### ERC20-specific risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| Fee-on-transfer / deflationary token | `transferFrom` used; actual received amount may differ from specified | Medium |
+| Unlimited approval (`maxUint256`) | Standard practice; revoke after use via Etherscan or revoke.cash | Low |
+| Token contract is malicious/paused | Balance and allowance checked before sending; reverts caught per-batch | Medium |
+
+### Operational risks
+
+| Risk | Mitigation | Severity |
+|------|-----------|----------|
+| Browser crash mid-sending | TaskHub persists state in IndexedDB; resume via merkle root | Low |
+| Duplicate sends on resume | Merkle root maps same inputs to same task; completed jobs skipped | Low |
+| Nonce issues | Concurrency = 1; only one tx in-flight at a time | Low |
+
+### Not protected against
+
+- Sending to wrong addresses (user must verify input)
+- Insufficient gas for all batches (only checked before first batch)
+- Token contract upgrades between batches (possible with proxy tokens)
+- MEV/frontrunning (use Flashbots RPC if concerned)
+
+---
+
+## File Structure
+
+```
+apps/biubiu.tools/src/lib/pda-apps/token-multisender/
+├── index.ts              # createTokenMultisenderApp(wallet) factory
+├── schema.ts             # Zod input/output schemas
+├── types.ts              # All TypeScript interfaces
+├── executor.ts           # validate → run → formatOutput
+├── executor.spec.ts      # 23 unit tests
+└── infra/
+    ├── networks.ts       # 6 networks with contract addresses
+    ├── contracts.ts      # ABI definitions + tx builders
+    └── source.ts         # TransferBatchSource (TaskSource impl)
+```
+
+### Key design decisions
+
+- **Factory pattern**: `createTokenMultisenderApp(wallet: WalletDeps)` — wallet injected at runtime from Svelte page
+- **Concurrency = 1**: Each batch requires wallet signing, must be sequential
+- **bigint as string**: `BatchInput.amounts` and `BatchOutput.totalSent` are strings for JSON serialization in TaskHub
+- **Interrupt type**: `batch-failed` (unlike balance-radar's `rate-limited`)
+
+---
+
+## Output
+
+```json
+{
+  "batches": [
+    {
+      "batchIndex": 0,
+      "txHash": "0xabc...",
+      "totalSent": "150.0",
+      "successCount": 200,
+      "failedCount": 0,
+      "explorerUrl": "https://etherscan.io/tx/0xabc..."
+    }
+  ],
+  "stats": {
+    "totalBatches": 5,
+    "successBatches": 5,
+    "failedBatches": 0,
+    "totalRecipients": 1000,
+    "totalSent": "750.0",
+    "totalSuccessCount": 1000,
+    "totalFailedIndices": 0,
+    "duration": 45230
+  }
+}
+```

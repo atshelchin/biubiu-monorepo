@@ -1,36 +1,32 @@
 # @shelchin/taskhub
 
-Adaptive batch task processing engine with intelligent concurrency control.
+自适应批量任务处理引擎。AIMD 并发控制、智能重试、崩溃恢复，跨 Node.js / Bun / 浏览器运行。
 
-## Features
+## 特性
 
-- **Adaptive Concurrency (AIMD)** - Automatically adjusts concurrency based on rate limits using Additive Increase / Multiplicative Decrease algorithm
-- **Intelligent Retry** - Exponential backoff with configurable retry policies
-- **Crash Recovery** - SQLite-backed persistence for reliable recovery
-- **Multi-Platform** - Works on Node.js, Bun, and browsers
-- **Type-Safe** - Full TypeScript support with generics
-- **Merkle Root Fingerprinting** - Deterministic task identification for deduplication
+- **AIMD 并发控制** — 基于成功/限流自动调节并发：成功加速，限流减速
+- **智能重试** — 指数退避 + 延迟调度（不阻塞槽位）
+- **崩溃恢复** — SQLite 持久化，进程重启后继续未完成任务
+- **Merkle Root** — 确定性任务通过输入指纹去重
+- **多平台存储** — Bun SQLite / Node.js SQLite / 浏览器 OPFS / IndexedDB / 内存
+- **泛型类型安全** — `TaskSource<TInput, TOutput>` 全链路类型
 
-## Installation
+## 安装
 
 ```bash
-# Bun
 bun add @shelchin/taskhub
 
-# npm
-npm install @shelchin/taskhub
-
-# For Node.js, also install:
+# Node.js 需额外安装
 npm install better-sqlite3
 ```
 
-## Quick Start
+## 快速开始
 
 ```typescript
 import { createTaskHub, TaskSource, type JobContext } from '@shelchin/taskhub';
 
-// 1. Define your task source
-class MyProcessor extends TaskSource<string, number> {
+// 1. 定义 TaskSource
+class DataProcessor extends TaskSource<string, number> {
   readonly type = 'deterministic';
 
   getData() {
@@ -38,237 +34,191 @@ class MyProcessor extends TaskSource<string, number> {
   }
 
   async handler(input: string, ctx: JobContext): Promise<number> {
-    // Process each item
     return input.length;
   }
 }
 
-// 2. Create hub and task
+// 2. 创建 Hub 和 Task
 const hub = await createTaskHub();
 const task = await hub.createTask({
   name: 'my-task',
-  source: new MyProcessor(),
+  source: new DataProcessor(),
 });
 
-// 3. Monitor progress
+// 3. 监听事件
 task.on('progress', (p) => {
-  console.log(`${p.completed}/${p.total} (concurrency: ${p.concurrency})`);
+  console.log(`${p.completed}/${p.total} (并发: ${p.concurrency})`);
 });
 
-// 4. Execute
+task.on('job:complete', (job) => {
+  console.log(`完成: ${job.input} → ${job.output}`);
+});
+
+// 4. 执行
 await task.start();
 
-// 5. Get results
+// 5. 获取结果
 const results = await task.getResults({ status: 'completed' });
-console.log(results);
 
-// 6. Cleanup
+// 6. 清理
 await hub.close();
 ```
 
-## Core Concepts
+## 两种任务类型
 
-### Task Types
+### 确定性任务（Deterministic）
 
-| Type | getData() Returns | Merkle Root | Use Case |
-|------|------------------|-------------|----------|
-| **deterministic** | `TInput[]` | Yes | Known dataset, deduplication needed |
-| **dynamic** | `AsyncIterable<TInput>` | No | Streaming data, unknown size |
-
-### Deterministic Tasks
-
-Pre-defined data with Merkle root fingerprinting:
+数据预先确定，生成 Merkle Root 指纹用于去重：
 
 ```typescript
-class BatchProcessor extends TaskSource<number, string> {
+class BatchQuery extends TaskSource<Address, Balance> {
   readonly type = 'deterministic';
 
   getData() {
-    return [1, 2, 3, 4, 5]; // Array
+    return this.addresses; // 返回数组
   }
 
-  async handler(input: number) {
-    return `Processed: ${input}`;
+  async handler(input: Address, ctx: JobContext): Promise<Balance> {
+    return await queryBalance(input);
   }
 }
 ```
 
-### Dynamic Tasks
+**去重机制：** 相同输入数据集 → 相同 Merkle Root → `hub.findTaskByMerkleRoot()` 找到已有任务 → 跳过已完成的 job，只执行剩余的。
 
-Streaming data with async iterables:
+### 动态任务（Dynamic）
+
+数据流式产生，无法预知总量：
 
 ```typescript
-class StreamProcessor extends TaskSource<PageItem, Result> {
+class PageCrawler extends TaskSource<PageItem, CrawlResult> {
   readonly type = 'dynamic';
-  readonly id = 'my-stream'; // Required for dynamic tasks
+  readonly id = 'page-crawler'; // 动态任务必须提供 id
 
   async *getData() {
-    for (let page = 1; page <= 100; page++) {
+    for (let page = 1; ; page++) {
       const items = await fetchPage(page);
+      if (items.length === 0) break;
       for (const item of items) {
         yield item;
       }
     }
   }
 
-  async handler(input: PageItem) {
-    return processItem(input);
+  async handler(input: PageItem, ctx: JobContext): Promise<CrawlResult> {
+    return await crawl(input);
   }
 }
 ```
 
-### AIMD Algorithm
-
-Adaptive concurrency control that automatically adjusts based on success/failure patterns:
+## AIMD 并发控制
 
 ```
-Initial: 5 concurrent jobs
+初始并发: 5
     │
     ▼
-┌─────────────────┐
-│ 10 consecutive  │──────▶ Increase by 1
-│ successes       │        (Additive Increase)
-└─────────────────┘
+ 10 次连续成功 → 并发 +1 (加法增长)
     │
     ▼
-┌─────────────────┐
-│ Rate limit      │──────▶ Multiply by 0.5
-│ detected (429)  │        (Multiplicative Decrease)
-└─────────────────┘
+ 检测到 429   → 并发 ×0.5 (乘法减少)
+    │
+    ▼
+ 继续监测，自动适应
 ```
-
-### Job Lifecycle
-
-```
-pending ──▶ active ──▶ completed
-              │
-              ▼
-           failed (if non-retryable or max attempts reached)
-              │
-              ▼
-           pending (if retryable)
-```
-
-## API Reference
-
-### createTaskHub(config?)
-
-Creates a TaskHub instance with auto-detected storage.
-
-```typescript
-const hub = await createTaskHub({
-  storage: 'auto',     // 'auto' | 'memory' | 'bun-sqlite' | 'better-sqlite3' | 'opfs' | 'indexeddb'
-  dbPath: 'tasks.db',  // SQLite database path
-});
-```
-
-### Hub Methods
-
-| Method | Description |
-|--------|-------------|
-| `createTask(options)` | Create a new task |
-| `getTask(taskId)` | Get existing task by ID |
-| `listTasks()` | List all tasks |
-| `deleteTask(taskId)` | Delete task and its jobs |
-| `resumeTask(taskId, source)` | Resume task after crash |
-| `resetFailedJobs(taskId)` | Reset failed jobs to pending |
-| `close()` | Close hub and release resources |
-
-### Task Options
 
 ```typescript
 await hub.createTask({
   name: 'my-task',
-  source: new MySource(),
+  source,
   concurrency: {
-    min: 1,      // Minimum concurrent jobs
-    max: 50,     // Maximum concurrent jobs
-    initial: 5,  // Starting concurrency
+    min: 1,       // 最低并发
+    max: 50,      // 最高并发
+    initial: 5,   // 初始并发
   },
-  retry: {
-    maxAttempts: 3,     // Max retry attempts
-    baseDelay: 1000,    // Initial retry delay (ms)
-    maxDelay: 30000,    // Maximum retry delay (ms)
-  },
-  timeout: 30000,  // Job timeout (ms)
 });
 ```
 
-### Task Methods
+## Job 生命周期
 
-| Method | Description |
-|--------|-------------|
-| `start()` | Start processing |
-| `pause()` | Pause (active jobs complete) |
-| `resume()` | Resume processing |
-| `stop()` | Stop and cancel active jobs |
-| `destroy()` | Delete task and all data |
-| `getProgress()` | Get current progress |
-| `getResults(options?)` | Get job results |
+```
+pending ──[被 claim]──> active ──[成功]──> completed
+                          │
+                          ├──[可重试]──> pending (带 scheduledAt 延迟)
+                          │
+                          └──[不可重试 / 达到上限]──> failed
+```
 
-### Task Events
+## 重试配置
 
 ```typescript
-task.on('progress', (progress) => {
-  // { taskId, total, completed, failed, pending, active, concurrency, elapsed, estimatedRemaining }
-});
-
-task.on('job:start', (job) => {
-  // Job started processing
-});
-
-task.on('job:complete', (job) => {
-  // Job completed successfully
-});
-
-task.on('job:failed', (job, error) => {
-  // Job failed permanently
-});
-
-task.on('job:retry', (job, attempt) => {
-  // Job being retried
-});
-
-task.on('rate-limited', (newConcurrency) => {
-  // Rate limit detected, concurrency reduced
-});
-
-task.on('completed', () => {
-  // All jobs finished
+await hub.createTask({
+  source,
+  retry: {
+    maxAttempts: 3,     // 最多 3 次（含首次）
+    baseDelay: 1000,    // 首次重试延迟 1 秒
+    maxDelay: 30000,    // 最大延迟 30 秒
+  },
+  timeout: 30000,       // 单个 job 超时 30 秒
 });
 ```
 
-### Custom Error Handling
+**退避公式：** `delay = min(baseDelay × 2^(attempt-1), maxDelay)`
 
-Override default error classification:
+```
+第 1 次重试: 1s
+第 2 次重试: 2s
+第 3 次重试: 4s
+...上限 30s
+```
+
+## 自定义错误分类
 
 ```typescript
 class MySource extends TaskSource<Input, Output> {
-  // Determine if error should trigger retry
+  // 判断错误是否应该重试
   isRetryable(error: unknown): boolean {
-    if (error instanceof MyFatalError) return false;
+    if (error instanceof AuthError) return false; // 认证错误不重试
     return true;
   }
 
-  // Determine if error indicates rate limiting
+  // 判断是否是限流（触发 AIMD 降速）
   isRateLimited(error: unknown): boolean {
     return (error as any)?.status === 429;
   }
 }
 ```
 
-## Crash Recovery
-
-TaskHub persists all state to SQLite, enabling recovery after crashes:
+## 控制流
 
 ```typescript
-// After restart, find and resume incomplete tasks
+// 启动
+await task.start();
+
+// 暂停（进行中的 job 会完成，不再 claim 新的）
+task.pause();
+
+// 恢复
+await task.resume();
+
+// 停止（取消进行中的 job，重置为 pending）
+await task.stop();
+
+// 销毁（删除所有数据）
+await task.destroy();
+```
+
+## 崩溃恢复
+
+TaskHub 将所有状态持久化到 SQLite。进程崩溃后：
+
+```typescript
 const hub = await createTaskHub();
 const tasks = await hub.listTasks();
 
-for (const taskMeta of tasks) {
-  if (taskMeta.status === 'running' || taskMeta.status === 'paused') {
-    const task = await hub.resumeTask(taskMeta.id, new MySource());
+for (const meta of tasks) {
+  if (meta.status === 'running' || meta.status === 'paused') {
+    // 必须重新提供 TaskSource（包含 handler 逻辑）
+    const task = await hub.resumeTask(meta.id, new MySource());
     if (task) {
       await task.resume();
     }
@@ -276,111 +226,210 @@ for (const taskMeta of tasks) {
 }
 ```
 
-### Recovery Guarantees
+**恢复保证：**
+- 崩溃时 active 状态的 job 自动重置为 pending
+- 已 completed 的 job 不会重新执行
+- failed 的 job 可通过 `hub.resetFailedJobs(taskId)` 手动重置
 
-- Active jobs at crash time are reset to `pending`
-- Completed jobs are never re-processed
-- Failed jobs can be manually reset with `resetFailedJobs()`
+## Merkle Root 去重
 
-## Storage Adapters
-
-| Adapter | Environment | Persistence | Notes |
-|---------|-------------|-------------|-------|
-| `BunSQLiteAdapter` | Bun | Yes | Native, fastest |
-| `NodeSQLiteAdapter` | Node.js | Yes | Requires better-sqlite3 |
-| `OPFSAdapter` | Browser | Yes | Uses sqlite3.wasm |
-| `IndexedDBAdapter` | Browser | Yes | Fallback |
-| `MemoryAdapter` | Any | No | Testing, temporary tasks |
-
-## Examples
-
-See the [examples/](./examples/) directory:
-
-| Example | Description |
-|---------|-------------|
-| [basic.ts](./examples/basic.ts) | Simple deterministic task |
-| [dynamic.ts](./examples/dynamic.ts) | Streaming async iterable |
-| [retry.ts](./examples/retry.ts) | Error handling and retries |
-| [pause-resume.ts](./examples/pause-resume.ts) | Pause/resume control |
-| [aimd.ts](./examples/aimd.ts) | AIMD algorithm demo |
-| [recovery.ts](./examples/recovery.ts) | Crash recovery |
-| [deterministic.ts](./examples/deterministic.ts) | Merkle root deduplication |
-
-Run examples:
-```bash
-bun examples/basic.ts
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│                    Hub                       │
-│  - Task factory                             │
-│  - Storage lifecycle                        │
-└──────────────────┬──────────────────────────┘
-                   │
-        ┌──────────┴──────────┐
-        ▼                     ▼
-   ┌─────────┐          ┌──────────┐
-   │  Task   │          │ Storage  │
-   │         │          │ Adapter  │
-   │ - State │◀────────▶│          │
-   │ - Events│          │ - SQLite │
-   └────┬────┘          └──────────┘
-        │
-        ▼
-   ┌──────────────┐
-   │  Dispatcher  │
-   │              │
-   │ - AIMD       │
-   │ - Retry      │
-   │ - Timeout    │
-   └──────┬───────┘
-          │
-          ▼
-   ┌──────────────┐
-   │  TaskSource  │
-   │              │
-   │ - handler()  │
-   │ - getData()  │
-   └──────────────┘
-```
-
-## Configuration Defaults
+适用于浏览器场景（页面刷新后恢复之前的查询）：
 
 ```typescript
-// AIMD defaults
-{
-  initialConcurrency: 5,
-  minConcurrency: 1,
-  maxConcurrency: 50,
-  additiveIncrease: 1,
-  multiplicativeDecrease: 0.5,
-  successThreshold: 10,
-}
+import { Hub, IndexedDBAdapter, computeMerkleRoot, generateJobId } from '@shelchin/taskhub/browser';
 
-// Retry defaults
-{
-  maxAttempts: 3,
-  baseDelay: 1000,
-  maxDelay: 30000,
-}
+// 计算输入数据的 Merkle Root
+const jobIds = await Promise.all(queries.map((q) => generateJobId(q)));
+const merkleRoot = await computeMerkleRoot(jobIds);
 
-// Timeout default
-timeout: 30000  // 30 seconds
+// 查找是否已有相同任务
+const existing = await hub.findTaskByMerkleRoot(merkleRoot);
+
+if (existing) {
+  // 恢复：加载已完成的结果，只执行剩余的
+  const task = await hub.resumeTask(existing.id, source);
+  const completed = await task.getResults({ status: 'completed' });
+  // ... 使用已有结果
+  await task.resume();
+} else {
+  // 新建任务
+  const task = await hub.createTask({ name: '...', source });
+  await task.start();
+}
 ```
 
-## Best Practices
+## 事件
 
-1. **Use deterministic tasks** when you need deduplication via Merkle root
-2. **Use dynamic tasks** for streaming data or when memory is a concern
-3. **Implement `isRetryable`** to avoid retrying fatal errors
-4. **Implement `isRateLimited`** for accurate AIMD behavior
-5. **Monitor events** for observability and debugging
-6. **Handle graceful shutdown** by calling `hub.close()`
-7. **Use `timeout`** to prevent hanging jobs
+```typescript
+task.on('progress', (p) => {
+  // p.total, p.completed, p.failed, p.pending, p.active
+  // p.concurrency, p.elapsed, p.estimatedRemaining
+});
 
-## License
+task.on('job:start', (job) => { /* job 开始执行 */ });
+task.on('job:complete', (job) => { /* job 成功完成 */ });
+task.on('job:failed', (job, error) => { /* job 最终失败 */ });
+task.on('job:retry', (job, attempt) => { /* job 重试中 */ });
+task.on('rate-limited', (concurrency) => { /* 限流降速 */ });
+task.on('completed', () => { /* 全部完成 */ });
+task.on('error', (error) => { /* 任务级错误 */ });
+```
 
-MIT
+## 存储适配器
+
+| 适配器 | 环境 | 持久化 | 说明 |
+|--------|------|--------|------|
+| `BunSQLiteAdapter` | Bun | ✅ | 原生 `bun:sqlite`，最快 |
+| `NodeSQLiteAdapter` | Node.js | ✅ | 需安装 `better-sqlite3` |
+| `OPFSAdapter` | 浏览器 | ✅ | sqlite3.wasm，需 Chrome/Edge |
+| `IndexedDBAdapter` | 浏览器 | ✅ | 所有浏览器兼容 |
+| `MemoryAdapter` | 任意 | ❌ | 测试和临时任务 |
+
+```typescript
+// 自动检测
+const hub = await createTaskHub({ storage: 'auto' });
+
+// 指定存储
+const hub = await createTaskHub({ storage: 'bun-sqlite', dbPath: 'tasks.db' });
+
+// 浏览器
+import { Hub, IndexedDBAdapter } from '@shelchin/taskhub/browser';
+const hub = new Hub(new IndexedDBAdapter());
+await hub.initialize();
+```
+
+**自动检测逻辑：** Bun → BunSQLite → Node.js → NodeSQLite → 浏览器 → OPFS → IndexedDB
+
+## Hub API
+
+| 方法 | 说明 |
+|------|------|
+| `createTask(options)` | 创建新任务 |
+| `getTask(taskId)` | 获取已有任务 |
+| `listTasks()` | 列出所有任务 |
+| `deleteTask(taskId)` | 删除任务及其所有 job |
+| `findTaskByMerkleRoot(root)` | 通过 Merkle Root 查找任务 |
+| `resumeTask(taskId, source)` | 恢复任务 |
+| `resetFailedJobs(taskId)` | 重置失败 job 为 pending |
+| `close()` | 关闭 Hub，释放资源 |
+
+## 默认配置
+
+```typescript
+// AIMD
+initialConcurrency: 5,
+minConcurrency: 1,
+maxConcurrency: 50,
+additiveIncrease: 1,
+multiplicativeDecrease: 0.5,
+successThreshold: 10,
+
+// 重试
+maxAttempts: 3,
+baseDelay: 1000,
+maxDelay: 30000,
+
+// 超时
+timeout: 30000,
+```
+
+## 示例
+
+```bash
+bun examples/basic.ts          # 基础用法
+bun examples/dynamic.ts        # 流式数据
+bun examples/retry.ts          # 重试机制
+bun examples/pause-resume.ts   # 暂停/恢复
+bun examples/aimd.ts           # AIMD 演示
+bun examples/recovery.ts       # 崩溃恢复
+bun examples/deterministic.ts  # Merkle Root 去重
+```
+
+## 架构
+
+```
+┌──────────────────────────────┐
+│             Hub              │
+│  创建任务 · 管理存储生命周期     │
+└──────────────┬───────────────┘
+               │
+    ┌──────────▼──────────┐
+    │        Task         │
+    │  状态机 · 事件中心     │
+    └──────────┬──────────┘
+               │
+    ┌──────────▼──────────┐
+    │     Dispatcher      │
+    │  AIMD · 重试 · 超时  │
+    └──────────┬──────────┘
+               │
+    ┌──────────▼──────────┐
+    │     TaskSource      │
+    │  getData() · handler() │
+    └──────────┬──────────┘
+               │
+    ┌──────────▼──────────┐
+    │   StorageAdapter    │
+    │  SQLite / IndexedDB │
+    └─────────────────────┘
+```
+
+## 注意事项
+
+### handler 必须是幂等的
+
+崩溃恢复会将 active job 重置为 pending 重新执行。如果 handler 有副作用（发送邮件、转账），必须自行保证幂等性。
+
+### claimJobs 返回空 ≠ 任务完成
+
+`claimJobs()` 返回空有两种原因：
+
+1. 所有 job 都完成了（应该退出）
+2. 有 pending job 但 `scheduledAt` 还没到（应该等待）
+
+Dispatcher 内部用 `getJobCounts()` 显式检查 `pending === 0 && active === 0` 来判断终止。
+
+### 延迟重试不阻塞槽位
+
+重试的 job 不是 `await sleep()` 后再执行（那样会占用并发槽位），而是写入 `scheduledAt` 后立即释放，调度器轮询时重新 claim。
+
+### Promise.race 超时处理
+
+Job 超时使用 `Promise.race([handler, timeout])`：
+
+- handler 的 Promise 在超时后仍然在执行（race 不取消失败方）
+- handler 需要检查 `ctx.signal.aborted` 来配合取消
+- Dispatcher 已正确处理 `clearTimeout` 和 `.catch(() => {})`
+
+### 动态任务没有 Merkle Root
+
+只有 deterministic 任务生成 Merkle Root。Dynamic 任务的 `merkleRoot` 始终为 null，不能用 `findTaskByMerkleRoot` 查找。
+
+### MemoryAdapter 注意内存
+
+默认保留所有已完成的 job。大数据集用 `new MemoryAdapter(true)` 开启自动清理，或直接用 SQLite。
+
+### Job ID 碰撞
+
+默认用 `SHA256(JSON.stringify(input))` 生成 job ID。两个不同输入 hash 相同会被视为重复。需要时可覆盖 `TaskSource.getJobId()`。
+
+### AIMD 起步较慢
+
+从 5 开始，每 10 次成功 +1，到 50 需要 450 次成功。短任务可能还没达到最优并发就结束了。可以通过提高 `initial` 来加速。
+
+### 浏览器 OPFS 兼容性
+
+OPFS + sqlite3.wasm 只在 Chrome/Edge 等支持 SAH Pool 的浏览器可用。Firefox/Safari 会 fallback 到 IndexedDB。
+
+### hub.close() 必须调用
+
+不调用会导致 SQLite 连接泄漏。在 try/finally 中确保清理：
+
+```typescript
+const hub = await createTaskHub();
+try {
+  // ... 使用 hub
+} finally {
+  await hub.close();
+}
+```

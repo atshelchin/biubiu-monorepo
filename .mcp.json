@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pda-calculator": {
+      "command": "bun",
+      "args": ["/Users/shelchin/production/sveltekit-project-next/biubiu-monorepo/packages/pda/examples/calculator-mcp-server.ts"]
+    }
+  }
+}

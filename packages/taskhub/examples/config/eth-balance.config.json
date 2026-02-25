@@ -10,14 +10,14 @@
     "polygon": {
       "name": "Polygon",
       "chainId": 137,
-      "rpc": "https://polygon.llamarpc.com",
+      "rpc": "https://polygon.drpc.org",
       "symbol": "MATIC",
       "decimals": 18
     },
     "arbitrum": {
       "name": "Arbitrum",
       "chainId": 42161,
-      "rpc": "https://arbitrum.llamarpc.com",
+      "rpc": "https://arbitrum.meowrpc.com",
       "symbol": "ETH",
       "decimals": 18
     }
@@ -61,7 +61,7 @@
     ]
   },
   "addresses": [
-    "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-    "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8"
+    "0x7A44ed93abF665DF2Aa6C20915e86f9d4027650F"
+ 
   ]
 }

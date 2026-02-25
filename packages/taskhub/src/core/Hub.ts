@@ -2,7 +2,7 @@
  * TaskHub - Main entry point
  */
 
-import type { HubConfig, StorageAdapter, TaskConfig, TaskMeta, TaskSource } from '../types.js';
+import type { StorageAdapter, TaskConfig, TaskMeta, TaskSource } from '../types.js';
 import { Task } from './Task.js';
 import { generateTaskId, computeMerkleRoot, generateJobId } from './MerkleTree.js';
 
@@ -190,90 +190,3 @@ export class Hub {
   }
 }
 
-/**
- * Create a TaskHub instance with auto-detected storage
- */
-export async function createTaskHub(config: HubConfig = { storage: 'auto' }): Promise<Hub> {
-  const storage = await createStorageAdapter(config);
-  const hub = new Hub(storage);
-  await hub.initialize();
-  return hub;
-}
-
-/**
- * Create storage adapter based on config and environment
- */
-async function createStorageAdapter(config: HubConfig): Promise<StorageAdapter> {
-  const dbPath = config.dbPath ?? 'taskhub.db';
-
-  switch (config.storage) {
-    case 'memory': {
-      const { MemoryAdapter } = await import('../storage/MemoryAdapter.js');
-      return new MemoryAdapter();
-    }
-
-    case 'bun-sqlite': {
-      const { BunSQLiteAdapter } = await import('../storage/BunSQLiteAdapter.js');
-      return new BunSQLiteAdapter(dbPath);
-    }
-
-    case 'better-sqlite3': {
-      const { NodeSQLiteAdapter } = await import('../storage/NodeSQLiteAdapter.js');
-      return new NodeSQLiteAdapter(dbPath);
-    }
-
-    case 'opfs': {
-      const { OPFSAdapter } = await import('../storage/OPFSAdapter.js');
-      return new OPFSAdapter();
-    }
-
-    case 'indexeddb': {
-      const { IndexedDBAdapter } = await import('../storage/IndexedDBAdapter.js');
-      return new IndexedDBAdapter();
-    }
-
-    case 'auto':
-    default:
-      return autoDetectStorage(dbPath);
-  }
-}
-
-/**
- * Auto-detect the best storage adapter for the current environment
- */
-async function autoDetectStorage(dbPath: string): Promise<StorageAdapter> {
-  // Check if running in Bun
-  if (typeof Bun !== 'undefined') {
-    const { BunSQLiteAdapter } = await import('../storage/BunSQLiteAdapter.js');
-    return new BunSQLiteAdapter(dbPath);
-  }
-
-  // Check if running in Node.js
-  if (typeof process !== 'undefined' && process.versions?.node) {
-    const { NodeSQLiteAdapter } = await import('../storage/NodeSQLiteAdapter.js');
-    return new NodeSQLiteAdapter(dbPath);
-  }
-
-  // Browser environment
-  if (typeof window !== 'undefined') {
-    // Try OPFS first
-    if (navigator?.storage?.getDirectory) {
-      try {
-        const { OPFSAdapter } = await import('../storage/OPFSAdapter.js');
-        return new OPFSAdapter();
-      } catch {
-        // OPFS not available, fall through to IndexedDB
-      }
-    }
-
-    // Fall back to IndexedDB
-    if (typeof indexedDB !== 'undefined') {
-      const { IndexedDBAdapter } = await import('../storage/IndexedDBAdapter.js');
-      return new IndexedDBAdapter();
-    }
-
-    throw new Error('No supported storage adapter available in this browser');
-  }
-
-  throw new Error('Unable to detect environment for storage adapter');
-}

@@ -14,7 +14,8 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"pda:balance-radar": "bun src/lib/pda-apps/balance-radar/adapters/cli.ts"
 	},
 	"dependencies": {
 		"@resvg/resvg-wasm": "^2.6.2",

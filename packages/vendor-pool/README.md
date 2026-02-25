@@ -297,6 +297,173 @@ interface VendorState {
 }
 ```
 
+## 扩展：自定义供应商
+
+### 基本模式
+
+```typescript
+class MyVendor extends Vendor<TInput, TOutput> {
+  readonly id = 'my-vendor';
+  readonly weight = 1; // 越高越优先（不是负载均衡比例）
+
+  async execute(input: TInput): Promise<TOutput> {
+    // 你的 API 调用
+  }
+
+  // 可选：自定义错误分类
+  classifyError(error: unknown): ErrorType {
+    const msg = (error as Error)?.message?.toLowerCase() || '';
+    if (msg.includes('429') || msg.includes('rate limit')) return ErrorType.RATE_LIMIT;
+    if (msg.includes('401') || msg.includes('403')) return ErrorType.LOGIC_ERROR;
+    return ErrorType.SERVER_ERROR;
+  }
+}
+```
+
+### RPC 供应商示例
+
+在项目中实际使用的模式（biubiu.tools 中的 RPC 查询）：
+
+```typescript
+import { Pool, Vendor, ErrorType } from '@shelchin/vendor-pool';
+import { createPublicClient, http, type Chain } from 'viem';
+
+class RPCVendor extends Vendor<{ address: string }, { balance: bigint }> {
+  readonly id: string;
+  private rpcUrl: string;
+  private chain: Chain;
+
+  constructor(id: string, rpcUrl: string, chain: Chain, weight = 1) {
+    super({ weight });
+    this.id = id;
+    this.rpcUrl = rpcUrl;
+    this.chain = chain;
+  }
+
+  async execute(input: { address: string }) {
+    const client = createPublicClient({
+      chain: this.chain,
+      transport: http(this.rpcUrl),
+    });
+    const balance = await client.getBalance({ address: input.address as `0x${string}` });
+    return { balance };
+  }
+}
+
+// 每个网络一个 Pool，主 RPC 权重最高
+function createNetworkPool(rpcs: string[], chain: Chain) {
+  const vendors = rpcs.map((rpc, i) => {
+    const weight = i === 0 ? 3 : 1; // 主 RPC 优先
+    return new RPCVendor(`rpc-${i}`, rpc, chain, weight);
+  });
+
+  return new Pool(vendors, {
+    maxRetries: 3,
+    timeout: 15000,
+  });
+}
+```
+
+### 与 TaskHub 集成
+
+vendor-pool 处理单次调用的重试和故障转移，TaskHub 处理批量调度和持久化。两者配合使用：
+
+```typescript
+import { TaskSource, type JobContext } from '@shelchin/taskhub';
+import { Pool } from '@shelchin/vendor-pool';
+
+class BalanceQuerySource extends TaskSource<BalanceQuery, BalanceResult> {
+  readonly type = 'deterministic';
+  private pools: Map<string, Pool<RPCInput, RPCOutput>>;
+
+  constructor(queries: BalanceQuery[], pools: Map<string, Pool<RPCInput, RPCOutput>>) {
+    super();
+    this.pools = pools;
+  }
+
+  getData() { return this.queries; }
+
+  async handler(input: BalanceQuery, ctx: JobContext): Promise<BalanceResult> {
+    const pool = this.pools.get(input.network)!;
+
+    // vendor-pool 处理 RPC 故障转移
+    // TaskHub 处理 job 重试和持久化
+    const { result } = await pool.do({ address: input.address });
+
+    return {
+      address: input.address,
+      network: input.network,
+      balance: result.balance.toString(),
+    };
+  }
+}
+```
+
+### 自定义存储适配器
+
+```typescript
+// 例如：Redis 适配器
+class RedisStorageAdapter implements StorageAdapter {
+  constructor(private redis: Redis) {}
+
+  async get<T>(key: string): Promise<T | null> {
+    const val = await this.redis.get(key);
+    return val ? JSON.parse(val) : null;
+  }
+  async set<T>(key: string, value: T): Promise<void> {
+    await this.redis.set(key, JSON.stringify(value));
+  }
+  async delete(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+  async keys(prefix?: string): Promise<string[]> {
+    return await this.redis.keys(`${prefix || ''}*`);
+  }
+  async clear(prefix?: string): Promise<void> {
+    const keys = await this.keys(prefix);
+    if (keys.length) await this.redis.del(...keys);
+  }
+}
+```
+
+## 注意事项
+
+### weight 是优先级，不是比例
+
+权重只在选择供应商时打破平局。如果供应商 A（weight=1）空闲，供应商 B（weight=3）有 1 个排队任务，A 仍然会被选中。只有两者都空闲时，B 才优先。
+
+### 存储错误不阻塞执行
+
+`saveVendorState()` 中的存储操作失败会被静默忽略。这是设计决定：持久化是非关键路径，不应影响任务执行。
+
+### Promise.race 的正确处理
+
+Pool 内部使用 `Promise.race([vendorPromise, timeoutPromise])` 实现超时。已正确处理三个陷阱：
+
+1. 两个分支都 `clearTimeout()`
+2. vendorPromise 加了 `.catch(() => {})` 抑制 unhandled rejection
+3. race 不会取消失败方 — vendor 调用可能在超时后仍然完成
+
+### LogicError 不重试
+
+400/401/403 等逻辑错误（`ErrorType.LOGIC_ERROR`）会直接抛出，不冷冻供应商，不重试。这些是调用方的问题，不是供应商的问题。
+
+### 冷冻时长是随机的
+
+软冷冻 5-10 秒、硬冷冻 30-60 秒在范围内随机。这是为了避免多个供应商同时解冻导致的"惊群效应"。
+
+### isStable 后不再探测
+
+供应商第一次触发 429 后 `isStable = true`，之后不再加速（`minTime -= probeStep` 不生效）。即使环境改善了，速率也不会自动回升。需要手动 `pool.reset()` 重新探测。
+
+### 并发安全的初始化
+
+多个 `pool.do()` 并发调用时，只会初始化一次（Promise 缓存模式）。后续调用等待初始化完成。
+
+### onEscalate 是同步等待的
+
+升级回调 `onEscalate` 被 await 后才抛出 `EscalationError`。可以在里面做异步操作（发告警、创建工单），但不要太慢。
+
 ## License
 
 MIT

@@ -1,0 +1,386 @@
+# PDA Adapters Guide
+
+> How to add CLI and SvelteKit GUI adapters to a PDA app. For framework fundamentals (executor pattern, TaskHub, schemas), see `/llms/pda-guide.txt`. For app-specific docs, see `/llms/balance-radar.txt`, `/llms/token-multisender.txt`, `/llms/nft-multisender.txt`.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Directory Layout](#directory-layout)
+3. [SvelteKit Adapter](#sveltekit-adapter)
+4. [CLI Adapter](#cli-adapter)
+5. [Script Registration](#script-registration)
+6. [Wallet Apps (Factory Pattern)](#wallet-apps-factory-pattern)
+7. [Known Pitfalls](#known-pitfalls)
+8. [Checklist](#checklist)
+
+---
+
+## Overview
+
+Every PDA app can run across three adapters without changing business logic:
+
+| Adapter | Entry point | Rendering |
+|---------|-------------|-----------|
+| GUI | `adapters/sveltekit.ts` + route page | `<PDAApp>` auto-generates forms from schema |
+| CLI | `adapters/cli.ts` | `app.runCLI(args)` handles readline interactions |
+| MCP | (future) | AI tool integration |
+
+Adding adapters to an existing PDA app requires no changes to `executor.ts`, `schema.ts`, or `index.ts`.
+
+### App categories
+
+| Category | App export | SvelteKit adapter | CLI adapter |
+|----------|-----------|-------------------|-------------|
+| Read-only (no wallet) | `export const app = createApp(...)` | Direct re-export | Direct import |
+| Write (needs wallet) | `export function createApp(wallet)` | Construct with browser wallet | Construct with private key from env |
+
+---
+
+## Directory Layout
+
+After adding adapters, a PDA app has this structure:
+
+```
+pda-apps/{app-name}/
+├── index.ts              # App entry (see pda-guide.txt)
+├── schema.ts             # Zod schemas
+├── types.ts              # TypeScript interfaces
+├── executor.ts           # Core logic
+├── CLI.md                # CLI usage documentation
+├── infra/                # Network configs, sources, contracts
+└── adapters/
+    ├── cli.ts            # CLI entry point
+    └── sveltekit.ts      # SvelteKit configuration
+
+routes/apps/{app-name}/
+└── +page.svelte          # Thin route entry
+```
+
+---
+
+## SvelteKit Adapter
+
+### adapters/sveltekit.ts
+
+For apps that export a direct instance (read-only apps like balance-radar):
+
+```typescript
+import { balanceRadarApp } from '../index.js';
+
+export const app = balanceRadarApp;
+export const layout = 'vertical' as const;
+```
+
+For apps that use factory pattern (wallet apps like token-multisender):
+
+```typescript
+import { createTokenMultisenderApp } from '../index.js';
+import { getBrowserWallet } from '$lib/wallet';
+
+export function getApp() {
+    return createTokenMultisenderApp(getBrowserWallet());
+}
+export const layout = 'vertical' as const;
+```
+
+**Layout options:** `'vertical'` | `'horizontal'` | `'progressive'` | `'split'` | `'compact'`
+
+### routes/apps/{app-name}/+page.svelte
+
+Fixed template — identical for all apps (direct export):
+
+```svelte
+<script>
+    import { PDAApp } from '@shelchin/pda-sveltekit';
+    import { app, layout } from '$lib/pda-apps/{app-name}/adapters/sveltekit.js';
+</script>
+
+<PDAApp {app} {layout} />
+```
+
+For factory pattern apps (wallet required):
+
+```svelte
+<script>
+    import { PDAApp } from '@shelchin/pda-sveltekit';
+    import { getApp, layout } from '$lib/pda-apps/{app-name}/adapters/sveltekit.js';
+
+    const app = getApp();
+</script>
+
+<PDAApp {app} {layout} />
+```
+
+`PDAApp` automatically generates forms from `inputSchema`, manages executor lifecycle, and handles mid-run interactions.
+
+---
+
+## CLI Adapter
+
+### Structure
+
+Every CLI adapter has three parts:
+
+1. **File header comment** — usage documentation
+2. **`buildArgs()`** — resolve file-based params, then delegate to `app.runCLI()`
+3. **Utility functions** — `parseRawArgs`, `objectToArgs`, `readFile`
+
+### Template
+
+```typescript
+/**
+ * {App Name} CLI
+ *
+ * Usage (from monorepo root or apps/biubiu.tools):
+ *   bun run pda:{app-name} -- [options]
+ *
+ * Options:
+ *   --{field1} <value>              {description}
+ *   --{field2} <json>               {description}
+ *   --{longField}-file <path>       Text file (one entry per line, # comments)
+ *   --config-file <path>            JSON file with all parameters
+ *
+ * Examples:
+ *   bun run pda:{app-name} -- --{field1} "value" --{field2} '["a","b"]'
+ *   bun run pda:{app-name} -- --{longField}-file data.txt --{field2} "value"
+ *   bun run pda:{app-name} -- --config-file config.json
+ */
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { {appName}App } from '../index.js';
+
+function buildArgs(): string[] {
+    const raw = process.argv.slice(2);
+    const parsed = parseRawArgs(raw);
+
+    // --config-file overrides everything
+    if (parsed['config-file']) {
+        const config = JSON.parse(readFile(parsed['config-file']));
+        return objectToArgs(config);
+    }
+
+    // --{longField}-file: read from text file, pass through other args
+    if (parsed['{longField}-file']) {
+        const lines = readFile(parsed['{longField}-file'])
+            .split('\n')
+            .map((l) => l.trim())
+            .filter((l) => l && !l.startsWith('#'));
+
+        const args = objectToArgs({ {longField}: lines.join('\n') });
+        for (const [key, value] of Object.entries(parsed)) {
+            if (key !== '{longField}-file' && key !== '{longField}') {
+                args.push(`--${key}`, JSON.stringify(value));
+            }
+        }
+        return args;
+    }
+
+    return raw;
+}
+
+// --- Utility functions (copy as-is) ---
+
+function parseRawArgs(args: string[]): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg.startsWith('--')) {
+            const key = arg.slice(2);
+            const value = args[i + 1];
+            if (value && !value.startsWith('--')) {
+                try { result[key] = JSON.parse(value); }
+                catch { result[key] = value; }
+                i++;
+            } else {
+                result[key] = true;
+            }
+        }
+    }
+    return result;
+}
+
+function objectToArgs(obj: Record<string, unknown>): string[] {
+    const args: string[] = [];
+    for (const [key, value] of Object.entries(obj)) {
+        args.push(`--${key}`);
+        args.push(JSON.stringify(value));
+    }
+    return args;
+}
+
+function readFile(filepath: string): string {
+    return readFileSync(resolve(process.cwd(), filepath), 'utf-8');
+}
+
+// --- Entry ---
+
+const args = buildArgs();
+{appName}App.runCLI(args).then((result) => {
+    process.exit(result.success ? 0 : 1);
+});
+```
+
+### Parameter priority
+
+1. `--config-file` — highest priority, overrides all other args
+2. `--{field}-file` — reads one field from file, other args from CLI
+3. Direct `--{field} value` — inline CLI args
+
+### File formats
+
+**Text file** (for `--{field}-file`):
+```
+# Comments start with #
+line1
+line2
+```
+
+**JSON config** (for `--config-file`):
+```json
+{
+  "field1": "value",
+  "field2": ["a", "b"],
+  "count": 100
+}
+```
+Field names must match `inputSchema` field names exactly.
+
+### CLI.md
+
+Each app should have a `CLI.md` in its root directory with:
+
+- Run command
+- Parameter table (field, type, default, description)
+- Examples for all three input modes (direct, file, config)
+- Supported values for enum fields (networks, modes, etc.)
+- Parameter priority rules
+
+Reference: `pda-apps/balance-radar/CLI.md`
+
+---
+
+## Script Registration
+
+### apps/biubiu.tools/package.json
+
+```json
+{
+  "scripts": {
+    "pda:{app-name}": "bun src/lib/pda-apps/{app-name}/adapters/cli.ts"
+  }
+}
+```
+
+### Root package.json
+
+```json
+{
+  "scripts": {
+    "pda:{app-name}": "bun apps/biubiu.tools/src/lib/pda-apps/{app-name}/adapters/cli.ts"
+  }
+}
+```
+
+Both are required — users run from either location.
+
+---
+
+## Wallet Apps (Factory Pattern)
+
+Apps that send blockchain transactions (token-multisender, nft-multisender) use dependency injection:
+
+```typescript
+// index.ts exports a factory, not a direct instance
+export function createMyApp(wallet: WalletDeps) {
+    return createApp({ ..., executor: createExecutor(wallet) });
+}
+```
+
+### CLI: private key from environment
+
+```typescript
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { createMyApp } from '../index.js';
+import { NETWORKS } from '../infra/networks.js';
+
+function createCLIWallet(network: string): WalletDeps {
+    const privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+        console.error('Error: PRIVATE_KEY environment variable is required');
+        process.exit(1);
+    }
+
+    const account = privateKeyToAccount(privateKey as `0x${string}`);
+    const config = NETWORKS[network];
+    const client = createWalletClient({
+        account,
+        chain: config.chain,
+        transport: http(config.rpcs[0]),
+    });
+
+    return {
+        account: account.address,
+        sendTransaction: (tx) => client.sendTransaction(tx),
+        waitForTransactionReceipt: (hash) => publicClient.waitForTransactionReceipt({ hash }),
+        readContract: (params) => publicClient.readContract(params),
+        getBalance: (addr) => publicClient.getBalance({ address: addr }),
+    };
+}
+
+// Parse network first, then create wallet, then create app
+const parsed = parseRawArgs(process.argv.slice(2));
+const network = (parsed.network as string) || 'ethereum';
+const app = createMyApp(createCLIWallet(network));
+```
+
+### SvelteKit: browser wallet
+
+See `pda-guide.txt` > [Wallet Integration](#wallet-integration) for the Svelte page wiring pattern with `eth-connectkit`.
+
+---
+
+## Known Pitfalls
+
+### 0x address coercion
+
+PDA's internal `parseArgs` tries `Number()` conversion. Ethereum addresses like `0xd8dA...` are valid hex numbers and get coerced to `NaN` or wrong values.
+
+**Fix:** `objectToArgs` uses `JSON.stringify(value)` so values go through `JSON.parse` first (which preserves strings), before `Number()` is tried.
+
+This only affects the `objectToArgs` path (config-file and text-file modes). Direct CLI args are passed through as-is.
+
+### TaskHub storage
+
+Executors must use `createTaskHub()` for environment-agnostic storage:
+
+```typescript
+import { createTaskHub } from '@shelchin/taskhub/browser';
+const hub = await createTaskHub();
+```
+
+Detection order: Bun SQLite -> Node SQLite -> OPFS SQLite (Worker) -> IndexedDB.
+
+Do NOT hardcode `new Hub(new IndexedDBAdapter())` — it breaks in Bun/Node CLI.
+
+### Import path
+
+Always use `@shelchin/taskhub/browser` in executor code (not `@shelchin/taskhub`). The `/browser` entry excludes `bun:sqlite` imports that crash SvelteKit's Vite dev server.
+
+---
+
+## Checklist
+
+When adding adapters to a PDA app:
+
+- [ ] `adapters/sveltekit.ts` — export `app` (or `getApp()`) and `layout`
+- [ ] `adapters/cli.ts` — with file-param support and header comment
+- [ ] `routes/apps/{app-name}/+page.svelte` — thin route entry
+- [ ] `apps/biubiu.tools/package.json` — add `pda:{app-name}` script
+- [ ] Root `package.json` — add `pda:{app-name}` script
+- [ ] `CLI.md` — CLI usage documentation
+- [ ] Executor uses `createTaskHub()` (not hardcoded `IndexedDBAdapter`)
+- [ ] Test CLI: `bun run pda:{app-name} -- --config-file test.json`
+- [ ] Test GUI: visit `http://localhost:5173/apps/{app-name}`

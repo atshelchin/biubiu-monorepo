@@ -231,7 +231,7 @@ Styles are loaded in `+layout.svelte`:
 <p>{@html t('footer.madeWith', { love: '<span>♥</span>' })}</p>
 
 <!-- Localized links -->
-<a href={localizeHref('/tools/balance-radar')}>Go to Tool</a>
+<a href={localizeHref('/apps/balance-radar')}>Go to Tool</a>
 ```
 
 ### Number Formatting

@@ -18,7 +18,12 @@
       "Bash(wc:*)",
       "mcp__chrome-devtools__new_page",
       "mcp__chrome-devtools__evaluate_script",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx svelte-check:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npx vitest run:*)"
     ]
   },
   "enableAllProjectMcpServers": true

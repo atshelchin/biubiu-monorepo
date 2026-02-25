@@ -15,9 +15,14 @@
       "name": "biubiu.tools",
       "version": "0.0.1",
       "dependencies": {
+        "@lucide/svelte": "^0.511.0",
         "@resvg/resvg-wasm": "^2.6.2",
         "@shelchin/i18n-sveltekit": "workspace:*",
+        "@shelchin/pda": "workspace:*",
+        "@shelchin/pda-sveltekit": "workspace:*",
+        "@shelchin/proeditor-sveltekit": "workspace:*",
         "@shelchin/seo-sveltekit": "workspace:*",
+        "@shelchin/taskhub": "workspace:*",
         "@shelchin/vendor-pool": "workspace:*",
         "satori": "^0.19.1",
         "viem": "^2.46.0",
@@ -1183,6 +1188,8 @@
     "@typescript-eslint/typescript-estree/minimatch": ["minimatch@9.0.5", "", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow=="],
 
     "@vitest/browser/pngjs": ["pngjs@7.0.0", "", {}, "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="],
+
+    "biubiu.tools/@lucide/svelte": ["@lucide/svelte@0.511.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-aLCSPMUJmHlCuLXzXENXa4Z1NV2mN1iAZAFKk4bEbey+/MdsNlu+/DqwVkgW3Yvj6p8y8Vn5xZ2v9CLmPlA6Vw=="],
 
     "biubiu.tools/@types/node": ["@types/node@20.19.33", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-Rs1bVAIdBs5gbTIKza/tgpMuG1k3U/UMJLWecIMxNdJFDMzcM5LOiLVRYh3PilWEYDIeUDv7bpiHPLPsbydGcw=="],
 

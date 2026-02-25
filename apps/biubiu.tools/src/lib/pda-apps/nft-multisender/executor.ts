@@ -2,16 +2,16 @@ import {
     Hub, IndexedDBAdapter, computeMerkleRoot, type Job,
 } from '@shelchin/taskhub/browser';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
-import { isAddress, parseUnits, formatUnits, type Address } from 'viem';
+import { isAddress, type Address } from 'viem';
 import { inputSchema, outputSchema } from './schema';
 import type {
-    BatchInput, BatchOutput, BatchFailure,
-    ValidatedInput, RunResult, Recipient,
-    WalletDeps, TokenType, DistributionMode,
+    NftBatchInput, NftBatchOutput, BatchFailure,
+    ValidatedInput, RunResult, NftRecipient,
+    WalletDeps, NftType,
 } from './types';
 import { NETWORKS } from './infra/networks';
-import { TransferBatchSource } from './infra/source';
-import { buildApproveTx, ERC20_ABI } from './infra/contracts';
+import { NftTransferBatchSource } from './infra/source';
+import { buildSetApprovalForAllTx, ERC721_ABI, ERC1155_ABI } from './infra/contracts';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -19,10 +19,8 @@ import { InterruptQueue } from '$lib/async/interrupt-queue';
 export type Input = {
     recipients: string;
     network: string;
-    tokenType: TokenType;
-    tokenAddress?: string;
-    distributionMode: DistributionMode;
-    totalAmount?: string;
+    nftType: NftType;
+    nftAddress: string;
     batchSize: number;
 };
 
@@ -32,16 +30,14 @@ type Ctx = Parameters<AppConfig<typeof inputSchema, typeof outputSchema>['execut
 
 export function parseRecipients(
     raw: string,
-    mode: DistributionMode,
-    decimals: number,
-    totalAmount?: string,
-): Recipient[] {
+    nftType: NftType,
+): NftRecipient[] {
     const lines = raw
         .split('\n')
         .map((l) => l.trim())
         .filter((l) => l.length > 0 && !l.startsWith('#'));
 
-    const recipients: Recipient[] = [];
+    const recipients: NftRecipient[] = [];
 
     for (const line of lines) {
         const parts = line.split(/[,\t]/).map((p) => p.trim());
@@ -51,48 +47,44 @@ export function parseRecipients(
             continue;
         }
 
-        let amount: bigint;
-        if (mode === 'specified') {
-            const amountStr = parts[1];
-            if (!amountStr) continue;
-            amount = parseUnits(amountStr, decimals);
+        const tokenId = parts[1];
+        if (!tokenId || tokenId.length === 0) continue;
+        if (!/^\d+$/.test(tokenId)) continue;
+
+        if (nftType === 'erc721') {
+            recipients.push({
+                address: address as Address,
+                tokenId,
+            });
         } else {
-            amount = 0n;
-        }
-
-        recipients.push({ address: address as Address, amount });
-    }
-
-    if (mode === 'equal') {
-        if (!totalAmount) {
-            throw new Error('totalAmount is required for equal distribution mode');
-        }
-        const total = parseUnits(totalAmount, decimals);
-        const perRecipient = total / BigInt(recipients.length);
-        const dust = total - perRecipient * BigInt(recipients.length);
-
-        for (let i = 0; i < recipients.length; i++) {
-            recipients[i].amount = i === 0 ? perRecipient + dust : perRecipient;
+            const amount = parts[2];
+            if (!amount || !/^\d+$/.test(amount) || amount === '0') continue;
+            recipients.push({
+                address: address as Address,
+                tokenId,
+                amount,
+            });
         }
     }
 
     return recipients;
 }
 
-function chunkRecipients(recipients: Recipient[], batchSize: number): BatchInput[] {
-    const batches: BatchInput[] = [];
+function chunkRecipients(recipients: NftRecipient[], batchSize: number): NftBatchInput[] {
+    const batches: NftBatchInput[] = [];
     for (let i = 0; i < recipients.length; i += batchSize) {
         const chunk = recipients.slice(i, i + batchSize);
-        const batchRecipients = chunk.map((r) => r.address);
-        const batchAmounts = chunk.map((r) => r.amount.toString());
-        const totalValue = chunk.reduce((sum, r) => sum + r.amount, 0n);
-
-        batches.push({
+        const batch: NftBatchInput = {
             batchIndex: batches.length,
-            recipients: batchRecipients,
-            amounts: batchAmounts,
-            totalValue: totalValue.toString(),
-        });
+            recipients: chunk.map((r) => r.address),
+            tokenIds: chunk.map((r) => r.tokenId),
+        };
+
+        if (chunk[0]?.amount !== undefined) {
+            batch.amounts = chunk.map((r) => r.amount!);
+        }
+
+        batches.push(batch);
     }
     return batches;
 }
@@ -105,32 +97,31 @@ export function validate(input: Input): ValidatedInput {
         );
     }
 
-    let tokenAddress: Address | null = null;
-    if (input.tokenType === 'erc20') {
-        if (!input.tokenAddress || !isAddress(input.tokenAddress)) {
-            throw new Error('A valid ERC20 token address is required');
-        }
-        tokenAddress = input.tokenAddress as Address;
+    if (!input.nftAddress || !isAddress(input.nftAddress)) {
+        throw new Error('A valid NFT contract address is required');
     }
 
-    const decimals = networkConfig.decimals;
+    const nftAddress = input.nftAddress as Address;
 
-    const recipients = parseRecipients(
-        input.recipients,
-        input.distributionMode,
-        decimals,
-        input.totalAmount,
-    );
+    const recipients = parseRecipients(input.recipients, input.nftType);
 
     if (recipients.length === 0) {
+        const formatHint = input.nftType === 'erc721'
+            ? '"address,tokenId"'
+            : '"address,tokenId,amount"';
         throw new Error(
-            'No valid recipients found. Each line should be "address,amount" (for specified mode) or "address" (for equal mode).'
+            `No valid recipients found. Each line should be ${formatHint}.`
         );
     }
 
-    const totalAmount = recipients.reduce((sum, r) => sum + r.amount, 0n);
-    if (totalAmount === 0n) {
-        throw new Error('Total amount is zero');
+    if (input.nftType === 'erc721') {
+        const seen = new Set<string>();
+        for (const r of recipients) {
+            if (seen.has(r.tokenId)) {
+                throw new Error(`Duplicate tokenId: ${r.tokenId}. Each ERC721 token can only be sent once.`);
+            }
+            seen.add(r.tokenId);
+        }
     }
 
     const batches = chunkRecipients(recipients, input.batchSize);
@@ -138,10 +129,8 @@ export function validate(input: Input): ValidatedInput {
     return {
         recipients,
         network: input.network,
-        tokenType: input.tokenType,
-        tokenAddress,
-        distributionMode: input.distributionMode,
-        totalAmount,
+        nftType: input.nftType,
+        nftAddress,
         batchSize: input.batchSize,
         batches,
     };
@@ -154,97 +143,55 @@ async function* run(
     ctx: Ctx,
     wallet: WalletDeps,
 ): AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
-    const { batches, network, tokenType, tokenAddress, totalAmount, recipients } = validated;
+    const { batches, network, nftType, nftAddress, recipients } = validated;
     const networkConfig = NETWORKS[network];
     const totalBatches = batches.length;
-    const decimals = networkConfig.decimals;
 
+    const nftTypeLabel = nftType === 'erc721' ? 'ERC-721' : 'ERC-1155';
     ctx.info(
-        `Preparing to send ${formatUnits(totalAmount, decimals)} ${networkConfig.symbol} to ${recipients.length} recipients in ${totalBatches} batch(es)`
+        `Preparing to distribute ${recipients.length} ${nftTypeLabel} NFTs to ${recipients.length} recipients in ${totalBatches} batch(es)`
     );
 
-    // ── Preflight: ERC20 checks ─────────────────────────────────────────
+    // ── Preflight: Check approval ───────────────────────────────────────
 
-    let tokenSymbol = networkConfig.symbol;
-    let tokenDecimals = decimals;
+    const spender = nftType === 'erc721'
+        ? networkConfig.erc721DistributionAddress
+        : networkConfig.erc1155DistributionAddress;
 
-    if (tokenType === 'erc20' && tokenAddress) {
-        const [symbol, fetchedDecimals] = await Promise.all([
-            wallet.readContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: 'symbol',
-            }) as Promise<string>,
-            wallet.readContract({
-                address: tokenAddress,
-                abi: ERC20_ABI,
-                functionName: 'decimals',
-            }) as Promise<number>,
-        ]);
+    const abi = nftType === 'erc721' ? ERC721_ABI : ERC1155_ABI;
 
-        tokenSymbol = symbol;
-        tokenDecimals = fetchedDecimals;
-        ctx.info(`Token: ${tokenSymbol} (${tokenDecimals} decimals)`);
+    const isApproved = await wallet.readContract({
+        address: nftAddress,
+        abi,
+        functionName: 'isApprovedForAll',
+        args: [wallet.account, spender],
+    }) as boolean;
 
-        // Check balance
-        const balance = await wallet.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: 'balanceOf',
-            args: [wallet.account],
-        }) as bigint;
+    if (!isApproved) {
+        const doApprove = yield* ctx.confirm(
+            `Approval needed: the distribution contract is not approved to transfer your ${nftTypeLabel} NFTs. Approve now?`
+        );
 
-        if (balance < totalAmount) {
-            throw new Error(
-                `Insufficient ${tokenSymbol} balance: have ${formatUnits(balance, tokenDecimals)}, need ${formatUnits(totalAmount, tokenDecimals)}`
-            );
+        if (!doApprove) {
+            throw new Error('NFT approval cancelled');
         }
 
-        // Check allowance
-        const spender = networkConfig.erc20DistributionAddress;
-        const allowance = await wallet.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: 'allowance',
-            args: [wallet.account, spender],
-        }) as bigint;
+        ctx.info('Sending setApprovalForAll transaction...');
+        const approveTx = buildSetApprovalForAllTx(nftAddress, spender, true, nftType);
+        const approveHash = await wallet.sendTransaction(approveTx);
+        ctx.info(`Approval tx sent: ${approveHash}`);
 
-        if (allowance < totalAmount) {
-            const doApprove = yield* ctx.confirm(
-                `Approval needed: current allowance is ${formatUnits(allowance, tokenDecimals)} ${tokenSymbol}, ` +
-                `need ${formatUnits(totalAmount, tokenDecimals)}. Approve now?`
-            );
-
-            if (!doApprove) {
-                throw new Error('Token approval cancelled');
-            }
-
-            ctx.info('Sending approval transaction...');
-            const maxApproval = 2n ** 256n - 1n;
-            const approveTx = buildApproveTx(tokenAddress, spender, maxApproval);
-            const approveHash = await wallet.sendTransaction(approveTx);
-            ctx.info(`Approval tx sent: ${approveHash}`);
-
-            const receipt = await wallet.waitForTransactionReceipt(approveHash);
-            if (receipt.status === 'reverted') {
-                throw new Error(`Approval transaction reverted: ${approveHash}`);
-            }
-            ctx.info('Approval confirmed');
+        const receipt = await wallet.waitForTransactionReceipt(approveHash);
+        if (receipt.status === 'reverted') {
+            throw new Error(`Approval transaction reverted: ${approveHash}`);
         }
-    } else {
-        // Native token: check balance
-        const balance = await wallet.getBalance(wallet.account);
-        if (balance < totalAmount) {
-            throw new Error(
-                `Insufficient ${networkConfig.symbol} balance: have ${formatUnits(balance, decimals)}, need ${formatUnits(totalAmount, decimals)}`
-            );
-        }
+        ctx.info('Approval confirmed');
     }
 
     // ── Confirmation ────────────────────────────────────────────────────
 
     const confirmed = yield* ctx.confirm(
-        `Send ${formatUnits(totalAmount, tokenDecimals)} ${tokenSymbol} to ${recipients.length} addresses in ${totalBatches} batch(es)?`
+        `Send ${recipients.length} ${nftTypeLabel} NFTs to ${recipients.length} addresses in ${totalBatches} batch(es)?`
     );
 
     if (!confirmed) {
@@ -255,8 +202,8 @@ async function* run(
 
     const startTime = Date.now();
 
-    const source = new TransferBatchSource(
-        batches, wallet, networkConfig, tokenType, tokenAddress,
+    const source = new NftTransferBatchSource(
+        batches, wallet, networkConfig, nftType, nftAddress,
     );
     const storage = new IndexedDBAdapter();
     const hub = new Hub(storage);
@@ -282,7 +229,7 @@ async function* run(
 
     if (!task) {
         task = await hub.createTask({
-            name: `Token Multisender - ${new Date().toISOString()}`,
+            name: `NFT Multisender - ${new Date().toISOString()}`,
             source,
             concurrency: { min: 1, max: 1, initial: 1 },
         });
@@ -291,7 +238,7 @@ async function* run(
 
     // ── Track results ───────────────────────────────────────────────────
 
-    const batchResults: BatchOutput[] = [];
+    const batchResults: NftBatchOutput[] = [];
     const failures: BatchFailure[] = [];
     let completed = 0;
 
@@ -328,7 +275,7 @@ async function* run(
     const interrupts = new InterruptQueue();
     let aborted = false;
 
-    task.on('job:complete', (job: Job<BatchInput, BatchOutput>) => {
+    task.on('job:complete', (job: Job<NftBatchInput, NftBatchOutput>) => {
         if (aborted) return;
         completed++;
         const result = job.output;
@@ -342,7 +289,7 @@ async function* run(
         }
     });
 
-    task.on('job:failed', (job: Job<BatchInput, BatchOutput>, error: Error) => {
+    task.on('job:failed', (job: Job<NftBatchInput, NftBatchOutput>, error: Error) => {
         if (aborted) return;
         completed++;
         failures.push({
@@ -451,23 +398,23 @@ export function formatOutput(
 ) {
     const networkConfig = NETWORKS[validated.network];
 
-    const totalSent = result.batchResults.reduce(
-        (sum, r) => sum + BigInt(r.totalSent), 0n
-    );
     const totalSuccessCount = result.batchResults.reduce(
         (sum, r) => sum + r.successCount, 0
     );
     const totalFailedIndices = result.batchResults.reduce(
         (sum, r) => sum + r.failedIndices.length, 0
     );
+    const totalSent = result.batchResults.reduce(
+        (sum, r) => sum + BigInt(r.totalSent), 0n
+    );
 
     return {
         batches: result.batchResults.map((b) => ({
             batchIndex: b.batchIndex,
             txHash: b.txHash,
-            totalSent: formatUnits(BigInt(b.totalSent), networkConfig.decimals),
             successCount: b.successCount,
             failedCount: b.failedIndices.length,
+            totalSent: b.totalSent,
             explorerUrl: `${networkConfig.explorerUrl}/tx/${b.txHash}`,
         })),
         stats: {
@@ -475,9 +422,9 @@ export function formatOutput(
             successBatches: result.batchResults.length,
             failedBatches: result.failures.length,
             totalRecipients: validated.recipients.length,
-            totalSent: formatUnits(totalSent, networkConfig.decimals),
             totalSuccessCount,
             totalFailedIndices,
+            totalSent: totalSent.toString(),
             duration: result.duration,
         },
     };
@@ -506,14 +453,11 @@ export function createExecutor(
             }
         }
 
-        const networkConfig = NETWORKS[validated.network];
-        const totalSent = result.batchResults.reduce(
-            (sum, r) => sum + BigInt(r.totalSent), 0n
-        );
+        const nftTypeLabel = validated.nftType === 'erc721' ? 'ERC-721' : 'ERC-1155';
         ctx.info(
             `Completed in ${(result.duration / 1000).toFixed(2)}s: ` +
             `${result.batchResults.length} batches sent, ` +
-            `${formatUnits(totalSent, networkConfig.decimals)} ${networkConfig.symbol} distributed`
+            `${result.batchResults.reduce((s, r) => s + r.successCount, 0)} ${nftTypeLabel} NFTs distributed`
         );
 
         return formatOutput(result, validated);

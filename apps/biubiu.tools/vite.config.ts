@@ -21,6 +21,10 @@ export default defineConfig({
 		// Allow all hosts (for Cloudflare Tunnel, ngrok, etc.)
 		allowedHosts: true,
 	},
+	ssr: {
+		// @shelchin/taskhub: workspace symlink — Vite SSR can't resolve it from its own path
+		noExternal: ['@shelchin/taskhub'],
+	},
 	plugins: [
 		sveltekit(),
 		devtoolsJson(),

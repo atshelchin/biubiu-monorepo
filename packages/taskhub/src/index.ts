@@ -29,9 +29,9 @@ export type { DispatcherEvents, DispatcherConfig } from './core/Dispatcher.js';
 export { EventEmitter } from './core/EventEmitter.js';
 export { computeMerkleRoot, generateJobId, generateTaskId } from './core/MerkleTree.js';
 
-// Storage
-export { BunSQLiteAdapter } from './storage/BunSQLiteAdapter.js';
-export { NodeSQLiteAdapter } from './storage/NodeSQLiteAdapter.js';
+// Storage adapters are loaded dynamically by createTaskHub() to avoid
+// pulling bun:sqlite or better-sqlite3 into environments that don't support them.
+// Import directly from '@shelchin/taskhub/storage/BunSQLiteAdapter' if needed.
 
 // Types
 export {

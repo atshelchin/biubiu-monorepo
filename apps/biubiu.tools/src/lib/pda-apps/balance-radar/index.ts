@@ -1,16 +1,19 @@
 import { createApp, z } from '@shelchin/pda';
-import { executor, } from './executor.js';
-import { inputSchema, outputSchema } from "./schema.js"
+import { createExecutor } from './executor.js';
+import { inputSchema, outputSchema } from './schema.js';
+import type { TaskHubDeps } from './types.js';
 
-export const balanceRadarApp = createApp({
-    id: 'balance-radar',
-    name: 'Balance Radar',
-    description: 'Query ETH balances for multiple wallet addresses across different chains',
-    version: '1.0.0',
-    inputSchema,
-    outputSchema,
-    executor,
-});
+export function createBalanceRadarApp(deps: TaskHubDeps) {
+    return createApp({
+        id: 'balance-radar',
+        name: 'Balance Radar',
+        description: 'Query ETH balances for multiple wallet addresses across different chains',
+        version: '1.0.0',
+        inputSchema,
+        outputSchema,
+        executor: createExecutor(deps),
+    });
+}
 
-export type BalanceRadarInput = z.infer<typeof balanceRadarApp.manifest.inputSchema>;
-export type BalanceRadarOutput = z.infer<typeof balanceRadarApp.manifest.outputSchema>;
+export type BalanceRadarInput = z.infer<typeof inputSchema>;
+export type BalanceRadarOutput = z.infer<typeof outputSchema>;

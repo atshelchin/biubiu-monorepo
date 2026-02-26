@@ -3,6 +3,7 @@
 		"paths": {
 			"$lib/*": ["./src/lib/*"],
 			"@shelchin/pda": ["../../packages/pda/src/index.ts"],
+			"@shelchin/taskhub": ["../../packages/taskhub/src/index.ts"],
 			"@shelchin/taskhub/browser": ["../../packages/taskhub/src/index.ts"],
 			"@shelchin/vendor-pool": ["../../packages/vendor-pool/src/index.ts"]
 		},

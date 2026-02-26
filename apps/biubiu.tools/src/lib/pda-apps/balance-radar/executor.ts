@@ -1,7 +1,7 @@
-import { createTaskHub, computeMerkleRoot, generateJobId, type Job } from '@shelchin/taskhub/browser';
+import type { Job } from '@shelchin/taskhub/browser';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import { inputSchema, outputSchema } from './schema';
-import type { BalanceQuery, BalanceResult, BalanceFailure, ValidatedInput, RunResult } from './types';
+import type { BalanceQuery, BalanceResult, BalanceFailure, ValidatedInput, RunResult, TaskHubDeps } from './types';
 import { NETWORKS } from './infra/networks';
 import { BalanceQuerySource } from './infra/source';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
@@ -36,7 +36,8 @@ export function validate(input: Input): ValidatedInput {
 
 async function* run(
     validated: ValidatedInput,
-    ctx: Ctx
+    ctx: Ctx,
+    deps: TaskHubDeps,
 ): AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
     const { addresses, networks, totalQueries } = validated;
 
@@ -55,11 +56,11 @@ async function* run(
     }
 
     const source = new BalanceQuerySource(queries);
-    const hub = await createTaskHub();
+    const hub = await deps.createTaskHub();
 
     // Compute merkle root (same way Hub does internally) for idempotent lookup
-    const jobIds = await Promise.all(queries.map((q) => generateJobId(q)));
-    const merkleRoot = await computeMerkleRoot(jobIds);
+    const jobIds = await Promise.all(queries.map((q) => deps.generateJobId(q)));
+    const merkleRoot = await deps.computeMerkleRoot(jobIds);
 
     // Try to resume existing task, or create new one
     const existing = await hub.findTaskByMerkleRoot(merkleRoot);
@@ -256,9 +257,10 @@ export function formatOutput({ results, failures, duration }: RunResult, totalQu
 // Executor: validate → run (with mid-run interaction) → formatOutput
 // ============================================================================
 
-export const executor: AppConfig<typeof inputSchema, typeof outputSchema>['executor'] = async function* (input, ctx) {
+export function createExecutor(deps: TaskHubDeps): AppConfig<typeof inputSchema, typeof outputSchema>['executor'] {
+  return async function* (input, ctx) {
     const validated = validate(input);
-    const result = yield* run(validated, ctx);
+    const result = yield* run(validated, ctx, deps);
 
     // Post-run interaction (app-specific)
     if (result.failures.length > 0) {
@@ -278,4 +280,5 @@ export const executor: AppConfig<typeof inputSchema, typeof outputSchema>['execu
     );
 
     return formatOutput(result, validated.totalQueries);
-};
+  };
+}

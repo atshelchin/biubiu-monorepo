@@ -40,7 +40,10 @@ jobs:
             if [ "$local_version" != "$npm_version" ]; then
               echo "   ➡️  Publishing..."
               cd "$pkg_dir"
-              bun run build
+              # Only build if the package has a build script
+              if jq -e '.scripts.build' package.json > /dev/null 2>&1; then
+                bun run build
+              fi
               npm publish --access public
               cd - > /dev/null
               echo "   ✅ Published $pkg_name@$local_version"

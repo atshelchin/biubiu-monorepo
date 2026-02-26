@@ -36,10 +36,7 @@
  */
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { createTaskHub, computeMerkleRoot, generateJobId } from '@shelchin/taskhub';
-import { createBalanceRadarApp } from '../index.js';
-
-const balanceRadarApp = createBalanceRadarApp({ createTaskHub, computeMerkleRoot, generateJobId });
+import { balanceRadarApp } from '../index.js';
 
 // Extract --non-interactive before building args (not a schema field)
 const rawArgs = process.argv.slice(2);

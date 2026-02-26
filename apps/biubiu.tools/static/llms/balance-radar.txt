@@ -4,45 +4,6 @@
 
 ---
 
-## For AI Agents — How to Use This Tool
-
-Choose the best method based on your environment:
-
-### 1. You have shell/bash access (Claude Code, Cursor, Windsurf, etc.)
-
-Use the **CLI binary** — fastest, no network dependency on our server.
-
-```bash
-curl -L https://github.com/atshelchin/biubiu-monorepo/releases/latest/download/balance-radar-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/') -o /tmp/balance-radar && chmod +x /tmp/balance-radar
-
-/tmp/balance-radar --non-interactive \
-  --addresses "0xADDRESS1,0xADDRESS2" \
-  --networks '["ethereum","base"]'
-```
-
-See [CLI for AI Agents](#cli-for-ai-agents) for full docs.
-
-### 2. You have HTTP access but no shell (ChatGPT, Gemini, etc.)
-
-Use the **HTTP API** — async polling, no binary needed.
-
-```
-POST https://biubiu.tools/api/apps/balance-radar
-{"addresses": "0xADDRESS1,0xADDRESS2", "networks": ["ethereum","base"]}
-→ {"taskId": "..."}
-
-GET https://biubiu.tools/api/apps/balance-radar/{taskId}
-→ {"state": "completed", "result": {...}}
-```
-
-Poll every 2-3 seconds. See [HTTP API](#http-api) for full docs.
-
-### 3. Neither shell nor HTTP access
-
-Direct the user to the web UI at **https://biubiu.tools/apps/balance-radar** where they can paste addresses and run queries interactively through the browser.
-
----
-
 ## Overview
 
 Balance Radar takes a list of wallet addresses and a set of networks, queries the native balance of each address on each network in parallel, and returns a structured result table. It handles RPC rate limiting with adaptive concurrency (AIMD) and supports resume from interrupted sessions.
@@ -161,7 +122,7 @@ When all RPC endpoints for a network are throttled:
 | Category | Read-only | Write (transactions) |
 | Wallet | Not needed | Required |
 | Concurrency | 5-10 (parallel RPC) | 1 (sequential signing) |
-| Export pattern | Factory `createBalanceRadarApp(deps)` | Factory `createTokenMultisenderApp(wallet)` |
+| Export pattern | Singleton `balanceRadarApp` | Factory `createTokenMultisenderApp(wallet)` |
 | Interrupt type | `rate-limited` | `batch-failed` |
 | External deps | RPC vendor pool | Wallet + RPC |
 | Job unit | 1 balance query | 1 batch of N recipients |
@@ -172,15 +133,11 @@ When all RPC endpoints for a network are throttled:
 
 ```
 apps/biubiu.tools/src/lib/pda-apps/balance-radar/
-├── index.ts              # createBalanceRadarApp(deps) factory
+├── index.ts              # balanceRadarApp singleton export
 ├── schema.ts             # Zod input/output schemas
-├── types.ts              # NetworkConfig, BalanceResult, TaskHubDeps, etc.
-├── executor.ts           # createExecutor(deps) → validate → run → formatOutput
+├── types.ts              # NetworkConfig, BalanceResult, BalanceQuery, etc.
+├── executor.ts           # validate → run → formatOutput
 ├── executor.spec.ts      # Unit tests
-├── adapters/
-│   ├── sveltekit.ts      # GUI adapter (browser, OPFS storage)
-│   ├── http.ts           # HTTP API adapter (server, SQLite storage + task management)
-│   └── cli.ts            # CLI adapter (standalone binary, SQLite storage)
 └── infra/
     ├── networks.ts       # 6 networks with RPC endpoints
     └── source.ts         # BalanceQuerySource (TaskSource impl, uses network-pool)
@@ -188,7 +145,7 @@ apps/biubiu.tools/src/lib/pda-apps/balance-radar/
 
 ### Key design decisions
 
-- **Factory + DI**: `createBalanceRadarApp(deps)` receives TaskHub dependencies — each adapter injects the right storage backend (browser: OPFS, server: SQLite, CLI: SQLite)
+- **Singleton export**: No external dependencies needed → `export const balanceRadarApp = createApp({...})`
 - **Vendor pool**: `createNetworkPools(NETWORKS, CHAIN_MAP)` creates per-network RPC pools with failover
 - **Cross-product jobs**: `addresses × networks` generates all query combinations upfront
 - **Post-run interaction**: After completion, offers to show failure details if any exist
@@ -255,81 +212,3 @@ When `--non-interactive` is set, mid-run prompts are auto-answered with defaults
 - Rate limiting → automatically waits and retries
 - Task failure → automatically retries
 - Show failure details → skipped (use `stats.failed` from JSON output instead)
-
----
-
-## HTTP API
-
-For AI agents without shell access (ChatGPT, Gemini, etc.), use the HTTP API.
-This is an async polling API: submit a query, get a task ID, then poll for results.
-
-### 1. Submit Query
-
-```
-POST https://biubiu.tools/api/apps/balance-radar
-Content-Type: application/json
-
-{
-  "addresses": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
-  "networks": ["ethereum", "base"]
-}
-```
-
-Response (202 Accepted):
-```json
-{ "taskId": "550e8400-e29b-41d4-a716-446655440000" }
-```
-
-### 2. Poll for Results
-
-```
-GET https://biubiu.tools/api/apps/balance-radar/{taskId}
-```
-
-Response while running:
-```json
-{
-  "state": "running",
-  "progress": { "current": 3, "total": 6, "status": "Querying..." }
-}
-```
-
-Response when completed:
-```json
-{
-  "state": "completed",
-  "result": {
-    "success": true,
-    "data": {
-      "results": [
-        { "address": "0xd8dA...", "network": "ethereum", "symbol": "ETH", "balance": "1.234" }
-      ],
-      "stats": { "total": 4, "success": 4, "failed": 0, "duration": 2800 }
-    },
-    "duration": 2800
-  }
-}
-```
-
-Response on failure:
-```json
-{
-  "state": "failed",
-  "result": { "success": false, "error": "...", "duration": 500 }
-}
-```
-
-### Polling Strategy
-
-Poll every 2-3 seconds until `state` is `completed` or `failed`.
-
-### Limits
-
-- Max 20 addresses per request
-- Max 5 requests per minute per IP
-- Max 10 concurrent tasks server-wide
-- Results expire after 10 minutes
-
-### Supported Networks
-
-ethereum, polygon, arbitrum, optimism, base, endurance

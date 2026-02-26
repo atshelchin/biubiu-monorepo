@@ -149,3 +149,66 @@ apps/biubiu.tools/src/lib/pda-apps/balance-radar/
 - **Vendor pool**: `createNetworkPools(NETWORKS, CHAIN_MAP)` creates per-network RPC pools with failover
 - **Cross-product jobs**: `addresses × networks` generates all query combinations upfront
 - **Post-run interaction**: After completion, offers to show failure details if any exist
+
+---
+
+## CLI for AI Agents
+
+Balance Radar is available as a standalone CLI binary. If you have shell access
+(Claude Code, Cursor, Windsurf, etc.), download and run it directly.
+
+### Quick Start
+
+```bash
+# 1. Download (auto-detect platform)
+curl -L https://github.com/atshelchin/biubiu-monorepo/releases/latest/download/balance-radar-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/') -o /tmp/balance-radar
+chmod +x /tmp/balance-radar
+
+# 2. Run
+/tmp/balance-radar --non-interactive \
+  --addresses "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B" \
+  --networks '["ethereum","base","polygon"]'
+```
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--addresses <addrs>` | Comma-separated 0x wallet addresses (42 chars each) |
+| `--networks <json>` | JSON array of network names (default: `["ethereum"]`) |
+| `--non-interactive` | Skip all prompts, use defaults (required for AI agents) |
+| `--config-file <path>` | JSON file with all parameters |
+| `--addresses-file <path>` | Text file with one address per line (`#` comments supported) |
+
+### Output (JSON to stdout)
+
+```json
+{
+  "results": [
+    { "address": "0x...", "network": "ethereum", "symbol": "ETH", "balance": "1.23" }
+  ],
+  "stats": { "total": 6, "success": 5, "failed": 1, "duration": 3200 }
+}
+```
+
+Exit code: `0` on success, `1` on error.
+
+### Supported Networks
+
+ethereum, polygon, arbitrum, optimism, base, endurance
+
+### Available Binaries
+
+| Platform | File |
+|----------|------|
+| macOS ARM64 (Apple Silicon) | `balance-radar-darwin-arm64` |
+| macOS x64 (Intel) | `balance-radar-darwin-x64` |
+| Linux x64 | `balance-radar-linux-x64` |
+| Windows x64 | `balance-radar-windows-x64.exe` |
+
+### Non-interactive Behavior
+
+When `--non-interactive` is set, mid-run prompts are auto-answered with defaults:
+- Rate limiting → automatically waits and retries
+- Task failure → automatically retries
+- Show failure details → skipped (use `stats.failed` from JSON output instead)

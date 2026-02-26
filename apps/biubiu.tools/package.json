@@ -15,7 +15,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"pda:balance-radar": "bun src/lib/pda-apps/balance-radar/adapters/cli.ts"
+		"pda:balance-radar": "bun src/lib/pda-apps/balance-radar/adapters/cli.ts",
+		"build:cli:balance-radar": "bun build --compile --target bun --tsconfig-override tsconfig.cli.json --external better-sqlite3 src/lib/pda-apps/balance-radar/adapters/cli.ts --outfile dist/cli/balance-radar"
 	},
 	"dependencies": {
 		"@resvg/resvg-wasm": "^2.6.2",

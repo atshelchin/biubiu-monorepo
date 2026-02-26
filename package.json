@@ -7,7 +7,8 @@
         "build:biubiu": "turbo run build --filter=biubiu.tools",
         "dev:biubiu": "turbo run dev --filter=biubiu.tools",
         "preview:biubiu": "bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu --env-file envs/biubiu.env",
-        "pda:balance-radar": "bun apps/biubiu.tools/src/lib/pda-apps/balance-radar/adapters/cli.ts"
+        "pda:balance-radar": "bun apps/biubiu.tools/src/lib/pda-apps/balance-radar/adapters/cli.ts",
+        "build:cli:balance-radar": "cd apps/biubiu.tools && bun run build:cli:balance-radar"
     },
     "workspaces": [
         "packages/*",

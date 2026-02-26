@@ -201,7 +201,7 @@ export interface App<TInput, TOutput> {
   run(adapter: Adapter<TInput, TOutput>, input?: TInput): Promise<ExecutionResult<TOutput>>;
 
   /** Run in CLI mode */
-  runCLI(args?: string[]): Promise<ExecutionResult<TOutput>>;
+  runCLI(args?: string[], options?: { nonInteractive?: boolean }): Promise<ExecutionResult<TOutput>>;
 
   /** Get MCP tool definition */
   getMCPToolDefinition(): MCPToolDefinition;
@@ -349,8 +349,11 @@ export function createApp<TInput extends z.ZodType, TOutput extends z.ZodType>(
       return orchestrator.run(input);
     },
 
-    async runCLI(args = []) {
+    async runCLI(args = [], options?: { nonInteractive?: boolean }) {
       const adapter = new CLIAdapterImpl<z.infer<TInput>, z.infer<TOutput>>();
+      if (options?.nonInteractive) {
+        adapter.setNonInteractive(true);
+      }
       if (args.length > 0) {
         adapter.parseArgs(args);
       }

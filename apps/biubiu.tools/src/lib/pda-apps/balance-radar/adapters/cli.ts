@@ -9,6 +9,7 @@
  *   --networks <json>            JSON array of networks (default: ["ethereum"])
  *   --addresses-file <path>      Text file with one address per line (# comments supported)
  *   --config-file <path>         JSON file with all parameters (overrides everything)
+ *   --non-interactive            Skip all prompts, use defaults (for AI agents)
  *
  * Examples:
  *   # Direct arguments
@@ -37,8 +38,13 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { balanceRadarApp } from '../index.js';
 
+// Extract --non-interactive before building args (not a schema field)
+const rawArgs = process.argv.slice(2);
+const nonInteractive = rawArgs.includes('--non-interactive');
+const filteredRaw = rawArgs.filter((a) => a !== '--non-interactive');
+
 function buildArgs(): string[] {
-    const raw = process.argv.slice(2);
+    const raw = filteredRaw;
     const parsed = parseRawArgs(raw);
 
     // --config-file: JSON file with all params, overrides everything
@@ -68,8 +74,9 @@ function buildArgs(): string[] {
         return args;
     }
 
-    // No file args, pass through as-is
-    return raw;
+    // No file args, parse and re-encode to ensure proper JSON quoting
+    // (prevents 0x addresses from being coerced to Number by PDA's parseArgs)
+    return objectToArgs(parseRawArgs(raw));
 }
 
 function parseRawArgs(args: string[]): Record<string, unknown> {
@@ -111,6 +118,6 @@ function readFile(filepath: string): string {
 }
 
 const args = buildArgs();
-balanceRadarApp.runCLI(args).then((result) => {
+balanceRadarApp.runCLI(args, { nonInteractive }).then((result) => {
     process.exit(result.success ? 0 : 1);
 });

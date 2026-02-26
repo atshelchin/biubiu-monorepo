@@ -68,8 +68,49 @@ jobs:
           name: biubiu-${{ matrix.target }}
           path: apps/biubiu.tools/dist/biubiu-${{ matrix.target }}*
 
+  build-cli:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: darwin-arm64
+          - os: macos-latest
+            target: darwin-x64
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: windows-latest
+            target: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build balance-radar CLI for ${{ matrix.target }}
+        shell: bash
+        run: |
+          cd apps/biubiu.tools
+          bun build --compile --target bun-${{ matrix.target }} \
+            --tsconfig-override tsconfig.cli.json \
+            --external better-sqlite3 \
+            src/lib/pda-apps/balance-radar/adapters/cli.ts \
+            --outfile dist/cli/balance-radar-${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: balance-radar-${{ matrix.target }}
+          path: apps/biubiu.tools/dist/cli/balance-radar-${{ matrix.target }}*
+
   release:
-    needs: build
+    needs: [build, build-cli]
     runs-on: ubuntu-latest
 
     steps:
@@ -98,12 +139,23 @@ jobs:
           body: |
             ## Downloads
 
+            ### biubiu.tools (Full App)
+
             | Platform | Architecture | File |
             |----------|--------------|------|
             | Windows | x64 | `biubiu-windows-x64.exe` |
             | macOS | ARM64 (Apple Silicon) | `biubiu-darwin-arm64` |
             | macOS | x64 (Intel) | `biubiu-darwin-x64` |
             | Linux | x64 | `biubiu-linux-x64` |
+
+            ### Balance Radar CLI
+
+            | Platform | Architecture | File |
+            |----------|--------------|------|
+            | macOS | ARM64 (Apple Silicon) | `balance-radar-darwin-arm64` |
+            | macOS | x64 (Intel) | `balance-radar-darwin-x64` |
+            | Linux | x64 | `balance-radar-linux-x64` |
+            | Windows | x64 | `balance-radar-windows-x64.exe` |
 
             ---
             Commit: ${{ github.sha }}

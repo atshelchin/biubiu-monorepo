@@ -2,7 +2,9 @@
 	"compilerOptions": {
 		"paths": {
 			"$lib/*": ["./src/lib/*"],
-			"@shelchin/taskhub/browser": ["../../packages/taskhub/src/index.ts"]
+			"@shelchin/pda": ["../../packages/pda/src/index.ts"],
+			"@shelchin/taskhub/browser": ["../../packages/taskhub/src/index.ts"],
+			"@shelchin/vendor-pool": ["../../packages/vendor-pool/src/index.ts"]
 		},
 		"moduleResolution": "bundler",
 		"strict": true,

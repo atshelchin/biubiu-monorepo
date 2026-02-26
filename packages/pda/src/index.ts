@@ -86,9 +86,11 @@ export type {
   MCPAdapter,
   MCPToolDefinition,
   MCPToolResult,
+  HttpAdapterOptions,
 } from './adapters/types.js';
 export { CLIAdapterImpl } from './adapters/cli.js';
 export { MCPAdapterImpl } from './adapters/mcp.js';
+export { HttpAdapterImpl } from './adapters/http.js';
 
 // Storage
 export { MemoryStorage } from './storage/MemoryStorage.js';
@@ -119,8 +121,9 @@ import type {
 import { Orchestrator } from './orchestrator/Orchestrator.js';
 import { CLIAdapterImpl } from './adapters/cli.js';
 import { MCPAdapterImpl } from './adapters/mcp.js';
+import { HttpAdapterImpl } from './adapters/http.js';
 import { MemoryStorage } from './storage/MemoryStorage.js';
-import type { MCPToolDefinition } from './adapters/types.js';
+import type { MCPToolDefinition, HttpAdapterOptions } from './adapters/types.js';
 
 /**
  * Configuration for creating a PDA application
@@ -202,6 +205,9 @@ export interface App<TInput, TOutput> {
 
   /** Run in CLI mode */
   runCLI(args?: string[], options?: { nonInteractive?: boolean }): Promise<ExecutionResult<TOutput>>;
+
+  /** Run in HTTP mode (non-interactive, input pre-collected) */
+  runHttp(input: TInput, options?: HttpAdapterOptions): Promise<ExecutionResult<TOutput>>;
 
   /** Get MCP tool definition */
   getMCPToolDefinition(): MCPToolDefinition;
@@ -339,6 +345,18 @@ export function createApp<TInput extends z.ZodType, TOutput extends z.ZodType>(
     manifest,
 
     async run(adapter, input?) {
+      const storage = new MemoryStorage();
+      const orchestrator = new Orchestrator({
+        manifest,
+        adapter,
+        storage,
+        executor: wrappedExecutor,
+      });
+      return orchestrator.run(input);
+    },
+
+    async runHttp(input: z.infer<TInput>, options?: HttpAdapterOptions) {
+      const adapter = new HttpAdapterImpl<z.infer<TInput>, z.infer<TOutput>>(input, options);
       const storage = new MemoryStorage();
       const orchestrator = new Orchestrator({
         manifest,

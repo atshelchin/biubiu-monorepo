@@ -36,3 +36,11 @@ export interface RunResult {
     failures: BalanceFailure[];
     duration: number;
 }
+
+/** Dependencies injected by adapter — browser vs server use different implementations */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface TaskHubDeps {
+    createTaskHub: (...args: any[]) => Promise<any>;
+    computeMerkleRoot: (ids: string[]) => Promise<string>;
+    generateJobId: (input: unknown) => Promise<string>;
+}

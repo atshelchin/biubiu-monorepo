@@ -73,3 +73,8 @@ export interface MCPToolResult {
   }>;
   isError?: boolean;
 }
+
+/**
+ * HTTP-specific adapter options
+ */
+export type { HttpAdapterOptions } from './http.js';

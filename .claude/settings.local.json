@@ -25,7 +25,11 @@
       "Bash(npm run test:unit:*)",
       "Bash(npx vitest run:*)",
       "mcp__chrome-devtools__wait_for",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "mcp__webmcp-local-relay__webmcp_list_sources",
+      "mcp__webmcp-local-relay__webmcp_list_tools",
+      "mcp__webmcp-local-relay__webmcp_open_page",
+      "mcp__webmcp-local-relay__webmcp_call_tool"
     ]
   },
   "enableAllProjectMcpServers": true

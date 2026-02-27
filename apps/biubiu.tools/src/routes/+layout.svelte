@@ -25,6 +25,13 @@
 	// Initialize settings (theme, text-scale, etc.) on client mount
 	onMount(() => {
 		initSettings();
+
+		navigator.modelContext.registerTool({
+			name: 'get_page_title',
+			description: 'Get the current page title',
+			inputSchema: { type: 'object', properties: {} },
+			execute: async () => ({ content: [{ type: 'text', text: document.title }] })
+		});
 	});
 </script>
 

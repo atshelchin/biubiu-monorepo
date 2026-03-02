@@ -96,6 +96,24 @@
 		if (sortField !== field) return '';
 		return sortDirection === 'asc' ? ' \u2191' : ' \u2193';
 	}
+
+	// Pagination
+	const PAGE_SIZE = 100;
+	let currentPage = $state(0);
+	const totalPages = $derived(Math.ceil(filteredResults.length / PAGE_SIZE));
+	const paginatedResults = $derived(
+		filteredResults.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE),
+	);
+
+	// Reset page when filters change
+	$effect(() => {
+		// Track filter dependencies
+		filterNetwork;
+		searchQuery;
+		sortField;
+		sortDirection;
+		currentPage = 0;
+	});
 </script>
 
 <section class="card">
@@ -165,7 +183,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each filteredResults as row}
+				{#each paginatedResults as row}
 					<tr>
 						<td class="cell-address">
 							<button
@@ -192,6 +210,44 @@
 			</tbody>
 		</table>
 	</div>
+
+	<!-- Pagination -->
+	{#if totalPages > 1}
+		<div class="pagination">
+			<button
+				class="page-btn"
+				disabled={currentPage === 0}
+				onclick={() => (currentPage = 0)}
+			>
+				&laquo;
+			</button>
+			<button
+				class="page-btn"
+				disabled={currentPage === 0}
+				onclick={() => (currentPage = Math.max(0, currentPage - 1))}
+			>
+				&lsaquo;
+			</button>
+			<span class="page-info">
+				{currentPage * PAGE_SIZE + 1}-{Math.min((currentPage + 1) * PAGE_SIZE, filteredResults.length)}
+				/ {filteredResults.length.toLocaleString()}
+			</span>
+			<button
+				class="page-btn"
+				disabled={currentPage >= totalPages - 1}
+				onclick={() => (currentPage = Math.min(totalPages - 1, currentPage + 1))}
+			>
+				&rsaquo;
+			</button>
+			<button
+				class="page-btn"
+				disabled={currentPage >= totalPages - 1}
+				onclick={() => (currentPage = totalPages - 1)}
+			>
+				&raquo;
+			</button>
+		</div>
+	{/if}
 
 	<!-- Failures Panel -->
 	{#if failures.length > 0}
@@ -391,6 +447,48 @@
 		text-align: center;
 		color: var(--fg-subtle);
 		padding: var(--space-6) !important;
+	}
+
+	/* Pagination */
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		margin-bottom: var(--space-4);
+	}
+
+	.page-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		color: var(--fg-base);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.page-btn:hover:not(:disabled) {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
+	.page-btn:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
+	.page-info {
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+		padding: 0 var(--space-2);
+		min-width: 100px;
+		text-align: center;
 	}
 
 	/* Failures Panel */

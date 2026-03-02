@@ -49,5 +49,15 @@
 	"br.results.export.runAgain": "再次运行",
 
 	"br.error.title": "查询失败",
-	"br.error.retry": "重试"
+	"br.error.retry": "重试",
+
+	"br.lineEditor.statusBar.valid": "有效",
+	"br.lineEditor.errorDrawer.title": "错误列表",
+	"br.lineEditor.errorDrawer.line": "行",
+	"br.lineEditor.errorDrawer.error": "格式错误",
+	"br.lineEditor.errorDrawer.duplicate": "重复",
+	"br.lineEditor.errorDrawer.andMore": "还有 {0} 个...",
+	"br.lineEditor.errorDrawer.close": "关闭",
+	"br.lineEditor.validation.duplicate": "重复地址",
+	"br.lineEditor.validation.invalidAddress": "无效的以太坊地址"
 }

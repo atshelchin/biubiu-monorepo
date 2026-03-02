@@ -79,6 +79,7 @@
 			executionStatus={page.execution.ctx.status}
 			errorMessage={page.execution.ctx.errorMessage}
 			isRunning={page.execution.pending.run}
+			onSetValidAddresses={(addresses) => page.config.setValidAddresses({ addresses })}
 			onAddressInput={(text) => page.config.setAddresses({ text })}
 			onClearAddresses={() => page.config.clearAddresses({})}
 			onToggleNetwork={(network) => page.config.toggleNetwork({ network })}

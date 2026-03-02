@@ -12,6 +12,11 @@ const endurance = defineChain({
     blockExplorers: {
         default: { name: 'Endurance Explorer', url: 'https://explorer-endurance.fusionist.io' },
     },
+    contracts: {
+        multicall3: {
+            address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        },
+    },
 });
 
 export const NETWORKS: Record<string, NetworkConfig> = {
@@ -76,7 +81,6 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         rpcs: ['https://rpc-endurance.fusionist.io'],
         symbol: 'ACE',
         decimals: 18,
-        hasMulticall3: false,
     },
 };
 

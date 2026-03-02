@@ -32,7 +32,7 @@ import { registerPageTools } from './webmcp.js';
  * </button>
  * ```
  */
-export function usePage<TPage extends PageDef>(
+export function usePage<TPage extends PageDef<any, any>>(
   pageDef: TPage,
 ): PageInstance<TPage> {
   const moduleContexts: Record<string, Record<string, unknown>> = {};

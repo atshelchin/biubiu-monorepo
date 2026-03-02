@@ -4,6 +4,17 @@ export interface NetworkConfig {
     rpcs: string[];
     symbol: string;
     decimals: number;
+    hasMulticall3?: boolean;
+}
+
+export interface NetworkJob {
+    network: string;
+    addresses: string[];
+}
+
+export interface NetworkJobResult {
+    network: string;
+    results: { address: string; balance: bigint }[];
 }
 
 export interface BalanceResult {

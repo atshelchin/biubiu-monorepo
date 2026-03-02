@@ -1,7 +1,8 @@
 import { createTaskHub, computeMerkleRoot, generateJobId, type Job } from '@shelchin/taskhub/browser';
+import { formatUnits } from 'viem';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import { inputSchema, outputSchema } from './schema';
-import type { BalanceQuery, BalanceResult, BalanceFailure, ValidatedInput, RunResult } from './types';
+import type { BalanceResult, BalanceFailure, ValidatedInput, RunResult, NetworkJob, NetworkJobResult } from './types';
 import { NETWORKS } from './infra/networks';
 import { BalanceQuerySource } from './infra/source';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
@@ -34,6 +35,17 @@ export function validate(input: Input): ValidatedInput {
     };
 }
 
+function flattenJobResult(jobOutput: NetworkJobResult): BalanceResult[] {
+    const config = NETWORKS[jobOutput.network];
+    return jobOutput.results.map(({ address, balance }) => ({
+        address,
+        network: jobOutput.network,
+        symbol: config.symbol,
+        balance: formatUnits(balance, config.decimals),
+        balanceRaw: balance.toString(),
+    }));
+}
+
 async function* run(
     validated: ValidatedInput,
     ctx: Ctx
@@ -46,19 +58,13 @@ async function* run(
 
     const startTime = Date.now();
 
-    // Generate all query jobs
-    const queries: BalanceQuery[] = [];
-    for (const address of addresses) {
-        for (const networkName of networks) {
-            queries.push({ address, network: networkName });
-        }
-    }
-
-    const source = new BalanceQuerySource(queries);
+    // Source handles chunking: multicall3 networks get 500-address chunks, others get 1-address chunks
+    const source = new BalanceQuerySource(addresses, networks);
     const hub = await createTaskHub();
 
-    // Compute merkle root (same way Hub does internally) for idempotent lookup
-    const jobIds = await Promise.all(queries.map((q) => generateJobId(q)));
+    // Compute merkle root from the chunked jobs for idempotent lookup
+    const jobs = source.getData();
+    const jobIds = await Promise.all(jobs.map((q) => generateJobId(q)));
     const merkleRoot = await computeMerkleRoot(jobIds);
 
     // Try to resume existing task, or create new one
@@ -68,7 +74,7 @@ async function* run(
 
     if (existing) {
         const resumed = await hub.resumeTask(existing.id, source, {
-            concurrency: { min: 1, max: 10, initial: 5 },
+            concurrency: { min: 1, max: 6, initial: 3 },
         });
         if (resumed) {
             task = resumed;
@@ -81,15 +87,15 @@ async function* run(
         task = await hub.createTask({
             name: `Balance Query - ${new Date().toISOString()}`,
             source,
-            concurrency: { min: 1, max: 10, initial: 5 },
+            concurrency: { min: 1, max: 6, initial: 3 },
         });
-        ctx.info(`Created task ${task.id} with ${queries.length} jobs`);
+        ctx.info(`Created task ${task.id} with ${jobs.length} jobs (${totalQueries} total queries)`);
     }
 
     // Track results and failures
     const results: BalanceResult[] = [];
     const failures: BalanceFailure[] = [];
-    let completed = 0;
+    let completedQueries = 0;
 
     // On resume, load results from previous session
     if (isResume) {
@@ -98,7 +104,10 @@ async function* run(
         for (let offset = 0; ; offset += pageSize) {
             const batch = await task.getResults({ status: 'completed', limit: pageSize, offset });
             for (const job of batch) {
-                if (job.output) results.push(job.output);
+                if (job.output) {
+                    const flattened = flattenJobResult(job.output);
+                    results.push(...flattened);
+                }
             }
             if (batch.length < pageSize) break;
         }
@@ -106,46 +115,51 @@ async function* run(
         for (let offset = 0; ; offset += pageSize) {
             const batch = await task.getResults({ status: 'failed', limit: pageSize, offset });
             for (const job of batch) {
-                failures.push({
-                    address: job.input.address,
-                    network: job.input.network,
-                    error: job.error ?? 'Unknown error',
-                });
+                for (const addr of job.input.addresses) {
+                    failures.push({
+                        address: addr,
+                        network: job.input.network,
+                        error: job.error ?? 'Unknown error',
+                    });
+                }
             }
             if (batch.length < pageSize) break;
         }
 
-        completed = results.length + failures.length;
-        if (completed > 0) {
-            ctx.progress(completed, totalQueries, `Restored ${completed} results from previous session`);
+        completedQueries = results.length + failures.length;
+        if (completedQueries > 0) {
+            ctx.progress(completedQueries, totalQueries, `Restored ${completedQueries} results from previous session`);
         }
     }
 
     // Interrupt queue: bridges TaskHub events → generator yield points
     const interrupts = new InterruptQueue();
 
-    task.on('job:complete', (job: Job<BalanceQuery, BalanceResult>) => {
-        completed++;
-        const result = job.output;
-        if (result) {
-            results.push(result);
+    task.on('job:complete', (job: Job<NetworkJob, NetworkJobResult>) => {
+        const output = job.output;
+        if (output) {
+            const flattened = flattenJobResult(output);
+            results.push(...flattened);
+            completedQueries += flattened.length;
             ctx.progress(
-                completed,
+                completedQueries,
                 totalQueries,
-                `Queried ${result.network}: ${result.address.slice(0, 10)}...`
+                `Queried ${output.network}: ${flattened.length} addresses`
             );
         }
     });
 
-    task.on('job:failed', (job: Job<BalanceQuery, BalanceResult>, error: Error) => {
-        completed++;
+    task.on('job:failed', (job: Job<NetworkJob, NetworkJobResult>, error: Error) => {
         const jobInput = job.input;
-        failures.push({ address: jobInput.address, network: jobInput.network, error: error.message });
+        for (const addr of jobInput.addresses) {
+            failures.push({ address: addr, network: jobInput.network, error: error.message });
+        }
+        completedQueries += jobInput.addresses.length;
 
         ctx.progress(
-            completed,
+            completedQueries,
             totalQueries,
-            `Failed ${jobInput.network}: ${jobInput.address.slice(0, 10)}...`
+            `Failed ${jobInput.network}: ${jobInput.addresses.length} addresses`
         );
     });
 

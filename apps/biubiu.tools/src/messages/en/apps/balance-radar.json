@@ -49,5 +49,15 @@
 	"br.results.export.runAgain": "Run Again",
 
 	"br.error.title": "Query Failed",
-	"br.error.retry": "Retry"
+	"br.error.retry": "Retry",
+
+	"br.lineEditor.statusBar.valid": "valid",
+	"br.lineEditor.errorDrawer.title": "Error List",
+	"br.lineEditor.errorDrawer.line": "Line",
+	"br.lineEditor.errorDrawer.error": "Format error",
+	"br.lineEditor.errorDrawer.duplicate": "Duplicate",
+	"br.lineEditor.errorDrawer.andMore": "{0} more...",
+	"br.lineEditor.errorDrawer.close": "Close",
+	"br.lineEditor.validation.duplicate": "Duplicate address",
+	"br.lineEditor.validation.invalidAddress": "Invalid Ethereum address"
 }

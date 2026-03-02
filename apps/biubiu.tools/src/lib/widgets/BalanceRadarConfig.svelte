@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
+	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
 	import type { AddressEntry, NetworkInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
 
 	interface Props {
@@ -14,6 +16,7 @@
 		executionStatus: string;
 		errorMessage: string;
 		isRunning: boolean;
+		onSetValidAddresses: (addresses: string[]) => void;
 		onAddressInput: (text: string) => void;
 		onClearAddresses: () => void;
 		onToggleNetwork: (network: string) => void;
@@ -34,6 +37,7 @@
 		executionStatus,
 		errorMessage,
 		isRunning,
+		onSetValidAddresses,
 		onAddressInput,
 		onClearAddresses,
 		onToggleNetwork,
@@ -42,10 +46,71 @@
 		onStartQuery,
 	}: Props = $props();
 
-	function handleInput(e: Event) {
-		const target = e.target as HTMLTextAreaElement;
-		onAddressInput(target.value);
-	}
+	// LineEditor ref and bindable outputs
+	let editorRef: ReturnType<typeof LineEditor>;
+	let validLines = $state<string[]>([]);
+	let editorValidCount = $state(0);
+	let editorErrorCount = $state(0);
+	let editorDuplicateCount = $state(0);
+
+	// Bidirectional sync: loop guard + debounce
+	let lastSyncedLines = '';
+	let lastSyncedInput = '';
+	let syncTimer: ReturnType<typeof setTimeout> | undefined;
+
+	onDestroy(() => {
+		if (syncTimer) clearTimeout(syncTimer);
+	});
+
+	// Ethereum address validator
+	const validateAddress = (line: string) =>
+		/^0x[a-fA-F0-9]{40}$/.test(line) ? null : t('br.lineEditor.validation.invalidAddress');
+
+	// LineEditor i18n from app translations
+	const lineEditorI18n = $derived({
+		statusBar: {
+			valid: t('br.lineEditor.statusBar.valid'),
+		},
+		errorDrawer: {
+			title: t('br.lineEditor.errorDrawer.title'),
+			line: t('br.lineEditor.errorDrawer.line'),
+			error: t('br.lineEditor.errorDrawer.error'),
+			duplicate: t('br.lineEditor.errorDrawer.duplicate'),
+			andMore: t('br.lineEditor.errorDrawer.andMore'),
+			close: t('br.lineEditor.errorDrawer.close'),
+		},
+		validation: {
+			duplicate: t('br.lineEditor.validation.duplicate'),
+		},
+	});
+
+	// Derived: local summary (immediate, no module round-trip)
+	const localTotalQueries = $derived(editorValidCount * selectedNetworks.length);
+	const localCanExecute = $derived(editorValidCount > 0 && selectedNetworks.length > 0);
+
+	// User → Module: debounced sync of validLines only (O(n) array, no full-text parse)
+	$effect(() => {
+		const lines = validLines;
+		const key = lines.join('\n');
+
+		if (syncTimer) clearTimeout(syncTimer);
+		syncTimer = setTimeout(() => {
+			if (key !== lastSyncedLines) {
+				lastSyncedLines = key;
+				lastSyncedInput = key;
+				onSetValidAddresses(lines);
+			}
+		}, 150);
+	});
+
+	// AI/Module → LineEditor: sync when addressInput changes externally
+	$effect(() => {
+		if (addressInput !== lastSyncedInput) {
+			lastSyncedInput = addressInput;
+			lastSyncedLines = '';
+			editorRef?.loadContent(addressInput);
+		}
+	});
 </script>
 
 {#if executionStatus === 'idle' || executionStatus === 'error'}
@@ -53,7 +118,7 @@
 		<!-- Address Input -->
 		<div class="field-group">
 			<div class="field-header">
-				<label for="address-input" class="field-label">{t('br.addresses.label')}</label>
+				<label class="field-label">{t('br.addresses.label')}</label>
 				{#if addresses.length > 0}
 					<button class="link-button" onclick={onClearAddresses}>
 						{t('br.addresses.clearAll')}
@@ -61,28 +126,40 @@
 				{/if}
 			</div>
 
-			<textarea
-				id="address-input"
-				class="address-textarea"
-				placeholder={t('br.addresses.placeholder')}
-				value={addressInput}
-				oninput={handleInput}
-			></textarea>
-
-			{#if addresses.length > 0}
-				<div class="address-summary">
-					{#if validAddressCount > 0}
-						<span class="badge badge-success">
-							{t('br.addresses.valid', { count: validAddressCount })}
-						</span>
-					{/if}
-					{#if invalidAddressCount > 0}
-						<span class="badge badge-error">
-							{t('br.addresses.invalid', { count: invalidAddressCount })}
-						</span>
-					{/if}
-				</div>
-			{/if}
+			<div
+				class="editor-wrapper"
+				style="
+					--color-surface-1: var(--bg-sunken);
+					--color-surface-2: var(--bg-raised);
+					--color-surface-3: var(--bg-raised);
+					--color-border: var(--border-base);
+					--color-border-strong: var(--border-strong, var(--border-base));
+					--color-foreground: var(--fg-base);
+					--color-muted-foreground: var(--fg-muted);
+					--color-primary: var(--accent);
+					--color-success: var(--success);
+					--color-error: var(--error);
+					--color-warning: var(--warning, #d29922);
+				"
+			>
+				<LineEditor
+					bind:this={editorRef}
+					validate={validateAddress}
+					placeholder={t('br.addresses.placeholder')}
+					i18n={lineEditorI18n}
+					detectDuplicates={true}
+					minHeight={260}
+					maxHeight={500}
+					bind:validLines
+					bind:validCount={editorValidCount}
+					bind:errorCount={editorErrorCount}
+					bind:duplicateCount={editorDuplicateCount}
+				>
+					{#snippet fileUploadModal({ open, onClose, onConfirm })}
+						<FileUploadModal {open} {onClose} {onConfirm} columnCount={1} columnLabels={[t('br.addresses.label')]} />
+					{/snippet}
+				</LineEditor>
+			</div>
 		</div>
 
 		<!-- Network Selector -->
@@ -125,12 +202,12 @@
 
 		<!-- Summary & Start -->
 		<div class="summary-bar">
-			{#if canExecute}
+			{#if localCanExecute}
 				<span class="summary-text">
 					{t('br.summary.queries', {
-						addresses: validAddressCount,
+						addresses: editorValidCount,
 						networks: selectedNetworks.length,
-						total: totalQueries,
+						total: localTotalQueries,
 					})}
 				</span>
 			{:else}
@@ -139,7 +216,7 @@
 
 			<button
 				class="btn btn-primary"
-				disabled={!canExecute || isRunning}
+				disabled={!localCanExecute || isRunning}
 				onclick={onStartQuery}
 			>
 				{isRunning ? t('br.summary.running') : t('br.summary.start')}
@@ -178,57 +255,9 @@
 		color: var(--fg-base);
 	}
 
-	/* Address Textarea */
-	.address-textarea {
-		width: 100%;
-		min-height: 140px;
-		padding: var(--space-3);
-		background: var(--bg-sunken);
-		border: 1px solid var(--border-base);
+	.editor-wrapper {
 		border-radius: var(--radius-md);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		color: var(--fg-base);
-		line-height: var(--leading-relaxed);
-		resize: vertical;
-		transition: border-color var(--motion-fast) var(--easing);
-		box-sizing: border-box;
-	}
-
-	.address-textarea::placeholder {
-		color: var(--fg-subtle);
-	}
-
-	.address-textarea:focus {
-		outline: none;
-		border-color: var(--accent);
-		box-shadow: 0 0 0 3px var(--accent-ring);
-	}
-
-	.address-summary {
-		display: flex;
-		gap: var(--space-2);
-		margin-top: var(--space-2);
-	}
-
-	/* Badges */
-	.badge {
-		display: inline-flex;
-		align-items: center;
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-full);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-	}
-
-	.badge-success {
-		background: var(--success-subtle);
-		color: var(--success);
-	}
-
-	.badge-error {
-		background: var(--error-subtle);
-		color: var(--error);
+		overflow: hidden;
 	}
 
 	/* Network Chips */

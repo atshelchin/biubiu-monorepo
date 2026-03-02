@@ -80,6 +80,18 @@ export const configModule = defineModule({
 			},
 		},
 
+		setValidAddresses: {
+			description: 'Set pre-validated wallet addresses (skips parsing, used by LineEditor UI)',
+			input: z.object({
+				addresses: z.array(z.string()).describe('Array of valid wallet addresses'),
+			}),
+			execute({ input, ctx }) {
+				ctx.addresses = input.addresses.map((value: string) => ({ value, valid: true }));
+				ctx.addressInput = input.addresses.join('\n');
+				recomputeDerived(ctx);
+			},
+		},
+
 		removeAddress: {
 			description: 'Remove a specific address by index',
 			input: z.object({

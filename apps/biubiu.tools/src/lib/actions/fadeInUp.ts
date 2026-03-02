@@ -7,7 +7,7 @@ interface FadeInUpOptions {
 
 export function fadeInUp(node: HTMLElement, options: FadeInUpOptions = {}) {
 	const {
-		threshold = 0.1,
+		threshold = 0,
 		delay = 0,
 		duration = 600,
 		distance = 20

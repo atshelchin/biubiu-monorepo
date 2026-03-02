@@ -32,6 +32,7 @@ export function createMulticallBalanceCall(addresses: string[]): EVMCall<Address
 					args: [addr as Address],
 				})),
 				allowFailure: true,
+				batchSize: 0,
 			});
 
 			return addresses.map((addr, i) => ({

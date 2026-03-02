@@ -58,7 +58,7 @@ async function* run(
 
     const startTime = Date.now();
 
-    const CHUNK_SIZE = 100;
+    const CHUNK_SIZE = 500;
     const source = new BalanceQuerySource(addresses, networks, CHUNK_SIZE);
     const hub = await createTaskHub();
 

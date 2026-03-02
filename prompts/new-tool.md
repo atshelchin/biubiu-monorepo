@@ -93,7 +93,7 @@ PDA（业务核心，纯逻辑）
 | SEO 配置 | `src/lib/seo.ts`（getBaseSEO helper） |
 | 组件分类规则 | `src/lib/COMPONENTS.md` |
 | Pagekit 设计文档 | `llms/pagekit.md` |
-| 设计风格 | `CLAUDE.md`（Apple-inspired 章节） |
+| 设计风格 | `llms/simpledesign.md`（Simple Design CSS Token 系统） |
 
 ---
 
@@ -491,10 +491,36 @@ Pagekit 自动暴露的 WebMCP tools：
 - **execution module → widgets/**：进度条组件（读 `page.execution.ctx.progress`）、结果表格（读 `page.execution.ctx.result`）、日志查看器（读 `page.execution.ctx.logs`）
 - **通用 UI 元素 → ui/**：如果提取了可复用的纯展示组件（表格、进度条、标签输入等），放 `ui/`
 
+**设计系统**（Simple Design，参考 `llms/simpledesign.md`）：
+
+所有样式必须使用 CSS Token，禁止硬编码颜色/间距/字号值：
+
+```css
+/* 正确 */
+.card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-md);
+}
+.title { color: var(--fg-base); font-size: var(--text-2xl); }
+.description { color: var(--fg-muted); font-size: var(--text-sm); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); }
+.input { background: var(--bg-sunken); border: 1px solid var(--border-base); }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.error-msg { color: var(--error); background: var(--error-muted); }
+.transition { transition: all var(--motion-fast) var(--easing); }
+
+/* 错误 — 禁止硬编码 */
+.card { background: #1a1a2e; padding: 16px; border-radius: 12px; }
+```
+
 **设计原则**（Apple 风格，参考 CLAUDE.md）：
 - 极简、干净背景、柔和阴影
 - hover 效果克制（最多 2px translate）
 - 无脉冲/发光动画
+- Token 会根据主题（light/dark）自动切换，无需条件判断
 
 **工作内容**：
 - 为 `config.ctx` 的每个字段设计输入控件（文本框、下拉、文件上传、标签列表等）
@@ -521,6 +547,7 @@ Pagekit 自动暴露的 WebMCP tools：
 ## 重要约束
 
 - PDA executor 中的 `ctx.progress()` 和 `ctx.info()` 要映射到 Pagekit execution module 的 context
+- **CSS 样式必须使用 Simple Design Token**（`var(--token-name)`），禁止硬编码颜色、间距、字号等值
 - i18n 翻译 key 命名遵循点号分隔：`section.subsection.key`
 - SEO 的 JSON-LD 工具类页面使用 `SoftwareApplication` schema
 - 数字格式化使用 `formatNumber()` / `formatCurrency()`，不要硬编码格式

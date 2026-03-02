@@ -26,7 +26,7 @@
 	onMount(() => {
 		initSettings();
 
-		navigator.modelContext.registerTool({
+		navigator.modelContext?.registerTool({
 			name: 'get_page_title',
 			description: 'Get the current page title',
 			inputSchema: { type: 'object', properties: {} },

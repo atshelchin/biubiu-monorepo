@@ -16,6 +16,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@lucide/svelte": "^0.511.0",
+        "@mcp-b/global": "^2.0.9",
         "@resvg/resvg-wasm": "^2.6.2",
         "@shelchin/i18n-sveltekit": "workspace:*",
         "@shelchin/pda": "workspace:*",
@@ -282,6 +283,8 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
 
+    "@cfworker/json-schema": ["@cfworker/json-schema@4.1.1", "", {}, "sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og=="],
+
     "@coinbase/wallet-sdk": ["@coinbase/wallet-sdk@4.3.7", "", { "dependencies": { "@noble/hashes": "^1.4.0", "clsx": "^1.2.1", "eventemitter3": "^5.0.1", "preact": "^10.24.2", "viem": "^2.27.2" } }, "sha512-z6e5XDw6EF06RqkeyEa+qD0dZ2ZbLci99vx3zwDY//XO8X7166tqKJrR2XlQnzVmtcUuJtCd5fCvr9Cu6zzX7w=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
@@ -377,6 +380,14 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
     "@lucide/svelte": ["@lucide/svelte@0.564.0", "", { "peerDependencies": { "svelte": "^5" } }, "sha512-jODK/wHX3lKi1CsLgx9wXspsDQ5/WbsNmBqecdTCbaH1Cy3C/n2g3WM1a59sokjq+81eZDFUi/7Yg4rVI3kyow=="],
+
+    "@mcp-b/global": ["@mcp-b/global@2.0.9", "", { "dependencies": { "@mcp-b/transports": "2.0.9", "@mcp-b/webmcp-polyfill": "2.0.9", "@mcp-b/webmcp-ts-sdk": "2.0.9", "@mcp-b/webmcp-types": "2.0.9" } }, "sha512-HPV5oELQYxDJHWhktaqy1lV0QGwwBq81zXcug7JeisRKwrj34mJugLh/5wkWPOfGnWUtWUD2Q5jhydCiDE6g5A=="],
+
+    "@mcp-b/transports": ["@mcp-b/transports@2.0.9", "", { "dependencies": { "@mcp-b/webmcp-ts-sdk": "2.0.9", "zod": "3.25.76" } }, "sha512-Eb5w6a5DqmN0BJ5S4XDLyJmvtw4WU+W0LiWZCLv3Z4hyHkwi91A0YBSAd2/MWYTqeBpBm9TgLHGdlpaYZqTV5A=="],
+
+    "@mcp-b/webmcp-polyfill": ["@mcp-b/webmcp-polyfill@2.0.9", "", { "dependencies": { "@cfworker/json-schema": "^4.1.1", "@mcp-b/webmcp-types": "2.0.9", "@standard-schema/spec": "^1.1.0" } }, "sha512-mKcIgpkCxgi4as6moU/lRbc9ANCsiHOjkIyln5ivJG4H2qa3U9Wv/euFq9B92Zbx5ZwuCvucdsmEsYsnpYHgpw=="],
+
+    "@mcp-b/webmcp-ts-sdk": ["@mcp-b/webmcp-ts-sdk@2.0.9", "", { "dependencies": { "@mcp-b/webmcp-polyfill": "2.0.9", "@mcp-b/webmcp-types": "2.0.9" }, "peerDependencies": { "zod": "^3.25 || ^4.0", "zod-to-json-schema": "^3.25.0" }, "optionalPeers": ["zod", "zod-to-json-schema"] }, "sha512-ghXcGpEj2dN2a7M7ly8j/kJr3QJus1NZbxf0NDLrOQZL2gj0UsvY00aThAuj0BN2scGFmepK45EGqNFvNxW4fQ=="],
 
     "@mcp-b/webmcp-types": ["@mcp-b/webmcp-types@2.0.5", "", {}, "sha512-Fx0MOXOIg3OZECp8LEi6nd1QJh7b8THjgdKHkqKX8orfVBsMD+DMbHmICGSYjzjyaHfHLyes91dGAj4wc6JH7g=="],
 
@@ -1171,6 +1182,12 @@
     "@eslint/eslintrc/globals": ["globals@14.0.0", "", {}, "sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ=="],
 
     "@eslint/plugin-kit/@eslint/core": ["@eslint/core@0.17.0", "", { "dependencies": { "@types/json-schema": "^7.0.15" } }, "sha512-yL/sLrpmtDaFEiUj1osRP4TI2MDz1AddJL+jZ7KSqvBuliN4xqYY54IfdN8qD8Toa6g1iloph1fxQNkjOxrrpQ=="],
+
+    "@mcp-b/global/@mcp-b/webmcp-types": ["@mcp-b/webmcp-types@2.0.9", "", {}, "sha512-ktgOElR4ODzlo5JtX+YAWsWFYoErrmIUBJ1U10396HNEdHPPFPZZSPpOCWc4a8RoKxC8RqEWyUt5dPj+wBps8Q=="],
+
+    "@mcp-b/webmcp-polyfill/@mcp-b/webmcp-types": ["@mcp-b/webmcp-types@2.0.9", "", {}, "sha512-ktgOElR4ODzlo5JtX+YAWsWFYoErrmIUBJ1U10396HNEdHPPFPZZSPpOCWc4a8RoKxC8RqEWyUt5dPj+wBps8Q=="],
+
+    "@mcp-b/webmcp-ts-sdk/@mcp-b/webmcp-types": ["@mcp-b/webmcp-types@2.0.9", "", {}, "sha512-ktgOElR4ODzlo5JtX+YAWsWFYoErrmIUBJ1U10396HNEdHPPFPZZSPpOCWc4a8RoKxC8RqEWyUt5dPj+wBps8Q=="],
 
     "@shelchin/i18n-sveltekit/@types/node": ["@types/node@25.2.3", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-m0jEgYlYz+mDJZ2+F4v8D1AyQb+QzsNqRuI7xg1VQX/KlKS0qT9r1Mo16yo5F/MtifXFgaofIFsdFMox2SxIbQ=="],
 

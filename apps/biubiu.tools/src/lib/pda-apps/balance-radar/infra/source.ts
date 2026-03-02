@@ -7,34 +7,27 @@ import { createMulticallBalanceCall, createIndividualBalanceCall } from './multi
 import type { EVMCall } from '$lib/evm/evm-vendor';
 import type { AddressBalance } from './multicall-balance';
 
-const CHUNK_SIZE = 500;
-
 export class BalanceQuerySource extends TaskSource<NetworkJob, NetworkJobResult> {
     readonly type = 'deterministic' as const;
     private pools: Map<string, Pool<EVMCall<AddressBalance[]>, AddressBalance[]>>;
     private jobs: NetworkJob[];
 
-    constructor(addresses: string[], networks: string[]) {
+    constructor(addresses: string[], networks: string[], chunkSize: number = 100) {
         super();
         this.pools = createEVMPools<AddressBalance[]>(NETWORKS, CHAIN_MAP);
-        this.jobs = this.buildJobs(addresses, networks);
+        this.jobs = this.buildJobs(addresses, networks, chunkSize);
     }
 
-    /**
-     * Pre-chunk addresses into jobs of CHUNK_SIZE.
-     * Always same chunk size regardless of multicall3 support —
-     * the handler decides whether to use multicall or sequential individual calls.
-     */
-    private buildJobs(addresses: string[], networks: string[]): NetworkJob[] {
+    private buildJobs(addresses: string[], networks: string[], chunkSize: number): NetworkJob[] {
         const jobs: NetworkJob[] = [];
         for (const network of networks) {
             const config = NETWORKS[network];
             if (!config) continue;
 
-            for (let i = 0; i < addresses.length; i += CHUNK_SIZE) {
+            for (let i = 0; i < addresses.length; i += chunkSize) {
                 jobs.push({
                     network,
-                    addresses: addresses.slice(i, i + CHUNK_SIZE),
+                    addresses: addresses.slice(i, i + chunkSize),
                 });
             }
         }

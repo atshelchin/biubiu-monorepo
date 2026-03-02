@@ -76,7 +76,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         rpcs: ['https://rpc-endurance.fusionist.io'],
         symbol: 'ACE',
         decimals: 18,
-        // hasMulticall3: false,
+        hasMulticall3: false,
     },
 };
 

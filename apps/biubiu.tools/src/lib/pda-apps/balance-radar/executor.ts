@@ -58,8 +58,8 @@ async function* run(
 
     const startTime = Date.now();
 
-    // Source handles chunking: multicall3 networks get 500-address chunks, others get 1-address chunks
-    const source = new BalanceQuerySource(addresses, networks);
+    const CHUNK_SIZE = 100;
+    const source = new BalanceQuerySource(addresses, networks, CHUNK_SIZE);
     const hub = await createTaskHub();
 
     // Compute merkle root from the chunked jobs for idempotent lookup

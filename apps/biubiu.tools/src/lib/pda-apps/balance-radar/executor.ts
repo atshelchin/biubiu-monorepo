@@ -41,8 +41,8 @@ function flattenJobResult(jobOutput: NetworkJobResult): BalanceResult[] {
         address,
         network: jobOutput.network,
         symbol: config.symbol,
-        balance: formatUnits(balance, config.decimals),
-        balanceRaw: balance.toString(),
+        balance: formatUnits(BigInt(balance), config.decimals),
+        balanceRaw: balance,
     }));
 }
 

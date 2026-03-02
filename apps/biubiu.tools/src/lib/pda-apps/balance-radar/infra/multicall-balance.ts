@@ -15,7 +15,7 @@ const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const
 
 export interface AddressBalance {
 	address: string;
-	balance: bigint;
+	balance: string;
 }
 
 /**
@@ -36,7 +36,7 @@ export function createMulticallBalanceCall(addresses: string[]): EVMCall<Address
 
 			return addresses.map((addr, i) => ({
 				address: addr,
-				balance: results[i].status === 'success' ? (results[i].result as bigint) : 0n,
+				balance: results[i].status === 'success' ? (results[i].result as bigint).toString() : '0',
 			}));
 		},
 	};
@@ -50,7 +50,7 @@ export function createIndividualBalanceCall(address: string): EVMCall<AddressBal
 	return {
 		execute: async (client: PublicClient) => {
 			const balance = await client.getBalance({ address: address as Address });
-			return [{ address, balance }];
+			return [{ address, balance: balance.toString() }];
 		},
 	};
 }

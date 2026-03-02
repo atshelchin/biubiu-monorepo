@@ -14,7 +14,7 @@ export interface NetworkJob {
 
 export interface NetworkJobResult {
     network: string;
-    results: { address: string; balance: bigint }[];
+    results: { address: string; balance: string }[];
 }
 
 export interface BalanceResult {

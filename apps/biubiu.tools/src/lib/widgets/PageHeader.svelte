@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { t, localizeHref } from '$lib/i18n';
 	import type { TranslationKey } from '$i18n';
-	import ResponsiveModal from '$lib/components/ResponsiveModal.svelte';
-	import ResponsiveDrawer from '$lib/components/ResponsiveDrawer.svelte';
-	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
+	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import ResponsiveDrawer from '$lib/ui/ResponsiveDrawer.svelte';
+	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import logo from '$lib/assets/logo.svg';
 
 	// Settings modal state

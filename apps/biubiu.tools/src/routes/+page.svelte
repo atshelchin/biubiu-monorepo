@@ -3,10 +3,10 @@
 	import type { TranslationKey } from '$i18n';
 	import { getBaseSEO, buildSiteJsonLd } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import ChainLogos from '$lib/components/ChainLogos.svelte';
-	import ResponsiveModal from '$lib/components/ResponsiveModal.svelte';
-	import ResponsiveDrawer from '$lib/components/ResponsiveDrawer.svelte';
-	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
+	import ChainLogos from '$lib/ui/ChainLogos.svelte';
+	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import ResponsiveDrawer from '$lib/ui/ResponsiveDrawer.svelte';
+	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import logo from '$lib/assets/logo.svg';
 

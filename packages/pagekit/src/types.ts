@@ -68,7 +68,7 @@ export interface ModuleDef<
 
 export interface PageDef<
   TName extends string = string,
-  TModules extends readonly ModuleDef[] = readonly ModuleDef[],
+  TModules extends readonly ModuleDef<any, any, any>[] = readonly ModuleDef<any, any, any>[],
 > {
   /** Page name */
   name: TName;
@@ -85,7 +85,7 @@ export interface PageDef<
 // ============================================================================
 
 /** Runtime module: reactive ctx + pending state + callable action functions */
-export type ModuleInstance<TModule extends ModuleDef> =
+export type ModuleInstance<TModule extends ModuleDef<any, any, any>> =
   TModule extends ModuleDef<infer _N, infer TCtx, infer TActions>
     ? {
         ctx: TCtx;
@@ -103,7 +103,7 @@ export type ModuleInstance<TModule extends ModuleDef> =
     : never;
 
 /** Runtime page: record of module instances keyed by module name */
-export type PageInstance<TPage extends PageDef> =
+export type PageInstance<TPage extends PageDef<any, any>> =
   TPage extends PageDef<infer _N, infer TModules>
     ? {
         [M in TModules[number] as M extends ModuleDef<infer MName, any, any>

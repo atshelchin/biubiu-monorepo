@@ -13,7 +13,7 @@ import type { ModuleDef, PageDef } from './types.js';
  */
 export function definePage<
   const TName extends string,
-  const TModules extends readonly ModuleDef[],
+  const TModules extends readonly ModuleDef<any, any, any>[],
 >(config: PageDef<TName, TModules>): PageDef<TName, TModules> {
   if (!config.name) {
     throw new Error('Page name is required');

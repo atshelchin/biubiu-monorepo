@@ -1,0 +1,53 @@
+{
+	"br.meta.title": "Balance Radar",
+	"br.meta.description": "Bulk-check native token balances for multiple wallet addresses across Ethereum, Polygon, Arbitrum, Optimism, Base, and Endurance.",
+
+	"br.title": "Balance Radar",
+	"br.subtitle": "Query native token balances across multiple EVM chains",
+
+	"br.config.title": "Configuration",
+
+	"br.addresses.label": "Wallet Addresses",
+	"br.addresses.placeholder": "Paste wallet addresses here, one per line or comma-separated\n\n0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\n0x1234567890abcdef1234567890abcdef12345678",
+	"br.addresses.valid": "{count} valid",
+	"br.addresses.invalid": "{count} invalid",
+	"br.addresses.clearAll": "Clear All",
+	"br.addresses.empty": "No addresses added yet",
+
+	"br.networks.label": "Networks",
+	"br.networks.selectAll": "Select All",
+	"br.networks.deselectAll": "Deselect All",
+
+	"br.summary.queries": "{addresses} addresses \u00d7 {networks} networks = {total} queries",
+	"br.summary.start": "Start Query",
+	"br.summary.running": "Running...",
+
+	"br.execution.progress": "Querying... {current}/{total} ({percent}%)",
+	"br.execution.preparing": "Preparing...",
+
+	"br.logs.title": "Activity Log",
+
+	"br.results.title": "Results",
+	"br.results.stats.total": "Total",
+	"br.results.stats.success": "Success",
+	"br.results.stats.failed": "Failed",
+	"br.results.stats.duration": "Duration",
+
+	"br.results.table.address": "Address",
+	"br.results.table.network": "Network",
+	"br.results.table.symbol": "Symbol",
+	"br.results.table.balance": "Balance",
+	"br.results.table.noResults": "No results to display",
+	"br.results.table.allNetworks": "All Networks",
+	"br.results.table.searchPlaceholder": "Search by address...",
+
+	"br.results.failures.title": "{count} queries failed",
+	"br.results.failures.show": "Show Details",
+	"br.results.failures.hide": "Hide Details",
+
+	"br.results.export.csv": "Export CSV",
+	"br.results.export.runAgain": "Run Again",
+
+	"br.error.title": "Query Failed",
+	"br.error.retry": "Retry"
+}

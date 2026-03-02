@@ -23,6 +23,7 @@
 		"@mcp-b/global": "^2.0.9",
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@shelchin/i18n-sveltekit": "workspace:*",
+		"@shelchin/pagekit": "workspace:*",
 		"@shelchin/pda": "workspace:*",
 		"@shelchin/pda-sveltekit": "workspace:*",
 		"@shelchin/proeditor-sveltekit": "workspace:*",

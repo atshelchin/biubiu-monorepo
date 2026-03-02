@@ -1,0 +1,43 @@
+{
+  "name": "@shelchin/pagekit",
+  "version": "0.1.0",
+  "description": "Page state and actions equally visible for UI and AI agents via WebMCP",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.svelte.d.ts",
+      "svelte": "./dist/svelte.svelte.js",
+      "default": "./dist/svelte.svelte.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --watch",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@mcp-b/webmcp-types": "^2.0.5",
+    "@types/bun": "latest",
+    "svelte": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    }
+  }
+}

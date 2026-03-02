@@ -19,21 +19,24 @@
 		"build:cli:balance-radar": "bun build --compile --target bun --tsconfig-override tsconfig.cli.json --external better-sqlite3 src/lib/pda-apps/balance-radar/adapters/cli.ts --outfile dist/cli/balance-radar"
 	},
 	"dependencies": {
+		"@lucide/svelte": "^0.511.0",
+		"@mcp-b/global": "^2.0.9",
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@shelchin/i18n-sveltekit": "workspace:*",
-		"@shelchin/seo-sveltekit": "workspace:*",
-		"@shelchin/vendor-pool": "workspace:*",
-		"satori": "^0.19.1",
-		"viem": "^2.46.0",
-		"@lucide/svelte": "^0.511.0",
+		"@shelchin/pagekit": "workspace:*",
 		"@shelchin/pda": "workspace:*",
 		"@shelchin/pda-sveltekit": "workspace:*",
 		"@shelchin/proeditor-sveltekit": "workspace:*",
-		"@shelchin/taskhub": "workspace:*"
+		"@shelchin/seo-sveltekit": "workspace:*",
+		"@shelchin/taskhub": "workspace:*",
+		"@shelchin/vendor-pool": "workspace:*",
+		"satori": "^0.19.1",
+		"viem": "^2.46.0"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",
 		"@eslint/js": "^9.39.2",
+		"@mcp-b/webmcp-types": "^2.0.5",
 		"@playwright/test": "^1.58.0",
 		"@shelchin/exe-sveltekit": "workspace:*",
 		"@sveltejs/adapter-auto": "^7.0.0",

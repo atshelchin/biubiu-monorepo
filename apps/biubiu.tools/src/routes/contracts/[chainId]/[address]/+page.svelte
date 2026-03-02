@@ -2,10 +2,10 @@
 	import { t, localizeHref, locale } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import PageHeader from '$lib/components/PageHeader.svelte';
-	import PageFooter from '$lib/components/PageFooter.svelte';
-	import ContractSearch from '$lib/components/ContractSearch.svelte';
-	import AbiViewer from '$lib/components/AbiViewer.svelte';
+	import PageHeader from '$lib/widgets/PageHeader.svelte';
+	import PageFooter from '$lib/ui/PageFooter.svelte';
+	import ContractSearch from '$lib/widgets/ContractSearch.svelte';
+	import AbiViewer from '$lib/widgets/AbiViewer.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import type { PageData } from './$types';
 

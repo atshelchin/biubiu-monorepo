@@ -12,6 +12,11 @@ const endurance = defineChain({
     blockExplorers: {
         default: { name: 'Endurance Explorer', url: 'https://explorer-endurance.fusionist.io' },
     },
+    contracts: {
+        multicall3: {
+            address: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        },
+    },
 });
 
 export const NETWORKS: Record<string, NetworkConfig> = {
@@ -19,9 +24,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         name: 'Ethereum',
         chainId: 1,
         rpcs: [
-            'https://eth.llamarpc.com',
-            'https://rpc.ankr.com/eth',
-            'https://ethereum.publicnode.com',
+            'https://ethereum-rpc.publicnode.com',
+            'https://1rpc.io/eth',
+            'https://eth.drpc.org',
         ],
         symbol: 'ETH',
         decimals: 18,
@@ -30,9 +35,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         name: 'Polygon',
         chainId: 137,
         rpcs: [
-            'https://polygon.llamarpc.com',
-            'https://rpc.ankr.com/polygon',
-            'https://polygon-bor.publicnode.com',
+            'https://polygon-bor-rpc.publicnode.com',
+            'https://1rpc.io/matic',
+            'https://polygon.drpc.org',
         ],
         symbol: 'MATIC',
         decimals: 18,
@@ -41,9 +46,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         name: 'Arbitrum',
         chainId: 42161,
         rpcs: [
-            'https://arbitrum.llamarpc.com',
-            'https://rpc.ankr.com/arbitrum',
-            'https://arbitrum-one.publicnode.com',
+            'https://arbitrum-one-rpc.publicnode.com',
+            'https://1rpc.io/arb',
+            'https://arbitrum.drpc.org',
         ],
         symbol: 'ETH',
         decimals: 18,
@@ -52,9 +57,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         name: 'Optimism',
         chainId: 10,
         rpcs: [
-            'https://optimism.llamarpc.com',
-            'https://rpc.ankr.com/optimism',
-            'https://optimism.publicnode.com',
+            'https://optimism-rpc.publicnode.com',
+            'https://1rpc.io/op',
+            'https://optimism.drpc.org',
         ],
         symbol: 'ETH',
         decimals: 18,
@@ -63,9 +68,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
         name: 'Base',
         chainId: 8453,
         rpcs: [
-            'https://mainnet.base.org',
-            'https://base.llamarpc.com',
-            'https://base.publicnode.com',
+            'https://base-rpc.publicnode.com',
+            'https://1rpc.io/base',
+            'https://base.drpc.org',
         ],
         symbol: 'ETH',
         decimals: 18,

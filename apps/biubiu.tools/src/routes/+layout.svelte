@@ -4,7 +4,7 @@
 	import { i18nState } from '@shelchin/i18n-sveltekit';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
-	import TranslateModeBar from '$lib/components/TranslateModeBar.svelte';
+	import TranslateModeBar from '$lib/widgets/TranslateModeBar.svelte';
 
 	// Import CSS (order matters: tokens first, then themes, then global)
 	import '../style/tokens.css';

@@ -69,5 +69,15 @@
   "settings.theme.dark": "深色",
   "settings.helpTranslate": "帮助改进翻译",
   "settings.helpTranslate.hint": "{key} + 点击任意文字，即可跳转 GitHub 编辑",
-  "settings.helpTranslate.enabled": "翻译模式已开启"
+  "settings.helpTranslate.enabled": "翻译模式已开启",
+  "error.404.title": "页面未找到",
+  "error.404.description": "你访问的页面不存在或已被移动。",
+  "error.generic.title": "出了点问题",
+  "error.generic.description": "发生了意外错误，请稍后再试。",
+  "error.backHome": "返回首页",
+  "error.explore": "或者试试这些工具",
+  "error.featured.balanceRadar": "余额雷达",
+  "error.featured.balanceRadarDesc": "批量查询多链地址余额",
+  "error.featured.home": "首页",
+  "error.featured.homeDesc": "发现我们所有的 Web3 工具"
 }

@@ -69,5 +69,15 @@
   "settings.theme.dark": "Dark",
   "settings.helpTranslate": "Help improve translation",
   "settings.helpTranslate.hint": "{key} + Click any text to edit on GitHub",
-  "settings.helpTranslate.enabled": "Translation mode enabled"
+  "settings.helpTranslate.enabled": "Translation mode enabled",
+  "error.404.title": "Page Not Found",
+  "error.404.description": "The page you're looking for doesn't exist or has been moved.",
+  "error.generic.title": "Something Went Wrong",
+  "error.generic.description": "An unexpected error occurred. Please try again later.",
+  "error.backHome": "Back to Home",
+  "error.explore": "Or explore these tools",
+  "error.featured.balanceRadar": "Balance Radar",
+  "error.featured.balanceRadarDesc": "Bulk-check balances across multiple chains",
+  "error.featured.home": "Homepage",
+  "error.featured.homeDesc": "Discover all our Web3 tools"
 }

@@ -15,7 +15,6 @@
 	// Navigation links
 	const navLinks: { key: TranslationKey; href: string; icon: string; external?: boolean }[] = [
 		{ key: 'nav.tools', href: '/apps/balance-radar', icon: 'tools' },
-		{ key: 'nav.docs', href: '/docs', icon: 'docs', external: false },
 		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu-monorepo', icon: 'github', external: true }
 	];
 

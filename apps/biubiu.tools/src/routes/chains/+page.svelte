@@ -186,7 +186,17 @@
 		display: flex;
 		justify-content: center;
 		position: relative;
-		z-index: 100;
+		z-index: 200;
+	}
+
+	.popular-section {
+		position: relative;
+		z-index: 1;
+	}
+
+	.all-section {
+		position: relative;
+		z-index: 1;
 	}
 
 	/* Section */

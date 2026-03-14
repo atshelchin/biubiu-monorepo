@@ -79,5 +79,22 @@
   "error.featured.balanceRadar": "Balance Radar",
   "error.featured.balanceRadarDesc": "Bulk-check balances across multiple chains",
   "error.featured.home": "Homepage",
-  "error.featured.homeDesc": "Discover all our Web3 tools"
+  "error.featured.homeDesc": "Discover all our Web3 tools",
+  "pumpSignal.title": "Binance Pump Signal Scanner",
+  "pumpSignal.description": "Real-time pump signal detection on Binance. Monitor volume spikes and price surges as they happen.",
+  "pumpSignal.connected": "Connected",
+  "pumpSignal.disconnected": "Disconnected",
+  "pumpSignal.connecting": "Connecting...",
+  "pumpSignal.reconnecting": "Reconnecting...",
+  "pumpSignal.events": "events",
+  "pumpSignal.noEvents": "Waiting for signals...",
+  "pumpSignal.noEventsDesc": "Pump signals will appear here in real-time once detected.",
+  "pumpSignal.telegramBot": "Get alerts on Telegram",
+  "pumpSignal.telegramBotDesc": "Follow @BinancePumpSignalScannerBot for real-time push notifications.",
+  "pumpSignal.score": "Score",
+  "pumpSignal.volume": "Volume",
+  "pumpSignal.volumeSpike": "Spike",
+  "pumpSignal.change1m": "1m",
+  "pumpSignal.change5m": "5m",
+  "pumpSignal.ad": "Announcement"
 }

@@ -117,6 +117,11 @@
 	let roundsFilter = $state<RoundStatusFilter>('');
 	let roundsLoading = $state(false);
 
+	// Time range filter
+	let filterFrom = $state('');
+	let filterTo = $state('');
+	let filterMin = $state(''); // earliest round time (for min attr)
+
 	// Non-reactive connection refs
 	const connRef: { es: EventSource | null; timer: ReturnType<typeof setTimeout> | null; counter: number } = {
 		es: null,
@@ -227,7 +232,11 @@
 
 	async function fetchStats() {
 		try {
-			const res = await fetch(`${API_BASE}/api/stats`);
+			const parts: string[] = [];
+			if (filterFrom) parts.push(`from=${encodeURIComponent(filterFrom)}`);
+			if (filterTo) parts.push(`to=${encodeURIComponent(filterTo)}`);
+			const qs = parts.length ? '?' + parts.join('&') : '';
+			const res = await fetch(`${API_BASE}/api/stats${qs}`);
 			if (res.ok) stats = await res.json();
 		} catch {
 			// non-critical
@@ -254,6 +263,8 @@
 				pageSize: String(roundsPageSize),
 			});
 			if (roundsFilter) params.set('status', roundsFilter);
+			if (filterFrom) params.set('from', filterFrom);
+			if (filterTo) params.set('to', filterTo);
 
 			const res = await fetch(`${API_BASE}/api/rounds?${params}`);
 			if (res.ok) {
@@ -266,6 +277,10 @@
 		} finally {
 			roundsLoading = false;
 		}
+	}
+
+	function toDatetimeLocal(iso: string): string {
+		return iso.replace('Z', '').replace(/\.\d+$/, '').slice(0, 16);
 	}
 
 	async function fetchStrategyStart() {
@@ -281,6 +296,10 @@
 			const data2: RoundsResponse = await res2.json();
 			if (data2.rows.length > 0) {
 				strategyStartTime = data2.rows[0].event_start_time;
+				const startLocal = toDatetimeLocal(data2.rows[0].event_start_time);
+				filterMin = startLocal;
+				if (!filterFrom) filterFrom = startLocal;
+				if (!filterTo) filterTo = toDatetimeLocal(new Date().toISOString());
 			}
 		} catch {
 			// non-critical
@@ -559,6 +578,18 @@
 			<line x1="12" y1="16" x2="12.01" y2="16"/>
 		</svg>
 		<span>{t('btcUpdown.disclaimer')}</span>
+	</div>
+
+	<!-- Time Range Filter -->
+	<div class="time-filter glass-card" use:fadeInUp={{ delay: 40 }}>
+		<span class="time-filter-label">{t('btcUpdown.filter.timeRange')}</span>
+		<div class="time-filter-inputs">
+			<input type="datetime-local" class="time-input" bind:value={filterFrom} min={filterMin} />
+			<span class="time-filter-sep">—</span>
+			<input type="datetime-local" class="time-input" bind:value={filterTo} min={filterMin} />
+			<button class="time-filter-btn" onclick={() => { fetchStats(); if (activeTab === 'history') { roundsPage = 1; fetchRounds(); } }}>{t('btcUpdown.filter.apply')}</button>
+			<button class="time-filter-btn reset" onclick={() => { filterFrom = filterMin; filterTo = toDatetimeLocal(new Date().toISOString()); fetchStats(); if (activeTab === 'history') { roundsPage = 1; fetchRounds(); } }}>{t('btcUpdown.filter.reset')}</button>
+		</div>
 	</div>
 
 	<!-- Stats Overview -->
@@ -993,6 +1024,56 @@
 		margin-bottom: var(--space-4);
 	}
 	.disclaimer svg { color: #fbbf24; flex-shrink: 0; }
+
+	/* Time Range Filter */
+	.time-filter {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+		flex-wrap: wrap;
+	}
+	.time-filter-label {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+	}
+	.time-filter-inputs {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+		flex: 1;
+	}
+	.time-input {
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-md);
+		padding: var(--space-1) var(--space-2);
+		font-size: var(--text-xs);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-base);
+		color-scheme: dark;
+	}
+	.time-input:focus { outline: none; border-color: var(--accent); }
+	.time-filter-sep { color: var(--fg-subtle); font-size: var(--text-sm); }
+	.time-filter-btn {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-md);
+		background: transparent;
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.time-filter-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
+	.time-filter-btn.reset { color: var(--fg-subtle); }
 
 	/* Stats Grid */
 	.stats-grid {
@@ -1437,6 +1518,9 @@
 	:global([data-theme="light"]) .strategy-banner:hover { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .disclaimer { background: rgba(217, 119, 6, 0.06); border-color: rgba(217, 119, 6, 0.15); }
 	:global([data-theme="light"]) .disclaimer svg { color: #d97706; }
+	:global([data-theme="light"]) .time-input { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.08); color-scheme: light; }
+	:global([data-theme="light"]) .time-filter-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .time-filter-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

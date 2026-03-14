@@ -105,7 +105,7 @@
   "pumpSignal.telegramBotDesc": "关注 @BinancePumpSignalScannerBot 获取确认信号推送通知。",
   "pumpSignal.tabRealtime": "早期信号",
   "pumpSignal.tabStrong": "确认信号",
-  "pumpSignal.scanning": "扫描中...",
+  "pumpSignal.scanning": "每分钟扫描一次",
   "pumpSignal.score": "评分",
   "pumpSignal.volume": "成交量",
   "pumpSignal.volumeSpike": "放量",

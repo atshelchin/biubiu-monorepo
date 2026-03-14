@@ -85,7 +85,7 @@
   "btcUpdown.pnl.mainPayout": "主仓收益",
   "btcUpdown.pnl.hedgePayout": "对冲收益",
   "btcUpdown.pnl.hedgeSellRevenue": "对冲卖出收入",
-  "btcUpdown.pnl.platformFee": "平台手续费 (4%)",
+  "btcUpdown.pnl.platformFee": "交易手续费 (4%)",
   "btcUpdown.pnl.netProfit": "净利润",
   "btcUpdown.pnl.hedgeDirection": "对冲方向",
   "btcUpdown.pnl.hedgeLimitPrice": "对冲限价",

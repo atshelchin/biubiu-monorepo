@@ -102,6 +102,11 @@
   "btcUpdown.skip.noQualifyingSignal": "No qualifying signal found",
   "btcUpdown.skip.windowExpired": "Window expired",
   "btcUpdown.skip.daemonRestarted": "Daemon restarted",
+  "btcUpdown.round.entryTime": "Entry Time",
+  "btcUpdown.round.entryRemaining": "{remaining}s left",
+  "btcUpdown.round.countdown": "Countdown",
+  "btcUpdown.round.hedgeFilledAt": "Hedge Filled",
+  "btcUpdown.round.hedgeSoldAt": "Hedge Sold",
   "btcUpdown.history.refresh": "Refresh",
   "btcUpdown.disclaimer": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling."
 }

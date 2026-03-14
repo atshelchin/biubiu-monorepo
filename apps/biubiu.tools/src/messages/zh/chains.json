@@ -1,0 +1,8 @@
+{
+  "chainsList.title": "链浏览器",
+  "chainsList.description": "浏览和搜索区块链网络。查找 RPC 端点、区块浏览器和网络详情。",
+  "chainsList.popularChains": "热门链",
+  "chainsList.allChains": "所有链",
+  "chainsList.totalChains": "{count} 条链",
+  "chainsList.viewDetails": "查看详情"
+}

@@ -7,11 +7,18 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser, dev } from '$app/environment';
 	import { onDestroy, untrack } from 'svelte';
+	import { fly } from 'svelte/transition';
 
-	const SSE_BASE_URL = dev
+	const SSE_STRONG_URL = dev
 		? 'http://localhost:8787/sse'
 		: 'https://cf-worker-binance-scanner.atshelchin.workers.dev/sse';
+	// TODO: replace with real endpoint
+	const SSE_REALTIME_URL = dev
+		? 'http://localhost:8787/sse/early'
+		: 'https://cf-worker-binance-scanner.atshelchin.workers.dev/sse/early';
 	const MAX_EVENTS = 100;
+
+	type TabType = 'realtime' | 'strong';
 
 	// Types
 	interface PumpSignal {
@@ -46,12 +53,21 @@
 
 	type SSEEvent = SignalEvent | AdEvent;
 
-	// State
-	let events = $state<SSEEvent[]>([]);
-	let connectionStatus = $state<'connecting' | 'connected' | 'disconnected' | 'reconnecting'>('disconnected');
-	let eventSource: EventSource | null = null;
-	let eventCounter = 0;
-	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
+
+	// Reactive state (drives UI)
+	let activeTab = $state<TabType>('realtime');
+	let channelEvents = $state<Record<TabType, SSEEvent[]>>({ realtime: [], strong: [] });
+	let channelStatus = $state<Record<TabType, ConnectionStatus>>({ realtime: 'disconnected', strong: 'disconnected' });
+
+	// Non-reactive refs (connection internals, should NOT be in $state)
+	const connRefs: Record<TabType, { es: EventSource | null; timer: ReturnType<typeof setTimeout> | null; counter: number }> = {
+		realtime: { es: null, timer: null, counter: 0 },
+		strong: { es: null, timer: null, counter: 0 },
+	};
+
+	const currentEvents = $derived(channelEvents[activeTab]);
+	const connectionStatus = $derived(channelStatus[activeTab]);
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -65,37 +81,45 @@
 		return locale.value === 'zh' ? 'zh' : 'en';
 	}
 
-	function addEvent(event: SSEEvent) {
-		events = [event, ...events].slice(0, MAX_EVENTS);
+	function getBaseUrl(tab: TabType): string {
+		return tab === 'realtime' ? SSE_REALTIME_URL : SSE_STRONG_URL;
 	}
 
-	function connect() {
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
+	function addEvent(tab: TabType, event: SSEEvent) {
+		channelEvents[tab] = [event, ...channelEvents[tab]].slice(0, MAX_EVENTS);
+	}
+
+	function connectChannel(tab: TabType) {
+		const ref = connRefs[tab];
+		if (ref.es) {
+			ref.es.close();
+			ref.es = null;
 		}
-		if (reconnectTimer) {
-			clearTimeout(reconnectTimer);
-			reconnectTimer = null;
+		if (ref.timer) {
+			clearTimeout(ref.timer);
+			ref.timer = null;
 		}
 
-		connectionStatus = connectionStatus === 'disconnected' ? 'connecting' : 'reconnecting';
+		channelStatus[tab] = channelStatus[tab] === 'disconnected' ? 'connecting' : 'reconnecting';
 
-		const url = `${SSE_BASE_URL}?lang=${getSseLang()}`;
-		eventSource = new EventSource(url);
+		const url = `${getBaseUrl(tab)}?lang=${getSseLang()}`;
+		const es = new EventSource(url);
+		ref.es = es;
 
-		eventSource.onopen = () => {
-			connectionStatus = 'connected';
+		es.onopen = () => {
+			channelStatus[tab] = 'connected';
 		};
 
-		eventSource.addEventListener('signal', (e: MessageEvent) => {
+		const signalEventType = tab === 'realtime' ? 'early_signal' : 'signal';
+
+		es.addEventListener(signalEventType, (e: MessageEvent) => {
 			try {
 				const data = JSON.parse(e.data);
-				addEvent({
-					id: `signal-${++eventCounter}`,
+				addEvent(tab, {
+					id: `${tab}-signal-${++ref.counter}`,
 					type: 'signal',
 					timestamp: data.timestamp,
-					signals: data.signals,
+					signals: data.earlySignals ?? data.signals,
 					_formatted: data._formatted,
 				});
 			} catch {
@@ -103,11 +127,11 @@
 			}
 		});
 
-		eventSource.addEventListener('ad', (e: MessageEvent) => {
+		es.addEventListener('ad', (e: MessageEvent) => {
 			try {
 				const data = JSON.parse(e.data);
-				addEvent({
-					id: `ad-${++eventCounter}`,
+				addEvent(tab, {
+					id: `${tab}-ad-${++ref.counter}`,
 					type: 'ad',
 					timestamp: data.timestamp,
 					ad: data.ad,
@@ -118,40 +142,44 @@
 			}
 		});
 
-		eventSource.onerror = () => {
-			connectionStatus = 'disconnected';
-			eventSource?.close();
-			eventSource = null;
-			// Auto-reconnect after 3s
-			reconnectTimer = setTimeout(() => {
-				reconnectTimer = null;
-				connect();
+		es.onerror = () => {
+			channelStatus[tab] = 'disconnected';
+			ref.es?.close();
+			ref.es = null;
+			ref.timer = setTimeout(() => {
+				ref.timer = null;
+				connectChannel(tab);
 			}, 3000);
 		};
 	}
 
-	function disconnect() {
-		if (reconnectTimer) {
-			clearTimeout(reconnectTimer);
-			reconnectTimer = null;
+	function disconnectChannel(tab: TabType) {
+		const ref = connRefs[tab];
+		if (ref.timer) {
+			clearTimeout(ref.timer);
+			ref.timer = null;
 		}
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
+		if (ref.es) {
+			ref.es.close();
+			ref.es = null;
 		}
-		connectionStatus = 'disconnected';
+		channelStatus[tab] = 'disconnected';
 	}
 
-	// Connect on mount, reconnect on locale change
+	// Connect both channels on mount, reconnect on locale change
 	$effect(() => {
 		if (browser) {
-			const _lang = getSseLang(); // track locale reactively
-			untrack(() => connect());
+			const _lang = getSseLang();
+			untrack(() => {
+				connectChannel('realtime');
+				connectChannel('strong');
+			});
 		}
 	});
 
 	onDestroy(() => {
-		disconnect();
+		disconnectChannel('realtime');
+		disconnectChannel('strong');
 	});
 
 	function formatTime(ts: number): string {
@@ -167,6 +195,12 @@
 		if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
 		if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
 		return value.toFixed(0);
+	}
+
+	const BINANCE_REF = 'GRO_28502_YH8J7';
+
+	function getBinanceTradeUrl(symbol: string): string {
+		return `https://www.binance.com/en/trade/${symbol.replace('USDT', '_USDT')}?ref=${BINANCE_REF}`;
 	}
 </script>
 
@@ -195,6 +229,38 @@
 		<p class="page-description">{t('pumpSignal.description')}</p>
 	</section>
 
+	<!-- Tab Switcher -->
+	<div class="tab-switcher" use:fadeInUp={{ delay: 25 }}>
+		<button
+			class="tab-btn"
+			class:active={activeTab === 'realtime'}
+			onclick={() => (activeTab = 'realtime')}
+		>
+			{t('pumpSignal.tabRealtime')}
+			{#if channelEvents.realtime.length > 0}
+				<span class="tab-count">{channelEvents.realtime.length}</span>
+			{/if}
+		</button>
+		<button
+			class="tab-btn"
+			class:active={activeTab === 'strong'}
+			onclick={() => (activeTab = 'strong')}
+		>
+			{t('pumpSignal.tabStrong')}
+			{#if channelEvents.strong.length > 0}
+				<span class="tab-count">{channelEvents.strong.length}</span>
+			{/if}
+		</button>
+	</div>
+
+	<!-- Scan Status -->
+	{#if connectionStatus === 'connected'}
+		<div class="scan-status">
+			<span class="scan-dot"></span>
+			<span class="scan-text">{t('pumpSignal.scanning')}</span>
+		</div>
+	{/if}
+
 	<!-- Telegram Bot Banner -->
 	<a
 		href="https://t.me/BinancePumpSignalScannerBot"
@@ -218,18 +284,11 @@
 		</svg>
 	</a>
 
-	<!-- Event Counter -->
-	{#if events.length > 0}
-		<div class="event-counter" use:fadeInUp={{ delay: 100 }}>
-			<span>{events.length} {t('pumpSignal.events')}</span>
-		</div>
-	{/if}
-
 	<!-- Events Feed -->
 	<section class="events-feed">
-		{#if events.length === 0}
+		{#if currentEvents.length === 0}
 			<div class="empty-state" use:fadeInUp={{ delay: 100 }}>
-				<div class="empty-icon">
+				<div class="empty-icon scanning">
 					<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
 					</svg>
@@ -239,59 +298,61 @@
 			</div>
 		{:else}
 			<div class="events-grid">
-				{#each events as event (event.id)}
-					{#if event.type === 'signal'}
-						<div class="event-card glass-card signal-card">
-							<div class="card-header">
-								<span class="card-time">{formatTime(event.timestamp)}</span>
-								<span class="card-type-badge signal-badge">{t('pumpSignal.score')}</span>
-							</div>
-							<div class="signals-list">
-								{#each event.signals as signal}
-									<div class="signal-item">
-										<div class="signal-top">
-											<span class="signal-symbol">{signal.symbol}</span>
-											<span class="signal-score">{signal.score.toFixed(1)}</span>
+				{#each currentEvents as event (event.id)}
+					<div in:fly={{ y: -24, duration: 350 }}>
+						{#if event.type === 'signal'}
+							<div class="event-card glass-card signal-card">
+								<div class="card-header">
+									<span class="card-time">{formatTime(event.timestamp)}</span>
+									<span class="card-type-badge signal-badge">{t('pumpSignal.score')}</span>
+								</div>
+								<div class="signals-list">
+									{#each event.signals as signal}
+										<div class="signal-item">
+											<div class="signal-top">
+												<a href={getBinanceTradeUrl(signal.symbol)} target="_blank" rel="noopener noreferrer" class="signal-symbol">{signal.symbol}</a>
+												<span class="signal-score">{signal.score.toFixed(1)}</span>
+											</div>
+											<div class="signal-details">
+												<span class="signal-price">${signal.lastPrice}</span>
+												<span class="signal-change" class:positive={signal.change1m >= 0} class:negative={signal.change1m < 0}>
+													{t('pumpSignal.change1m')} {formatChange(signal.change1m)}
+												</span>
+												<span class="signal-change" class:positive={signal.change5m >= 0} class:negative={signal.change5m < 0}>
+													{t('pumpSignal.change5m')} {formatChange(signal.change5m)}
+												</span>
+											</div>
+											<div class="signal-volume">
+												<span class="volume-label">{t('pumpSignal.volume')} {formatVolume(signal.volume1m)}</span>
+												<span class="volume-spike">{t('pumpSignal.volumeSpike')} {signal.volumeMultiplier.toFixed(1)}x</span>
+											</div>
 										</div>
-										<div class="signal-details">
-											<span class="signal-price">${signal.lastPrice}</span>
-											<span class="signal-change" class:positive={signal.change1m >= 0} class:negative={signal.change1m < 0}>
-												{t('pumpSignal.change1m')} {formatChange(signal.change1m)}
-											</span>
-											<span class="signal-change" class:positive={signal.change5m >= 0} class:negative={signal.change5m < 0}>
-												{t('pumpSignal.change5m')} {formatChange(signal.change5m)}
-											</span>
-										</div>
-										<div class="signal-volume">
-											<span class="volume-label">{t('pumpSignal.volume')} {formatVolume(signal.volume1m)}</span>
-											<span class="volume-spike">{t('pumpSignal.volumeSpike')} {signal.volumeMultiplier.toFixed(1)}x</span>
-										</div>
-									</div>
-								{/each}
+									{/each}
+								</div>
 							</div>
-						</div>
-					{:else}
-						{@const ad = event.ad[getSseLang() as 'zh' | 'en']}
-						<div class="event-card glass-card ad-card">
-							<div class="card-header">
-								<span class="card-time">{formatTime(event.timestamp)}</span>
-								<span class="card-type-badge ad-badge">{t('pumpSignal.ad')}</span>
+						{:else}
+							{@const ad = event.ad[getSseLang() as 'zh' | 'en']}
+							<div class="event-card glass-card ad-card">
+								<div class="card-header">
+									<span class="card-time">{formatTime(event.timestamp)}</span>
+									<span class="card-type-badge ad-badge">{t('pumpSignal.ad')}</span>
+								</div>
+								<div class="ad-content">
+									<h4 class="ad-title">{ad.title}</h4>
+									<p class="ad-body">{ad.body}</p>
+									{#if ad.url}
+										<a href={ad.url} target="_blank" rel="noopener noreferrer" class="ad-link">
+											{ad.url}
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+												<line x1="7" y1="17" x2="17" y2="7" />
+												<polyline points="7 7 17 7 17 17" />
+											</svg>
+										</a>
+									{/if}
+								</div>
 							</div>
-							<div class="ad-content">
-								<h4 class="ad-title">{ad.title}</h4>
-								<p class="ad-body">{ad.body}</p>
-								{#if ad.url}
-									<a href={ad.url} target="_blank" rel="noopener noreferrer" class="ad-link">
-										{ad.url}
-										<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-											<line x1="7" y1="17" x2="17" y2="7" />
-											<polyline points="7 7 17 7 17 17" />
-										</svg>
-									</a>
-								{/if}
-							</div>
-						</div>
-					{/if}
+						{/if}
+					</div>
 				{/each}
 			</div>
 		{/if}
@@ -335,6 +396,59 @@
 		margin: 0;
 	}
 
+	/* Tab Switcher */
+	.tab-switcher {
+		display: flex;
+		gap: var(--space-1);
+		padding: 3px;
+		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-5);
+	}
+
+	.tab-btn {
+		flex: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-4);
+		border: none;
+		border-radius: var(--radius-md);
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.tab-btn:hover {
+		color: var(--fg-muted);
+	}
+
+	.tab-btn.active {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg-base);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+	}
+
+	.tab-count {
+		font-size: var(--text-xs);
+		padding: 0 6px;
+		border-radius: var(--radius-full);
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg-muted);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		line-height: 1.6;
+	}
+
+	.tab-btn.active .tab-count {
+		background: rgba(52, 211, 153, 0.15);
+		color: #34d399;
+	}
+
 	/* Status Badge */
 	.status-badge {
 		display: inline-flex;
@@ -362,6 +476,7 @@
 
 	.status-connected .status-dot {
 		background: #34d399;
+		animation: breathe 2.5s ease-in-out infinite;
 	}
 
 	.status-connecting,
@@ -438,13 +553,26 @@
 		flex-shrink: 0;
 	}
 
-	/* Event Counter */
-	.event-counter {
+	/* Scan Status */
+	.scan-status {
 		display: flex;
 		align-items: center;
+		gap: var(--space-2);
 		margin-bottom: var(--space-4);
-		font-size: var(--text-sm);
+		font-size: var(--text-xs);
 		color: var(--fg-subtle);
+	}
+
+	.scan-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: #34d399;
+		animation: breathe 2.5s ease-in-out infinite;
+	}
+
+	.scan-text {
+		opacity: 0.6;
 	}
 
 	/* Empty State */
@@ -460,6 +588,15 @@
 	.empty-icon {
 		color: var(--fg-faint);
 		margin-bottom: var(--space-4);
+	}
+
+	.empty-icon.scanning {
+		animation: breathe 2.5s ease-in-out infinite;
+	}
+
+	@keyframes breathe {
+		0%, 100% { opacity: 0.3; }
+		50% { opacity: 0.7; }
 	}
 
 	.empty-title {
@@ -478,26 +615,14 @@
 	/* Events Grid */
 	.events-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: var(--space-4);
+		grid-template-columns: 1fr;
+		gap: var(--space-6);
 	}
 
 	/* Event Card */
 	.event-card {
 		border-radius: var(--radius-lg);
 		padding: var(--space-4);
-		animation: cardFadeIn 0.3s var(--easing);
-	}
-
-	@keyframes cardFadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(8px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
 	}
 
 	.card-header {
@@ -558,6 +683,11 @@
 		font-size: var(--text-base);
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
+		text-decoration: none;
+	}
+
+	.signal-symbol:hover {
+		text-decoration: underline;
 	}
 
 	.signal-score {
@@ -652,6 +782,68 @@
 		background: rgba(255, 255, 255, 0.05);
 		border: 1px solid rgba(255, 255, 255, 0.08);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	}
+
+	/* Light mode overrides */
+	:global([data-theme="light"]) .glass-card {
+		background: rgba(0, 0, 0, 0.02);
+		border: 1px solid rgba(0, 0, 0, 0.08);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	}
+
+	:global([data-theme="light"]) .tab-switcher {
+		background: rgba(0, 0, 0, 0.03);
+		border-color: rgba(0, 0, 0, 0.08);
+	}
+
+	:global([data-theme="light"]) .tab-btn.active {
+		background: #fff;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+	}
+
+	:global([data-theme="light"]) .tab-count {
+		background: rgba(0, 0, 0, 0.06);
+	}
+
+	:global([data-theme="light"]) .tab-btn.active .tab-count {
+		background: rgba(16, 185, 129, 0.12);
+		color: #059669;
+	}
+
+	:global([data-theme="light"]) .signal-score {
+		color: #059669;
+	}
+
+	:global([data-theme="light"]) .signal-badge {
+		background: rgba(16, 185, 129, 0.1);
+		color: #059669;
+	}
+
+	:global([data-theme="light"]) .signal-change.positive {
+		color: #059669;
+	}
+
+	:global([data-theme="light"]) .signal-change.negative {
+		color: #dc2626;
+	}
+
+	:global([data-theme="light"]) .volume-spike {
+		color: #d97706;
+	}
+
+	:global([data-theme="light"]) .status-connected {
+		border-color: rgba(16, 185, 129, 0.3);
+		color: #059669;
+		background: rgba(16, 185, 129, 0.06);
+	}
+
+	:global([data-theme="light"]) .status-connected .status-dot,
+	:global([data-theme="light"]) .scan-dot {
+		background: #059669;
+	}
+
+	:global([data-theme="light"]) .signal-item + .signal-item {
+		border-top-color: rgba(0, 0, 0, 0.06);
 	}
 
 	/* Responsive */

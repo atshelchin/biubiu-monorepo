@@ -358,6 +358,14 @@
 		return `${minutes}m ${seconds}s`;
 	}
 
+	function formatCountdown(endTime: string, _now: number): string {
+		const diff = new Date(endTime).getTime() - _now;
+		if (diff <= 0) return '0m 0s';
+		const minutes = Math.floor(diff / 60000);
+		const seconds = Math.floor((diff % 60000) / 1000);
+		return `${minutes}m ${seconds}s`;
+	}
+
 	function getEventTypeLabel(type: string): string {
 		switch (type) {
 			case 'round_start': return t('btcUpdown.event.roundStart');
@@ -648,10 +656,20 @@
 								<span class="round-value mono">${currentRound.entry_cost.toFixed(2)}</span>
 							</div>
 						{/if}
+						{#if currentRound.entry_time}
+							<div class="round-row">
+								<span class="round-label">{t('btcUpdown.round.entryTime')}</span>
+								<span class="round-value mono">{formatShortTimeET(currentRound.entry_time)} ET</span>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<p class="current-round-waiting">{t('btcUpdown.live.noActiveRoundDesc')}</p>
 				{/if}
+				<div class="round-row" style="margin-top: var(--space-2);">
+					<span class="round-label">{t('btcUpdown.round.countdown')}</span>
+					<span class="round-value mono countdown-value">{formatCountdown(currentRound.end_time, now)}</span>
+				</div>
 			{:else}
 				<p class="current-round-waiting">{t('btcUpdown.live.noActiveRound')}</p>
 			{/if}
@@ -770,6 +788,24 @@
 									<div class="round-row">
 										<span class="round-label">{t('btcUpdown.round.outcome')}</span>
 										<span class="round-value direction-tag direction-{round.outcome.toLowerCase()}">{round.outcome}</span>
+									</div>
+								{/if}
+								{#if round.entry_time}
+									<div class="round-row">
+										<span class="round-label">{t('btcUpdown.round.entryTime')}</span>
+										<span class="round-value mono">{formatShortTimeET(round.entry_time)} ET <span class="entry-remaining">({round.entry_remaining}s left)</span></span>
+									</div>
+								{/if}
+								{#if round.hedge?.filled_at}
+									<div class="round-row">
+										<span class="round-label">{t('btcUpdown.round.hedgeFilledAt')}</span>
+										<span class="round-value mono">{formatShortTimeET(round.hedge.filled_at)} ET</span>
+									</div>
+								{/if}
+								{#if round.hedge?.sold_at}
+									<div class="round-row">
+										<span class="round-label">{t('btcUpdown.round.hedgeSoldAt')}</span>
+										<span class="round-value mono">{formatShortTimeET(round.hedge.sold_at)} ET</span>
 									</div>
 								{/if}
 
@@ -1257,6 +1293,8 @@
 	.round-label { font-size: var(--text-sm); color: var(--fg-subtle); }
 	.round-value { font-size: var(--text-sm); color: var(--fg-base); font-weight: var(--weight-medium); }
 	.round-value.mono { font-family: var(--font-mono, ui-monospace, monospace); }
+	.countdown-value { color: #60a5fa; }
+	.entry-remaining { color: var(--fg-subtle); font-size: var(--text-xs); }
 	.skip-reason { font-size: var(--text-sm); color: var(--fg-subtle); margin: 0; font-style: italic; }
 
 	/* P&L Breakdown */

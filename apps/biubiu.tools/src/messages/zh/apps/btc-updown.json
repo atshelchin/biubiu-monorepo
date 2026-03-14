@@ -102,6 +102,11 @@
   "btcUpdown.skip.noQualifyingSignal": "未找到符合条件的信号",
   "btcUpdown.skip.windowExpired": "窗口已过期",
   "btcUpdown.skip.daemonRestarted": "守护进程重启",
+  "btcUpdown.round.entryTime": "买入时间",
+  "btcUpdown.round.entryRemaining": "剩余 {remaining} 秒",
+  "btcUpdown.round.countdown": "倒计时",
+  "btcUpdown.round.hedgeFilledAt": "对冲成交",
+  "btcUpdown.round.hedgeSoldAt": "对冲卖出",
   "btcUpdown.history.refresh": "刷新",
   "btcUpdown.disclaimer": "本工具仅为模拟展示，不涉及真实资金。请理性投资，远离赌博。"
 }

@@ -13,6 +13,7 @@
 	const SSE_URL = `${API_BASE}/api/sse/live`;
 	const MAX_EVENTS = 50;
 	const ET_TZ = 'America/New_York';
+	const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
 
 	// --- Types ---
 
@@ -99,6 +100,18 @@
 		pageSize: number;
 	}
 
+	interface HourlyStats {
+		hour: number;
+		rounds: number;
+		wins: number;
+		losses: number;
+		invested: number;
+		payout: number;
+		profit: number;
+		winRate: number;
+		avgProfit: number;
+	}
+
 	// --- Reactive State ---
 
 	let activeTab = $state<TabType>('live');
@@ -116,6 +129,11 @@
 	let roundsPageSize = 10;
 	let roundsFilter = $state<RoundStatusFilter>('');
 	let roundsLoading = $state(false);
+
+	// Date filter: '' means "All", 'YYYY-MM-DD' means specific date
+	let filterDate = $state('');
+	let hourlyData = $state<HourlyStats[]>([]);
+	let selectedHour = $state<number | null>(null);
 
 	// Non-reactive connection refs
 	const connRef: { es: EventSource | null; timer: ReturnType<typeof setTimeout> | null; counter: number } = {
@@ -225,9 +243,31 @@
 
 	// --- REST API ---
 
+	function getDateRange(): { from: string; to: string } | null {
+		if (!filterDate) return null;
+		// Convert local date boundaries to UTC for the API
+		const start = new Date(`${filterDate}T00:00:00`);
+		const end = new Date(`${filterDate}T23:59:59`);
+		return {
+			from: start.toISOString().slice(0, 19).replace('T', ' '),
+			to: end.toISOString().slice(0, 19).replace('T', ' '),
+		};
+	}
+
+	function todayLocal(): string {
+		return new Date().toLocaleDateString('en-CA');
+	}
+
 	async function fetchStats() {
 		try {
-			const res = await fetch(`${API_BASE}/api/stats`);
+			const range = getDateRange();
+			const parts: string[] = [];
+			if (range) {
+				parts.push(`from=${encodeURIComponent(range.from)}`);
+				parts.push(`to=${encodeURIComponent(range.to)}`);
+			}
+			const qs = parts.length ? '?' + parts.join('&') : '';
+			const res = await fetch(`${API_BASE}/api/stats${qs}`);
 			if (res.ok) stats = await res.json();
 		} catch {
 			// non-critical
@@ -254,6 +294,11 @@
 				pageSize: String(roundsPageSize),
 			});
 			if (roundsFilter) params.set('status', roundsFilter);
+			const range = getDateRange();
+			if (range) {
+				params.set('from', range.from);
+				params.set('to', range.to);
+			}
 
 			const res = await fetch(`${API_BASE}/api/rounds?${params}`);
 			if (res.ok) {
@@ -265,6 +310,34 @@
 			// non-critical
 		} finally {
 			roundsLoading = false;
+		}
+	}
+
+	async function fetchHourly() {
+		if (!filterDate) {
+			hourlyData = [];
+			return;
+		}
+		try {
+			const range = getDateRange();
+			const parts: string[] = [];
+			if (range) {
+				parts.push(`from=${encodeURIComponent(range.from)}`);
+				parts.push(`to=${encodeURIComponent(range.to)}`);
+			}
+			const qs = parts.length ? '?' + parts.join('&') : '';
+			const res = await fetch(`${API_BASE}/api/stats/hourly${qs}`);
+			if (res.ok) {
+				const data: HourlyStats[] = await res.json();
+				// Convert UTC hours to local hours
+				const offsetHours = new Date().getTimezoneOffset() / -60;
+				hourlyData = data.map(h => ({
+					...h,
+					hour: ((h.hour + offsetHours) % 24 + 24) % 24,
+				}));
+			}
+		} catch {
+			// non-critical
 		}
 	}
 
@@ -287,15 +360,25 @@
 		}
 	}
 
+	function onDateChange() {
+		roundsPage = 1;
+		selectedHour = null;
+		fetchStats();
+		fetchHourly();
+		if (activeTab === 'history') fetchRounds();
+	}
+
 	// --- Effects ---
 
 	$effect(() => {
 		if (browser) {
 			untrack(() => {
 				connectSSE();
-				fetchStats();
 				fetchCurrentRound();
-				fetchStrategyStart();
+				fetchStrategyStart().then(() => {
+					fetchStats();
+					fetchHourly();
+				});
 			});
 		}
 	});
@@ -560,6 +643,104 @@
 		</svg>
 		<span>{t('btcUpdown.disclaimer')}</span>
 	</div>
+
+	<!-- Date Filter -->
+	<div class="date-filter glass-card" use:fadeInUp={{ delay: 40 }}>
+		<span class="date-filter-label">{t('btcUpdown.filter.date')}</span>
+		<div class="date-filter-options">
+			<button class="date-option-btn" class:active={!filterDate} onclick={() => { filterDate = ''; onDateChange(); }}>{t('btcUpdown.filter.all')}</button>
+			<button class="date-option-btn" class:active={filterDate === todayLocal()} onclick={() => { filterDate = todayLocal(); onDateChange(); }}>{t('btcUpdown.filter.today')}</button>
+			<input type="date" class="date-input" bind:value={filterDate} onchange={onDateChange} />
+		</div>
+	</div>
+
+	<!-- Hourly Profit Chart -->
+	{#if filterDate}
+		{@const maxAbs = Math.max(...hourlyData.map(h => Math.abs(h.profit)), 1)}
+		{@const hourlyMap = new Map(hourlyData.map(h => [h.hour, h]))}
+		{@const currentLocalHour = new Date().getHours()}
+		{@const isToday = filterDate === todayLocal()}
+		{@const isPastDate = filterDate < todayLocal()}
+		<section class="hourly-chart glass-card" use:fadeInUp={{ delay: 45 }}>
+			<h3 class="section-label">{t('btcUpdown.chart.hourlyProfit')}</h3>
+			{#each [[0, 12, 'AM'], [12, 24, 'PM']] as [start, end, label] (label)}
+				<div class="chart-row">
+					<span class="chart-row-label">{label}</span>
+					<div class="chart-container">
+						{#each HOURS_24.slice(start, end) as hour (hour)}
+							{@const h = hourlyMap.get(hour)}
+							{@const isFuture = isToday ? hour > currentLocalHour : !isPastDate}
+							<div
+							class="chart-col"
+							class:chart-col-future={isFuture}
+							class:chart-col-selected={selectedHour === hour}
+							onclick={() => { selectedHour = selectedHour === hour ? null : hour; }}
+						>
+								{#if h}
+									<span class="chart-value" class:positive={h.profit >= 0} class:negative={h.profit < 0}>
+										{formatProfit(h.profit)}
+									</span>
+								{:else}
+									<span class="chart-value chart-value-empty"></span>
+								{/if}
+								<div class="chart-bar-track">
+									{#if h}
+										<div
+											class="chart-bar"
+											class:bar-positive={h.profit >= 0}
+											class:bar-negative={h.profit < 0}
+											style="height: {Math.max((Math.abs(h.profit) / maxAbs) * 100, 4)}%"
+										></div>
+									{:else}
+										<div class="chart-bar bar-empty"></div>
+									{/if}
+								</div>
+								<span class="chart-hour">{String(hour).padStart(2, '0')}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+			{#if selectedHour !== null}
+				{@const sh = hourlyMap.get(selectedHour)}
+				<div class="chart-detail">
+					{#if sh}
+						<div class="chart-detail-header">
+							<span class="chart-detail-hour">{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(2, '0')}:59</span>
+							<span class="chart-detail-profit" class:positive={sh.profit >= 0} class:negative={sh.profit < 0}>{formatProfit(sh.profit)}</span>
+						</div>
+						<div class="chart-detail-grid">
+							<div class="chart-detail-item">
+								<span class="chart-detail-label">{t('btcUpdown.stats.totalRounds')}</span>
+								<span class="chart-detail-value">{sh.rounds}</span>
+							</div>
+							<div class="chart-detail-item">
+								<span class="chart-detail-label">{t('btcUpdown.stats.winRate')}</span>
+								<span class="chart-detail-value">{formatPercent(sh.winRate)}</span>
+							</div>
+							<div class="chart-detail-item">
+								<span class="chart-detail-label">{t('btcUpdown.stats.wins')}/{t('btcUpdown.stats.losses')}</span>
+								<span class="chart-detail-value">{sh.wins}/{sh.losses}</span>
+							</div>
+							<div class="chart-detail-item">
+								<span class="chart-detail-label">{t('btcUpdown.stats.invested')}</span>
+								<span class="chart-detail-value">${sh.invested.toFixed(2)}</span>
+							</div>
+							<div class="chart-detail-item">
+								<span class="chart-detail-label">{t('btcUpdown.stats.avgProfit')}</span>
+								<span class="chart-detail-value" class:positive={sh.avgProfit >= 0} class:negative={sh.avgProfit < 0}>{formatProfit(sh.avgProfit)}</span>
+							</div>
+						</div>
+					{:else}
+						<div class="chart-detail-header">
+							<span class="chart-detail-hour">{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(2, '0')}:59</span>
+							<span class="chart-detail-empty">{t('btcUpdown.noRounds')}</span>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</section>
+	{/if}
 
 	<!-- Stats Overview -->
 	{#if stats}
@@ -993,6 +1174,181 @@
 		margin-bottom: var(--space-4);
 	}
 	.disclaimer svg { color: #fbbf24; flex-shrink: 0; }
+
+	/* Date Filter */
+	.date-filter {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+	}
+	.date-filter-label {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+	}
+	.date-filter-options {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.date-option-btn {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.date-option-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
+	.date-option-btn.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
+	.date-input {
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-md);
+		padding: var(--space-1) var(--space-3);
+		font-size: var(--text-sm);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-base);
+		color-scheme: dark;
+	}
+	.date-input:focus { outline: none; border-color: var(--accent); }
+
+	/* Hourly Chart */
+	.hourly-chart {
+		padding: var(--space-5);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+	}
+	.chart-row {
+		display: flex;
+		align-items: flex-end;
+		gap: var(--space-2);
+		margin-top: var(--space-3);
+	}
+	.chart-row-label {
+		font-size: 9px;
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		opacity: 0.5;
+		width: 20px;
+		text-align: right;
+		flex-shrink: 0;
+		padding-bottom: 14px;
+	}
+	.chart-container {
+		display: flex;
+		align-items: flex-end;
+		gap: var(--space-1);
+		flex: 1;
+		min-width: 0;
+	}
+	.chart-col {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		min-width: 0;
+		gap: 2px;
+		padding-top: 32px;
+		position: relative;
+	}
+	.chart-col-future { opacity: 0.25; }
+	.chart-value {
+		position: absolute;
+		top: 2px;
+		left: 50%;
+		font-size: 10px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-weight: 700;
+		white-space: nowrap;
+		transform: translateX(-50%) rotate(-40deg);
+		transform-origin: center center;
+	}
+	.chart-value.positive { color: #22c55e; }
+	.chart-value.negative { color: #ef4444; }
+	.chart-value-empty { display: none; }
+	.chart-bar-track {
+		width: 100%;
+		height: 80px;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+	}
+	.chart-bar {
+		width: 70%;
+		border-radius: 2px 2px 0 0;
+		min-height: 4px;
+		transition: height 0.3s ease;
+	}
+	.bar-positive { background: rgba(34, 197, 94, 0.9); }
+	.bar-negative { background: rgba(239, 68, 68, 0.9); }
+	.bar-empty { height: 2px; background: rgba(255, 255, 255, 0.06); border-radius: 1px; }
+	.chart-hour {
+		font-size: 10px;
+		color: var(--fg-secondary);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-weight: 600;
+	}
+	.chart-col-selected {
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 6px;
+	}
+	.chart-col:has(.chart-bar) { cursor: pointer; }
+	.chart-detail {
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+		padding: var(--space-3) 0 0;
+		margin-top: var(--space-2);
+	}
+	.chart-detail-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: var(--space-2);
+	}
+	.chart-detail-hour {
+		font-size: 14px;
+		font-weight: 600;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-primary);
+	}
+	.chart-detail-profit {
+		font-size: 18px;
+		font-weight: 700;
+		font-family: var(--font-mono, ui-monospace, monospace);
+	}
+	.chart-detail-empty {
+		font-size: 13px;
+		color: var(--fg-subtle);
+	}
+	.chart-detail-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+		gap: var(--space-2);
+	}
+	.chart-detail-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.chart-detail-label {
+		font-size: 11px;
+		color: var(--fg-subtle);
+	}
+	.chart-detail-value {
+		font-size: 14px;
+		font-weight: 600;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-primary);
+	}
 
 	/* Stats Grid */
 	.stats-grid {
@@ -1437,6 +1793,15 @@
 	:global([data-theme="light"]) .strategy-banner:hover { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .disclaimer { background: rgba(217, 119, 6, 0.06); border-color: rgba(217, 119, 6, 0.15); }
 	:global([data-theme="light"]) .disclaimer svg { color: #d97706; }
+	:global([data-theme="light"]) .date-input { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.08); color-scheme: light; }
+	:global([data-theme="light"]) .date-option-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .date-option-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .date-option-btn.active { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .bar-positive { background: rgba(16, 185, 129, 0.85); }
+	:global([data-theme="light"]) .bar-negative { background: rgba(220, 38, 38, 0.85); }
+	:global([data-theme="light"]) .bar-empty { background: rgba(0, 0, 0, 0.04); }
+	:global([data-theme="light"]) .chart-col-selected { background: rgba(0, 0, 0, 0.05); }
+	:global([data-theme="light"]) .chart-detail { border-top-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "Chain Explorer",
+  "chainsList.description": "Browse and search blockchain networks. Find RPC endpoints, block explorers, and network details.",
+  "chainsList.popularChains": "Popular Chains",
+  "chainsList.allChains": "All Chains",
+  "chainsList.totalChains": "{count} chains",
+  "chainsList.viewDetails": "View Details",
+  "chains.search.placeholder": "Search chains by name, symbol, or chain ID...",
+  "chains.search.noResults": "No chains found"
+}

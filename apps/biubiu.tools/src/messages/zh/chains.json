@@ -4,5 +4,7 @@
   "chainsList.popularChains": "热门链",
   "chainsList.allChains": "所有链",
   "chainsList.totalChains": "{count} 条链",
-  "chainsList.viewDetails": "查看详情"
+  "chainsList.viewDetails": "查看详情",
+  "chains.search.placeholder": "搜索链名称、符号或链 ID...",
+  "chains.search.noResults": "未找到链"
 }

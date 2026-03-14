@@ -78,14 +78,16 @@
 <PageHeader />
 
 <main class="page">
-	<!-- Header + Search -->
+	<!-- Header -->
 	<section class="page-header" use:fadeInUp={{ delay: 0 }}>
 		<h1 class="page-title">{t('chainsList.title')}</h1>
 		<p class="page-description">{t('chainsList.description')}</p>
-		<div class="search-wrapper">
-			<ChainSearch />
-		</div>
 	</section>
+
+	<!-- Search (outside fadeInUp to avoid stacking context issues) -->
+	<div class="search-wrapper">
+		<ChainSearch />
+	</div>
 
 	<!-- Popular Chains -->
 	{#if popularChains.length > 0}
@@ -179,14 +181,15 @@
 	.page-description {
 		font-size: var(--text-base);
 		color: var(--fg-muted);
-		margin: 0 0 var(--space-6);
+		margin: 0;
 	}
 
 	.search-wrapper {
 		display: flex;
 		justify-content: center;
 		position: relative;
-		z-index: 100;
+		z-index: 200;
+		margin-bottom: var(--space-10);
 	}
 
 	/* Section */

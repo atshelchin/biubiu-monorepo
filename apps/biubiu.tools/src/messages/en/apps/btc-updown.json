@@ -85,7 +85,7 @@
   "btcUpdown.pnl.mainPayout": "Main Payout",
   "btcUpdown.pnl.hedgePayout": "Hedge Payout",
   "btcUpdown.pnl.hedgeSellRevenue": "Hedge Sell Revenue",
-  "btcUpdown.pnl.platformFee": "Platform Fee (4%)",
+  "btcUpdown.pnl.platformFee": "Taker Fee (4%)",
   "btcUpdown.pnl.netProfit": "Net Profit",
   "btcUpdown.pnl.hedgeDirection": "Hedge Direction",
   "btcUpdown.pnl.hedgeLimitPrice": "Hedge Limit Price",

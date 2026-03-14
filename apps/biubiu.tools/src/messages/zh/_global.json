@@ -79,5 +79,22 @@
   "error.featured.balanceRadar": "余额雷达",
   "error.featured.balanceRadarDesc": "批量查询多链地址余额",
   "error.featured.home": "首页",
-  "error.featured.homeDesc": "发现我们所有的 Web3 工具"
+  "error.featured.homeDesc": "发现我们所有的 Web3 工具",
+  "pumpSignal.title": "币安拉盘信号扫描器",
+  "pumpSignal.description": "实时检测币安上的拉盘信号，监控成交量异动和价格飙升。",
+  "pumpSignal.connected": "已连接",
+  "pumpSignal.disconnected": "已断开",
+  "pumpSignal.connecting": "连接中...",
+  "pumpSignal.reconnecting": "重连中...",
+  "pumpSignal.events": "条事件",
+  "pumpSignal.noEvents": "等待信号...",
+  "pumpSignal.noEventsDesc": "检测到拉盘信号后将实时展示在这里。",
+  "pumpSignal.telegramBot": "在 Telegram 上获取推送",
+  "pumpSignal.telegramBotDesc": "关注 @BinancePumpSignalScannerBot 获取实时推送通知。",
+  "pumpSignal.score": "评分",
+  "pumpSignal.volume": "成交量",
+  "pumpSignal.volumeSpike": "倍率",
+  "pumpSignal.change1m": "1 分钟",
+  "pumpSignal.change5m": "5 分钟",
+  "pumpSignal.ad": "公告"
 }

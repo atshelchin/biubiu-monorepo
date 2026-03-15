@@ -10,10 +10,25 @@
 	import { fly } from 'svelte/transition';
 
 	const API_BASE = 'https://bitcoin-up-or-down-5mins-001.awesometools.dev';
-	const SSE_URL = `${API_BASE}/api/sse/live`;
 	const MAX_EVENTS = 50;
 	const ET_TZ = 'America/New_York';
 	const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
+
+	type StrategyVersion = 'v1' | 'v2' | 'v3' | 'v4';
+	const VERSIONS: StrategyVersion[] = ['v1', 'v2', 'v3', 'v4'];
+	const VERSION_PREFIXES: Record<StrategyVersion, string> = {
+		v1: '/api', v2: '/api/v2', v3: '/api/v3', v4: '/api/v4',
+	};
+	const VERSION_LABELS: Record<StrategyVersion, { en: string; zh: string }> = {
+		v1: { en: 'v1 · Hedge $35', zh: 'v1 · 对冲 $35' },
+		v2: { en: 'v2 · No Hedge', zh: 'v2 · 无对冲' },
+		v3: { en: 'v3 · Narrow', zh: 'v3 · 窄区间' },
+		v4: { en: 'v4 · Hedge $15', zh: 'v4 · 对冲 $15' },
+	};
+
+	function apiUrl(path: string): string {
+		return `${API_BASE}${VERSION_PREFIXES[activeVersion]}${path}`;
+	}
 
 	// --- Types ---
 
@@ -112,7 +127,19 @@
 		avgProfit: number;
 	}
 
+	interface StrategyInfo {
+		name: string;
+		description: string[];
+		summary: { label: string; value: string }[];
+		params: Record<string, unknown>;
+	}
+
 	// --- Reactive State ---
+
+	let activeVersion = $state<StrategyVersion>('v1');
+	let strategyInfo = $state<StrategyInfo | null>(null);
+	let allStrategies = $state<Record<StrategyVersion, StrategyInfo | null>>({ v1: null, v2: null, v3: null, v4: null });
+	let showComparison = $state(false);
 
 	let activeTab = $state<TabType>('live');
 	let connectionStatus = $state<ConnectionStatus>('disconnected');
@@ -166,7 +193,7 @@
 
 		connectionStatus = connectionStatus === 'disconnected' ? 'connecting' : 'reconnecting';
 
-		const es = new EventSource(SSE_URL);
+		const es = new EventSource(apiUrl('/sse/live'));
 		connRef.es = es;
 
 		es.onopen = () => {
@@ -267,7 +294,7 @@
 				parts.push(`to=${encodeURIComponent(range.to)}`);
 			}
 			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await fetch(`${API_BASE}/api/stats${qs}`);
+			const res = await fetch(apiUrl(`/stats${qs}`));
 			if (res.ok) stats = await res.json();
 		} catch {
 			// non-critical
@@ -276,7 +303,7 @@
 
 	async function fetchCurrentRound() {
 		try {
-			const res = await fetch(`${API_BASE}/api/rounds/current`);
+			const res = await fetch(apiUrl('/rounds/current'));
 			if (res.ok) {
 				const data: CurrentRoundResponse = await res.json();
 				currentRound = data.round;
@@ -300,7 +327,7 @@
 				params.set('to', range.to);
 			}
 
-			const res = await fetch(`${API_BASE}/api/rounds?${params}`);
+			const res = await fetch(apiUrl(`/rounds?${params}`));
 			if (res.ok) {
 				const data: RoundsResponse = await res.json();
 				rounds = data.rows;
@@ -326,7 +353,7 @@
 				parts.push(`to=${encodeURIComponent(range.to)}`);
 			}
 			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await fetch(`${API_BASE}/api/stats/hourly${qs}`);
+			const res = await fetch(apiUrl(`/stats/hourly${qs}`));
 			if (res.ok) {
 				const data: HourlyStats[] = await res.json();
 				// Convert UTC hours to local hours
@@ -343,13 +370,13 @@
 
 	async function fetchStrategyStart() {
 		try {
-			const res1 = await fetch(`${API_BASE}/api/rounds?page=1&pageSize=1`);
+			const res1 = await fetch(apiUrl('/rounds?page=1&pageSize=1'));
 			if (!res1.ok) return;
 			const data1: RoundsResponse = await res1.json();
 			if (data1.total === 0) return;
 
 			const lastPage = Math.ceil(data1.total / 1);
-			const res2 = await fetch(`${API_BASE}/api/rounds?page=${lastPage}&pageSize=1`);
+			const res2 = await fetch(apiUrl(`/rounds?page=${lastPage}&pageSize=1`));
 			if (!res2.ok) return;
 			const data2: RoundsResponse = await res2.json();
 			if (data2.rows.length > 0) {
@@ -358,6 +385,55 @@
 		} catch {
 			// non-critical
 		}
+	}
+
+	async function fetchStrategyInfo() {
+		try {
+			const lang = locale.value === 'zh' ? 'zh' : 'en';
+			const res = await fetch(apiUrl(`/strategy?lang=${lang}`));
+			if (res.ok) strategyInfo = await res.json();
+		} catch {
+			// non-critical
+		}
+	}
+
+	async function fetchAllStrategies() {
+		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const results = await Promise.all(
+			VERSIONS.map(async (v) => {
+				try {
+					const res = await fetch(`${API_BASE}${VERSION_PREFIXES[v]}/strategy?lang=${lang}`);
+					return res.ok ? await res.json() as StrategyInfo : null;
+				} catch { return null; }
+			})
+		);
+		allStrategies = { v1: results[0], v2: results[1], v3: results[2], v4: results[3] };
+	}
+
+	function onVersionChange(version: StrategyVersion) {
+		if (version === activeVersion) return;
+		disconnectSSE();
+		activeVersion = version;
+		// Reset state
+		events = [];
+		stats = null;
+		currentRound = null;
+		rounds = [];
+		roundsTotal = 0;
+		roundsPage = 1;
+		hourlyData = [];
+		selectedHour = null;
+		strategyInfo = null;
+		strategyStartTime = null;
+		// Reconnect and refetch
+		connectSSE();
+		fetchCurrentRound();
+		fetchStrategyInfo();
+		fetchStrategyStart().then(() => {
+			fetchStats();
+			fetchHourly();
+		});
+		if (activeTab === 'history') fetchRounds();
 	}
 
 	function onDateChange() {
@@ -375,6 +451,8 @@
 			untrack(() => {
 				connectSSE();
 				fetchCurrentRound();
+				fetchStrategyInfo();
+				fetchAllStrategies();
 				fetchStrategyStart().then(() => {
 					fetchStats();
 					fetchHourly();
@@ -610,6 +688,103 @@
 		<p class="page-description">{t('btcUpdown.description')}</p>
 	</section>
 
+	<!-- Strategy Version Selector -->
+	<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
+		<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+		<div class="version-options">
+			{#each VERSIONS as v (v)}
+				<button
+					class="version-btn"
+					class:active={activeVersion === v}
+					onclick={() => onVersionChange(v)}
+				>
+					{VERSION_LABELS[v][locale.value === 'zh' ? 'zh' : 'en']}
+				</button>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Strategy Info Card -->
+	{#if strategyInfo}
+		<div class="strategy-info glass-card" use:fadeInUp={{ delay: 15 }}>
+			<h3 class="strategy-info-name">{strategyInfo.name}</h3>
+			<div class="strategy-summary-grid">
+				{#each strategyInfo.summary as item (item.label)}
+					<div class="strategy-summary-item">
+						<span class="strategy-summary-label">{item.label}</span>
+						<span class="strategy-summary-value">{item.value}</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Strategy Comparison -->
+	<div class="comparison-toggle" use:fadeInUp={{ delay: 18 }}>
+		<button class="comparison-toggle-btn" onclick={() => (showComparison = !showComparison)}>
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+			</svg>
+			{showComparison ? t('btcUpdown.strategy.hideComparison') : t('btcUpdown.strategy.showComparison')}
+			<svg class="comparison-chevron" class:open={showComparison} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+		</button>
+	</div>
+	{#if showComparison}
+		<div class="comparison-table-wrapper glass-card" use:fadeInUp={{ delay: 0 }}>
+			<div class="comparison-scroll">
+				<table class="comparison-table">
+					<thead>
+						<tr>
+							<th></th>
+							{#each VERSIONS as v (v)}
+								<th class:active-col={activeVersion === v}>
+									<button class="comparison-version-btn" class:active={activeVersion === v} onclick={() => onVersionChange(v)}>{v.toUpperCase()}</button>
+								</th>
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td class="row-label">{t('btcUpdown.strategy.name')}</td>
+							{#each VERSIONS as v (v)}
+								<td class:active-col={activeVersion === v}>{allStrategies[v]?.name ?? '—'}</td>
+							{/each}
+						</tr>
+						<tr>
+							<td class="row-label">{t('btcUpdown.strategy.priceRange')}</td>
+							{#each VERSIONS as v (v)}
+								{@const p = allStrategies[v]?.params}
+								<td class:active-col={activeVersion === v}>{p ? `$${p.priceMin} - $${p.priceMax}` : '—'}</td>
+							{/each}
+						</tr>
+						<tr>
+							<td class="row-label">{t('btcUpdown.strategy.hedge')}</td>
+							{#each VERSIONS as v (v)}
+								{@const p = allStrategies[v]?.params}
+								<td class:active-col={activeVersion === v}>
+									{#if p}
+										<span class="hedge-badge" class:hedge-on={p.hedgingEnabled} class:hedge-off={!p.hedgingEnabled}>
+											{p.hedgingEnabled ? t('btcUpdown.strategy.enabled') : t('btcUpdown.strategy.disabled')}
+										</span>
+									{:else}
+										—
+									{/if}
+								</td>
+							{/each}
+						</tr>
+						<tr>
+							<td class="row-label">{t('btcUpdown.strategy.hedgeThreshold')}</td>
+							{#each VERSIONS as v (v)}
+								{@const p = allStrategies[v]?.params}
+								<td class:active-col={activeVersion === v}>{p?.hedgeSellThreshold ? `$${p.hedgeSellThreshold}` : '—'}</td>
+							{/each}
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Strategy Link Banner -->
 	<a
 		href="https://shelchin.com/posts/bitcoin-up-or-down/"
@@ -667,7 +842,7 @@
 				<div class="chart-row">
 					<span class="chart-row-label">{label}</span>
 					<div class="chart-container">
-						{#each HOURS_24.slice(start, end) as hour (hour)}
+						{#each HOURS_24.slice(start as number, end as number) as hour (hour)}
 							{@const h = hourlyMap.get(hour)}
 							{@const isFuture = isToday ? hour > currentLocalHour : !isPastDate}
 							<div
@@ -1141,6 +1316,161 @@
 
 	@keyframes breathe { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
 	@keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+	/* Version Selector */
+	.version-selector {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+	}
+	.version-label {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+	}
+	.version-options {
+		display: flex;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+	.version-btn {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		white-space: nowrap;
+	}
+	.version-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
+	.version-btn.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
+
+	/* Strategy Info */
+	.strategy-info {
+		padding: var(--space-4) var(--space-5);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+	}
+	.strategy-info-name {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+		margin: 0 0 var(--space-3);
+	}
+	.strategy-summary-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		gap: var(--space-2);
+	}
+	.strategy-summary-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.strategy-summary-label {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+	.strategy-summary-value {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-base);
+		font-family: var(--font-mono, ui-monospace, monospace);
+	}
+
+	/* Comparison Toggle */
+	.comparison-toggle {
+		margin-bottom: var(--space-4);
+	}
+	.comparison-toggle-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.comparison-toggle-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
+	.comparison-chevron { transition: transform var(--motion-fast) var(--easing); }
+	.comparison-chevron.open { transform: rotate(180deg); }
+
+	/* Comparison Table */
+	.comparison-table-wrapper {
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-6);
+		overflow: hidden;
+	}
+	.comparison-scroll {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+	.comparison-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: var(--text-xs);
+	}
+	.comparison-table th,
+	.comparison-table td {
+		padding: var(--space-2) var(--space-3);
+		text-align: center;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		white-space: nowrap;
+	}
+	.comparison-table th {
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		padding-top: var(--space-3);
+	}
+	.comparison-table td {
+		color: var(--fg-muted);
+		font-family: var(--font-mono, ui-monospace, monospace);
+	}
+	.comparison-table .row-label {
+		text-align: left;
+		font-family: inherit;
+		color: var(--fg-subtle);
+		font-weight: var(--weight-medium);
+	}
+	.comparison-table .active-col {
+		background: rgba(255, 255, 255, 0.04);
+	}
+	.comparison-version-btn {
+		border: none;
+		background: transparent;
+		font-size: var(--text-xs);
+		font-weight: var(--weight-bold);
+		color: var(--fg-subtle);
+		cursor: pointer;
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-sm);
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.comparison-version-btn:hover { color: var(--fg-muted); }
+	.comparison-version-btn.active { color: var(--accent); }
+	.hedge-badge {
+		font-size: var(--text-xs);
+		padding: 1px var(--space-2);
+		border-radius: var(--radius-sm);
+		font-weight: var(--weight-medium);
+		font-family: inherit;
+	}
+	.hedge-on { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+	.hedge-off { background: rgba(255, 255, 255, 0.06); color: var(--fg-subtle); }
 
 	/* Strategy Banner */
 	.strategy-banner {
@@ -1802,6 +2132,16 @@
 	:global([data-theme="light"]) .bar-empty { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .chart-col-selected { background: rgba(0, 0, 0, 0.05); }
 	:global([data-theme="light"]) .chart-detail { border-top-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .version-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .version-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .version-btn.active { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .comparison-toggle-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .comparison-toggle-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .comparison-table th,
+	:global([data-theme="light"]) .comparison-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
+	:global([data-theme="light"]) .comparison-table .active-col { background: rgba(0, 0, 0, 0.03); }
+	:global([data-theme="light"]) .hedge-on { background: rgba(16, 185, 129, 0.1); color: #059669; }
+	:global([data-theme="light"]) .hedge-off { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

@@ -111,5 +111,14 @@
   "btcUpdown.round.hedgeFilledAt": "Hedge Filled",
   "btcUpdown.round.hedgeSoldAt": "Hedge Sold",
   "btcUpdown.history.refresh": "Refresh",
+  "btcUpdown.strategy.title": "Strategy",
+  "btcUpdown.strategy.showComparison": "Compare Strategies",
+  "btcUpdown.strategy.hideComparison": "Hide Comparison",
+  "btcUpdown.strategy.name": "Name",
+  "btcUpdown.strategy.priceRange": "Price Range",
+  "btcUpdown.strategy.hedge": "Hedge",
+  "btcUpdown.strategy.hedgeThreshold": "Sell Threshold",
+  "btcUpdown.strategy.enabled": "Enabled",
+  "btcUpdown.strategy.disabled": "Disabled",
   "btcUpdown.disclaimer": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling."
 }

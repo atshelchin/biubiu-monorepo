@@ -14,16 +14,17 @@
 	const ET_TZ = 'America/New_York';
 	const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
 
-	type StrategyVersion = 'v1' | 'v2' | 'v3' | 'v4';
-	const VERSIONS: StrategyVersion[] = ['v1', 'v2', 'v3', 'v4'];
+	type StrategyVersion = 'v1' | 'v2' | 'v3' | 'v4' | 'v5';
+	const VERSIONS: StrategyVersion[] = ['v1', 'v2', 'v3', 'v4', 'v5'];
 	const VERSION_PREFIXES: Record<StrategyVersion, string> = {
-		v1: '/api', v2: '/api/v2', v3: '/api/v3', v4: '/api/v4',
+		v1: '/api', v2: '/api/v2', v3: '/api/v3', v4: '/api/v4', v5: '/api/v5',
 	};
 	const VERSION_LABELS: Record<StrategyVersion, { en: string; zh: string }> = {
 		v1: { en: 'v1 · Hedge $35', zh: 'v1 · 对冲 $35' },
 		v2: { en: 'v2 · No Hedge', zh: 'v2 · 无对冲' },
 		v3: { en: 'v3 · Narrow', zh: 'v3 · 窄区间' },
 		v4: { en: 'v4 · Hedge $15', zh: 'v4 · 对冲 $15' },
+		v5: { en: 'v5 · Hedge $10', zh: 'v5 · 对冲 $10' },
 	};
 
 	function apiUrl(path: string): string {
@@ -138,7 +139,7 @@
 
 	let activeVersion = $state<StrategyVersion>('v1');
 	let strategyInfo = $state<StrategyInfo | null>(null);
-	let allStrategies = $state<Record<StrategyVersion, StrategyInfo | null>>({ v1: null, v2: null, v3: null, v4: null });
+	let allStrategies = $state<Record<StrategyVersion, StrategyInfo | null>>({ v1: null, v2: null, v3: null, v4: null, v5: null });
 	let showComparison = $state(false);
 
 	let activeTab = $state<TabType>('live');
@@ -407,7 +408,7 @@
 				} catch { return null; }
 			})
 		);
-		allStrategies = { v1: results[0], v2: results[1], v3: results[2], v4: results[3] };
+		allStrategies = { v1: results[0], v2: results[1], v3: results[2], v4: results[3], v5: results[4] };
 	}
 
 	function onVersionChange(version: StrategyVersion) {

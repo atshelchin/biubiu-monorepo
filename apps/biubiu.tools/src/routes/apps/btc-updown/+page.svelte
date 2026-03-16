@@ -7,28 +7,39 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
 	import { onDestroy, untrack } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
+	import {
+		type StrategyEndpoint,
+		type StrategyInfo,
+		type ValidationProgress,
+		BUILTIN_STRATEGIES,
+		generateCustomId,
+		normalizeStrategyUrl,
+		validateStrategyUrl,
+		strategyFetch,
+		loadPersistedState,
+		savePersistedState,
+	} from '$lib/btc-updown-strategies';
 
-	const API_BASE = 'https://bitcoin-up-or-down-5mins-001.awesometools.dev';
+	const VALIDATE_STEP_KEYS = {
+		strategy: 'btcUpdown.validate.strategy',
+		stats: 'btcUpdown.validate.stats',
+		rounds: 'btcUpdown.validate.rounds',
+		health: 'btcUpdown.validate.health',
+		format: 'btcUpdown.validate.format',
+	} as const;
+
 	const MAX_EVENTS = 50;
 	const ET_TZ = 'America/New_York';
 	const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
 
-	type StrategyVersion = 'v1' | 'v2' | 'v3' | 'v4' | 'v5';
-	const VERSIONS: StrategyVersion[] = ['v1', 'v2', 'v3', 'v4', 'v5'];
-	const VERSION_PREFIXES: Record<StrategyVersion, string> = {
-		v1: '/api', v2: '/api/v2', v3: '/api/v3', v4: '/api/v4', v5: '/api/v5',
-	};
-	const VERSION_LABELS: Record<StrategyVersion, { en: string; zh: string }> = {
-		v1: { en: 'v1 · Hedge $35', zh: 'v1 · 对冲 $35' },
-		v2: { en: 'v2 · No Hedge', zh: 'v2 · 无对冲' },
-		v3: { en: 'v3 · Narrow', zh: 'v3 · 窄区间' },
-		v4: { en: 'v4 · Hedge $15', zh: 'v4 · 对冲 $15' },
-		v5: { en: 'v5 · Hedge $10', zh: 'v5 · 对冲 $10' },
-	};
-
 	function apiUrl(path: string): string {
-		return `${API_BASE}${VERSION_PREFIXES[activeVersion]}${path}`;
+		return `${activeStrategy.baseUrl}${path}`;
+	}
+
+	function getFetchFn(): (url: string) => Promise<Response> {
+		return activeStrategy.type === 'builtin' ? (url: string) => fetch(url) : strategyFetch;
 	}
 
 	// --- Types ---
@@ -128,19 +139,23 @@
 		avgProfit: number;
 	}
 
-	interface StrategyInfo {
-		name: string;
-		description: string[];
-		summary: { label: string; value: string }[];
-		params: Record<string, unknown>;
-	}
-
 	// --- Reactive State ---
 
-	let activeVersion = $state<StrategyVersion>('v1');
+	let customStrategies = $state<StrategyEndpoint[]>([]);
+	let activeStrategyId = $state('builtin:v1');
+	const allRegisteredStrategies = $derived([...BUILTIN_STRATEGIES, ...customStrategies]);
+	const activeStrategy = $derived(
+		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? BUILTIN_STRATEGIES[0]
+	);
 	let strategyInfo = $state<StrategyInfo | null>(null);
-	let allStrategies = $state<Record<StrategyVersion, StrategyInfo | null>>({ v1: null, v2: null, v3: null, v4: null, v5: null });
+	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	let showComparison = $state(false);
+	// Custom strategy UI state
+	let showAddStrategy = $state(false);
+	let customUrlInput = $state('');
+	let customUrlError = $state('');
+	let customUrlValidating = $state(false);
+	let validationSteps = $state<ValidationProgress[]>([]);
 
 	let activeTab = $state<TabType>('live');
 	let connectionStatus = $state<ConnectionStatus>('disconnected');
@@ -164,8 +179,16 @@
 	let selectedHour = $state<number | null>(null);
 
 	// Non-reactive connection refs
-	const connRef: { es: EventSource | null; timer: ReturnType<typeof setTimeout> | null; counter: number } = {
+	const connRef: {
+		es: EventSource | null;
+		reader: ReadableStreamDefaultReader<Uint8Array> | null;
+		abortController: AbortController | null;
+		timer: ReturnType<typeof setTimeout> | null;
+		counter: number;
+	} = {
 		es: null,
+		reader: null,
+		abortController: null,
 		timer: null,
 		counter: 0,
 	};
@@ -182,19 +205,33 @@
 
 	// --- SSE Connection ---
 
-	function connectSSE() {
-		if (connRef.es) {
-			connRef.es.close();
-			connRef.es = null;
-		}
-		if (connRef.timer) {
-			clearTimeout(connRef.timer);
-			connRef.timer = null;
-		}
+	// Events to show in the feed (skip noisy ones)
+	const FEED_EVENTS = new Set([
+		'round_start', 'entry', 'settlement', 'round_skip',
+		'hedge_placed', 'hedge_filled', 'hedge_sold', 'hedge_expired',
+	]);
 
-		connectionStatus = connectionStatus === 'disconnected' ? 'connecting' : 'reconnecting';
+	function handleSSEEvent(eventType: string, data: Record<string, unknown>, timestamp: string) {
+		if (FEED_EVENTS.has(eventType)) {
+			const sseEvent: SSEEvent = {
+				id: `evt-${++connRef.counter}`,
+				type: eventType,
+				timestamp,
+				data,
+			};
+			events = [sseEvent, ...events].slice(0, MAX_EVENTS);
+		}
+		if (eventType === 'settlement' || eventType === 'round_skip') {
+			fetchStats();
+			fetchCurrentRound();
+			if (activeTab === 'history') fetchRounds();
+		} else if (eventType === 'round_start' || eventType === 'entry') {
+			fetchCurrentRound();
+		}
+	}
 
-		const es = new EventSource(apiUrl('/sse/live'));
+	function connectSSEViaEventSource(sseUrl: string) {
+		const es = new EventSource(sseUrl);
 		connRef.es = es;
 
 		es.onopen = () => {
@@ -207,39 +244,11 @@
 			'price_update', 'settlement', 'round_skip', 'heartbeat',
 		];
 
-		// Events to show in the feed (skip noisy ones)
-		const FEED_EVENTS = new Set([
-			'round_start', 'entry', 'settlement', 'round_skip',
-			'hedge_placed', 'hedge_filled', 'hedge_sold', 'hedge_expired',
-		]);
-
 		for (const eventType of eventTypes) {
 			es.addEventListener(eventType, (e: MessageEvent) => {
 				try {
 					const parsed = JSON.parse(e.data);
-					const eventData = parsed.data ?? parsed;
-
-					// Only add feed-worthy events
-					if (FEED_EVENTS.has(eventType)) {
-						const sseEvent: SSEEvent = {
-							id: `evt-${++connRef.counter}`,
-							type: eventType,
-							timestamp: parsed.timestamp ?? new Date().toISOString(),
-							data: eventData,
-						};
-						events = [sseEvent, ...events].slice(0, MAX_EVENTS);
-					}
-
-					// Refresh data on state-changing events
-					if (eventType === 'settlement' || eventType === 'round_skip') {
-						fetchStats();
-						fetchCurrentRound();
-						if (activeTab === 'history') fetchRounds();
-					} else if (eventType === 'round_start') {
-						fetchCurrentRound();
-					} else if (eventType === 'entry') {
-						fetchCurrentRound();
-					}
+					handleSSEEvent(eventType, parsed.data ?? parsed, parsed.timestamp ?? new Date().toISOString());
 				} catch {
 					// ignore parse errors
 				}
@@ -250,11 +259,72 @@
 			connectionStatus = 'disconnected';
 			connRef.es?.close();
 			connRef.es = null;
+			// For custom strategies, try proxy fallback on first failure
+			if (activeStrategy.type === 'custom' && !connRef.reader) {
+				connectSSEViaProxy(sseUrl);
+				return;
+			}
 			connRef.timer = setTimeout(() => {
 				connRef.timer = null;
 				connectSSE();
 			}, 3000);
 		};
+	}
+
+	async function connectSSEViaProxy(sseUrl: string) {
+		connectionStatus = 'connecting';
+		const proxyUrl = `/api/proxy?url=${encodeURIComponent(sseUrl)}`;
+		try {
+			const controller = new AbortController();
+			connRef.abortController = controller;
+			const res = await fetch(proxyUrl, { signal: controller.signal });
+			if (!res.body) return;
+			connRef.reader = res.body.getReader();
+			connectionStatus = 'connected';
+			const decoder = new TextDecoder();
+			let buffer = '';
+			while (true) {
+				const { done, value } = await connRef.reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				// Parse SSE lines
+				const lines = buffer.split('\n');
+				buffer = lines.pop() ?? '';
+				let currentEvent = '';
+				for (const line of lines) {
+					if (line.startsWith('event: ')) {
+						currentEvent = line.slice(7).trim();
+					} else if (line.startsWith('data: ') && currentEvent) {
+						try {
+							const parsed = JSON.parse(line.slice(6));
+							handleSSEEvent(currentEvent, parsed.data ?? parsed, parsed.timestamp ?? new Date().toISOString());
+						} catch { /* ignore */ }
+						currentEvent = '';
+					} else if (line.trim() === '') {
+						currentEvent = '';
+					}
+				}
+			}
+		} catch {
+			// Connection closed or aborted
+		}
+		// Reconnect if not intentionally disconnected
+		if (connRef.reader || connRef.abortController) {
+			connRef.reader = null;
+			connRef.abortController = null;
+			connectionStatus = 'disconnected';
+			connRef.timer = setTimeout(() => {
+				connRef.timer = null;
+				connectSSE();
+			}, 3000);
+		}
+	}
+
+	function connectSSE() {
+		disconnectSSE();
+		connectionStatus = 'connecting';
+		const sseUrl = apiUrl('/sse/live');
+		connectSSEViaEventSource(sseUrl);
 	}
 
 	function disconnectSSE() {
@@ -265,6 +335,14 @@
 		if (connRef.es) {
 			connRef.es.close();
 			connRef.es = null;
+		}
+		if (connRef.reader) {
+			connRef.reader.cancel();
+			connRef.reader = null;
+		}
+		if (connRef.abortController) {
+			connRef.abortController.abort();
+			connRef.abortController = null;
 		}
 		connectionStatus = 'disconnected';
 	}
@@ -295,7 +373,7 @@
 				parts.push(`to=${encodeURIComponent(range.to)}`);
 			}
 			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await fetch(apiUrl(`/stats${qs}`));
+			const res = await getFetchFn()(apiUrl(`/stats${qs}`));
 			if (res.ok) stats = await res.json();
 		} catch {
 			// non-critical
@@ -304,7 +382,7 @@
 
 	async function fetchCurrentRound() {
 		try {
-			const res = await fetch(apiUrl('/rounds/current'));
+			const res = await getFetchFn()(apiUrl('/rounds/current'));
 			if (res.ok) {
 				const data: CurrentRoundResponse = await res.json();
 				currentRound = data.round;
@@ -328,7 +406,7 @@
 				params.set('to', range.to);
 			}
 
-			const res = await fetch(apiUrl(`/rounds?${params}`));
+			const res = await getFetchFn()(apiUrl(`/rounds?${params}`));
 			if (res.ok) {
 				const data: RoundsResponse = await res.json();
 				rounds = data.rows;
@@ -354,7 +432,7 @@
 				parts.push(`to=${encodeURIComponent(range.to)}`);
 			}
 			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await fetch(apiUrl(`/stats/hourly${qs}`));
+			const res = await getFetchFn()(apiUrl(`/stats/hourly${qs}`));
 			if (res.ok) {
 				const data: HourlyStats[] = await res.json();
 				// Convert UTC hours to local hours
@@ -371,13 +449,14 @@
 
 	async function fetchStrategyStart() {
 		try {
-			const res1 = await fetch(apiUrl('/rounds?page=1&pageSize=1'));
+			const f = getFetchFn();
+			const res1 = await f(apiUrl('/rounds?page=1&pageSize=1'));
 			if (!res1.ok) return;
 			const data1: RoundsResponse = await res1.json();
 			if (data1.total === 0) return;
 
 			const lastPage = Math.ceil(data1.total / 1);
-			const res2 = await fetch(apiUrl(`/rounds?page=${lastPage}&pageSize=1`));
+			const res2 = await f(apiUrl(`/rounds?page=${lastPage}&pageSize=1`));
 			if (!res2.ok) return;
 			const data2: RoundsResponse = await res2.json();
 			if (data2.rows.length > 0) {
@@ -391,7 +470,7 @@
 	async function fetchStrategyInfo() {
 		try {
 			const lang = locale.value === 'zh' ? 'zh' : 'en';
-			const res = await fetch(apiUrl(`/strategy?lang=${lang}`));
+			const res = await getFetchFn()(apiUrl(`/strategy?lang=${lang}`));
 			if (res.ok) strategyInfo = await res.json();
 		} catch {
 			// non-critical
@@ -401,20 +480,23 @@
 	async function fetchAllStrategies() {
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
 		const results = await Promise.all(
-			VERSIONS.map(async (v) => {
+			allRegisteredStrategies.map(async (s) => {
 				try {
-					const res = await fetch(`${API_BASE}${VERSION_PREFIXES[v]}/strategy?lang=${lang}`);
-					return res.ok ? await res.json() as StrategyInfo : null;
-				} catch { return null; }
+					const f = s.type === 'builtin' ? fetch : strategyFetch;
+					const res = await f(`${s.baseUrl}/strategy?lang=${lang}`);
+					return { id: s.id, info: res.ok ? (await res.json()) as StrategyInfo : null };
+				} catch { return { id: s.id, info: null }; }
 			})
 		);
-		allStrategies = { v1: results[0], v2: results[1], v3: results[2], v4: results[3], v5: results[4] };
+		allStrategyInfos.clear();
+		for (const r of results) allStrategyInfos.set(r.id, r.info);
 	}
 
-	function onVersionChange(version: StrategyVersion) {
-		if (version === activeVersion) return;
+	function onStrategyChange(strategyId: string) {
+		if (strategyId === activeStrategyId) return;
 		disconnectSSE();
-		activeVersion = version;
+		activeStrategyId = strategyId;
+		persistState();
 		// Reset state
 		events = [];
 		stats = null;
@@ -437,6 +519,65 @@
 		if (activeTab === 'history') fetchRounds();
 	}
 
+	function persistState() {
+		savePersistedState({ customStrategies, activeStrategyId });
+	}
+
+	async function addCustomStrategy() {
+		const url = normalizeStrategyUrl(customUrlInput);
+		if (!url) {
+			customUrlError = t('btcUpdown.strategy.invalidUrl');
+			return;
+		}
+		try {
+			new URL(url);
+		} catch {
+			customUrlError = t('btcUpdown.strategy.invalidUrl');
+			return;
+		}
+		// Check duplicate
+		if (allRegisteredStrategies.some(s => s.baseUrl === url)) {
+			customUrlError = t('btcUpdown.strategy.duplicateUrl');
+			return;
+		}
+		customUrlError = '';
+		validationSteps = [];
+		customUrlValidating = true;
+		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const result = await validateStrategyUrl(url, lang, (steps) => {
+			validationSteps = steps;
+		});
+		customUrlValidating = false;
+		if (!result.valid) {
+			customUrlError = result.error;
+			return;
+		}
+		const newStrategy: StrategyEndpoint = {
+			id: generateCustomId(),
+			label: result.info.name || url,
+			baseUrl: url,
+			type: 'custom',
+			addedAt: Date.now(),
+		};
+		customStrategies = [...customStrategies, newStrategy];
+		customUrlInput = '';
+		validationSteps = [];
+		showAddStrategy = false;
+		persistState();
+		onStrategyChange(newStrategy.id);
+		fetchAllStrategies();
+	}
+
+	function removeCustomStrategy(id: string) {
+		customStrategies = customStrategies.filter(s => s.id !== id);
+		if (activeStrategyId === id) {
+			activeStrategyId = 'builtin:v1';
+			onStrategyChange('builtin:v1');
+		}
+		persistState();
+		fetchAllStrategies();
+	}
+
 	function onDateChange() {
 		roundsPage = 1;
 		selectedHour = null;
@@ -450,16 +591,32 @@
 	$effect(() => {
 		if (browser) {
 			untrack(() => {
+				// Load persisted state
+				const persisted = loadPersistedState();
+				customStrategies = persisted.customStrategies;
+				activeStrategyId = persisted.activeStrategyId;
+				// Validate active strategy exists
+				if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
+					activeStrategyId = 'builtin:v1';
+				}
 				connectSSE();
 				fetchCurrentRound();
-				fetchStrategyInfo();
-				fetchAllStrategies();
 				fetchStrategyStart().then(() => {
 					fetchStats();
 					fetchHourly();
 				});
 			});
 		}
+	});
+
+	// Re-fetch strategy info when locale changes (layout $effect sets locale async)
+	$effect(() => {
+		if (!browser) return;
+		void locale.value; // track locale reactively
+		untrack(() => {
+			fetchStrategyInfo();
+			fetchAllStrategies();
+		});
 	});
 
 	$effect(() => {
@@ -689,21 +846,113 @@
 		<p class="page-description">{t('btcUpdown.description')}</p>
 	</section>
 
-	<!-- Strategy Version Selector -->
+	<!-- Strategy Selector -->
 	<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
-		<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+		<div class="version-header">
+			<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
+		</div>
 		<div class="version-options">
-			{#each VERSIONS as v (v)}
+			{#each BUILTIN_STRATEGIES as s (s.id)}
 				<button
 					class="version-btn"
-					class:active={activeVersion === v}
-					onclick={() => onVersionChange(v)}
+					class:active={activeStrategyId === s.id}
+					onclick={() => onStrategyChange(s.id)}
 				>
-					{VERSION_LABELS[v][locale.value === 'zh' ? 'zh' : 'en']}
+					{allStrategyInfos.get(s.id)?.name ?? s.label}
 				</button>
 			{/each}
 		</div>
+		{#if customStrategies.length > 0}
+			<div class="version-header custom-header">
+				<span class="version-type-label">{t('btcUpdown.strategy.custom')}</span>
+			</div>
+			<div class="version-options">
+				{#each customStrategies as s (s.id)}
+					<div class="custom-strategy-row">
+						<button
+							class="version-btn custom-version-btn"
+							class:active={activeStrategyId === s.id}
+							onclick={() => onStrategyChange(s.id)}
+						>
+							<span class="custom-dot"></span>
+							{allStrategyInfos.get(s.id)?.name ?? s.label}
+						</button>
+						<button class="custom-remove-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
+		<button class="add-strategy-btn" onclick={() => (showAddStrategy = true)}>
+			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+			{t('btcUpdown.strategy.addCustom')}
+		</button>
 	</div>
+
+	<!-- Add Custom Strategy Modal -->
+	{#if showAddStrategy}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="modal-overlay" onclick={() => { if (!customUrlValidating) { showAddStrategy = false; customUrlError = ''; validationSteps = []; } }}>
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div class="modal" onclick={(e) => e.stopPropagation()}>
+				<button class="modal-close" aria-label="Close" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+				</button>
+				<div class="modal-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+				</div>
+				<h3 class="modal-title">{t('btcUpdown.strategy.addCustom')}</h3>
+				<p class="modal-desc">{t('btcUpdown.strategy.addCustomDesc')}</p>
+				<div class="modal-input-wrap" class:input-error={!!customUrlError}>
+					<svg class="modal-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+					<input
+						type="url"
+						class="strategy-url-input"
+						placeholder="https://your-server.com/api/v1"
+						bind:value={customUrlInput}
+						disabled={customUrlValidating}
+						onkeydown={(e) => { if (e.key === 'Enter') addCustomStrategy(); }}
+					/>
+				</div>
+				{#if customUrlError}
+					<p class="url-error">{customUrlError}</p>
+				{/if}
+				{#if validationSteps.length > 0}
+					<div class="validation-steps">
+						{#each validationSteps as step (step.step)}
+							<div class="validation-step" class:step-ok={step.status === 'ok'} class:step-fail={step.status === 'fail'} class:step-checking={step.status === 'checking'}>
+								<span class="step-icon">
+									{#if step.status === 'ok'}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+									{:else if step.status === 'fail'}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+									{:else if step.status === 'checking'}
+										<span class="step-spinner"></span>
+									{:else}
+										<span class="step-pending-dot"></span>
+									{/if}
+								</span>
+								<span class="step-label">{t(VALIDATE_STEP_KEYS[step.step as keyof typeof VALIDATE_STEP_KEYS] ?? step.step)}</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				<div class="modal-actions">
+					<button class="modal-btn cancel" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
+						{t('btcUpdown.strategy.cancel')}
+					</button>
+					<button class="modal-btn primary" disabled={customUrlValidating || !customUrlInput.trim()} onclick={addCustomStrategy}>
+						{#if customUrlValidating}
+							<span class="btn-spinner"></span>
+						{/if}
+						{customUrlValidating ? t('btcUpdown.strategy.validating') : t('btcUpdown.strategy.add')}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Strategy Info Card -->
 	{#if strategyInfo}
@@ -737,9 +986,11 @@
 					<thead>
 						<tr>
 							<th></th>
-							{#each VERSIONS as v (v)}
-								<th class:active-col={activeVersion === v}>
-									<button class="comparison-version-btn" class:active={activeVersion === v} onclick={() => onVersionChange(v)}>{v.toUpperCase()}</button>
+							{#each allRegisteredStrategies as s (s.id)}
+								<th class:active-col={activeStrategyId === s.id}>
+									<button class="comparison-version-btn" class:active={activeStrategyId === s.id} onclick={() => onStrategyChange(s.id)}>
+										{s.label}{#if s.type === 'custom'}<span class="custom-indicator">*</span>{/if}
+									</button>
 								</th>
 							{/each}
 						</tr>
@@ -747,22 +998,22 @@
 					<tbody>
 						<tr>
 							<td class="row-label">{t('btcUpdown.strategy.name')}</td>
-							{#each VERSIONS as v (v)}
-								<td class:active-col={activeVersion === v}>{allStrategies[v]?.name ?? '—'}</td>
+							{#each allRegisteredStrategies as s (s.id)}
+								<td class:active-col={activeStrategyId === s.id}>{allStrategyInfos.get(s.id)?.name ?? '—'}</td>
 							{/each}
 						</tr>
 						<tr>
 							<td class="row-label">{t('btcUpdown.strategy.priceRange')}</td>
-							{#each VERSIONS as v (v)}
-								{@const p = allStrategies[v]?.params}
-								<td class:active-col={activeVersion === v}>{p ? `$${p.priceMin} - $${p.priceMax}` : '—'}</td>
+							{#each allRegisteredStrategies as s (s.id)}
+								{@const p = allStrategyInfos.get(s.id)?.params}
+								<td class:active-col={activeStrategyId === s.id}>{p ? `$${p.priceMin} - $${p.priceMax}` : '—'}</td>
 							{/each}
 						</tr>
 						<tr>
 							<td class="row-label">{t('btcUpdown.strategy.hedge')}</td>
-							{#each VERSIONS as v (v)}
-								{@const p = allStrategies[v]?.params}
-								<td class:active-col={activeVersion === v}>
+							{#each allRegisteredStrategies as s (s.id)}
+								{@const p = allStrategyInfos.get(s.id)?.params}
+								<td class:active-col={activeStrategyId === s.id}>
 									{#if p}
 										<span class="hedge-badge" class:hedge-on={p.hedgingEnabled} class:hedge-off={!p.hedgingEnabled}>
 											{p.hedgingEnabled ? t('btcUpdown.strategy.enabled') : t('btcUpdown.strategy.disabled')}
@@ -775,9 +1026,9 @@
 						</tr>
 						<tr>
 							<td class="row-label">{t('btcUpdown.strategy.hedgeThreshold')}</td>
-							{#each VERSIONS as v (v)}
-								{@const p = allStrategies[v]?.params}
-								<td class:active-col={activeVersion === v}>{p?.hedgeSellThreshold ? `$${p.hedgeSellThreshold}` : '—'}</td>
+							{#each allRegisteredStrategies as s (s.id)}
+								{@const p = allStrategyInfos.get(s.id)?.params}
+								<td class:active-col={activeStrategyId === s.id}>{p?.hedgeSellThreshold ? `$${p.hedgeSellThreshold}` : '—'}</td>
 							{/each}
 						</tr>
 					</tbody>
@@ -787,37 +1038,45 @@
 	{/if}
 
 	<!-- Strategy Link Banner -->
-	<a
-		href="https://shelchin.com/posts/bitcoin-up-or-down/"
-		target="_blank"
-		rel="noopener noreferrer"
-		class="strategy-banner glass-card"
-		use:fadeInUp={{ delay: 25 }}
-	>
-		<div class="strategy-icon">
-			<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-				<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+	{#if strategyInfo?.article}
+		<a
+			href={strategyInfo.article.url}
+			target="_blank"
+			rel="external noopener noreferrer"
+			class="strategy-banner glass-card"
+			use:fadeInUp={{ delay: 25 }}
+		>
+			<div class="strategy-icon">
+				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+					<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+				</svg>
+			</div>
+			<div class="strategy-text">
+				<span class="strategy-title">{strategyInfo.article.label}</span>
+				<span class="strategy-desc">{strategyInfo.article.url}</span>
+			</div>
+			<svg class="strategy-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<line x1="7" y1="17" x2="17" y2="7" />
+				<polyline points="7 7 17 7 17 17" />
 			</svg>
-		</div>
-		<div class="strategy-text">
-			<span class="strategy-title">{t('btcUpdown.strategyLink')}</span>
-			<span class="strategy-desc">{t('btcUpdown.strategyLinkDesc')}</span>
-		</div>
-		<svg class="strategy-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-			<line x1="7" y1="17" x2="17" y2="7" />
-			<polyline points="7 7 17 7 17 17" />
-		</svg>
-	</a>
+		</a>
+	{/if}
 
 	<!-- Disclaimer -->
-	<div class="disclaimer" use:fadeInUp={{ delay: 30 }}>
+	<div class="disclaimer" class:disclaimer-live={strategyInfo?.mode === 'live'} use:fadeInUp={{ delay: 30 }}>
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-			<circle cx="12" cy="12" r="10"/>
-			<line x1="12" y1="8" x2="12" y2="12"/>
-			<line x1="12" y1="16" x2="12.01" y2="16"/>
+			{#if strategyInfo?.mode === 'live'}
+				<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+				<line x1="12" y1="9" x2="12" y2="13"/>
+				<line x1="12" y1="17" x2="12.01" y2="17"/>
+			{:else}
+				<circle cx="12" cy="12" r="10"/>
+				<line x1="12" y1="8" x2="12" y2="12"/>
+				<line x1="12" y1="16" x2="12.01" y2="16"/>
+			{/if}
 		</svg>
-		<span>{t('btcUpdown.disclaimer')}</span>
+		<span>{t(strategyInfo?.mode === 'live' ? 'btcUpdown.disclaimer.live' : 'btcUpdown.disclaimer.simulation')}</span>
 	</div>
 
 	<!-- Date Filter -->
@@ -1321,11 +1580,16 @@
 	/* Version Selector */
 	.version-selector {
 		display: flex;
-		align-items: center;
+		flex-direction: column;
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);
 		margin-bottom: var(--space-4);
+	}
+	.version-header {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
 	}
 	.version-label {
 		font-size: var(--text-xs);
@@ -1335,6 +1599,15 @@
 		letter-spacing: 0.05em;
 		white-space: nowrap;
 	}
+	.version-type-label {
+		font-size: 10px;
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		opacity: 0.6;
+	}
+	.custom-header { margin-top: var(--space-1); }
 	.version-options {
 		display: flex;
 		gap: var(--space-2);
@@ -1354,6 +1627,279 @@
 	}
 	.version-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
 	.version-btn.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
+
+	/* Custom strategy elements */
+	.custom-strategy-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.custom-version-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.custom-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--accent);
+		flex-shrink: 0;
+	}
+	.custom-remove-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.custom-strategy-row:hover .custom-remove-btn { opacity: 1; }
+	.custom-remove-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+	.custom-indicator { color: var(--accent); margin-left: 2px; }
+
+	/* Add Strategy Button */
+	.add-strategy-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
+		border: 1px dashed rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.add-strategy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+	/* Modal */
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		padding: var(--space-4);
+		animation: modal-fade-in 0.2s ease-out;
+	}
+	@keyframes modal-fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	@keyframes modal-scale-in {
+		from { opacity: 0; transform: scale(0.96) translateY(8px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
+	}
+	.modal {
+		position: relative;
+		width: 100%;
+		max-width: 420px;
+		padding: var(--space-8, 2rem) var(--space-7, 1.75rem) var(--space-6);
+		border-radius: 16px;
+		background: rgba(30, 30, 34, 0.92);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+		text-align: center;
+		animation: modal-scale-in 0.25s ease-out;
+	}
+	.modal-close {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: none;
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--fg-muted);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.modal-close:hover {
+		background: rgba(255, 255, 255, 0.1);
+		color: var(--fg-base);
+	}
+	.modal-icon {
+		width: 48px;
+		height: 48px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: 0 auto var(--space-4);
+		border-radius: 12px;
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--accent);
+	}
+	.modal-title {
+		font-size: var(--text-lg);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+		margin: 0 0 var(--space-2);
+	}
+	.modal-desc {
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+		margin: 0 0 var(--space-5, 1.25rem);
+		line-height: 1.5;
+	}
+	.modal-input-wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 10px;
+		background: rgba(0, 0, 0, 0.2);
+		transition: border-color var(--motion-fast) var(--easing), box-shadow var(--motion-fast) var(--easing);
+	}
+	.modal-input-wrap:focus-within {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px rgba(54, 160, 122, 0.15);
+	}
+	.modal-input-wrap.input-error {
+		border-color: #ef4444;
+		box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+	}
+	.modal-input-icon {
+		position: absolute;
+		left: 12px;
+		color: var(--fg-muted);
+		pointer-events: none;
+		flex-shrink: 0;
+	}
+	.strategy-url-input {
+		width: 100%;
+		padding: 10px 12px 10px 36px;
+		border: none;
+		border-radius: 10px;
+		background: transparent;
+		color: var(--fg-base);
+		font-size: var(--text-sm);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		outline: none;
+		box-sizing: border-box;
+	}
+	.strategy-url-input::placeholder {
+		color: rgba(255, 255, 255, 0.25);
+	}
+	.url-error {
+		font-size: var(--text-xs);
+		color: #ef4444;
+		margin: var(--space-2) 0 0;
+		text-align: left;
+	}
+	.modal-actions {
+		display: flex;
+		gap: var(--space-3);
+		margin-top: var(--space-5, 1.25rem);
+	}
+	.modal-btn {
+		flex: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 10px var(--space-4);
+		border-radius: 10px;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.modal-btn.cancel {
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.04);
+		color: var(--fg-muted);
+	}
+	.modal-btn.cancel:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--fg-base);
+	}
+	.modal-btn.primary {
+		border: none;
+		background: var(--accent);
+		color: white;
+	}
+	.modal-btn.primary:hover { filter: brightness(1.1); }
+	.modal-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+	.btn-spinner {
+		width: 14px;
+		height: 14px;
+		border: 2px solid rgba(255, 255, 255, 0.3);
+		border-top-color: white;
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	/* Validation Steps */
+	.validation-steps {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 12px;
+		margin-top: var(--space-3);
+		padding: 10px 12px;
+		background: rgba(255, 255, 255, 0.03);
+		border-radius: 8px;
+		border: 1px solid rgba(255, 255, 255, 0.06);
+	}
+	.validation-step {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		transition: color 0.15s ease;
+	}
+	.validation-step.step-ok { color: #34d399; }
+	.validation-step.step-fail { color: #ef4444; }
+	.validation-step.step-checking { color: var(--fg-base); }
+	.step-icon {
+		width: 14px;
+		height: 14px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+	.step-spinner {
+		width: 10px;
+		height: 10px;
+		border: 1.5px solid rgba(255, 255, 255, 0.2);
+		border-top-color: var(--accent);
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+	.step-pending-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	/* Disclaimer variants */
+	.disclaimer-live {
+		background: rgba(239, 68, 68, 0.08);
+		border-color: rgba(239, 68, 68, 0.2);
+	}
+	.disclaimer-live svg { color: #ef4444; }
 
 	/* Strategy Info */
 	.strategy-info {
@@ -1488,7 +2034,7 @@
 	.strategy-icon { color: var(--accent); flex-shrink: 0; }
 	.strategy-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 	.strategy-title { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg-base); }
-	.strategy-desc { font-size: var(--text-xs); color: var(--fg-muted); }
+	.strategy-desc { font-size: var(--text-xs); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.strategy-arrow { color: var(--fg-subtle); flex-shrink: 0; }
 
 	/* Disclaimer */
@@ -2149,6 +2695,23 @@
 	:global([data-theme="light"]) .pnl-row.cost .pnl-value { color: #dc2626; }
 	:global([data-theme="light"]) .pnl-row.income .pnl-value { color: #059669; }
 	:global([data-theme="light"]) .pnl-row.hedge-info .pnl-value { color: #d97706; }
+	:global([data-theme="light"]) .modal-overlay { background: rgba(0, 0, 0, 0.3); }
+	:global([data-theme="light"]) .modal { background: rgba(255, 255, 255, 0.95); border-color: rgba(0, 0, 0, 0.08); box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) inset; }
+	:global([data-theme="light"]) .modal-close { background: rgba(0, 0, 0, 0.04); color: rgba(0, 0, 0, 0.4); }
+	:global([data-theme="light"]) .modal-close:hover { background: rgba(0, 0, 0, 0.08); color: rgba(0, 0, 0, 0.6); }
+	:global([data-theme="light"]) .modal-icon { background: rgba(0, 0, 0, 0.04); }
+	:global([data-theme="light"]) .modal-input-wrap { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.1); }
+	:global([data-theme="light"]) .modal-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(54, 160, 122, 0.12); }
+	:global([data-theme="light"]) .strategy-url-input::placeholder { color: rgba(0, 0, 0, 0.3); }
+	:global([data-theme="light"]) .modal-btn.cancel { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .modal-btn.cancel:hover { background: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .validation-steps { background: rgba(0, 0, 0, 0.02); border-color: rgba(0, 0, 0, 0.06); }
+	:global([data-theme="light"]) .validation-step.step-ok { color: #059669; }
+	:global([data-theme="light"]) .validation-step.step-fail { color: #dc2626; }
+	:global([data-theme="light"]) .step-pending-dot { background: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .step-spinner { border-color: rgba(0, 0, 0, 0.1); border-top-color: var(--accent); }
+	:global([data-theme="light"]) .disclaimer-live { background: rgba(220, 38, 38, 0.06); border-color: rgba(220, 38, 38, 0.15); }
+	:global([data-theme="light"]) .disclaimer-live svg { color: #dc2626; }
 
 	/* Responsive */
 	@media (max-width: 768px) {

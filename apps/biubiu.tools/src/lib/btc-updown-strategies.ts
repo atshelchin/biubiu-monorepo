@@ -72,6 +72,27 @@ export const BUILTIN_STRATEGIES: StrategyEndpoint[] = [
 		baseUrl: `${API_HOST}/api/v6`,
 		type: 'builtin',
 		addedAt: 0
+	},
+	{
+		id: 'builtin:v7',
+		label: 'v7',
+		baseUrl: `${API_HOST}/api/v7`,
+		type: 'builtin',
+		addedAt: 0
+	},
+	{
+		id: 'builtin:v8',
+		label: 'v8',
+		baseUrl: `${API_HOST}/api/v8`,
+		type: 'builtin',
+		addedAt: 0
+	},
+	{
+		id: 'builtin:v9',
+		label: 'v9',
+		baseUrl: `${API_HOST}/api/v9`,
+		type: 'builtin',
+		addedAt: 0
 	}
 ];
 

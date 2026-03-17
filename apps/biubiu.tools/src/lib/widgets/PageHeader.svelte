@@ -134,13 +134,20 @@
 	}
 
 	.header-content {
-		max-width: 1200px;
+		max-width: 960px;
 		margin: 0 auto;
 		padding: var(--space-4) var(--space-6);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-6);
+	}
+
+	@media (min-width: 1280px) {
+		.header-content { max-width: 1320px; }
+	}
+	@media (min-width: 1600px) {
+		.header-content { max-width: 1680px; }
 	}
 
 	.logo {

@@ -1464,6 +1464,9 @@
 		<span>{t(strategyInfo?.mode === 'live' ? 'btcUpdown.disclaimer.live' : 'btcUpdown.disclaimer.simulation')}</span>
 	</div>
 
+	<!-- Data section (wrapped for mobile reordering – appears after live feed on mobile) -->
+	<div class="main-data">
+
 	<!-- Date Filter -->
 	<div class="date-filter glass-card" use:fadeInUp={{ delay: 40 }}>
 		<span class="date-filter-label">{t('btcUpdown.filter.date')}</span>
@@ -1823,6 +1826,8 @@
 			{/if}
 		{/if}
 
+	</div><!-- /.main-data -->
+
 	</div><!-- /.main-content -->
 
 	<!-- Right sidebar: Live Feed (3-col: sticky sidebar, 2-col/mobile: below main) -->
@@ -2015,23 +2020,33 @@
 	.page-layout {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-4);
 	}
 	.sidebar { display: contents; }
 	.main-content { display: contents; }
 	.live-sidebar { display: contents; }
+	/* Live feed appears above date filter: main-data pushed after live-sidebar children */
+	.main-data {
+		order: 1;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
 
-	/* 2-column: sidebar + main (live sidebar flows below main) */
+	/* 2-column: sidebar sticky col 1, content + live feed in col 2 */
 	@media (min-width: 1280px) {
 		main.page { max-width: 1320px; }
 		.page-layout {
 			display: grid;
 			grid-template-columns: 380px 1fr;
-			gap: 0 var(--space-6);
+			gap: var(--space-4) var(--space-6);
 			align-items: start;
 		}
 		.sidebar {
 			display: flex;
 			flex-direction: column;
+			grid-column: 1;
+			grid-row: 1 / span 20;
 			position: sticky;
 			top: 76px;
 			max-height: calc(100vh - 76px - var(--space-6));
@@ -2041,26 +2056,29 @@
 		}
 		.sidebar::-webkit-scrollbar { width: 4px; }
 		.sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
-		.main-content {
-			display: flex;
-			flex-direction: column;
-			min-width: 0;
-		}
-		.live-sidebar {
-			display: flex;
-			flex-direction: column;
-			grid-column: 2;
-		}
+		/* main-content + live-sidebar stay display:contents; children placed in col 2 */
+		.main-content > *, .live-sidebar > * { grid-column: 2; }
 		.sidebar .version-selector { margin-bottom: 0; }
 	}
 
-	/* 3-column: sidebar + main + live feed */
+	/* 3-column: restore main-content as block, live-sidebar as sticky col 3 */
 	@media (min-width: 1600px) {
 		main.page { max-width: 1680px; }
 		.page-layout {
 			grid-template-columns: 340px 1fr 340px;
 		}
+		.main-content {
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
+			grid-column: 2;
+			gap: var(--space-4);
+		}
+		.main-content > * { grid-column: unset; }
+		.main-data { order: unset; }
 		.live-sidebar {
+			display: flex;
+			flex-direction: column;
 			grid-column: 3;
 			grid-row: 1 / -1;
 			position: sticky;
@@ -2069,13 +2087,25 @@
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+			gap: var(--space-4);
 		}
+		.live-sidebar > * { grid-column: unset; }
 		.live-sidebar::-webkit-scrollbar { width: 4px; }
 		.live-sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 	}
 
 	/* Header */
 	.page-header { margin-bottom: var(--space-6); }
+	@media (min-width: 1280px) {
+		.page-header {
+			position: sticky;
+			top: 60px;
+			z-index: var(--z-sticky, 10);
+			background: var(--bg-base);
+			padding-bottom: var(--space-4);
+			margin-bottom: var(--space-2);
+		}
+	}
 
 	.title-row {
 		display: flex;

@@ -400,7 +400,7 @@
 
 	async function fetchStats() {
 		try {
-			const range = getDateRange();
+			const range = getDateRange(selectedHour);
 			const parts: string[] = [];
 			if (range) {
 				parts.push(`from=${encodeURIComponent(range.from)}`);
@@ -724,7 +724,10 @@
 			const _filter = roundsFilter;
 			void signalActionFilter;
 			void selectedHour;
-			untrack(() => fetchRounds());
+			untrack(() => {
+				fetchRounds();
+				fetchStats();
+			});
 		}
 	});
 

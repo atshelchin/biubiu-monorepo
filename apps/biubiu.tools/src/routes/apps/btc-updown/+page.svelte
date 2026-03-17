@@ -121,6 +121,9 @@
 		total_profit: number | null;
 		signal_action: string | null;
 		skip_reason: string | null;
+		swing_mode: number | null;
+		swing_exit_reason: string | null;
+		swing_exit_price: number | null;
 		event_start_time: string;
 		end_time: string;
 		created_at: string;
@@ -1773,6 +1776,23 @@
 										<span class="round-value mono">{formatShortTimeET(round.hedge.sold_at)} ET</span>
 									</div>
 								{/if}
+								{#if round.swing_exit_reason}
+									<div class="round-row">
+										<span class="round-label">{locale.value === 'zh' ? '退出原因' : 'Exit Reason'}</span>
+										<span class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}">
+											{round.swing_exit_reason === 'stop_loss' ? (locale.value === 'zh' ? '止损' : 'Stop Loss')
+												: round.swing_exit_reason === 'take_profit' ? (locale.value === 'zh' ? '止盈' : 'Take Profit')
+												: round.swing_exit_reason === 'checkpoint_mismatch' ? (locale.value === 'zh' ? '信号反转' : 'Signal Reversed')
+												: round.swing_exit_reason}
+										</span>
+									</div>
+									{#if round.swing_exit_price !== null}
+										<div class="round-row">
+											<span class="round-label">{locale.value === 'zh' ? '退出价格' : 'Exit Price'}</span>
+											<span class="round-value mono">${round.swing_exit_price.toFixed(4)}</span>
+										</div>
+									{/if}
+								{/if}
 
 								<!-- P&L Breakdown for settled rounds -->
 								{#if round.status === 'settled'}
@@ -1827,6 +1847,20 @@
 												<div class="pnl-row hedge-info">
 													<span class="pnl-label">{t('btcUpdown.pnl.hedgeStatus')}</span>
 													<span class="pnl-value">{round.hedge.direction} @ ${round.hedge.limit_price.toFixed(2)} &middot; {getHedgeStatusLabel(round.hedge.status)}</span>
+												</div>
+											{/if}
+											{#if round.swing_exit_reason}
+												<div class="pnl-row hedge-info">
+													<span class="pnl-label">{locale.value === 'zh' ? '波动退出' : 'Swing Exit'}</span>
+													<span class="pnl-value">
+														{round.swing_exit_reason === 'stop_loss' ? (locale.value === 'zh' ? '止损' : 'Stop Loss')
+															: round.swing_exit_reason === 'take_profit' ? (locale.value === 'zh' ? '止盈' : 'Take Profit')
+															: round.swing_exit_reason === 'checkpoint_mismatch' ? (locale.value === 'zh' ? '信号反转' : 'Signal Reversed')
+															: round.swing_exit_reason}
+														{#if round.swing_exit_price !== null}
+															@ ${round.swing_exit_price.toFixed(4)}
+														{/if}
+													</span>
 												</div>
 											{/if}
 										</div>
@@ -3276,6 +3310,17 @@
 	.badge-loss { background: rgba(248, 113, 113, 0.12); color: #f87171; }
 	.badge-skip { background: rgba(255, 255, 255, 0.06); color: var(--fg-subtle); }
 	.badge-watching, .badge-entered { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+
+	/* Swing exit badges */
+	.swing-exit-badge {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		padding: 1px var(--space-2);
+		border-radius: var(--radius-sm);
+	}
+	.swing-exit-stop_loss { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+	.swing-exit-take_profit { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+	.swing-exit-checkpoint_mismatch { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
 
 	.round-body { display: flex; flex-direction: column; gap: var(--space-2); }
 	.round-row { display: flex; justify-content: space-between; align-items: center; }

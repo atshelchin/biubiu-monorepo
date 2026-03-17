@@ -2048,8 +2048,8 @@
 			grid-column: 1;
 			grid-row: 1 / span 20;
 			position: sticky;
-			top: 76px;
-			max-height: calc(100vh - 76px - var(--space-6));
+			top: 150px;
+			max-height: calc(100vh - 150px - var(--space-6));
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
@@ -2082,8 +2082,8 @@
 			grid-column: 3;
 			grid-row: 1 / -1;
 			position: sticky;
-			top: 76px;
-			max-height: calc(100vh - 76px - var(--space-6));
+			top: 150px;
+			max-height: calc(100vh - 150px - var(--space-6));
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;

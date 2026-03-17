@@ -777,28 +777,34 @@
 	}
 
 	function toggleStrategyVisibility(id: string) {
-		// Discovered siblings: toggle in visibleDiscoveredIds (opt-in)
 		if (id.startsWith('discovered:')) {
+			// Discovered siblings: opt-in via visibleDiscoveredIds only
 			if (visibleDiscoveredIds.has(id)) {
 				visibleDiscoveredIds.delete(id);
 				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+				// If this was active, switch away
+				if (activeStrategyId === id) {
+					const first = allRegisteredStrategies.find(s => s.id !== id);
+					if (first) onStrategyChange(first.id);
+				}
 			} else {
 				visibleDiscoveredIds.add(id);
 				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
 			}
-		}
-		// All strategies: toggle in hiddenStrategyIds (opt-out)
-		if (hiddenStrategyIds.has(id)) {
-			hiddenStrategyIds.delete(id);
-			hiddenStrategyIds = new Set(hiddenStrategyIds);
 		} else {
-			hiddenStrategyIds.add(id);
-			hiddenStrategyIds = new Set(hiddenStrategyIds);
-		}
-		// If hidden strategy was active, switch away
-		if (hiddenStrategyIds.has(activeStrategyId)) {
-			const first = allRegisteredStrategies[0];
-			if (first) onStrategyChange(first.id);
+			// Builtin / custom: opt-out via hiddenStrategyIds
+			if (hiddenStrategyIds.has(id)) {
+				hiddenStrategyIds.delete(id);
+				hiddenStrategyIds = new Set(hiddenStrategyIds);
+			} else {
+				hiddenStrategyIds.add(id);
+				hiddenStrategyIds = new Set(hiddenStrategyIds);
+				// If hidden strategy was active, switch away
+				if (activeStrategyId === id) {
+					const first = allRegisteredStrategies.find(s => s.id !== id);
+					if (first) onStrategyChange(first.id);
+				}
+			}
 		}
 		persistState();
 		fetchAllStrategyProfits();
@@ -1241,8 +1247,8 @@
 		<!-- Built-in strategies -->
 		<div class="version-header">
 			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
-			<button class="section-config-btn" class:has-hidden={hiddenBuiltinCount > 0} onclick={() => toggleConfigPanel('builtin')} title={t('btcUpdown.strategy.builtin')}>
-				{#if hiddenBuiltinCount > 0}<span class="hidden-badge">{hiddenBuiltinCount}</span>{/if}
+			<button class="section-config-btn" class:has-hidden={hiddenBuiltinCount > 0} onclick={() => toggleConfigPanel('builtin')}>
+				<span class="config-count" class:has-hidden={hiddenBuiltinCount > 0}>{builtinStrategies.length - hiddenBuiltinCount}/{builtinStrategies.length}</span>
 				<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 			</button>
 		</div>
@@ -1283,11 +1289,11 @@
 			{@const siblings = discoveredSiblings.get(host) ?? []}
 			{@const allHostStrategies = [...strategies, ...siblings.filter(s => visibleDiscoveredIds.has(s.id))]}
 			{@const visibleHostStrategies = allHostStrategies.filter(s => !hiddenStrategyIds.has(s.id))}
-			{@const hiddenCount = allHostStrategies.length - visibleHostStrategies.length}
+			{@const totalHostCount = strategies.length + siblings.length}
 			<div class="version-header custom-header">
 				<span class="version-type-label host-label" title={host}>{host}</span>
-				<button class="section-config-btn" class:has-hidden={hiddenCount > 0 || siblings.length > 0} onclick={() => toggleConfigPanel(host)}>
-					{#if hiddenCount > 0}<span class="hidden-badge">{hiddenCount}</span>{/if}
+				<button class="section-config-btn" class:has-hidden={visibleHostStrategies.length < totalHostCount} onclick={() => toggleConfigPanel(host)}>
+					<span class="config-count" class:has-hidden={visibleHostStrategies.length < totalHostCount}>{visibleHostStrategies.length}/{totalHostCount}</span>
 					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 				</button>
 			</div>
@@ -1312,7 +1318,7 @@
 						</div>
 					{/each}
 					{#each siblings as sib (sib.id)}
-						{@const isVisible = visibleDiscoveredIds.has(sib.id) && !hiddenStrategyIds.has(sib.id)}
+						{@const isVisible = visibleDiscoveredIds.has(sib.id)}
 						<div class="config-row" class:config-hidden={!isVisible}>
 							<span class="config-tag">{t('btcUpdown.strategy.discovered')}</span>
 							<span class="config-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
@@ -2323,14 +2329,15 @@
 	}
 	.section-config-btn:hover { opacity: 1; color: var(--fg-muted); }
 	.section-config-btn.has-hidden { opacity: 0.7; }
-	.hidden-badge {
+	.config-count {
 		font-size: 9px;
-		font-weight: var(--weight-semibold);
-		background: rgba(255, 255, 255, 0.1);
+		font-variant-numeric: tabular-nums;
+		color: var(--fg-subtle);
+		opacity: 0.5;
+	}
+	.config-count.has-hidden {
+		opacity: 0.8;
 		color: var(--fg-muted);
-		padding: 0 4px;
-		border-radius: 8px;
-		line-height: 1.4;
 	}
 
 	/* Config panel (inline settings) */
@@ -3459,7 +3466,7 @@
 	:global([data-theme="light"]) .profit-val.negative { color: #dc2626; }
 	:global([data-theme="light"]) .profit-status.pending { color: #d97706; }
 	:global([data-theme="light"]) .profit-refresh-btn:hover { background: rgba(0, 0, 0, 0.04); }
-	:global([data-theme="light"]) .hidden-badge { background: rgba(0, 0, 0, 0.06); color: var(--fg-subtle); }
+	:global([data-theme="light"]) .config-count.has-hidden { color: var(--fg-subtle); }
 	:global([data-theme="light"]) .config-panel { border-bottom-color: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .config-toggle-btn:hover { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .config-delete-btn:hover { background: rgba(239, 68, 68, 0.06); }

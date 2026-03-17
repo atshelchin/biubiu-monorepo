@@ -33,7 +33,7 @@ export interface ValidationProgress {
 export interface PersistedState {
 	customStrategies: StrategyEndpoint[];
 	visibleDiscoveredIds: string[];
-	hiddenStrategyIds: string[];
+	hiddenStrategyIds: string[] | null;
 	activeStrategyId: string;
 }
 
@@ -41,6 +41,10 @@ export interface DiscoveryResult {
 	strategies: StrategyEndpoint[];
 	raw: StrategyInfo[];
 }
+
+// --- Default visible builtins (hide others on first visit) ---
+
+export const DEFAULT_VISIBLE_BUILTINS = new Set(['v1', 'v3', 'v7', 'v8', 'v14', 'v15', 'v16']);
 
 // --- Fallback strategies (used when discovery fails) ---
 
@@ -110,7 +114,7 @@ export async function discoverStrategies(
 const DEFAULT_STATE: PersistedState = {
 	customStrategies: [],
 	visibleDiscoveredIds: [],
-	hiddenStrategyIds: [],
+	hiddenStrategyIds: null,
 	activeStrategyId: 'builtin:v1'
 };
 
@@ -126,7 +130,7 @@ export function loadPersistedState(): PersistedState {
 				: [],
 			hiddenStrategyIds: Array.isArray(parsed.hiddenStrategyIds)
 				? parsed.hiddenStrategyIds
-				: [],
+				: null,
 			activeStrategyId:
 				typeof parsed.activeStrategyId === 'string'
 					? parsed.activeStrategyId

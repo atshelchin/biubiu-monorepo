@@ -47,6 +47,7 @@
 	type TabType = 'live' | 'history';
 	type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 	type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
+	type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';
 
 	interface SSEEvent {
 		id: string;
@@ -75,6 +76,15 @@
 		maxLoseStreak: number;
 		hedgeFills: number;
 		hedgeSellRevenue: number;
+		signalBet: number;
+		signalBetWins: number;
+		signalBetLosses: number;
+		signalReverse: number;
+		signalReverseWins: number;
+		signalReverseLosses: number;
+		signalSkip: number;
+		signalSkipWouldWin: number;
+		signalSkipWouldLose: number;
 	}
 
 	interface RoundHedge {
@@ -105,6 +115,7 @@
 		hedge_sell_revenue: number | null;
 		platform_fee: number | null;
 		total_profit: number | null;
+		signal_action: string | null;
 		skip_reason: string | null;
 		event_start_time: string;
 		end_time: string;
@@ -149,6 +160,23 @@
 	);
 	let strategyInfo = $state<StrategyInfo | null>(null);
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
+	interface StrategyProfitData {
+		current: { status: 'settled'; profit: number; direction: string | null } | { status: 'entered'; direction: string | null } | { status: 'skipped' | 'watching' };
+		hour: { profit: number; rounds: number; winRate: number };
+		day: { profit: number; rounds: number; winRate: number };
+	}
+	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
+	const customStrategiesByHost = $derived(
+		Array.from(
+			customStrategies.reduce((groups, s) => {
+				let host: string;
+				try { host = new URL(s.baseUrl).host; } catch { host = 'unknown'; }
+				if (!groups.has(host)) groups.set(host, []);
+				groups.get(host)!.push(s);
+				return groups;
+			}, new Map<string, StrategyEndpoint[]>())
+		)
+	);
 	let showComparison = $state(false);
 	// Custom strategy UI state
 	let showAddStrategy = $state(false);
@@ -171,6 +199,7 @@
 	let roundsPage = $state(1);
 	let roundsPageSize = 10;
 	let roundsFilter = $state<RoundStatusFilter>('');
+	let signalActionFilter = $state<SignalActionFilter>('');
 	let roundsLoading = $state(false);
 
 	// Date filter: '' means "All", 'YYYY-MM-DD' means specific date
@@ -349,11 +378,16 @@
 
 	// --- REST API ---
 
-	function getDateRange(): { from: string; to: string } | null {
+	function getDateRange(hourFilter?: number | null): { from: string; to: string } | null {
 		if (!filterDate) return null;
+		const h = hourFilter ?? null;
 		// Convert local date boundaries to UTC for the API
-		const start = new Date(`${filterDate}T00:00:00`);
-		const end = new Date(`${filterDate}T23:59:59`);
+		const start = h !== null
+			? new Date(`${filterDate}T${String(h).padStart(2, '0')}:00:00`)
+			: new Date(`${filterDate}T00:00:00`);
+		const end = h !== null
+			? new Date(`${filterDate}T${String(h).padStart(2, '0')}:59:59`)
+			: new Date(`${filterDate}T23:59:59`);
 		return {
 			from: start.toISOString().slice(0, 19).replace('T', ' '),
 			to: end.toISOString().slice(0, 19).replace('T', ' '),
@@ -366,7 +400,7 @@
 
 	async function fetchStats() {
 		try {
-			const range = getDateRange();
+			const range = getDateRange(selectedHour);
 			const parts: string[] = [];
 			if (range) {
 				parts.push(`from=${encodeURIComponent(range.from)}`);
@@ -400,7 +434,8 @@
 				pageSize: String(roundsPageSize),
 			});
 			if (roundsFilter) params.set('status', roundsFilter);
-			const range = getDateRange();
+			if (signalActionFilter) params.set('signal_action', signalActionFilter);
+			const range = getDateRange(selectedHour);
 			if (range) {
 				params.set('from', range.from);
 				params.set('to', range.to);
@@ -490,6 +525,66 @@
 		);
 		allStrategyInfos.clear();
 		for (const r of results) allStrategyInfos.set(r.id, r.info);
+	}
+
+	function toUTCString(d: Date): string {
+		return d.toISOString().slice(0, 19).replace('T', ' ');
+	}
+
+	function parseCurrentRound(data: CurrentRoundResponse | null): StrategyProfitData['current'] {
+		const round = data?.round ?? null;
+		if (!round) return { status: 'watching' };
+		if (round.status === 'settled') {
+			return { status: 'settled', profit: round.total_profit ?? 0, direction: round.entry_direction };
+		}
+		if (round.status === 'skipped') return { status: 'skipped' };
+		if (round.status === 'entered') return { status: 'entered', direction: round.entry_direction };
+		return { status: 'watching' };
+	}
+
+	function parseStats(data: Stats | null): { profit: number; rounds: number; winRate: number } {
+		if (!data) return { profit: 0, rounds: 0, winRate: 0 };
+		return { profit: data.totalProfit, rounds: data.entered, winRate: data.winRate };
+	}
+
+	async function fetchAllStrategyProfits() {
+		const now = Date.now();
+		// Current hour start: truncate minutes/seconds/ms from local time
+		const localOffset = new Date(now).getTimezoneOffset() * 60_000;
+		const localMs = now - localOffset;
+		const hourStartMs = localMs - (localMs % 3_600_000) + localOffset;
+
+		const hourFrom = toUTCString(new Date(hourStartMs));
+		const dayFrom = toUTCString(new Date(`${todayLocal()}T00:00:00`));
+		const to = toUTCString(new Date(now));
+
+		const results = await Promise.all(
+			allRegisteredStrategies.map(async (s) => {
+				try {
+					const f = s.type === 'builtin' ? (url: string) => fetch(url) : strategyFetch;
+					const [hourRes, dayRes, curRes] = await Promise.all([
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(to)}`),
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(to)}`),
+						f(`${s.baseUrl}/rounds/current`),
+					]);
+					const hourStats = hourRes.ok ? await hourRes.json() : null;
+					const dayStats = dayRes.ok ? await dayRes.json() : null;
+					const curData: CurrentRoundResponse | null = curRes.ok ? await curRes.json() : null;
+					return {
+						id: s.id,
+						profits: {
+							current: parseCurrentRound(curData),
+							hour: parseStats(hourStats),
+							day: parseStats(dayStats),
+						} as StrategyProfitData,
+					};
+				} catch {
+					return { id: s.id, profits: null };
+				}
+			})
+		);
+		allStrategyProfits.clear();
+		for (const r of results) allStrategyProfits.set(r.id, r.profits);
 	}
 
 	function onStrategyChange(strategyId: string) {
@@ -599,8 +694,11 @@
 				if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
 					activeStrategyId = 'builtin:v1';
 				}
+				// Default to today's date
+				filterDate = todayLocal();
 				connectSSE();
 				fetchCurrentRound();
+				fetchAllStrategyProfits();
 				fetchStrategyStart().then(() => {
 					fetchStats();
 					fetchHourly();
@@ -616,6 +714,7 @@
 		untrack(() => {
 			fetchStrategyInfo();
 			fetchAllStrategies();
+			fetchAllStrategyProfits();
 		});
 	});
 
@@ -623,13 +722,26 @@
 		if (browser && activeTab === 'history') {
 			const _page = roundsPage;
 			const _filter = roundsFilter;
-			untrack(() => fetchRounds());
+			void signalActionFilter;
+			void selectedHour;
+			untrack(() => {
+				fetchRounds();
+				fetchStats();
+			});
 		}
 	});
 
 	$effect(() => {
 		if (browser) {
 			const interval = setInterval(() => { now = Date.now(); }, 1000);
+			return () => clearInterval(interval);
+		}
+	});
+
+	// Auto-refresh strategy profits every 60s
+	$effect(() => {
+		if (browser) {
+			const interval = setInterval(() => { fetchAllStrategyProfits(); }, 60_000);
 			return () => clearInterval(interval);
 		}
 	});
@@ -651,6 +763,10 @@
 
 	function formatShortTimeET(ts: string): string {
 		return new Date(ts).toLocaleTimeString('en-US', { timeZone: ET_TZ, hour: 'numeric', minute: '2-digit' });
+	}
+
+	function formatLocalDate(ts: string): string {
+		return new Date(ts).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
 	}
 
 	function formatTimeWindow(start: string, end: string): string {
@@ -807,8 +923,14 @@
 	}
 
 	function getSkipReasonLabel(reason: string): string {
+		if (reason.startsWith('signal_skip')) {
+			const match = reason.match(/score=(\d+)/);
+			return t('btcUpdown.skip.signalSkip', { score: match?.[1] ?? '0' });
+		}
 		switch (reason) {
 			case 'no_qualifying_signal': return t('btcUpdown.skip.noQualifyingSignal');
+			case 'no_signal': return t('btcUpdown.skip.noSignal');
+			case 'market_expired': return t('btcUpdown.skip.marketExpired');
 			case 'window_expired': return t('btcUpdown.skip.windowExpired');
 			case 'daemon_restarted': return t('btcUpdown.skip.daemonRestarted');
 			default: return reason;
@@ -817,6 +939,13 @@
 
 	function setFilter(filter: RoundStatusFilter) {
 		roundsFilter = filter;
+		signalActionFilter = '';
+		roundsPage = 1;
+	}
+
+	function setSignalFilter(filter: SignalActionFilter) {
+		signalActionFilter = filter;
+		roundsFilter = '';
 		roundsPage = 1;
 	}
 </script>
@@ -846,29 +975,74 @@
 		<p class="page-description">{t('btcUpdown.description')}</p>
 	</section>
 
+	<div class="page-layout">
+	<!-- Sidebar (strategy panel) -->
+	<aside class="sidebar">
+
+	{#snippet profitCells(profits: StrategyProfitData)}
+		<span class="strategy-profits">
+			<span class="profit-cell">
+				{#if profits.current.status === 'settled'}
+					<span class="profit-val" class:positive={profits.current.profit >= 0} class:negative={profits.current.profit < 0}>{profits.current.profit >= 0 ? '+' : ''}{Math.round(profits.current.profit)}</span>
+					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
+				{:else if profits.current.status === 'skipped'}
+					<span class="profit-status">{t('btcUpdown.strategy.statusSkip')}</span>
+				{:else if profits.current.status === 'entered'}
+					<span class="profit-status pending">{t('btcUpdown.strategy.statusWait')}</span>
+					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
+				{:else}
+					<span class="profit-status">{t('btcUpdown.strategy.statusWatch')}</span>
+				{/if}
+			</span>
+			<span class="profit-cell">
+				<span class="profit-val" class:positive={profits.hour.profit >= 0} class:negative={profits.hour.profit < 0}>{profits.hour.profit >= 0 ? '+' : ''}{Math.round(profits.hour.profit)}</span>
+				<span class="profit-meta">{profits.hour.rounds}r {Math.round(profits.hour.winRate * 100)}%</span>
+			</span>
+			<span class="profit-cell">
+				<span class="profit-val" class:positive={profits.day.profit >= 0} class:negative={profits.day.profit < 0}>{profits.day.profit >= 0 ? '+' : ''}{Math.round(profits.day.profit)}</span>
+				<span class="profit-meta">{profits.day.rounds}r {Math.round(profits.day.winRate * 100)}%</span>
+			</span>
+		</span>
+	{/snippet}
+
 	<!-- Strategy Selector -->
 	<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
 		<div class="version-header">
 			<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+			<button class="profit-refresh-btn" onclick={() => fetchAllStrategyProfits()} title={t('btcUpdown.strategy.refresh')}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+			</button>
+		</div>
+		<div class="profit-column-labels">
+			<span class="profit-col-label">{t('btcUpdown.strategy.profitLast')}</span>
+			<span class="profit-col-label">{t('btcUpdown.strategy.profit1h')}</span>
+			<span class="profit-col-label">{t('btcUpdown.strategy.profitToday')}</span>
+		</div>
+		<div class="version-header">
 			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
 		</div>
 		<div class="version-options">
 			{#each BUILTIN_STRATEGIES as s (s.id)}
+				{@const profits = allStrategyProfits.get(s.id)}
 				<button
 					class="version-btn"
 					class:active={activeStrategyId === s.id}
 					onclick={() => onStrategyChange(s.id)}
 				>
-					{allStrategyInfos.get(s.id)?.name ?? s.label}
+					<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+					{#if profits}
+						{@render profitCells(profits)}
+					{/if}
 				</button>
 			{/each}
 		</div>
-		{#if customStrategies.length > 0}
+		{#each customStrategiesByHost as [host, strategies] (host)}
 			<div class="version-header custom-header">
-				<span class="version-type-label">{t('btcUpdown.strategy.custom')}</span>
+				<span class="version-type-label host-label" title={host}>{host}</span>
 			</div>
 			<div class="version-options">
-				{#each customStrategies as s (s.id)}
+				{#each strategies as s (s.id)}
+					{@const profits = allStrategyProfits.get(s.id)}
 					<div class="custom-strategy-row">
 						<button
 							class="version-btn custom-version-btn"
@@ -876,7 +1050,10 @@
 							onclick={() => onStrategyChange(s.id)}
 						>
 							<span class="custom-dot"></span>
-							{allStrategyInfos.get(s.id)?.name ?? s.label}
+							<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+							{#if profits}
+								{@render profitCells(profits)}
+							{/if}
 						</button>
 						<button class="custom-remove-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
 							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -884,83 +1061,37 @@
 					</div>
 				{/each}
 			</div>
-		{/if}
+		{/each}
 		<button class="add-strategy-btn" onclick={() => (showAddStrategy = true)}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 			{t('btcUpdown.strategy.addCustom')}
 		</button>
 	</div>
 
-	<!-- Add Custom Strategy Modal -->
-	{#if showAddStrategy}
-		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-		<div class="modal-overlay" onclick={() => { if (!customUrlValidating) { showAddStrategy = false; customUrlError = ''; validationSteps = []; } }}>
-			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-			<div class="modal" onclick={(e) => e.stopPropagation()}>
-				<button class="modal-close" aria-label="Close" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-				</button>
-				<div class="modal-icon">
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-				</div>
-				<h3 class="modal-title">{t('btcUpdown.strategy.addCustom')}</h3>
-				<p class="modal-desc">{t('btcUpdown.strategy.addCustomDesc')}</p>
-				<div class="modal-input-wrap" class:input-error={!!customUrlError}>
-					<svg class="modal-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-					<input
-						type="url"
-						class="strategy-url-input"
-						placeholder="https://your-server.com/api/v1"
-						bind:value={customUrlInput}
-						disabled={customUrlValidating}
-						onkeydown={(e) => { if (e.key === 'Enter') addCustomStrategy(); }}
-					/>
-				</div>
-				{#if customUrlError}
-					<p class="url-error">{customUrlError}</p>
-				{/if}
-				{#if validationSteps.length > 0}
-					<div class="validation-steps">
-						{#each validationSteps as step (step.step)}
-							<div class="validation-step" class:step-ok={step.status === 'ok'} class:step-fail={step.status === 'fail'} class:step-checking={step.status === 'checking'}>
-								<span class="step-icon">
-									{#if step.status === 'ok'}
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-									{:else if step.status === 'fail'}
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-									{:else if step.status === 'checking'}
-										<span class="step-spinner"></span>
-									{:else}
-										<span class="step-pending-dot"></span>
-									{/if}
-								</span>
-								<span class="step-label">{t(VALIDATE_STEP_KEYS[step.step as keyof typeof VALIDATE_STEP_KEYS] ?? step.step)}</span>
-							</div>
-						{/each}
-					</div>
-				{/if}
-				<div class="modal-actions">
-					<button class="modal-btn cancel" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
-						{t('btcUpdown.strategy.cancel')}
-					</button>
-					<button class="modal-btn primary" disabled={customUrlValidating || !customUrlInput.trim()} onclick={addCustomStrategy}>
-						{#if customUrlValidating}
-							<span class="btn-spinner"></span>
-						{/if}
-						{customUrlValidating ? t('btcUpdown.strategy.validating') : t('btcUpdown.strategy.add')}
-					</button>
-				</div>
-			</div>
-		</div>
-	{/if}
+	</aside>
+
+	<!-- Main content -->
+	<div class="main-content">
 
 	<!-- Strategy Info Card -->
 	{#if strategyInfo}
 		<div class="strategy-info glass-card" use:fadeInUp={{ delay: 15 }}>
-			<h3 class="strategy-info-name">{strategyInfo.name}</h3>
+			<div class="strategy-info-header">
+				<h3 class="strategy-info-name">{strategyInfo.name}</h3>
+				{#if strategyInfo.article}
+					<a href={strategyInfo.article.url} target="_blank" rel="external noopener noreferrer" class="strategy-article-link">
+						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+							<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+						</svg>
+						<span>{strategyInfo.article.label}</span>
+						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+					</a>
+				{/if}
+			</div>
 			<div class="strategy-summary-grid">
 				{#each strategyInfo.summary as item (item.label)}
-					<div class="strategy-summary-item">
+					<div class="strategy-summary-item" class:summary-wide={item.value.length > 20}>
 						<span class="strategy-summary-label">{item.label}</span>
 						<span class="strategy-summary-value">{item.value}</span>
 					</div>
@@ -1037,32 +1168,6 @@
 		</div>
 	{/if}
 
-	<!-- Strategy Link Banner -->
-	{#if strategyInfo?.article}
-		<a
-			href={strategyInfo.article.url}
-			target="_blank"
-			rel="external noopener noreferrer"
-			class="strategy-banner glass-card"
-			use:fadeInUp={{ delay: 25 }}
-		>
-			<div class="strategy-icon">
-				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-					<path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-				</svg>
-			</div>
-			<div class="strategy-text">
-				<span class="strategy-title">{strategyInfo.article.label}</span>
-				<span class="strategy-desc">{strategyInfo.article.url}</span>
-			</div>
-			<svg class="strategy-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<line x1="7" y1="17" x2="17" y2="7" />
-				<polyline points="7 7 17 7 17 17" />
-			</svg>
-		</a>
-	{/if}
-
 	<!-- Disclaimer -->
 	<div class="disclaimer" class:disclaimer-live={strategyInfo?.mode === 'live'} use:fadeInUp={{ delay: 30 }}>
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1089,6 +1194,36 @@
 		</div>
 	</div>
 
+	<!-- Stats Overview -->
+	{#if stats}
+		<section class="stats-grid" use:fadeInUp={{ delay: 45 }}>
+			<div class="stat-card glass-card">
+				<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
+				<span class="stat-value highlight">{formatPercent(stats.winRate)}</span>
+				<span class="stat-sub">{stats.wins}{t('btcUpdown.stats.wins')} / {stats.losses}{t('btcUpdown.stats.losses')}</span>
+			</div>
+			<div class="stat-card glass-card">
+				<span class="stat-label">{t('btcUpdown.stats.totalProfit')}</span>
+				<span class="stat-value" class:positive={stats.totalProfit >= 0} class:negative={stats.totalProfit < 0}>
+					{formatProfit(stats.totalProfit)}
+				</span>
+				<span class="stat-sub">{t('btcUpdown.stats.avgProfit')}: {formatProfit(stats.avgProfit)}</span>
+			</div>
+			<div class="stat-card glass-card">
+				<span class="stat-label">{t('btcUpdown.stats.totalRounds')}</span>
+				<span class="stat-value">{stats.totalRounds}</span>
+				<span class="stat-sub">{stats.entered} {t('btcUpdown.stats.entered')} / {stats.skipped} {t('btcUpdown.stats.skipped')}</span>
+			</div>
+			<div class="stat-card glass-card">
+				<span class="stat-label">{t('btcUpdown.stats.streak')}</span>
+				<span class="stat-value" class:positive={stats.currentStreak > 0} class:negative={stats.currentStreak < 0}>
+					{stats.currentStreak > 0 ? `+${stats.currentStreak}` : stats.currentStreak}
+				</span>
+				<span class="stat-sub">{t('btcUpdown.stats.best')}: {formatProfit(stats.bestRound)} / {t('btcUpdown.stats.worst')}: {formatProfit(stats.worstRound)}</span>
+			</div>
+		</section>
+	{/if}
+
 	<!-- Hourly Profit Chart -->
 	{#if filterDate}
 		{@const maxAbs = Math.max(...hourlyData.map(h => Math.abs(h.profit)), 1)}
@@ -1096,7 +1231,7 @@
 		{@const currentLocalHour = new Date().getHours()}
 		{@const isToday = filterDate === todayLocal()}
 		{@const isPastDate = filterDate < todayLocal()}
-		<section class="hourly-chart glass-card" use:fadeInUp={{ delay: 45 }}>
+		<section class="hourly-chart glass-card" use:fadeInUp={{ delay: 50 }}>
 			<h3 class="section-label">{t('btcUpdown.chart.hourlyProfit')}</h3>
 			{#each [[0, 12, 'AM'], [12, 24, 'PM']] as [start, end, label] (label)}
 				<div class="chart-row">
@@ -1109,7 +1244,7 @@
 							class="chart-col"
 							class:chart-col-future={isFuture}
 							class:chart-col-selected={selectedHour === hour}
-							onclick={() => { selectedHour = selectedHour === hour ? null : hour; }}
+							onclick={() => { selectedHour = selectedHour === hour ? null : hour; roundsPage = 1; }}
 						>
 								{#if h}
 									<span class="chart-value" class:positive={h.profit >= 0} class:negative={h.profit < 0}>
@@ -1174,36 +1309,6 @@
 					{/if}
 				</div>
 			{/if}
-		</section>
-	{/if}
-
-	<!-- Stats Overview -->
-	{#if stats}
-		<section class="stats-grid" use:fadeInUp={{ delay: 50 }}>
-			<div class="stat-card glass-card">
-				<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
-				<span class="stat-value highlight">{formatPercent(stats.winRate)}</span>
-				<span class="stat-sub">{stats.wins}{t('btcUpdown.stats.wins')} / {stats.losses}{t('btcUpdown.stats.losses')}</span>
-			</div>
-			<div class="stat-card glass-card">
-				<span class="stat-label">{t('btcUpdown.stats.totalProfit')}</span>
-				<span class="stat-value" class:positive={stats.totalProfit >= 0} class:negative={stats.totalProfit < 0}>
-					{formatProfit(stats.totalProfit)}
-				</span>
-				<span class="stat-sub">{t('btcUpdown.stats.avgProfit')}: {formatProfit(stats.avgProfit)}</span>
-			</div>
-			<div class="stat-card glass-card">
-				<span class="stat-label">{t('btcUpdown.stats.totalRounds')}</span>
-				<span class="stat-value">{stats.totalRounds}</span>
-				<span class="stat-sub">{stats.entered} {t('btcUpdown.stats.entered')} / {stats.skipped} {t('btcUpdown.stats.skipped')}</span>
-			</div>
-			<div class="stat-card glass-card">
-				<span class="stat-label">{t('btcUpdown.stats.streak')}</span>
-				<span class="stat-value" class:positive={stats.currentStreak > 0} class:negative={stats.currentStreak < 0}>
-					{stats.currentStreak > 0 ? `+${stats.currentStreak}` : stats.currentStreak}
-				</span>
-				<span class="stat-sub">{t('btcUpdown.stats.best')}: {formatProfit(stats.bestRound)} / {t('btcUpdown.stats.worst')}: {formatProfit(stats.worstRound)}</span>
-			</div>
 		</section>
 	{/if}
 
@@ -1349,16 +1454,58 @@
 	<!-- ===== Round History Tab ===== -->
 	{#if activeTab === 'history'}
 		<div class="filter-bar">
-			<div class="filter-group">
-				{#each [{ value: '', label: t('btcUpdown.filter.all') }, { value: 'entered', label: t('btcUpdown.filter.entered') }, { value: 'settled', label: t('btcUpdown.filter.settled') }, { value: 'skipped', label: t('btcUpdown.filter.skipped') }] as filter}
+			<div class="filter-row">
+				<div class="filter-group">
+					{#each [
+						{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds ?? null },
+						{ value: 'entered', label: t('btcUpdown.filter.entered'), count: stats?.entered ?? null },
+						{ value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null },
+						{ value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped ?? null },
+					] as filter (filter.value)}
+						<button
+							class="filter-btn"
+							class:active={roundsFilter === filter.value}
+							onclick={() => setFilter(filter.value as RoundStatusFilter)}
+						>
+							{filter.label}{#if filter.count !== null}<span class="filter-count">{filter.count}</span>{/if}
+						</button>
+					{/each}
+				</div>
+				<span class="filter-sep">|</span>
+				<div class="filter-group">
 					<button
-						class="filter-btn"
-						class:active={roundsFilter === filter.value}
-						onclick={() => setFilter(filter.value as RoundStatusFilter)}
+						class="filter-btn signal-filter-btn"
+						class:active={signalActionFilter === 'bet'}
+						onclick={() => setSignalFilter(signalActionFilter === 'bet' ? '' : 'bet')}
 					>
-						{filter.label}
+						{t('btcUpdown.filter.signalBet')}{#if stats?.signalBet != null}<span class="filter-count">{stats.signalBet}</span>{/if}
+						{#if stats && (stats.signalBetWins || stats.signalBetLosses)}
+							<span class="filter-wl"><span class="wl-w">{stats.signalBetWins}W</span><span class="wl-l">{stats.signalBetLosses}L</span></span>
+						{/if}
 					</button>
-				{/each}
+					<button
+						class="filter-btn signal-filter-btn"
+						class:active={signalActionFilter === 'reverse'}
+						onclick={() => setSignalFilter(signalActionFilter === 'reverse' ? '' : 'reverse')}
+					>
+						{t('btcUpdown.filter.signalReverse')}{#if stats?.signalReverse != null}<span class="filter-count">{stats.signalReverse}</span>{/if}
+						{#if stats && (stats.signalReverseWins || stats.signalReverseLosses)}
+							<span class="filter-wl"><span class="wl-w">{stats.signalReverseWins}W</span><span class="wl-l">{stats.signalReverseLosses}L</span></span>
+							<span class="filter-delta" class:positive={stats.signalReverseWins - stats.signalReverseLosses > 0} class:negative={stats.signalReverseWins - stats.signalReverseLosses < 0}>{stats.signalReverseWins - stats.signalReverseLosses > 0 ? '+' : ''}{stats.signalReverseWins - stats.signalReverseLosses}</span>
+						{/if}
+					</button>
+					<button
+						class="filter-btn signal-filter-btn"
+						class:active={signalActionFilter === 'skip'}
+						onclick={() => setSignalFilter(signalActionFilter === 'skip' ? '' : 'skip')}
+					>
+						{t('btcUpdown.filter.signalSkip')}{#if stats?.signalSkip != null}<span class="filter-count">{stats.signalSkip}</span>{/if}
+						{#if stats && (stats.signalSkipWouldWin || stats.signalSkipWouldLose)}
+							<span class="filter-wl"><span class="wl-w">-{stats.signalSkipWouldWin}W</span><span class="wl-l">-{stats.signalSkipWouldLose}L</span></span>
+							<span class="filter-delta" class:positive={stats.signalSkipWouldLose - stats.signalSkipWouldWin > 0} class:negative={stats.signalSkipWouldLose - stats.signalSkipWouldWin < 0}>{stats.signalSkipWouldLose - stats.signalSkipWouldWin > 0 ? '+' : ''}{stats.signalSkipWouldLose - stats.signalSkipWouldWin}</span>
+						{/if}
+					</button>
+				</div>
 			</div>
 			<button class="refresh-btn" onclick={() => fetchRounds()} disabled={roundsLoading}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1384,7 +1531,7 @@
 					<div class="round-card glass-card" use:fadeInUp={{ delay: 0 }}>
 						<div class="round-header">
 							<a class="round-id-link" href="https://polymarket.com/event/{round.market_slug}" target="_blank" rel="noopener noreferrer">#{round.id}</a>
-							<span class="round-time-window">{formatTimeWindow(round.event_start_time, round.end_time)}</span>
+							<span class="round-time-window"><span class="round-local-date">{formatLocalDate(round.event_start_time)}</span> {formatTimeWindow(round.event_start_time, round.end_time)}</span>
 							<span class="round-badge {getRoundBadgeClass(round)}">{getRoundStatusLabel(round)}</span>
 						</div>
 
@@ -1513,6 +1660,72 @@
 			{/if}
 		{/if}
 	{/if}
+
+	</div><!-- /.main-content -->
+	</div><!-- /.page-layout -->
+
+	<!-- Add Custom Strategy Modal (top-level to avoid sidebar stacking context) -->
+	{#if showAddStrategy}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="modal-overlay" onclick={() => { if (!customUrlValidating) { showAddStrategy = false; customUrlError = ''; validationSteps = []; } }}>
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+			<div class="modal" onclick={(e) => e.stopPropagation()}>
+				<button class="modal-close" aria-label="Close" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+				</button>
+				<div class="modal-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+				</div>
+				<h3 class="modal-title">{t('btcUpdown.strategy.addCustom')}</h3>
+				<p class="modal-desc">{t('btcUpdown.strategy.addCustomDesc')}</p>
+				<div class="modal-input-wrap" class:input-error={!!customUrlError}>
+					<svg class="modal-input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+					<input
+						type="url"
+						class="strategy-url-input"
+						placeholder="https://your-server.com/api/v1"
+						bind:value={customUrlInput}
+						disabled={customUrlValidating}
+						onkeydown={(e) => { if (e.key === 'Enter') addCustomStrategy(); }}
+					/>
+				</div>
+				{#if customUrlError}
+					<p class="url-error">{customUrlError}</p>
+				{/if}
+				{#if validationSteps.length > 0}
+					<div class="validation-steps">
+						{#each validationSteps as step (step.step)}
+							<div class="validation-step" class:step-ok={step.status === 'ok'} class:step-fail={step.status === 'fail'} class:step-checking={step.status === 'checking'}>
+								<span class="step-icon">
+									{#if step.status === 'ok'}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+									{:else if step.status === 'fail'}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+									{:else if step.status === 'checking'}
+										<span class="step-spinner"></span>
+									{:else}
+										<span class="step-pending-dot"></span>
+									{/if}
+								</span>
+								<span class="step-label">{t(VALIDATE_STEP_KEYS[step.step as keyof typeof VALIDATE_STEP_KEYS] ?? step.step)}</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+				<div class="modal-actions">
+					<button class="modal-btn cancel" disabled={customUrlValidating} onclick={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}>
+						{t('btcUpdown.strategy.cancel')}
+					</button>
+					<button class="modal-btn primary" disabled={customUrlValidating || !customUrlInput.trim()} onclick={addCustomStrategy}>
+						{#if customUrlValidating}
+							<span class="btn-spinner"></span>
+						{/if}
+						{customUrlValidating ? t('btcUpdown.strategy.validating') : t('btcUpdown.strategy.add')}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </main>
 
 <PageFooter />
@@ -1523,6 +1736,43 @@
 		margin: 0 auto;
 		padding: var(--space-8) var(--space-6);
 		min-height: calc(100vh - 200px);
+	}
+
+	/* Page layout: sidebar + main content on wide screens */
+	.page-layout {
+		display: flex;
+		flex-direction: column;
+	}
+	.sidebar { display: contents; }
+	.main-content { display: contents; }
+
+	@media (min-width: 1280px) {
+		main.page { max-width: 1320px; }
+		.page-layout {
+			display: grid;
+			grid-template-columns: 380px 1fr;
+			gap: 0 var(--space-6);
+			align-items: start;
+		}
+		.sidebar {
+			display: flex;
+			flex-direction: column;
+			position: sticky;
+			top: var(--space-6);
+			max-height: calc(100vh - var(--space-8) * 2);
+			overflow-y: auto;
+			scrollbar-width: thin;
+			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+		}
+		.sidebar::-webkit-scrollbar { width: 4px; }
+		.sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+		.main-content {
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
+		}
+		/* Sidebar only contains the strategy selector now */
+		.sidebar .version-selector { margin-bottom: 0; }
 	}
 
 	/* Header */
@@ -1608,15 +1858,28 @@
 		opacity: 0.6;
 	}
 	.custom-header { margin-top: var(--space-1); }
+	.host-label {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		display: block;
+		text-transform: none;
+		letter-spacing: 0;
+		font-family: var(--font-mono, monospace);
+	}
 	.version-options {
 		display: flex;
-		gap: var(--space-2);
-		flex-wrap: wrap;
+		gap: var(--space-1);
+		flex-direction: column;
 	}
 	.version-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		padding: var(--space-1) var(--space-3);
 		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-full);
+		border-radius: var(--radius-2);
 		background: transparent;
 		color: var(--fg-subtle);
 		font-size: var(--text-xs);
@@ -1624,18 +1887,106 @@
 		cursor: pointer;
 		transition: all var(--motion-fast) var(--easing);
 		white-space: nowrap;
+		width: 100%;
+		text-align: left;
 	}
 	.version-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
 	.version-btn.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
 
+	/* Strategy name + profits layout */
+	.strategy-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		min-width: 0;
+	}
+	.profit-column-labels {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
+		padding: 0 var(--space-3);
+		margin-bottom: var(--space-1);
+	}
+	.profit-col-label {
+		font-size: 9px;
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		opacity: 0.5;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		width: 52px;
+		text-align: right;
+		flex-shrink: 0;
+	}
+	.strategy-profits {
+		margin-left: auto;
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-2);
+		font-size: 10px;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
+		flex-shrink: 0;
+	}
+	.profit-cell {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		width: 52px;
+		flex-shrink: 0;
+		gap: 1px;
+	}
+	.profit-val { white-space: nowrap; }
+	.profit-val.positive { color: #34d399; }
+	.profit-val.negative { color: #f87171; }
+	.profit-status {
+		font-size: 9px;
+		color: var(--fg-subtle);
+		opacity: 0.6;
+	}
+	.profit-status.pending { color: #fbbf24; opacity: 1; }
+	.profit-dir { font-size: 9px; margin-left: 1px; font-weight: var(--weight-semibold); }
+	.profit-dir.up { color: #34d399; }
+	.profit-dir.down { color: #f87171; }
+	.profit-meta {
+		font-size: 8px;
+		color: var(--fg-subtle);
+		opacity: 0.5;
+		white-space: nowrap;
+	}
+
+	/* Refresh button */
+	.profit-refresh-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border: none;
+		border-radius: var(--radius-1);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		margin-left: auto;
+	}
+	.profit-refresh-btn:hover {
+		color: var(--fg-muted);
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.profit-refresh-btn:active svg {
+		transform: rotate(180deg);
+		transition: transform 0.3s var(--easing);
+	}
+
 	/* Custom strategy elements */
 	.custom-strategy-row {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: 2px;
 	}
 	.custom-version-btn {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 	}
@@ -1709,7 +2060,7 @@
 		max-width: 420px;
 		padding: var(--space-8, 2rem) var(--space-7, 1.75rem) var(--space-6);
 		border-radius: 16px;
-		background: rgba(30, 30, 34, 0.92);
+		background: rgba(30, 30, 34, 0.98);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
 		text-align: center;
@@ -1907,12 +2258,30 @@
 		border-radius: var(--radius-lg);
 		margin-bottom: var(--space-4);
 	}
+	.strategy-info-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		margin-bottom: var(--space-3);
+		flex-wrap: wrap;
+	}
 	.strategy-info-name {
 		font-size: var(--text-sm);
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
-		margin: 0 0 var(--space-3);
+		margin: 0;
 	}
+	.strategy-article-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+	.strategy-article-link:hover { color: var(--accent); }
 	.strategy-summary-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1922,6 +2291,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+	}
+	.strategy-summary-item.summary-wide {
+		grid-column: 1 / -1;
 	}
 	.strategy-summary-label {
 		font-size: var(--text-xs);
@@ -2447,7 +2819,9 @@
 
 	/* Filter Bar */
 	.filter-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; }
+	.filter-row { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
 	.filter-group { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+	.filter-sep { color: var(--fg-subtle); opacity: 0.3; font-size: var(--text-xs); user-select: none; }
 	.filter-btn {
 		padding: var(--space-1) var(--space-3);
 		border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2461,6 +2835,13 @@
 	}
 	.filter-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
 	.filter-btn.active { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: var(--fg-base); }
+	.filter-count { margin-left: 4px; font-size: 10px; opacity: 0.6; }
+	.filter-wl { margin-left: 4px; font-size: 10px; }
+	.wl-w { color: var(--color-profit-positive, #34d399); }
+	.wl-l { color: var(--color-profit-negative, #f87171); margin-left: 2px; }
+	.filter-delta { margin-left: 3px; font-size: 10px; font-weight: var(--weight-semibold); }
+	.filter-delta.positive { color: var(--color-profit-positive, #34d399); }
+	.filter-delta.negative { color: var(--color-profit-negative, #f87171); }
 
 	/* Refresh Button */
 	.refresh-btn {
@@ -2507,6 +2888,10 @@
 		color: var(--fg-muted);
 		font-family: var(--font-mono, ui-monospace, monospace);
 		flex: 1;
+	}
+	.round-local-date {
+		color: var(--fg-subtle);
+		margin-right: var(--space-1);
 	}
 
 	.round-badge {
@@ -2682,6 +3067,10 @@
 	:global([data-theme="light"]) .version-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .version-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .version-btn.active { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .profit-val.positive { color: #059669; }
+	:global([data-theme="light"]) .profit-val.negative { color: #dc2626; }
+	:global([data-theme="light"]) .profit-status.pending { color: #d97706; }
+	:global([data-theme="light"]) .profit-refresh-btn:hover { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .comparison-toggle-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .comparison-toggle-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .comparison-table th,
@@ -2695,8 +3084,8 @@
 	:global([data-theme="light"]) .pnl-row.cost .pnl-value { color: #dc2626; }
 	:global([data-theme="light"]) .pnl-row.income .pnl-value { color: #059669; }
 	:global([data-theme="light"]) .pnl-row.hedge-info .pnl-value { color: #d97706; }
-	:global([data-theme="light"]) .modal-overlay { background: rgba(0, 0, 0, 0.3); }
-	:global([data-theme="light"]) .modal { background: rgba(255, 255, 255, 0.95); border-color: rgba(0, 0, 0, 0.08); box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04) inset; }
+	:global([data-theme="light"]) .modal-overlay { background: rgba(0, 0, 0, 0.4); }
+	:global([data-theme="light"]) .modal { background: #fff; border-color: rgba(0, 0, 0, 0.08); box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04) inset; }
 	:global([data-theme="light"]) .modal-close { background: rgba(0, 0, 0, 0.04); color: rgba(0, 0, 0, 0.4); }
 	:global([data-theme="light"]) .modal-close:hover { background: rgba(0, 0, 0, 0.08); color: rgba(0, 0, 0, 0.6); }
 	:global([data-theme="light"]) .modal-icon { background: rgba(0, 0, 0, 0.04); }
@@ -2712,6 +3101,8 @@
 	:global([data-theme="light"]) .step-spinner { border-color: rgba(0, 0, 0, 0.1); border-top-color: var(--accent); }
 	:global([data-theme="light"]) .disclaimer-live { background: rgba(220, 38, 38, 0.06); border-color: rgba(220, 38, 38, 0.15); }
 	:global([data-theme="light"]) .disclaimer-live svg { color: #dc2626; }
+	:global([data-theme="light"]) .sidebar { scrollbar-color: rgba(0, 0, 0, 0.08) transparent; }
+	:global([data-theme="light"]) .sidebar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
 
 	/* Responsive */
 	@media (max-width: 768px) {

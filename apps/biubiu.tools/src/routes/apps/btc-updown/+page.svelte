@@ -161,7 +161,7 @@
 	let strategyInfo = $state<StrategyInfo | null>(null);
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	interface StrategyProfitData {
-		current: { status: 'settled'; profit: number } | { status: 'skipped' | 'entered' | 'watching' };
+		current: { status: 'settled'; profit: number; direction: string | null } | { status: 'entered'; direction: string | null } | { status: 'skipped' | 'watching' };
 		hour: { profit: number; rounds: number; winRate: number };
 		day: { profit: number; rounds: number; winRate: number };
 	}
@@ -535,10 +535,10 @@
 		const round = data?.round ?? null;
 		if (!round) return { status: 'watching' };
 		if (round.status === 'settled') {
-			return { status: 'settled', profit: round.total_profit ?? 0 };
+			return { status: 'settled', profit: round.total_profit ?? 0, direction: round.entry_direction };
 		}
 		if (round.status === 'skipped') return { status: 'skipped' };
-		if (round.status === 'entered') return { status: 'entered' };
+		if (round.status === 'entered') return { status: 'entered', direction: round.entry_direction };
 		return { status: 'watching' };
 	}
 
@@ -984,10 +984,12 @@
 			<span class="profit-cell">
 				{#if profits.current.status === 'settled'}
 					<span class="profit-val" class:positive={profits.current.profit >= 0} class:negative={profits.current.profit < 0}>{profits.current.profit >= 0 ? '+' : ''}{Math.round(profits.current.profit)}</span>
+					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
 				{:else if profits.current.status === 'skipped'}
 					<span class="profit-status">{t('btcUpdown.strategy.statusSkip')}</span>
 				{:else if profits.current.status === 'entered'}
 					<span class="profit-status pending">{t('btcUpdown.strategy.statusWait')}</span>
+					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
 				{:else}
 					<span class="profit-status">{t('btcUpdown.strategy.statusWatch')}</span>
 				{/if}
@@ -1943,6 +1945,9 @@
 		opacity: 0.6;
 	}
 	.profit-status.pending { color: #fbbf24; opacity: 1; }
+	.profit-dir { font-size: 9px; margin-left: 1px; font-weight: var(--weight-semibold); }
+	.profit-dir.up { color: #34d399; }
+	.profit-dir.down { color: #f87171; }
 	.profit-meta {
 		font-size: 8px;
 		color: var(--fg-subtle);

@@ -2208,13 +2208,13 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-		padding: 0 var(--space-3);
+		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: var(--space-1);
 	}
 	.profit-col-nav {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
+		align-items: flex-end; /* match profit-cell right-alignment */
 		width: 52px;
 		flex-shrink: 0;
 		gap: 0;

@@ -890,6 +890,29 @@
 		fetchAllStrategyProfits();
 	}
 
+	/** Jump main content filters to the date/hour the sidebar column is showing */
+	function jumpToColumnContext(column: 'round' | 'hour' | 'day') {
+		if (column === 'day' && profitDayOffset !== 0) {
+			const d = new Date();
+			d.setDate(d.getDate() + profitDayOffset);
+			filterDate = d.toLocaleDateString('en-CA');
+			selectedHour = null;
+			onDateChange();
+		} else if (column === 'hour' && profitHourOffset !== 0) {
+			const d = new Date();
+			d.setMinutes(0, 0, 0);
+			d.setHours(d.getHours() + profitHourOffset);
+			// Set date to that hour's date (could be yesterday if offset crosses midnight)
+			filterDate = d.toLocaleDateString('en-CA');
+			selectedHour = d.getHours();
+			onDateChange();
+		} else if (column === 'round' && profitRoundOffset !== 0) {
+			// For round, jump to the rounds tab and set page to the offset
+			roundsPage = Math.abs(profitRoundOffset);
+			fetchRounds();
+		}
+	}
+
 	function getProfitColumnLabel(column: 'round' | 'hour' | 'day'): string {
 		if (column === 'round') {
 			if (profitRoundOffset === 0) return t('btcUpdown.strategy.profitLast');
@@ -897,11 +920,17 @@
 		}
 		if (column === 'hour') {
 			if (profitHourOffset === 0) return t('btcUpdown.strategy.profit1h');
-			return `${profitHourOffset}h`;
+			// Show actual hour, e.g. "14:00"
+			const d = new Date();
+			d.setMinutes(0, 0, 0);
+			d.setHours(d.getHours() + profitHourOffset);
+			return `${String(d.getHours()).padStart(2, '0')}:00`;
 		}
 		if (profitDayOffset === 0) return t('btcUpdown.strategy.profitToday');
-		if (profitDayOffset === -1) return locale.value === 'zh' ? '昨日' : 'Yday';
-		return `${profitDayOffset}d`;
+		// Show actual date, e.g. "03/15"
+		const d = new Date();
+		d.setDate(d.getDate() + profitDayOffset);
+		return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 	}
 
 	function onDateChange() {
@@ -1299,7 +1328,14 @@
 					<button class="col-nav-btn" onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', -1)}>
 						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5L4 2L7 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 					</button>
-					<span class="profit-col-label" class:offset-active={offset !== 0} onclick={() => offset !== 0 && resetProfitColumn(col as 'round' | 'hour' | 'day')} role={offset !== 0 ? 'button' : undefined} tabindex={offset !== 0 ? 0 : undefined}>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
+					<span
+					class="profit-col-label"
+					class:offset-active={offset !== 0}
+					onclick={() => offset !== 0 && jumpToColumnContext(col as 'round' | 'hour' | 'day')}
+					role={offset !== 0 ? 'button' : undefined}
+					tabindex={offset !== 0 ? 0 : undefined}
+					title={offset !== 0 ? (locale.value === 'zh' ? '点击跳转查看' : 'Click to view') : ''}
+				>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
 					<button class="col-nav-btn" disabled={offset === 0} onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', 1)}>
 						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 3L4 6L7 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 					</button>
@@ -1463,6 +1499,9 @@
 		</svg>
 		<span>{t(strategyInfo?.mode === 'live' ? 'btcUpdown.disclaimer.live' : 'btcUpdown.disclaimer.simulation')}</span>
 	</div>
+
+	<!-- Data section (wrapped for mobile reordering – appears after live feed on mobile) -->
+	<div class="main-data">
 
 	<!-- Date Filter -->
 	<div class="date-filter glass-card" use:fadeInUp={{ delay: 40 }}>
@@ -1823,6 +1862,8 @@
 			{/if}
 		{/if}
 
+	</div><!-- /.main-data -->
+
 	</div><!-- /.main-content -->
 
 	<!-- Right sidebar: Live Feed (3-col: sticky sidebar, 2-col/mobile: below main) -->
@@ -2015,67 +2056,92 @@
 	.page-layout {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-4);
 	}
 	.sidebar { display: contents; }
 	.main-content { display: contents; }
 	.live-sidebar { display: contents; }
+	/* Live feed appears above date filter: main-data pushed after live-sidebar children */
+	.main-data {
+		order: 1;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
 
-	/* 2-column: sidebar + main (live sidebar flows below main) */
+	/* 2-column: sidebar sticky col 1, content + live feed in col 2 */
 	@media (min-width: 1280px) {
 		main.page { max-width: 1320px; }
 		.page-layout {
 			display: grid;
 			grid-template-columns: 380px 1fr;
-			gap: 0 var(--space-6);
+			gap: var(--space-4) var(--space-6);
 			align-items: start;
 		}
 		.sidebar {
 			display: flex;
 			flex-direction: column;
+			grid-column: 1;
+			grid-row: 1 / span 20;
 			position: sticky;
-			top: 76px;
-			max-height: calc(100vh - 76px - var(--space-6));
+			top: 150px;
+			max-height: calc(100vh - 150px - var(--space-6));
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 		}
 		.sidebar::-webkit-scrollbar { width: 4px; }
 		.sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
-		.main-content {
-			display: flex;
-			flex-direction: column;
-			min-width: 0;
-		}
-		.live-sidebar {
-			display: flex;
-			flex-direction: column;
-			grid-column: 2;
-		}
+		/* main-content + live-sidebar stay display:contents; children placed in col 2 */
+		.main-content > *, .live-sidebar > * { grid-column: 2; }
 		.sidebar .version-selector { margin-bottom: 0; }
 	}
 
-	/* 3-column: sidebar + main + live feed */
+	/* 3-column: restore main-content as block, live-sidebar as sticky col 3 */
 	@media (min-width: 1600px) {
 		main.page { max-width: 1680px; }
 		.page-layout {
 			grid-template-columns: 340px 1fr 340px;
 		}
+		.main-content {
+			display: flex;
+			flex-direction: column;
+			min-width: 0;
+			grid-column: 2;
+			gap: var(--space-4);
+		}
+		.main-content > * { grid-column: unset; }
+		.main-data { order: unset; }
 		.live-sidebar {
+			display: flex;
+			flex-direction: column;
 			grid-column: 3;
 			grid-row: 1 / -1;
 			position: sticky;
-			top: 76px;
-			max-height: calc(100vh - 76px - var(--space-6));
+			top: 150px;
+			max-height: calc(100vh - 150px - var(--space-6));
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+			gap: var(--space-4);
 		}
+		.live-sidebar > * { grid-column: unset; }
 		.live-sidebar::-webkit-scrollbar { width: 4px; }
 		.live-sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 	}
 
 	/* Header */
 	.page-header { margin-bottom: var(--space-6); }
+	@media (min-width: 1280px) {
+		.page-header {
+			position: sticky;
+			top: 60px;
+			z-index: var(--z-sticky, 10);
+			background: var(--bg-base);
+			padding-bottom: var(--space-4);
+			margin-bottom: var(--space-2);
+		}
+	}
 
 	.title-row {
 		display: flex;
@@ -2246,6 +2312,9 @@
 		color: var(--accent, #60a5fa);
 		opacity: 0.9;
 		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-style: dotted;
+		text-underline-offset: 2px;
 	}
 	.strategy-profits {
 		margin-left: auto;

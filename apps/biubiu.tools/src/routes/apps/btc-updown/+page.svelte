@@ -187,6 +187,10 @@
 			}, new Map<string, StrategyEndpoint[]>())
 		)
 	);
+	// Sidebar profit column navigation offsets (0 = current, -1 = previous, etc.)
+	let profitRoundOffset = $state(0);
+	let profitHourOffset = $state(0);
+	let profitDayOffset = $state(0);
 	let showComparison = $state(false);
 	// Custom strategy UI state
 	let showAddStrategy = $state(false);
@@ -559,31 +563,63 @@
 
 	async function fetchAllStrategyProfits() {
 		const now = Date.now();
-		// Current hour start: truncate minutes/seconds/ms from local time
 		const localOffset = new Date(now).getTimezoneOffset() * 60_000;
 		const localMs = now - localOffset;
-		const hourStartMs = localMs - (localMs % 3_600_000) + localOffset;
 
-		const hourFrom = toUTCString(new Date(hourStartMs));
-		const dayFrom = toUTCString(new Date(`${todayLocal()}T00:00:00`));
-		const to = toUTCString(new Date(now));
+		// Hour range with offset
+		const currentHourStartMs = localMs - (localMs % 3_600_000) + localOffset;
+		const hourShift = profitHourOffset * 3_600_000;
+		const hourFrom = toUTCString(new Date(currentHourStartMs + hourShift));
+		const hourTo = profitHourOffset === 0
+			? toUTCString(new Date(now))
+			: toUTCString(new Date(currentHourStartMs + hourShift + 3_600_000));
+
+		// Day range with offset
+		const todayStart = new Date(`${todayLocal()}T00:00:00`).getTime();
+		const dayShift = profitDayOffset * 86_400_000;
+		const dayFrom = toUTCString(new Date(todayStart + dayShift));
+		const dayTo = profitDayOffset === 0
+			? toUTCString(new Date(now))
+			: toUTCString(new Date(todayStart + dayShift + 86_400_000));
+
+		// Round offset: 0 = current, negative = historical page
+		const roundPage = Math.abs(profitRoundOffset);
 
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				try {
 					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
-					const [hourRes, dayRes, curRes] = await Promise.all([
-						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(to)}`),
-						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(to)}`),
-						f(`${s.baseUrl}/rounds/current`),
+					const roundPromise = profitRoundOffset === 0
+						? f(`${s.baseUrl}/rounds/current`)
+						: f(`${s.baseUrl}/rounds?page=${roundPage}&pageSize=1`);
+					const [hourRes, dayRes, roundRes] = await Promise.all([
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`),
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`),
+						roundPromise,
 					]);
 					const hourStats = hourRes.ok ? await hourRes.json() : null;
 					const dayStats = dayRes.ok ? await dayRes.json() : null;
-					const curData: CurrentRoundResponse | null = curRes.ok ? await curRes.json() : null;
+					let current: StrategyProfitData['current'];
+					if (profitRoundOffset === 0) {
+						const curData: CurrentRoundResponse | null = roundRes.ok ? await roundRes.json() : null;
+						current = parseCurrentRound(curData);
+					} else {
+						const data = roundRes.ok ? await roundRes.json() : null;
+						const row = data?.rows?.[0] ?? null;
+						if (row && row.status === 'settled') {
+							current = { status: 'settled', profit: row.total_profit ?? 0, direction: row.entry_direction };
+						} else if (row && row.status === 'skipped') {
+							current = { status: 'skipped' };
+						} else if (row && row.status === 'entered') {
+							current = { status: 'entered', direction: row.entry_direction };
+						} else {
+							current = { status: 'watching' };
+						}
+					}
 					return {
 						id: s.id,
 						profits: {
-							current: parseCurrentRound(curData),
+							current,
 							hour: parseStats(hourStats),
 							day: parseStats(dayStats),
 						} as StrategyProfitData,
@@ -739,6 +775,44 @@
 		fetchAllStrategyProfits();
 	}
 
+	function navigateProfitColumn(column: 'round' | 'hour' | 'day', dir: -1 | 1) {
+		if (column === 'round') {
+			const next = profitRoundOffset + dir;
+			if (next > 0) return;
+			profitRoundOffset = next;
+		} else if (column === 'hour') {
+			const next = profitHourOffset + dir;
+			if (next > 0) return;
+			profitHourOffset = next;
+		} else {
+			const next = profitDayOffset + dir;
+			if (next > 0) return;
+			profitDayOffset = next;
+		}
+		fetchAllStrategyProfits();
+	}
+
+	function resetProfitColumn(column: 'round' | 'hour' | 'day') {
+		if (column === 'round') profitRoundOffset = 0;
+		else if (column === 'hour') profitHourOffset = 0;
+		else profitDayOffset = 0;
+		fetchAllStrategyProfits();
+	}
+
+	function getProfitColumnLabel(column: 'round' | 'hour' | 'day'): string {
+		if (column === 'round') {
+			if (profitRoundOffset === 0) return t('btcUpdown.strategy.profitLast');
+			return `${profitRoundOffset}`;
+		}
+		if (column === 'hour') {
+			if (profitHourOffset === 0) return t('btcUpdown.strategy.profit1h');
+			return `${profitHourOffset}h`;
+		}
+		if (profitDayOffset === 0) return t('btcUpdown.strategy.profitToday');
+		if (profitDayOffset === -1) return locale.value === 'zh' ? '昨日' : 'Yday';
+		return `${profitDayOffset}d`;
+	}
+
 	function onDateChange() {
 		roundsPage = 1;
 		selectedHour = null;
@@ -835,10 +909,14 @@
 		}
 	});
 
-	// Auto-refresh strategy profits every 60s
+	// Auto-refresh strategy profits every 60s (only when viewing current data)
 	$effect(() => {
 		if (browser) {
-			const interval = setInterval(() => { fetchAllStrategyProfits(); }, 60_000);
+			const interval = setInterval(() => {
+				if (profitRoundOffset === 0 && profitHourOffset === 0 && profitDayOffset === 0) {
+					fetchAllStrategyProfits();
+				}
+			}, 60_000);
 			return () => clearInterval(interval);
 		}
 	});
@@ -1111,9 +1189,18 @@
 			</button>
 		</div>
 		<div class="profit-column-labels">
-			<span class="profit-col-label">{t('btcUpdown.strategy.profitLast')}</span>
-			<span class="profit-col-label">{t('btcUpdown.strategy.profit1h')}</span>
-			<span class="profit-col-label">{t('btcUpdown.strategy.profitToday')}</span>
+			{#each ['round', 'hour', 'day'] as col (col)}
+				{@const offset = col === 'round' ? profitRoundOffset : col === 'hour' ? profitHourOffset : profitDayOffset}
+				<div class="profit-col-nav">
+					<button class="col-nav-btn" onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', -1)}>
+						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5L4 2L7 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					</button>
+					<span class="profit-col-label" class:offset-active={offset !== 0} onclick={() => offset !== 0 && resetProfitColumn(col as 'round' | 'hour' | 'day')} role={offset !== 0 ? 'button' : undefined} tabindex={offset !== 0 ? 0 : undefined}>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
+					<button class="col-nav-btn" disabled={offset === 0} onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', 1)}>
+						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 3L4 6L7 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					</button>
+				</div>
+			{/each}
 		</div>
 		<div class="version-header">
 			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
@@ -2039,6 +2126,30 @@
 		padding: 0 var(--space-3);
 		margin-bottom: var(--space-1);
 	}
+	.profit-col-nav {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 52px;
+		flex-shrink: 0;
+		gap: 0;
+	}
+	.col-nav-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 10px;
+		padding: 0;
+		background: none;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0.3;
+		transition: opacity 0.15s;
+	}
+	.col-nav-btn:hover:not(:disabled) { opacity: 0.8; }
+	.col-nav-btn:disabled { opacity: 0.1; cursor: default; }
 	.profit-col-label {
 		font-size: 9px;
 		font-weight: var(--weight-medium);
@@ -2046,9 +2157,15 @@
 		opacity: 0.5;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		width: 52px;
-		text-align: right;
+		text-align: center;
 		flex-shrink: 0;
+		white-space: nowrap;
+		user-select: none;
+	}
+	.profit-col-label.offset-active {
+		color: var(--accent, #60a5fa);
+		opacity: 0.9;
+		cursor: pointer;
 	}
 	.strategy-profits {
 		margin-left: auto;

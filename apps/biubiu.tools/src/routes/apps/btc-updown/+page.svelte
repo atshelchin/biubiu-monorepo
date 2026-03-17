@@ -890,6 +890,29 @@
 		fetchAllStrategyProfits();
 	}
 
+	/** Jump main content filters to the date/hour the sidebar column is showing */
+	function jumpToColumnContext(column: 'round' | 'hour' | 'day') {
+		if (column === 'day' && profitDayOffset !== 0) {
+			const d = new Date();
+			d.setDate(d.getDate() + profitDayOffset);
+			filterDate = d.toLocaleDateString('en-CA');
+			selectedHour = null;
+			onDateChange();
+		} else if (column === 'hour' && profitHourOffset !== 0) {
+			const d = new Date();
+			d.setMinutes(0, 0, 0);
+			d.setHours(d.getHours() + profitHourOffset);
+			// Set date to that hour's date (could be yesterday if offset crosses midnight)
+			filterDate = d.toLocaleDateString('en-CA');
+			selectedHour = d.getHours();
+			onDateChange();
+		} else if (column === 'round' && profitRoundOffset !== 0) {
+			// For round, jump to the rounds tab and set page to the offset
+			roundsPage = Math.abs(profitRoundOffset);
+			fetchRounds();
+		}
+	}
+
 	function getProfitColumnLabel(column: 'round' | 'hour' | 'day'): string {
 		if (column === 'round') {
 			if (profitRoundOffset === 0) return t('btcUpdown.strategy.profitLast');
@@ -897,11 +920,17 @@
 		}
 		if (column === 'hour') {
 			if (profitHourOffset === 0) return t('btcUpdown.strategy.profit1h');
-			return `${profitHourOffset}h`;
+			// Show actual hour, e.g. "14:00"
+			const d = new Date();
+			d.setMinutes(0, 0, 0);
+			d.setHours(d.getHours() + profitHourOffset);
+			return `${String(d.getHours()).padStart(2, '0')}:00`;
 		}
 		if (profitDayOffset === 0) return t('btcUpdown.strategy.profitToday');
-		if (profitDayOffset === -1) return locale.value === 'zh' ? '昨日' : 'Yday';
-		return `${profitDayOffset}d`;
+		// Show actual date, e.g. "03/15"
+		const d = new Date();
+		d.setDate(d.getDate() + profitDayOffset);
+		return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 	}
 
 	function onDateChange() {
@@ -1299,7 +1328,14 @@
 					<button class="col-nav-btn" onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', -1)}>
 						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5L4 2L7 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 					</button>
-					<span class="profit-col-label" class:offset-active={offset !== 0} onclick={() => offset !== 0 && resetProfitColumn(col as 'round' | 'hour' | 'day')} role={offset !== 0 ? 'button' : undefined} tabindex={offset !== 0 ? 0 : undefined}>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
+					<span
+					class="profit-col-label"
+					class:offset-active={offset !== 0}
+					onclick={() => offset !== 0 && jumpToColumnContext(col as 'round' | 'hour' | 'day')}
+					role={offset !== 0 ? 'button' : undefined}
+					tabindex={offset !== 0 ? 0 : undefined}
+					title={offset !== 0 ? (locale.value === 'zh' ? '点击跳转查看' : 'Click to view') : ''}
+				>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
 					<button class="col-nav-btn" disabled={offset === 0} onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', 1)}>
 						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 3L4 6L7 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 					</button>
@@ -2276,6 +2312,9 @@
 		color: var(--accent, #60a5fa);
 		opacity: 0.9;
 		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-style: dotted;
+		text-underline-offset: 2px;
 	}
 	.strategy-profits {
 		margin-left: auto;

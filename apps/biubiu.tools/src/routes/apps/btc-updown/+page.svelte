@@ -168,8 +168,10 @@
 		...[...discoveredSiblings.values()].flat().filter(s => visibleDiscoveredIds.has(s.id)),
 	]);
 	// Only visible strategies (for sidebar display, profits, comparison)
+	// Discovered siblings: visibility solely by visibleDiscoveredIds (already filtered in allKnownStrategies)
+	// Builtin/custom: visibility by hiddenStrategyIds (opt-out)
 	const allRegisteredStrategies = $derived(
-		allKnownStrategies.filter(s => !hiddenStrategyIds.has(s.id))
+		allKnownStrategies.filter(s => s.type === 'discovered' || !hiddenStrategyIds.has(s.id))
 	);
 	const activeStrategy = $derived(
 		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? allRegisteredStrategies[0] ?? builtinStrategies[0] ?? FALLBACK_STRATEGIES[0]
@@ -1288,7 +1290,7 @@
 		{#each customStrategiesByHost as [host, strategies] (host)}
 			{@const siblings = discoveredSiblings.get(host) ?? []}
 			{@const allHostStrategies = [...strategies, ...siblings.filter(s => visibleDiscoveredIds.has(s.id))]}
-			{@const visibleHostStrategies = allHostStrategies.filter(s => !hiddenStrategyIds.has(s.id))}
+			{@const visibleHostStrategies = allHostStrategies.filter(s => s.type === 'discovered' || !hiddenStrategyIds.has(s.id))}
 			{@const totalHostCount = strategies.length + siblings.length}
 			<div class="version-header custom-header">
 				<span class="version-type-label host-label" title={host}>{host}</span>

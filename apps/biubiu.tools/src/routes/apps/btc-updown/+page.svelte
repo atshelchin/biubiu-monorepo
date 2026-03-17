@@ -199,7 +199,6 @@
 	let profitRoundOffset = $state(0);
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
-	let showComparison = $state(false);
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
 	const hiddenBuiltinCount = $derived(builtinStrategies.filter(s => hiddenStrategyIds.has(s.id)).length);
@@ -1398,74 +1397,6 @@
 		</div>
 	{/if}
 
-	<!-- Strategy Comparison -->
-	<div class="comparison-toggle" use:fadeInUp={{ delay: 18 }}>
-		<button class="comparison-toggle-btn" onclick={() => (showComparison = !showComparison)}>
-			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-			</svg>
-			{showComparison ? t('btcUpdown.strategy.hideComparison') : t('btcUpdown.strategy.showComparison')}
-			<svg class="comparison-chevron" class:open={showComparison} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-		</button>
-	</div>
-	{#if showComparison}
-		<div class="comparison-table-wrapper glass-card" use:fadeInUp={{ delay: 0 }}>
-			<div class="comparison-scroll">
-				<table class="comparison-table">
-					<thead>
-						<tr>
-							<th></th>
-							{#each allRegisteredStrategies as s (s.id)}
-								<th class:active-col={activeStrategyId === s.id}>
-									<button class="comparison-version-btn" class:active={activeStrategyId === s.id} onclick={() => onStrategyChange(s.id)}>
-										{s.label}{#if s.type === 'custom'}<span class="custom-indicator">*</span>{/if}
-									</button>
-								</th>
-							{/each}
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.name')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								<td class:active-col={activeStrategyId === s.id}>{allStrategyInfos.get(s.id)?.name ?? '—'}</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.priceRange')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>{p ? `$${p.priceMin} - $${p.priceMax}` : '—'}</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.hedge')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>
-									{#if p}
-										<span class="hedge-badge" class:hedge-on={p.hedgingEnabled} class:hedge-off={!p.hedgingEnabled}>
-											{p.hedgingEnabled ? t('btcUpdown.strategy.enabled') : t('btcUpdown.strategy.disabled')}
-										</span>
-									{:else}
-										—
-									{/if}
-								</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.hedgeThreshold')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>{p?.hedgeSellThreshold ? `$${p.hedgeSellThreshold}` : '—'}</td>
-							{/each}
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
-	{/if}
-
 	<!-- Disclaimer -->
 	<div class="disclaimer" class:disclaimer-live={strategyInfo?.mode === 'live'} use:fadeInUp={{ delay: 30 }}>
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2326,8 +2257,6 @@
 		background: var(--accent);
 		flex-shrink: 0;
 	}
-	.custom-indicator { color: var(--accent); margin-left: 2px; }
-
 	/* Section config button (gear icon) */
 	.section-config-btn {
 		display: inline-flex;
@@ -2716,91 +2645,6 @@
 		color: var(--fg-base);
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
-
-	/* Comparison Toggle */
-	.comparison-toggle {
-		margin-bottom: var(--space-4);
-	}
-	.comparison-toggle-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--fg-subtle);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.comparison-toggle-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
-	.comparison-chevron { transition: transform var(--motion-fast) var(--easing); }
-	.comparison-chevron.open { transform: rotate(180deg); }
-
-	/* Comparison Table */
-	.comparison-table-wrapper {
-		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-6);
-		overflow: hidden;
-	}
-	.comparison-scroll {
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-	}
-	.comparison-table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: var(--text-xs);
-	}
-	.comparison-table th,
-	.comparison-table td {
-		padding: var(--space-2) var(--space-3);
-		text-align: center;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-		white-space: nowrap;
-	}
-	.comparison-table th {
-		font-weight: var(--weight-medium);
-		color: var(--fg-subtle);
-		padding-top: var(--space-3);
-	}
-	.comparison-table td {
-		color: var(--fg-muted);
-		font-family: var(--font-mono, ui-monospace, monospace);
-	}
-	.comparison-table .row-label {
-		text-align: left;
-		font-family: inherit;
-		color: var(--fg-subtle);
-		font-weight: var(--weight-medium);
-	}
-	.comparison-table .active-col {
-		background: rgba(255, 255, 255, 0.04);
-	}
-	.comparison-version-btn {
-		border: none;
-		background: transparent;
-		font-size: var(--text-xs);
-		font-weight: var(--weight-bold);
-		color: var(--fg-subtle);
-		cursor: pointer;
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.comparison-version-btn:hover { color: var(--fg-muted); }
-	.comparison-version-btn.active { color: var(--accent); }
-	.hedge-badge {
-		font-size: var(--text-xs);
-		padding: 1px var(--space-2);
-		border-radius: var(--radius-sm);
-		font-weight: var(--weight-medium);
-		font-family: inherit;
-	}
-	.hedge-on { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-	.hedge-off { background: rgba(255, 255, 255, 0.06); color: var(--fg-subtle); }
 
 	/* Strategy Banner */
 	.strategy-banner {
@@ -3504,13 +3348,6 @@
 	:global([data-theme="light"]) .config-panel { border-bottom-color: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .config-toggle-btn:hover { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .config-delete-btn:hover { background: rgba(239, 68, 68, 0.06); }
-	:global([data-theme="light"]) .comparison-toggle-btn { border-color: rgba(0, 0, 0, 0.08); }
-	:global([data-theme="light"]) .comparison-toggle-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
-	:global([data-theme="light"]) .comparison-table th,
-	:global([data-theme="light"]) .comparison-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
-	:global([data-theme="light"]) .comparison-table .active-col { background: rgba(0, 0, 0, 0.03); }
-	:global([data-theme="light"]) .hedge-on { background: rgba(16, 185, 129, 0.1); color: #059669; }
-	:global([data-theme="light"]) .hedge-off { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

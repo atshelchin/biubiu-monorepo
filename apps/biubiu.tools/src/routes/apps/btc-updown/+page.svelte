@@ -13,13 +13,16 @@
 		type StrategyEndpoint,
 		type StrategyInfo,
 		type ValidationProgress,
-		BUILTIN_STRATEGIES,
+		FALLBACK_STRATEGIES,
+		API_HOST,
 		generateCustomId,
 		normalizeStrategyUrl,
 		validateStrategyUrl,
 		strategyFetch,
 		loadPersistedState,
 		savePersistedState,
+		discoverStrategies,
+		getDiscoveryUrl,
 	} from '$lib/btc-updown-strategies';
 
 	const VALIDATE_STEP_KEYS = {
@@ -39,7 +42,7 @@
 	}
 
 	function getFetchFn(): (url: string) => Promise<Response> {
-		return activeStrategy.type === 'builtin' ? (url: string) => fetch(url) : strategyFetch;
+		return activeStrategy.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
 	}
 
 	// --- Types ---
@@ -152,11 +155,18 @@
 
 	// --- Reactive State ---
 
+	let builtinStrategies = $state<StrategyEndpoint[]>(FALLBACK_STRATEGIES);
 	let customStrategies = $state<StrategyEndpoint[]>([]);
+	let discoveredSiblings = new SvelteMap<string, StrategyEndpoint[]>();
+	let visibleDiscoveredIds = $state<Set<string>>(new Set());
 	let activeStrategyId = $state('builtin:v1');
-	const allRegisteredStrategies = $derived([...BUILTIN_STRATEGIES, ...customStrategies]);
+	const allRegisteredStrategies = $derived([
+		...builtinStrategies,
+		...customStrategies,
+		...[...discoveredSiblings.values()].flat().filter(s => visibleDiscoveredIds.has(s.id)),
+	]);
 	const activeStrategy = $derived(
-		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? BUILTIN_STRATEGIES[0]
+		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? builtinStrategies[0] ?? FALLBACK_STRATEGIES[0]
 	);
 	let strategyInfo = $state<StrategyInfo | null>(null);
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
@@ -517,7 +527,7 @@
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				try {
-					const f = s.type === 'builtin' ? fetch : strategyFetch;
+					const f = s.type === 'custom' ? strategyFetch : fetch;
 					const res = await f(`${s.baseUrl}/strategy?lang=${lang}`);
 					return { id: s.id, info: res.ok ? (await res.json()) as StrategyInfo : null };
 				} catch { return { id: s.id, info: null }; }
@@ -561,7 +571,7 @@
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				try {
-					const f = s.type === 'builtin' ? (url: string) => fetch(url) : strategyFetch;
+					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
 					const [hourRes, dayRes, curRes] = await Promise.all([
 						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(to)}`),
 						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(to)}`),
@@ -615,7 +625,7 @@
 	}
 
 	function persistState() {
-		savePersistedState({ customStrategies, activeStrategyId });
+		savePersistedState({ customStrategies, visibleDiscoveredIds: [...visibleDiscoveredIds], activeStrategyId });
 	}
 
 	async function addCustomStrategy() {
@@ -661,16 +671,72 @@
 		persistState();
 		onStrategyChange(newStrategy.id);
 		fetchAllStrategies();
+		// Probe for sibling strategies on the same server
+		probeServerSiblings(url);
+	}
+
+	async function probeServerSiblings(strategyUrl: string) {
+		const disc = getDiscoveryUrl(strategyUrl);
+		if (!disc) return;
+		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const result = await discoverStrategies(disc.origin, disc.path, lang, strategyFetch);
+		if (!result) return;
+		const host = new URL(strategyUrl).host;
+		// Filter out strategies already in custom or builtin lists
+		const knownUrls = new Set(allRegisteredStrategies.map(s => s.baseUrl));
+		const siblings = result.strategies.filter(s => !knownUrls.has(s.baseUrl));
+		if (siblings.length > 0) {
+			discoveredSiblings.set(host, siblings);
+			// Also store their info
+			for (let i = 0; i < result.strategies.length; i++) {
+				const s = result.strategies[i];
+				if (siblings.some(sib => sib.id === s.id)) {
+					allStrategyInfos.set(s.id, result.raw[i]);
+				}
+			}
+		}
 	}
 
 	function removeCustomStrategy(id: string) {
+		const removed = customStrategies.find(s => s.id === id);
 		customStrategies = customStrategies.filter(s => s.id !== id);
+		// If no more custom strategies from this host, remove its discovered siblings
+		if (removed) {
+			try {
+				const host = new URL(removed.baseUrl).host;
+				const remaining = customStrategies.filter(s => {
+					try { return new URL(s.baseUrl).host === host; } catch { return false; }
+				});
+				if (remaining.length === 0) {
+					// Remove sibling visibility and siblings
+					const siblings = discoveredSiblings.get(host) ?? [];
+					for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
+					visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+					discoveredSiblings.delete(host);
+				}
+			} catch { /* ignore */ }
+		}
 		if (activeStrategyId === id) {
-			activeStrategyId = 'builtin:v1';
-			onStrategyChange('builtin:v1');
+			activeStrategyId = builtinStrategies[0]?.id ?? 'builtin:v1';
+			onStrategyChange(activeStrategyId);
 		}
 		persistState();
 		fetchAllStrategies();
+	}
+
+	function toggleDiscoveredVisibility(id: string) {
+		if (visibleDiscoveredIds.has(id)) {
+			visibleDiscoveredIds.delete(id);
+			visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+			if (activeStrategyId === id) {
+				onStrategyChange(builtinStrategies[0]?.id ?? 'builtin:v1');
+			}
+		} else {
+			visibleDiscoveredIds.add(id);
+			visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+		}
+		persistState();
+		fetchAllStrategyProfits();
 	}
 
 	function onDateChange() {
@@ -689,16 +755,47 @@
 				// Load persisted state
 				const persisted = loadPersistedState();
 				customStrategies = persisted.customStrategies;
+				visibleDiscoveredIds = new Set(persisted.visibleDiscoveredIds ?? []);
 				activeStrategyId = persisted.activeStrategyId;
-				// Validate active strategy exists
-				if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
-					activeStrategyId = 'builtin:v1';
-				}
+
 				// Default to today's date
 				filterDate = todayLocal();
+
+				// Discover default server strategies (replaces hardcoded list)
+				const lang = locale.value === 'zh' ? 'zh' : 'en';
+				discoverStrategies(API_HOST, '/api/strategies', lang).then((result) => {
+					if (result) {
+						builtinStrategies = result.strategies.map(s => ({
+							...s,
+							id: `builtin:${s.label}`,
+							type: 'builtin' as const,
+						}));
+						// Populate strategy infos from discovery
+						for (let i = 0; i < result.strategies.length; i++) {
+							allStrategyInfos.set(`builtin:${result.strategies[i].label}`, result.raw[i]);
+						}
+					}
+					// Validate active strategy exists (after discovery resolves)
+					if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
+						activeStrategyId = builtinStrategies[0]?.id ?? 'builtin:v1';
+					}
+					fetchAllStrategyProfits();
+				});
+
+				// Re-probe siblings for custom servers
+				const customHosts = new Set<string>();
+				for (const s of customStrategies) {
+					try { customHosts.add(new URL(s.baseUrl).host); } catch { /* ignore */ }
+				}
+				for (const host of customHosts) {
+					const sample = customStrategies.find(s => {
+						try { return new URL(s.baseUrl).host === host; } catch { return false; }
+					});
+					if (sample) probeServerSiblings(sample.baseUrl);
+				}
+
 				connectSSE();
 				fetchCurrentRound();
-				fetchAllStrategyProfits();
 				fetchStrategyStart().then(() => {
 					fetchStats();
 					fetchHourly();
@@ -1022,7 +1119,7 @@
 			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
 		</div>
 		<div class="version-options">
-			{#each BUILTIN_STRATEGIES as s (s.id)}
+			{#each builtinStrategies as s (s.id)}
 				{@const profits = allStrategyProfits.get(s.id)}
 				<button
 					class="version-btn"
@@ -1037,8 +1134,12 @@
 			{/each}
 		</div>
 		{#each customStrategiesByHost as [host, strategies] (host)}
+			{@const siblings = discoveredSiblings.get(host) ?? []}
 			<div class="version-header custom-header">
 				<span class="version-type-label host-label" title={host}>{host}</span>
+				{#if siblings.length > 0}
+					<span class="sibling-count">{t('btcUpdown.strategy.siblings', { count: siblings.length })}</span>
+				{/if}
 			</div>
 			<div class="version-options">
 				{#each strategies as s (s.id)}
@@ -1057,6 +1158,37 @@
 						</button>
 						<button class="custom-remove-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
 							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+						</button>
+					</div>
+				{/each}
+				{#each siblings as sib (sib.id)}
+					{@const isVisible = visibleDiscoveredIds.has(sib.id)}
+					{@const profits = isVisible ? allStrategyProfits.get(sib.id) : null}
+					<div class="custom-strategy-row discovered-row" class:discovered-hidden={!isVisible}>
+						{#if isVisible}
+							<button
+								class="version-btn custom-version-btn"
+								class:active={activeStrategyId === sib.id}
+								onclick={() => onStrategyChange(sib.id)}
+							>
+								<span class="strategy-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
+								{#if profits}
+									{@render profitCells(profits)}
+								{/if}
+							</button>
+						{:else}
+							<span class="discovered-label">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
+						{/if}
+						<button
+							class="discovered-toggle-btn"
+							onclick={() => toggleDiscoveredVisibility(sib.id)}
+							title={isVisible ? t('btcUpdown.strategy.hideAll') : t('btcUpdown.strategy.showAll')}
+						>
+							{#if isVisible}
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+							{:else}
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+							{/if}
 						</button>
 					</div>
 				{/each}
@@ -1458,7 +1590,7 @@
 				<div class="filter-group">
 					{#each [
 						{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds ?? null },
-						{ value: 'entered', label: t('btcUpdown.filter.entered'), count: stats?.entered ?? null },
+						{ value: 'entered', label: t('btcUpdown.filter.entered'), count: stats ? stats.entered - stats.wins - stats.losses : null },
 						{ value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null },
 						{ value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped ?? null },
 					] as filter (filter.value)}
@@ -2014,6 +2146,43 @@
 	.custom-strategy-row:hover .custom-remove-btn { opacity: 1; }
 	.custom-remove-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 	.custom-indicator { color: var(--accent); margin-left: 2px; }
+
+	/* Discovered siblings */
+	.sibling-count {
+		font-size: 10px;
+		opacity: 0.5;
+		margin-left: auto;
+	}
+	.discovered-row.discovered-hidden {
+		opacity: 0.45;
+	}
+	.discovered-label {
+		flex: 1;
+		min-width: 0;
+		padding: 4px 6px;
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.discovered-toggle-btn {
+		flex-shrink: 0;
+		padding: 4px;
+		background: none;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0.5;
+		border-radius: var(--radius-sm);
+		transition: opacity 0.15s, color 0.15s;
+	}
+	.discovered-toggle-btn:hover {
+		opacity: 1;
+		color: var(--fg-default);
+		background: rgba(255, 255, 255, 0.05);
+	}
+	.discovered-row:hover .discovered-toggle-btn { opacity: 0.8; }
 
 	/* Add Strategy Button */
 	.add-strategy-btn {

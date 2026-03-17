@@ -14,6 +14,7 @@
 		type StrategyInfo,
 		type ValidationProgress,
 		FALLBACK_STRATEGIES,
+		DEFAULT_VISIBLE_BUILTINS,
 		API_HOST,
 		generateCustomId,
 		normalizeStrategyUrl,
@@ -47,7 +48,7 @@
 
 	// --- Types ---
 
-	type TabType = 'live' | 'history';
+
 	type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 	type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
 	type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';
@@ -209,7 +210,6 @@
 	let customUrlValidating = $state(false);
 	let validationSteps = $state<ValidationProgress[]>([]);
 
-	let activeTab = $state<TabType>('live');
 	let connectionStatus = $state<ConnectionStatus>('disconnected');
 	let events = $state<SSEEvent[]>([]);
 	let stats = $state<Stats | null>(null);
@@ -277,7 +277,7 @@
 		if (eventType === 'settlement' || eventType === 'round_skip') {
 			fetchStats();
 			fetchCurrentRound();
-			if (activeTab === 'history') fetchRounds();
+			fetchRounds();
 		} else if (eventType === 'round_start' || eventType === 'entry') {
 			fetchCurrentRound();
 		}
@@ -677,7 +677,7 @@
 			fetchStats();
 			fetchHourly();
 		});
-		if (activeTab === 'history') fetchRounds();
+		fetchRounds();
 	}
 
 	function persistState() {
@@ -909,7 +909,7 @@
 		selectedHour = null;
 		fetchStats();
 		fetchHourly();
-		if (activeTab === 'history') fetchRounds();
+		fetchRounds();
 	}
 
 	// --- Effects ---
@@ -921,6 +921,7 @@
 				const persisted = loadPersistedState();
 				customStrategies = persisted.customStrategies;
 				visibleDiscoveredIds = new Set(persisted.visibleDiscoveredIds ?? []);
+				const needsDefaultHidden = persisted.hiddenStrategyIds === null;
 				hiddenStrategyIds = new Set(persisted.hiddenStrategyIds ?? []);
 				activeStrategyId = persisted.activeStrategyId;
 
@@ -940,6 +941,14 @@
 						for (let i = 0; i < result.strategies.length; i++) {
 							allStrategyInfos.set(`builtin:${result.strategies[i].label}`, result.raw[i]);
 						}
+					}
+					// First visit: hide builtins not in DEFAULT_VISIBLE_BUILTINS
+					if (needsDefaultHidden) {
+						const toHide = builtinStrategies
+							.filter(s => !DEFAULT_VISIBLE_BUILTINS.has(s.label))
+							.map(s => s.id);
+						hiddenStrategyIds = new Set(toHide);
+						persistState();
 					}
 					// Validate active strategy exists (after discovery resolves)
 					if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
@@ -964,6 +973,7 @@
 
 				connectSSE();
 				fetchCurrentRound();
+				fetchRounds();
 				fetchStrategyStart().then(() => {
 					fetchStats();
 					fetchHourly();
@@ -984,7 +994,7 @@
 	});
 
 	$effect(() => {
-		if (browser && activeTab === 'history') {
+		if (browser) {
 			const _page = roundsPage;
 			const _filter = roundsFilter;
 			void signalActionFilter;
@@ -1253,12 +1263,12 @@
 			<span class="profit-cell">
 				{#if profits.current.status === 'settled'}
 					<span class="profit-val" class:positive={profits.current.profit >= 0} class:negative={profits.current.profit < 0}>{profits.current.profit >= 0 ? '+' : ''}{Math.round(profits.current.profit)}</span>
-					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
+					{#if profits.current.direction}<span class="profit-dir">{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
 				{:else if profits.current.status === 'skipped'}
 					<span class="profit-status">{t('btcUpdown.strategy.statusSkip')}</span>
 				{:else if profits.current.status === 'entered'}
 					<span class="profit-status pending">{t('btcUpdown.strategy.statusWait')}</span>
-					{#if profits.current.direction}<span class="profit-dir" class:up={profits.current.direction === 'Up'} class:down={profits.current.direction !== 'Up'}>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
+					{#if profits.current.direction}<span class="profit-dir">{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span>{/if}
 				{:else}
 					<span class="profit-status">{t('btcUpdown.strategy.statusWatch')}</span>
 				{/if}
@@ -1602,133 +1612,10 @@
 		</div>
 	{/if}
 
-	<!-- Tab Switcher -->
-	<div class="tab-switcher" use:fadeInUp={{ delay: 75 }}>
-		<button class="tab-btn" class:active={activeTab === 'live'} onclick={() => (activeTab = 'live')}>
-			{t('btcUpdown.tabLive')}
-			{#if events.length > 0}
-				<span class="tab-count">{events.length}</span>
-			{/if}
-		</button>
-		<button class="tab-btn" class:active={activeTab === 'history'} onclick={() => (activeTab = 'history')}>
-			{t('btcUpdown.tabHistory')}
-			{#if roundsTotal > 0}
-				<span class="tab-count">{roundsTotal}</span>
-			{/if}
-		</button>
+	<!-- ===== Round History ===== -->
+	<div class="history-header">
+		<h3 class="section-label">{t('btcUpdown.tabHistory')}</h3>
 	</div>
-
-	<!-- ===== Live Feed Tab ===== -->
-	{#if activeTab === 'live'}
-		<!-- Current Round Card -->
-		<section class="current-round glass-card" use:fadeInUp={{ delay: 100 }}>
-			<h3 class="section-label">{t('btcUpdown.live.currentRound')}</h3>
-			{#if currentRound}
-				<div class="current-round-header">
-					<a class="round-id-link" href="https://polymarket.com/event/{currentRound.market_slug}" target="_blank" rel="noopener noreferrer">#{currentRound.id}</a>
-					<span class="round-time-window">{formatTimeWindow(currentRound.event_start_time, currentRound.end_time)}</span>
-					<span class="round-badge {getRoundBadgeClass(currentRound)}">{getRoundStatusLabel(currentRound)}</span>
-				</div>
-				{#if currentRound.entry_direction}
-					<div class="current-round-body">
-						<div class="round-row">
-							<span class="round-label">{t('btcUpdown.round.direction')}</span>
-							<span class="round-value direction-tag direction-{currentRound.entry_direction.toLowerCase()}">{currentRound.entry_direction}</span>
-						</div>
-						{#if currentRound.entry_price_avg !== null}
-							<div class="round-row">
-								<span class="round-label">{t('btcUpdown.round.entryPrice')}</span>
-								<span class="round-value mono">${currentRound.entry_price_avg.toFixed(4)}</span>
-							</div>
-						{/if}
-						{#if currentRound.entry_shares !== null}
-							<div class="round-row">
-								<span class="round-label">{t('btcUpdown.round.shares')}</span>
-								<span class="round-value mono">{currentRound.entry_shares.toFixed(2)}</span>
-							</div>
-						{/if}
-						{#if currentRound.entry_cost !== null}
-							<div class="round-row">
-								<span class="round-label">{t('btcUpdown.round.cost')}</span>
-								<span class="round-value mono">${currentRound.entry_cost.toFixed(2)}</span>
-							</div>
-						{/if}
-						{#if currentRound.entry_time}
-							<div class="round-row">
-								<span class="round-label">{t('btcUpdown.round.entryTime')}</span>
-								<span class="round-value mono">{formatShortTimeET(currentRound.entry_time)} ET</span>
-							</div>
-						{/if}
-					</div>
-				{:else}
-					<p class="current-round-waiting">{t('btcUpdown.live.noActiveRoundDesc')}</p>
-				{/if}
-				<div class="round-row" style="margin-top: var(--space-2);">
-					<span class="round-label">{t('btcUpdown.round.countdown')}</span>
-					<span class="round-value mono countdown-value">{formatCountdown(currentRound.end_time, now)}</span>
-				</div>
-			{:else}
-				<p class="current-round-waiting">{t('btcUpdown.live.noActiveRound')}</p>
-			{/if}
-		</section>
-
-		<!-- Scan Status -->
-		{#if connectionStatus === 'connected'}
-			<div class="scan-status">
-				<span class="scan-dot"></span>
-				<span class="scan-text">{t('btcUpdown.listening')}</span>
-			</div>
-		{/if}
-
-		<!-- Events Feed -->
-		<section class="events-feed">
-			{#if events.length === 0}
-				<div class="empty-state" use:fadeInUp={{ delay: 150 }}>
-					<div class="empty-icon scanning">
-						<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-						</svg>
-					</div>
-					<h3 class="empty-title">{t('btcUpdown.noEvents')}</h3>
-					<p class="empty-desc">{t('btcUpdown.noEventsDesc')}</p>
-				</div>
-			{:else}
-				<div class="events-grid">
-					{#each events as event (event.id)}
-						<div in:fly={{ y: -24, duration: 350 }}>
-							<div class="event-card glass-card">
-								<div class="card-header">
-									<span class="card-time">{formatTimeET(event.timestamp)}</span>
-									<span class="card-type-badge {getEventColorClass(event.type)}-badge">
-										{getEventTypeLabel(event.type)}
-									</span>
-								</div>
-								<p class="event-message">{getEventMessage(event)}</p>
-
-								{#if event.type === 'settlement'}
-									{@const won = event.data.won}
-									{@const profit = event.data.totalProfit as number}
-									<div class="settlement-result" class:win={won} class:loss={!won}>
-										<span class="settlement-label">{won ? t('btcUpdown.round.win') : t('btcUpdown.round.loss')}</span>
-										<span class="settlement-profit">{formatProfit(profit)}</span>
-									</div>
-								{/if}
-
-								{#if event.type === 'entry'}
-									<div class="entry-details">
-										<span class="direction-tag direction-{(event.data.direction as string ?? '').toLowerCase()}">{event.data.direction}</span>
-									</div>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</section>
-	{/if}
-
-	<!-- ===== Round History Tab ===== -->
-	{#if activeTab === 'history'}
 		<div class="filter-bar">
 			<div class="filter-row">
 				<div class="filter-group">
@@ -1935,9 +1822,119 @@
 				</div>
 			{/if}
 		{/if}
-	{/if}
 
 	</div><!-- /.main-content -->
+
+	<!-- Right sidebar: Live Feed (3-col: sticky sidebar, 2-col/mobile: below main) -->
+	<aside class="live-sidebar">
+		<h3 class="live-sidebar-title">{t('btcUpdown.tabLive')}</h3>
+		<!-- Current Round Card -->
+		<section class="current-round glass-card" use:fadeInUp={{ delay: 100 }}>
+			<h3 class="section-label">{t('btcUpdown.live.currentRound')}</h3>
+			{#if currentRound}
+				<div class="current-round-header">
+					<a class="round-id-link" href="https://polymarket.com/event/{currentRound.market_slug}" target="_blank" rel="noopener noreferrer">#{currentRound.id}</a>
+					<span class="round-time-window">{formatTimeWindow(currentRound.event_start_time, currentRound.end_time)}</span>
+					<span class="round-badge {getRoundBadgeClass(currentRound)}">{getRoundStatusLabel(currentRound)}</span>
+				</div>
+				{#if currentRound.entry_direction}
+					<div class="current-round-body">
+						<div class="round-row">
+							<span class="round-label">{t('btcUpdown.round.direction')}</span>
+							<span class="round-value direction-tag direction-{currentRound.entry_direction.toLowerCase()}">{currentRound.entry_direction}</span>
+						</div>
+						{#if currentRound.entry_price_avg !== null}
+							<div class="round-row">
+								<span class="round-label">{t('btcUpdown.round.entryPrice')}</span>
+								<span class="round-value mono">${currentRound.entry_price_avg.toFixed(4)}</span>
+							</div>
+						{/if}
+						{#if currentRound.entry_shares !== null}
+							<div class="round-row">
+								<span class="round-label">{t('btcUpdown.round.shares')}</span>
+								<span class="round-value mono">{currentRound.entry_shares.toFixed(2)}</span>
+							</div>
+						{/if}
+						{#if currentRound.entry_cost !== null}
+							<div class="round-row">
+								<span class="round-label">{t('btcUpdown.round.cost')}</span>
+								<span class="round-value mono">${currentRound.entry_cost.toFixed(2)}</span>
+							</div>
+						{/if}
+						{#if currentRound.entry_time}
+							<div class="round-row">
+								<span class="round-label">{t('btcUpdown.round.entryTime')}</span>
+								<span class="round-value mono">{formatShortTimeET(currentRound.entry_time)} ET</span>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<p class="current-round-waiting">{t('btcUpdown.live.noActiveRoundDesc')}</p>
+				{/if}
+				<div class="round-row" style="margin-top: var(--space-2);">
+					<span class="round-label">{t('btcUpdown.round.countdown')}</span>
+					<span class="round-value mono countdown-value">{formatCountdown(currentRound.end_time, now)}</span>
+				</div>
+			{:else}
+				<p class="current-round-waiting">{t('btcUpdown.live.noActiveRound')}</p>
+			{/if}
+		</section>
+
+		<!-- Scan Status -->
+		{#if connectionStatus === 'connected'}
+			<div class="scan-status">
+				<span class="scan-dot"></span>
+				<span class="scan-text">{t('btcUpdown.listening')}</span>
+			</div>
+		{/if}
+
+		<!-- Events Feed -->
+		<section class="events-feed">
+			{#if events.length === 0}
+				<div class="empty-state" use:fadeInUp={{ delay: 150 }}>
+					<div class="empty-icon scanning">
+						<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+						</svg>
+					</div>
+					<h3 class="empty-title">{t('btcUpdown.noEvents')}</h3>
+					<p class="empty-desc">{t('btcUpdown.noEventsDesc')}</p>
+				</div>
+			{:else}
+				<div class="events-grid">
+					{#each events as event (event.id)}
+						<div in:fly={{ y: -24, duration: 350 }}>
+							<div class="event-card glass-card">
+								<div class="card-header">
+									<span class="card-time">{formatTimeET(event.timestamp)}</span>
+									<span class="card-type-badge {getEventColorClass(event.type)}-badge">
+										{getEventTypeLabel(event.type)}
+									</span>
+								</div>
+								<p class="event-message">{getEventMessage(event)}</p>
+
+								{#if event.type === 'settlement'}
+									{@const won = event.data.won}
+									{@const profit = event.data.totalProfit as number}
+									<div class="settlement-result" class:win={won} class:loss={!won}>
+										<span class="settlement-label">{won ? t('btcUpdown.round.win') : t('btcUpdown.round.loss')}</span>
+										<span class="settlement-profit">{formatProfit(profit)}</span>
+									</div>
+								{/if}
+
+								{#if event.type === 'entry'}
+									<div class="entry-details">
+										<span class="direction-tag direction-{(event.data.direction as string ?? '').toLowerCase()}">{event.data.direction}</span>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</section>
+	</aside>
+
 	</div><!-- /.page-layout -->
 
 	<!-- Add Custom Strategy Modal (top-level to avoid sidebar stacking context) -->
@@ -2014,14 +2011,16 @@
 		min-height: calc(100vh - 200px);
 	}
 
-	/* Page layout: sidebar + main content on wide screens */
+	/* Page layout */
 	.page-layout {
 		display: flex;
 		flex-direction: column;
 	}
 	.sidebar { display: contents; }
 	.main-content { display: contents; }
+	.live-sidebar { display: contents; }
 
+	/* 2-column: sidebar + main (live sidebar flows below main) */
 	@media (min-width: 1280px) {
 		main.page { max-width: 1320px; }
 		.page-layout {
@@ -2034,8 +2033,8 @@
 			display: flex;
 			flex-direction: column;
 			position: sticky;
-			top: var(--space-6);
-			max-height: calc(100vh - var(--space-8) * 2);
+			top: 76px;
+			max-height: calc(100vh - 76px - var(--space-6));
 			overflow-y: auto;
 			scrollbar-width: thin;
 			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
@@ -2047,8 +2046,32 @@
 			flex-direction: column;
 			min-width: 0;
 		}
-		/* Sidebar only contains the strategy selector now */
+		.live-sidebar {
+			display: flex;
+			flex-direction: column;
+			grid-column: 2;
+		}
 		.sidebar .version-selector { margin-bottom: 0; }
+	}
+
+	/* 3-column: sidebar + main + live feed */
+	@media (min-width: 1600px) {
+		main.page { max-width: 1680px; }
+		.page-layout {
+			grid-template-columns: 340px 1fr 340px;
+		}
+		.live-sidebar {
+			grid-column: 3;
+			grid-row: 1 / -1;
+			position: sticky;
+			top: 76px;
+			max-height: calc(100vh - 76px - var(--space-6));
+			overflow-y: auto;
+			scrollbar-width: thin;
+			scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+		}
+		.live-sidebar::-webkit-scrollbar { width: 4px; }
+		.live-sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
 	}
 
 	/* Header */
@@ -2251,9 +2274,7 @@
 		opacity: 0.6;
 	}
 	.profit-status.pending { color: #fbbf24; opacity: 1; }
-	.profit-dir { font-size: 9px; margin-left: 1px; font-weight: var(--weight-semibold); }
-	.profit-dir.up { color: #34d399; }
-	.profit-dir.down { color: #f87171; }
+	.profit-dir { font-size: 9px; margin-left: 1px; font-weight: var(--weight-semibold); color: var(--fg-muted); }
 	.profit-meta {
 		font-size: 8px;
 		color: var(--fg-subtle);
@@ -2961,46 +2982,19 @@
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
 
-	/* Tab Switcher */
-	.tab-switcher {
-		display: flex;
-		gap: var(--space-1);
-		padding: 3px;
-		background: rgba(255, 255, 255, 0.04);
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-5);
-	}
-
-	.tab-btn {
-		flex: 1;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		border: none;
-		border-radius: var(--radius-md);
-		background: transparent;
-		color: var(--fg-subtle);
+	/* Live sidebar & History headers */
+	.live-sidebar-title {
 		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+		margin: 0 0 var(--space-4);
 	}
-	.tab-btn:hover { color: var(--fg-muted); }
-	.tab-btn.active { background: rgba(255, 255, 255, 0.08); color: var(--fg-base); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
-
-	.tab-count {
-		font-size: var(--text-xs);
-		padding: 0 6px;
-		border-radius: var(--radius-full);
-		background: rgba(255, 255, 255, 0.08);
-		color: var(--fg-muted);
-		font-family: var(--font-mono, ui-monospace, monospace);
-		line-height: 1.6;
+	.history-header {
+		margin-bottom: var(--space-3);
 	}
-	.tab-btn.active .tab-count { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+	.history-header .section-label {
+		margin-bottom: 0;
+	}
 
 	/* Current Round */
 	.current-round {
@@ -3336,10 +3330,6 @@
 
 	/* Light mode overrides */
 	:global([data-theme="light"]) .glass-card { background: rgba(0, 0, 0, 0.02); border: 1px solid rgba(0, 0, 0, 0.08); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
-	:global([data-theme="light"]) .tab-switcher { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.08); }
-	:global([data-theme="light"]) .tab-btn.active { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
-	:global([data-theme="light"]) .tab-count { background: rgba(0, 0, 0, 0.06); }
-	:global([data-theme="light"]) .tab-btn.active .tab-count { background: rgba(16, 185, 129, 0.12); color: #059669; }
 	:global([data-theme="light"]) .positive { color: #059669; }
 	:global([data-theme="light"]) .negative { color: #dc2626; }
 	:global([data-theme="light"]) .direction-up { color: #059669; background: rgba(16, 185, 129, 0.1); }
@@ -3409,6 +3399,8 @@
 	:global([data-theme="light"]) .disclaimer-live svg { color: #dc2626; }
 	:global([data-theme="light"]) .sidebar { scrollbar-color: rgba(0, 0, 0, 0.08) transparent; }
 	:global([data-theme="light"]) .sidebar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+	:global([data-theme="light"]) .live-sidebar { scrollbar-color: rgba(0, 0, 0, 0.08) transparent; }
+	:global([data-theme="light"]) .live-sidebar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
 
 	/* Responsive */
 	@media (max-width: 768px) {

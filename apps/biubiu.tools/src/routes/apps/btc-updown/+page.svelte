@@ -743,17 +743,15 @@
 		const result = await discoverStrategies(disc.origin, disc.path, lang, strategyFetch);
 		if (!result) return;
 		const host = new URL(strategyUrl).host;
-		// Filter out strategies already in custom or builtin lists
-		const knownUrls = new Set(allRegisteredStrategies.map(s => s.baseUrl));
-		const siblings = result.strategies.filter(s => !knownUrls.has(s.baseUrl));
-		if (siblings.length > 0) {
-			discoveredSiblings.set(host, siblings);
-			// Also store their info
-			for (let i = 0; i < result.strategies.length; i++) {
-				const s = result.strategies[i];
-				if (siblings.some(sib => sib.id === s.id)) {
-					allStrategyInfos.set(s.id, result.raw[i]);
-				}
+		// Filter out strategies that the user explicitly added as custom
+		const customUrls = new Set(customStrategies.map(s => s.baseUrl));
+		const siblings = result.strategies.filter(s => !customUrls.has(s.baseUrl));
+		discoveredSiblings.set(host, siblings);
+		// Store their info
+		for (let i = 0; i < result.strategies.length; i++) {
+			const s = result.strategies[i];
+			if (siblings.some(sib => sib.id === s.id)) {
+				allStrategyInfos.set(s.id, result.raw[i]);
 			}
 		}
 	}
@@ -820,7 +818,31 @@
 	}
 
 	function toggleConfigPanel(section: string) {
-		configPanelSection = configPanelSection === section ? null : section;
+		if (configPanelSection === section) {
+			configPanelSection = null;
+			return;
+		}
+		configPanelSection = section;
+		// Re-probe strategies when opening config panel
+		if (section === 'builtin') {
+			const lang = locale.value === 'zh' ? 'zh' : 'en';
+			discoverStrategies(API_HOST, '/api/strategies', lang).then((result) => {
+				if (!result) return;
+				builtinStrategies = result.strategies.map(s => ({
+					...s,
+					id: `builtin:${s.label}`,
+					type: 'builtin' as const,
+				}));
+				for (let i = 0; i < result.strategies.length; i++) {
+					allStrategyInfos.set(`builtin:${result.strategies[i].label}`, result.raw[i]);
+				}
+			});
+		} else {
+			const sample = customStrategies.find(s => {
+				try { return new URL(s.baseUrl).host === section; } catch { return false; }
+			});
+			if (sample) probeServerSiblings(sample.baseUrl);
+		}
 	}
 
 	function navigateProfitColumn(column: 'round' | 'hour' | 'day', dir: -1 | 1) {

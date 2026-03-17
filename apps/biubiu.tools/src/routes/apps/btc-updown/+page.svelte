@@ -759,28 +759,49 @@
 	function removeCustomStrategy(id: string) {
 		const removed = customStrategies.find(s => s.id === id);
 		customStrategies = customStrategies.filter(s => s.id !== id);
-		// If no more custom strategies from this host, remove its discovered siblings
-		if (removed) {
-			try {
-				const host = new URL(removed.baseUrl).host;
-				const remaining = customStrategies.filter(s => {
-					try { return new URL(s.baseUrl).host === host; } catch { return false; }
-				});
-				if (remaining.length === 0) {
-					// Remove sibling visibility and siblings
-					const siblings = discoveredSiblings.get(host) ?? [];
-					for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
-					visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-					discoveredSiblings.delete(host);
-				}
-			} catch { /* ignore */ }
-		}
+		if (removed) cleanupHost(removed.baseUrl);
 		if (activeStrategyId === id) {
 			activeStrategyId = builtinStrategies[0]?.id ?? 'builtin:v1';
 			onStrategyChange(activeStrategyId);
 		}
 		persistState();
 		fetchAllStrategies();
+	}
+
+	function removeHostStrategies(host: string) {
+		const hostStrategies = customStrategies.filter(s => {
+			try { return new URL(s.baseUrl).host === host; } catch { return false; }
+		});
+		customStrategies = customStrategies.filter(s => !hostStrategies.some(h => h.id === s.id));
+		// Clean up discovered siblings
+		const siblings = discoveredSiblings.get(host) ?? [];
+		for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
+		visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+		discoveredSiblings.delete(host);
+		configPanelSection = null;
+		// Switch active if needed
+		if (hostStrategies.some(s => s.id === activeStrategyId) || siblings.some(s => s.id === activeStrategyId)) {
+			activeStrategyId = builtinStrategies[0]?.id ?? 'builtin:v1';
+			onStrategyChange(activeStrategyId);
+		}
+		persistState();
+		fetchAllStrategies();
+	}
+
+	/** Clean up host siblings if no custom strategies remain for that host */
+	function cleanupHost(baseUrl: string) {
+		try {
+			const host = new URL(baseUrl).host;
+			const remaining = customStrategies.filter(s => {
+				try { return new URL(s.baseUrl).host === host; } catch { return false; }
+			});
+			if (remaining.length === 0) {
+				const siblings = discoveredSiblings.get(host) ?? [];
+				for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
+				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+				discoveredSiblings.delete(host);
+			}
+		} catch { /* ignore */ }
 	}
 
 	function toggleStrategyVisibility(id: string) {
@@ -1323,6 +1344,9 @@
 			{@const totalHostCount = strategies.length + siblings.length}
 			<div class="version-header custom-header">
 				<span class="version-type-label host-label" title={host}>{host}</span>
+				<button class="host-remove-btn" onclick={() => removeHostStrategies(host)} title={t('btcUpdown.strategy.remove')}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+				</button>
 				<button class="section-config-btn" class:has-hidden={visibleHostStrategies.length < totalHostCount} onclick={() => toggleConfigPanel(host)}>
 					<span class="config-count" class:has-hidden={visibleHostStrategies.length < totalHostCount}>{visibleHostStrategies.length}/{totalHostCount}</span>
 					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1334,18 +1358,13 @@
 						{@const isHidden = hiddenStrategyIds.has(s.id)}
 						<div class="config-row" class:config-hidden={isHidden}>
 							<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-							<span class="config-actions">
-								<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
-									{#if !isHidden}
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-									{:else}
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-									{/if}
-								</button>
-								<button class="config-delete-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
-									<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-								</button>
-							</span>
+							<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
+								{#if !isHidden}
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+								{:else}
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+								{/if}
+							</button>
 						</div>
 					{/each}
 					{#each siblings as sib (sib.id)}
@@ -2267,6 +2286,23 @@
 	}
 
 	/* Custom strategy elements */
+	.host-remove-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0;
+		flex-shrink: 0;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.custom-header:hover .host-remove-btn { opacity: 0.5; }
+	.host-remove-btn:hover { opacity: 1 !important; color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 	.custom-version-btn {
 		display: flex;
 		align-items: center;
@@ -2340,12 +2376,6 @@
 		opacity: 0.5;
 		flex-shrink: 0;
 	}
-	.config-actions {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-		flex-shrink: 0;
-	}
 	.config-toggle-btn {
 		display: inline-flex;
 		align-items: center;
@@ -2361,21 +2391,6 @@
 		transition: opacity 0.15s, color 0.15s, background 0.15s;
 	}
 	.config-toggle-btn:hover { opacity: 1; color: var(--fg-default); background: rgba(255, 255, 255, 0.06); }
-	.config-delete-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--fg-subtle);
-		cursor: pointer;
-		opacity: 0.5;
-		transition: opacity 0.15s, color 0.15s, background 0.15s;
-	}
-	.config-delete-btn:hover { opacity: 1; color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
 	/* Add Strategy Button */
 	.add-strategy-btn {
@@ -3369,7 +3384,6 @@
 	:global([data-theme="light"]) .config-count.has-hidden { color: var(--fg-subtle); }
 	:global([data-theme="light"]) .config-panel { border-bottom-color: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .config-toggle-btn:hover { background: rgba(0, 0, 0, 0.04); }
-	:global([data-theme="light"]) .config-delete-btn:hover { background: rgba(239, 68, 68, 0.06); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

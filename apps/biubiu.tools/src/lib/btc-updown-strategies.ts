@@ -2,7 +2,7 @@
 // Manages built-in and custom strategy endpoints with localStorage persistence
 
 const STORAGE_KEY = 'biubiu-btc-updown-strategies';
-const API_HOST = 'https://bitcoin-up-or-down-5mins-001.awesometools.dev';
+export const API_HOST = 'https://bitcoin-up-or-down-5mins-001.awesometools.dev';
 
 // --- Types ---
 
@@ -10,7 +10,7 @@ export interface StrategyEndpoint {
 	id: string;
 	label: string;
 	baseUrl: string;
-	type: 'builtin' | 'custom';
+	type: 'builtin' | 'custom' | 'discovered';
 	addedAt: number;
 }
 
@@ -22,6 +22,7 @@ export interface StrategyInfo {
 	summary: { label: string; value: string }[];
 	params: Record<string, unknown>;
 	article: { url: string; label: string } | null;
+	basePath?: string;
 }
 
 export interface ValidationProgress {
@@ -29,71 +30,21 @@ export interface ValidationProgress {
 	status: 'pending' | 'checking' | 'ok' | 'fail';
 }
 
-interface PersistedState {
+export interface PersistedState {
 	customStrategies: StrategyEndpoint[];
+	visibleDiscoveredIds: string[];
 	activeStrategyId: string;
 }
 
-// --- Built-in strategies ---
+export interface DiscoveryResult {
+	strategies: StrategyEndpoint[];
+	raw: StrategyInfo[];
+}
 
-export const BUILTIN_STRATEGIES: StrategyEndpoint[] = [
+// --- Fallback strategies (used when discovery fails) ---
+
+export const FALLBACK_STRATEGIES: StrategyEndpoint[] = [
 	{ id: 'builtin:v1', label: 'v1', baseUrl: `${API_HOST}/api`, type: 'builtin', addedAt: 0 },
-	{
-		id: 'builtin:v2',
-		label: 'v2',
-		baseUrl: `${API_HOST}/api/v2`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v3',
-		label: 'v3',
-		baseUrl: `${API_HOST}/api/v3`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v4',
-		label: 'v4',
-		baseUrl: `${API_HOST}/api/v4`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v5',
-		label: 'v5',
-		baseUrl: `${API_HOST}/api/v5`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v6',
-		label: 'v6',
-		baseUrl: `${API_HOST}/api/v6`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v7',
-		label: 'v7',
-		baseUrl: `${API_HOST}/api/v7`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v8',
-		label: 'v8',
-		baseUrl: `${API_HOST}/api/v8`,
-		type: 'builtin',
-		addedAt: 0
-	},
-	{
-		id: 'builtin:v9',
-		label: 'v9',
-		baseUrl: `${API_HOST}/api/v9`,
-		type: 'builtin',
-		addedAt: 0
-	}
 ];
 
 // --- ID generation ---
@@ -113,10 +64,51 @@ export function normalizeStrategyUrl(url: string): string {
 	return normalized;
 }
 
+// --- Discovery ---
+
+/** Derive the /api/strategies URL from any strategy baseUrl */
+export function getDiscoveryUrl(strategyBaseUrl: string): { origin: string; path: string } | null {
+	try {
+		const url = new URL(strategyBaseUrl);
+		// Strip /vN suffix: /api/v3 → /api, /api → /api
+		const apiBase = url.pathname.replace(/\/v\d+$/, '');
+		return { origin: url.origin, path: `${apiBase}/strategies` };
+	} catch {
+		return null;
+	}
+}
+
+/** Fetch /api/strategies from a server and convert to StrategyEndpoint[] */
+export async function discoverStrategies(
+	serverOrigin: string,
+	discoveryPath: string,
+	lang: string,
+	fetchFn: (url: string) => Promise<Response> = fetch
+): Promise<DiscoveryResult | null> {
+	try {
+		const res = await fetchFn(`${serverOrigin}${discoveryPath}?lang=${lang}`);
+		if (!res.ok) return null;
+		const data = (await res.json()) as StrategyInfo[];
+		if (!Array.isArray(data)) return null;
+		const host = new URL(serverOrigin).host;
+		const strategies = data.map((s) => ({
+			id: `discovered:${host}:${s.version}`,
+			label: s.version,
+			baseUrl: `${serverOrigin}${s.basePath ?? (s.version === 'v1' ? '/api' : `/api/${s.version}`)}`,
+			type: 'discovered' as const,
+			addedAt: 0
+		}));
+		return { strategies, raw: data };
+	} catch {
+		return null;
+	}
+}
+
 // --- Persistence ---
 
 const DEFAULT_STATE: PersistedState = {
 	customStrategies: [],
+	visibleDiscoveredIds: [],
 	activeStrategyId: 'builtin:v1'
 };
 
@@ -126,8 +118,9 @@ export function loadPersistedState(): PersistedState {
 		if (!raw) return DEFAULT_STATE;
 		const parsed = JSON.parse(raw);
 		return {
-			customStrategies: Array.isArray(parsed.customStrategies)
-				? parsed.customStrategies
+			customStrategies: Array.isArray(parsed.customStrategies) ? parsed.customStrategies : [],
+			visibleDiscoveredIds: Array.isArray(parsed.visibleDiscoveredIds)
+				? parsed.visibleDiscoveredIds
 				: [],
 			activeStrategyId:
 				typeof parsed.activeStrategyId === 'string'
@@ -166,7 +159,7 @@ const REQUIRED_ENDPOINTS = [
 	{ key: 'strategy', path: (lang: string) => `/strategy?lang=${lang}` },
 	{ key: 'stats', path: () => '/stats' },
 	{ key: 'rounds', path: () => '/rounds?page=1&pageSize=1' },
-	{ key: 'health', path: () => '/health' },
+	{ key: 'health', path: () => '/health' }
 ] as const;
 
 export type ValidationStepKey = (typeof REQUIRED_ENDPOINTS)[number]['key'] | 'format';
@@ -186,10 +179,12 @@ export async function validateStrategyUrl(
 	baseUrl: string,
 	lang: string,
 	onProgress?: (steps: ValidationProgress[]) => void
-): Promise<{ valid: true; info: StrategyInfo } | { valid: false; error: string; failedStep?: ValidationStepKey }> {
+): Promise<
+	{ valid: true; info: StrategyInfo } | { valid: false; error: string; failedStep?: ValidationStepKey }
+> {
 	const steps: ValidationProgress[] = [
 		...REQUIRED_ENDPOINTS.map((ep) => ({ step: ep.key, status: 'pending' as const })),
-		{ step: 'format', status: 'pending' },
+		{ step: 'format', status: 'pending' }
 	];
 
 	const emit = () => onProgress?.(steps.map((s) => ({ ...s })));
@@ -209,7 +204,11 @@ export async function validateStrategyUrl(
 			if (!result.ok) {
 				steps[idx].status = 'fail';
 				emit();
-				return { valid: false, error: `${ep.key}: HTTP error`, failedStep: ep.key as ValidationStepKey };
+				return {
+					valid: false,
+					error: `${ep.key}: HTTP error`,
+					failedStep: ep.key as ValidationStepKey
+				};
 			}
 			if (ep.key === 'strategy') {
 				strategyData = result.data as Record<string, unknown>;
@@ -219,7 +218,11 @@ export async function validateStrategyUrl(
 		} catch {
 			steps[idx].status = 'fail';
 			emit();
-			return { valid: false, error: `${ep.key}: connection failed`, failedStep: ep.key as ValidationStepKey };
+			return {
+				valid: false,
+				error: `${ep.key}: connection failed`,
+				failedStep: ep.key as ValidationStepKey
+			};
 		}
 	}
 
@@ -228,7 +231,11 @@ export async function validateStrategyUrl(
 	steps[fmtIdx].status = 'checking';
 	emit();
 
-	if (!strategyData || typeof strategyData.name !== 'string' || !Array.isArray(strategyData.summary)) {
+	if (
+		!strategyData ||
+		typeof strategyData.name !== 'string' ||
+		!Array.isArray(strategyData.summary)
+	) {
 		steps[fmtIdx].status = 'fail';
 		emit();
 		return { valid: false, error: 'Invalid /strategy response format', failedStep: 'format' };

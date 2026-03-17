@@ -33,6 +33,7 @@ export interface ValidationProgress {
 export interface PersistedState {
 	customStrategies: StrategyEndpoint[];
 	visibleDiscoveredIds: string[];
+	hiddenStrategyIds: string[];
 	activeStrategyId: string;
 }
 
@@ -109,6 +110,7 @@ export async function discoverStrategies(
 const DEFAULT_STATE: PersistedState = {
 	customStrategies: [],
 	visibleDiscoveredIds: [],
+	hiddenStrategyIds: [],
 	activeStrategyId: 'builtin:v1'
 };
 
@@ -121,6 +123,9 @@ export function loadPersistedState(): PersistedState {
 			customStrategies: Array.isArray(parsed.customStrategies) ? parsed.customStrategies : [],
 			visibleDiscoveredIds: Array.isArray(parsed.visibleDiscoveredIds)
 				? parsed.visibleDiscoveredIds
+				: [],
+			hiddenStrategyIds: Array.isArray(parsed.hiddenStrategyIds)
+				? parsed.hiddenStrategyIds
 				: [],
 			activeStrategyId:
 				typeof parsed.activeStrategyId === 'string'

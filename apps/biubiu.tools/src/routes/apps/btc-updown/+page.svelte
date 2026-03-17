@@ -159,14 +159,22 @@
 	let customStrategies = $state<StrategyEndpoint[]>([]);
 	let discoveredSiblings = new SvelteMap<string, StrategyEndpoint[]>();
 	let visibleDiscoveredIds = $state<Set<string>>(new Set());
+	let hiddenStrategyIds = $state<Set<string>>(new Set());
 	let activeStrategyId = $state('builtin:v1');
-	const allRegisteredStrategies = $derived([
+	// All strategies including hidden (for config panels)
+	const allKnownStrategies = $derived([
 		...builtinStrategies,
 		...customStrategies,
 		...[...discoveredSiblings.values()].flat().filter(s => visibleDiscoveredIds.has(s.id)),
 	]);
+	// Only visible strategies (for sidebar display, profits, comparison)
+	// Discovered siblings: visibility solely by visibleDiscoveredIds (already filtered in allKnownStrategies)
+	// Builtin/custom: visibility by hiddenStrategyIds (opt-out)
+	const allRegisteredStrategies = $derived(
+		allKnownStrategies.filter(s => s.type === 'discovered' || !hiddenStrategyIds.has(s.id))
+	);
 	const activeStrategy = $derived(
-		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? builtinStrategies[0] ?? FALLBACK_STRATEGIES[0]
+		allRegisteredStrategies.find(s => s.id === activeStrategyId) ?? allRegisteredStrategies[0] ?? builtinStrategies[0] ?? FALLBACK_STRATEGIES[0]
 	);
 	let strategyInfo = $state<StrategyInfo | null>(null);
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
@@ -187,7 +195,13 @@
 			}, new Map<string, StrategyEndpoint[]>())
 		)
 	);
-	let showComparison = $state(false);
+	// Sidebar profit column navigation offsets (0 = current, -1 = previous, etc.)
+	let profitRoundOffset = $state(0);
+	let profitHourOffset = $state(0);
+	let profitDayOffset = $state(0);
+	// Visibility config panel: which section is open (null = closed)
+	let configPanelSection = $state<string | null>(null);
+	const hiddenBuiltinCount = $derived(builtinStrategies.filter(s => hiddenStrategyIds.has(s.id)).length);
 	// Custom strategy UI state
 	let showAddStrategy = $state(false);
 	let customUrlInput = $state('');
@@ -408,6 +422,14 @@
 		return new Date().toLocaleDateString('en-CA');
 	}
 
+	function shiftDate(days: number) {
+		const base = filterDate || todayLocal();
+		const d = new Date(base + 'T12:00:00'); // noon to avoid DST edge cases
+		d.setDate(d.getDate() + days);
+		filterDate = d.toLocaleDateString('en-CA');
+		onDateChange();
+	}
+
 	async function fetchStats() {
 		try {
 			const range = getDateRange(selectedHour);
@@ -525,7 +547,7 @@
 	async function fetchAllStrategies() {
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
 		const results = await Promise.all(
-			allRegisteredStrategies.map(async (s) => {
+			allKnownStrategies.map(async (s) => {
 				try {
 					const f = s.type === 'custom' ? strategyFetch : fetch;
 					const res = await f(`${s.baseUrl}/strategy?lang=${lang}`);
@@ -533,8 +555,10 @@
 				} catch { return { id: s.id, info: null }; }
 			})
 		);
-		allStrategyInfos.clear();
-		for (const r of results) allStrategyInfos.set(r.id, r.info);
+		// Don't clear — only update entries that returned successfully (avoids race with discovery)
+		for (const r of results) {
+			if (r.info) allStrategyInfos.set(r.id, r.info);
+		}
 	}
 
 	function toUTCString(d: Date): string {
@@ -559,31 +583,63 @@
 
 	async function fetchAllStrategyProfits() {
 		const now = Date.now();
-		// Current hour start: truncate minutes/seconds/ms from local time
 		const localOffset = new Date(now).getTimezoneOffset() * 60_000;
 		const localMs = now - localOffset;
-		const hourStartMs = localMs - (localMs % 3_600_000) + localOffset;
 
-		const hourFrom = toUTCString(new Date(hourStartMs));
-		const dayFrom = toUTCString(new Date(`${todayLocal()}T00:00:00`));
-		const to = toUTCString(new Date(now));
+		// Hour range with offset
+		const currentHourStartMs = localMs - (localMs % 3_600_000) + localOffset;
+		const hourShift = profitHourOffset * 3_600_000;
+		const hourFrom = toUTCString(new Date(currentHourStartMs + hourShift));
+		const hourTo = profitHourOffset === 0
+			? toUTCString(new Date(now))
+			: toUTCString(new Date(currentHourStartMs + hourShift + 3_600_000));
+
+		// Day range with offset
+		const todayStart = new Date(`${todayLocal()}T00:00:00`).getTime();
+		const dayShift = profitDayOffset * 86_400_000;
+		const dayFrom = toUTCString(new Date(todayStart + dayShift));
+		const dayTo = profitDayOffset === 0
+			? toUTCString(new Date(now))
+			: toUTCString(new Date(todayStart + dayShift + 86_400_000));
+
+		// Round offset: 0 = current, negative = historical page
+		const roundPage = Math.abs(profitRoundOffset);
 
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				try {
 					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
-					const [hourRes, dayRes, curRes] = await Promise.all([
-						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(to)}`),
-						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(to)}`),
-						f(`${s.baseUrl}/rounds/current`),
+					const roundPromise = profitRoundOffset === 0
+						? f(`${s.baseUrl}/rounds/current`)
+						: f(`${s.baseUrl}/rounds?page=${roundPage}&pageSize=1`);
+					const [hourRes, dayRes, roundRes] = await Promise.all([
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`),
+						f(`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`),
+						roundPromise,
 					]);
 					const hourStats = hourRes.ok ? await hourRes.json() : null;
 					const dayStats = dayRes.ok ? await dayRes.json() : null;
-					const curData: CurrentRoundResponse | null = curRes.ok ? await curRes.json() : null;
+					let current: StrategyProfitData['current'];
+					if (profitRoundOffset === 0) {
+						const curData: CurrentRoundResponse | null = roundRes.ok ? await roundRes.json() : null;
+						current = parseCurrentRound(curData);
+					} else {
+						const data = roundRes.ok ? await roundRes.json() : null;
+						const row = data?.rows?.[0] ?? null;
+						if (row && row.status === 'settled') {
+							current = { status: 'settled', profit: row.total_profit ?? 0, direction: row.entry_direction };
+						} else if (row && row.status === 'skipped') {
+							current = { status: 'skipped' };
+						} else if (row && row.status === 'entered') {
+							current = { status: 'entered', direction: row.entry_direction };
+						} else {
+							current = { status: 'watching' };
+						}
+					}
 					return {
 						id: s.id,
 						profits: {
-							current: parseCurrentRound(curData),
+							current,
 							hour: parseStats(hourStats),
 							day: parseStats(dayStats),
 						} as StrategyProfitData,
@@ -625,7 +681,12 @@
 	}
 
 	function persistState() {
-		savePersistedState({ customStrategies, visibleDiscoveredIds: [...visibleDiscoveredIds], activeStrategyId });
+		savePersistedState({
+			customStrategies,
+			visibleDiscoveredIds: [...visibleDiscoveredIds],
+			hiddenStrategyIds: [...hiddenStrategyIds],
+			activeStrategyId,
+		});
 	}
 
 	async function addCustomStrategy() {
@@ -724,19 +785,80 @@
 		fetchAllStrategies();
 	}
 
-	function toggleDiscoveredVisibility(id: string) {
-		if (visibleDiscoveredIds.has(id)) {
-			visibleDiscoveredIds.delete(id);
-			visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-			if (activeStrategyId === id) {
-				onStrategyChange(builtinStrategies[0]?.id ?? 'builtin:v1');
+	function toggleStrategyVisibility(id: string) {
+		if (id.startsWith('discovered:')) {
+			// Discovered siblings: opt-in via visibleDiscoveredIds only
+			if (visibleDiscoveredIds.has(id)) {
+				visibleDiscoveredIds.delete(id);
+				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+				// If this was active, switch away
+				if (activeStrategyId === id) {
+					const first = allRegisteredStrategies.find(s => s.id !== id);
+					if (first) onStrategyChange(first.id);
+				}
+			} else {
+				visibleDiscoveredIds.add(id);
+				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
 			}
 		} else {
-			visibleDiscoveredIds.add(id);
-			visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+			// Builtin / custom: opt-out via hiddenStrategyIds
+			if (hiddenStrategyIds.has(id)) {
+				hiddenStrategyIds.delete(id);
+				hiddenStrategyIds = new Set(hiddenStrategyIds);
+			} else {
+				hiddenStrategyIds.add(id);
+				hiddenStrategyIds = new Set(hiddenStrategyIds);
+				// If hidden strategy was active, switch away
+				if (activeStrategyId === id) {
+					const first = allRegisteredStrategies.find(s => s.id !== id);
+					if (first) onStrategyChange(first.id);
+				}
+			}
 		}
 		persistState();
 		fetchAllStrategyProfits();
+	}
+
+	function toggleConfigPanel(section: string) {
+		configPanelSection = configPanelSection === section ? null : section;
+	}
+
+	function navigateProfitColumn(column: 'round' | 'hour' | 'day', dir: -1 | 1) {
+		if (column === 'round') {
+			const next = profitRoundOffset + dir;
+			if (next > 0) return;
+			profitRoundOffset = next;
+		} else if (column === 'hour') {
+			const next = profitHourOffset + dir;
+			if (next > 0) return;
+			profitHourOffset = next;
+		} else {
+			const next = profitDayOffset + dir;
+			if (next > 0) return;
+			profitDayOffset = next;
+		}
+		fetchAllStrategyProfits();
+	}
+
+	function resetProfitColumn(column: 'round' | 'hour' | 'day') {
+		if (column === 'round') profitRoundOffset = 0;
+		else if (column === 'hour') profitHourOffset = 0;
+		else profitDayOffset = 0;
+		fetchAllStrategyProfits();
+	}
+
+	function getProfitColumnLabel(column: 'round' | 'hour' | 'day'): string {
+		if (column === 'round') {
+			if (profitRoundOffset === 0) return t('btcUpdown.strategy.profitLast');
+			return `${profitRoundOffset}`;
+		}
+		if (column === 'hour') {
+			if (profitHourOffset === 0) return t('btcUpdown.strategy.profit1h');
+			return `${profitHourOffset}h`;
+		}
+		if (profitDayOffset === 0) return t('btcUpdown.strategy.profitToday');
+		if (profitDayOffset === -1) return locale.value === 'zh' ? '昨日' : 'Yday';
+		return `${profitDayOffset}d`;
 	}
 
 	function onDateChange() {
@@ -756,6 +878,7 @@
 				const persisted = loadPersistedState();
 				customStrategies = persisted.customStrategies;
 				visibleDiscoveredIds = new Set(persisted.visibleDiscoveredIds ?? []);
+				hiddenStrategyIds = new Set(persisted.hiddenStrategyIds ?? []);
 				activeStrategyId = persisted.activeStrategyId;
 
 				// Default to today's date
@@ -779,6 +902,8 @@
 					if (!allRegisteredStrategies.find(s => s.id === activeStrategyId)) {
 						activeStrategyId = builtinStrategies[0]?.id ?? 'builtin:v1';
 					}
+					// Re-fetch strategy names with current locale (discovery may have used stale lang)
+					fetchAllStrategies();
 					fetchAllStrategyProfits();
 				});
 
@@ -835,10 +960,14 @@
 		}
 	});
 
-	// Auto-refresh strategy profits every 60s
+	// Auto-refresh strategy profits every 60s (only when viewing current data)
 	$effect(() => {
 		if (browser) {
-			const interval = setInterval(() => { fetchAllStrategyProfits(); }, 60_000);
+			const interval = setInterval(() => {
+				if (profitRoundOffset === 0 && profitHourOffset === 0 && profitDayOffset === 0) {
+					fetchAllStrategyProfits();
+				}
+			}, 60_000);
 			return () => clearInterval(interval);
 		}
 	});
@@ -1111,15 +1240,46 @@
 			</button>
 		</div>
 		<div class="profit-column-labels">
-			<span class="profit-col-label">{t('btcUpdown.strategy.profitLast')}</span>
-			<span class="profit-col-label">{t('btcUpdown.strategy.profit1h')}</span>
-			<span class="profit-col-label">{t('btcUpdown.strategy.profitToday')}</span>
+			{#each ['round', 'hour', 'day'] as col (col)}
+				{@const offset = col === 'round' ? profitRoundOffset : col === 'hour' ? profitHourOffset : profitDayOffset}
+				<div class="profit-col-nav">
+					<button class="col-nav-btn" onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', -1)}>
+						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 5L4 2L7 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					</button>
+					<span class="profit-col-label" class:offset-active={offset !== 0} onclick={() => offset !== 0 && resetProfitColumn(col as 'round' | 'hour' | 'day')} role={offset !== 0 ? 'button' : undefined} tabindex={offset !== 0 ? 0 : undefined}>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span>
+					<button class="col-nav-btn" disabled={offset === 0} onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', 1)}>
+						<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 3L4 6L7 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+					</button>
+				</div>
+			{/each}
 		</div>
+		<!-- Built-in strategies -->
 		<div class="version-header">
 			<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
+			<button class="section-config-btn" class:has-hidden={hiddenBuiltinCount > 0} onclick={() => toggleConfigPanel('builtin')}>
+				<span class="config-count" class:has-hidden={hiddenBuiltinCount > 0}>{builtinStrategies.length - hiddenBuiltinCount}/{builtinStrategies.length}</span>
+				<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+			</button>
 		</div>
+		{#if configPanelSection === 'builtin'}
+			<div class="config-panel">
+				{#each builtinStrategies as s (s.id)}
+					{@const isHidden = hiddenStrategyIds.has(s.id)}
+					<div class="config-row" class:config-hidden={isHidden}>
+						<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+						<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
+							{#if !isHidden}
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+							{:else}
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+							{/if}
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
 		<div class="version-options">
-			{#each builtinStrategies as s (s.id)}
+			{#each builtinStrategies.filter(s => !hiddenStrategyIds.has(s.id)) as s (s.id)}
 				{@const profits = allStrategyProfits.get(s.id)}
 				<button
 					class="version-btn"
@@ -1133,64 +1293,69 @@
 				</button>
 			{/each}
 		</div>
+		<!-- Custom strategy groups -->
 		{#each customStrategiesByHost as [host, strategies] (host)}
 			{@const siblings = discoveredSiblings.get(host) ?? []}
+			{@const allHostStrategies = [...strategies, ...siblings.filter(s => visibleDiscoveredIds.has(s.id))]}
+			{@const visibleHostStrategies = allHostStrategies.filter(s => s.type === 'discovered' || !hiddenStrategyIds.has(s.id))}
+			{@const totalHostCount = strategies.length + siblings.length}
 			<div class="version-header custom-header">
 				<span class="version-type-label host-label" title={host}>{host}</span>
-				{#if siblings.length > 0}
-					<span class="sibling-count">{t('btcUpdown.strategy.siblings', { count: siblings.length })}</span>
-				{/if}
+				<button class="section-config-btn" class:has-hidden={visibleHostStrategies.length < totalHostCount} onclick={() => toggleConfigPanel(host)}>
+					<span class="config-count" class:has-hidden={visibleHostStrategies.length < totalHostCount}>{visibleHostStrategies.length}/{totalHostCount}</span>
+					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+				</button>
 			</div>
-			<div class="version-options">
-				{#each strategies as s (s.id)}
-					{@const profits = allStrategyProfits.get(s.id)}
-					<div class="custom-strategy-row">
-						<button
-							class="version-btn custom-version-btn"
-							class:active={activeStrategyId === s.id}
-							onclick={() => onStrategyChange(s.id)}
-						>
-							<span class="custom-dot"></span>
-							<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-							{#if profits}
-								{@render profitCells(profits)}
-							{/if}
-						</button>
-						<button class="custom-remove-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-						</button>
-					</div>
-				{/each}
-				{#each siblings as sib (sib.id)}
-					{@const isVisible = visibleDiscoveredIds.has(sib.id)}
-					{@const profits = isVisible ? allStrategyProfits.get(sib.id) : null}
-					<div class="custom-strategy-row discovered-row" class:discovered-hidden={!isVisible}>
-						{#if isVisible}
-							<button
-								class="version-btn custom-version-btn"
-								class:active={activeStrategyId === sib.id}
-								onclick={() => onStrategyChange(sib.id)}
-							>
-								<span class="strategy-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
-								{#if profits}
-									{@render profitCells(profits)}
+			{#if configPanelSection === host}
+				<div class="config-panel">
+					{#each strategies as s (s.id)}
+						{@const isHidden = hiddenStrategyIds.has(s.id)}
+						<div class="config-row" class:config-hidden={isHidden}>
+							<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+							<span class="config-actions">
+								<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
+									{#if !isHidden}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+									{/if}
+								</button>
+								<button class="config-delete-btn" onclick={() => removeCustomStrategy(s.id)} title={t('btcUpdown.strategy.remove')}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+								</button>
+							</span>
+						</div>
+					{/each}
+					{#each siblings as sib (sib.id)}
+						{@const isVisible = visibleDiscoveredIds.has(sib.id)}
+						<div class="config-row" class:config-hidden={!isVisible}>
+							<span class="config-tag">{t('btcUpdown.strategy.discovered')}</span>
+							<span class="config-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
+							<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(sib.id)}>
+								{#if isVisible}
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+								{:else}
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
 								{/if}
 							</button>
-						{:else}
-							<span class="discovered-label">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+			<div class="version-options">
+				{#each visibleHostStrategies as s (s.id)}
+					{@const profits = allStrategyProfits.get(s.id)}
+					<button
+						class="version-btn custom-version-btn"
+						class:active={activeStrategyId === s.id}
+						onclick={() => onStrategyChange(s.id)}
+					>
+						<span class="custom-dot"></span>
+						<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+						{#if profits}
+							{@render profitCells(profits)}
 						{/if}
-						<button
-							class="discovered-toggle-btn"
-							onclick={() => toggleDiscoveredVisibility(sib.id)}
-							title={isVisible ? t('btcUpdown.strategy.hideAll') : t('btcUpdown.strategy.showAll')}
-						>
-							{#if isVisible}
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-							{:else}
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-							{/if}
-						</button>
-					</div>
+					</button>
 				{/each}
 			</div>
 		{/each}
@@ -1232,74 +1397,6 @@
 		</div>
 	{/if}
 
-	<!-- Strategy Comparison -->
-	<div class="comparison-toggle" use:fadeInUp={{ delay: 18 }}>
-		<button class="comparison-toggle-btn" onclick={() => (showComparison = !showComparison)}>
-			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-			</svg>
-			{showComparison ? t('btcUpdown.strategy.hideComparison') : t('btcUpdown.strategy.showComparison')}
-			<svg class="comparison-chevron" class:open={showComparison} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-		</button>
-	</div>
-	{#if showComparison}
-		<div class="comparison-table-wrapper glass-card" use:fadeInUp={{ delay: 0 }}>
-			<div class="comparison-scroll">
-				<table class="comparison-table">
-					<thead>
-						<tr>
-							<th></th>
-							{#each allRegisteredStrategies as s (s.id)}
-								<th class:active-col={activeStrategyId === s.id}>
-									<button class="comparison-version-btn" class:active={activeStrategyId === s.id} onclick={() => onStrategyChange(s.id)}>
-										{s.label}{#if s.type === 'custom'}<span class="custom-indicator">*</span>{/if}
-									</button>
-								</th>
-							{/each}
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.name')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								<td class:active-col={activeStrategyId === s.id}>{allStrategyInfos.get(s.id)?.name ?? '—'}</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.priceRange')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>{p ? `$${p.priceMin} - $${p.priceMax}` : '—'}</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.hedge')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>
-									{#if p}
-										<span class="hedge-badge" class:hedge-on={p.hedgingEnabled} class:hedge-off={!p.hedgingEnabled}>
-											{p.hedgingEnabled ? t('btcUpdown.strategy.enabled') : t('btcUpdown.strategy.disabled')}
-										</span>
-									{:else}
-										—
-									{/if}
-								</td>
-							{/each}
-						</tr>
-						<tr>
-							<td class="row-label">{t('btcUpdown.strategy.hedgeThreshold')}</td>
-							{#each allRegisteredStrategies as s (s.id)}
-								{@const p = allStrategyInfos.get(s.id)?.params}
-								<td class:active-col={activeStrategyId === s.id}>{p?.hedgeSellThreshold ? `$${p.hedgeSellThreshold}` : '—'}</td>
-							{/each}
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</div>
-	{/if}
-
 	<!-- Disclaimer -->
 	<div class="disclaimer" class:disclaimer-live={strategyInfo?.mode === 'live'} use:fadeInUp={{ delay: 30 }}>
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1322,7 +1419,13 @@
 		<div class="date-filter-options">
 			<button class="date-option-btn" class:active={!filterDate} onclick={() => { filterDate = ''; onDateChange(); }}>{t('btcUpdown.filter.all')}</button>
 			<button class="date-option-btn" class:active={filterDate === todayLocal()} onclick={() => { filterDate = todayLocal(); onDateChange(); }}>{t('btcUpdown.filter.today')}</button>
+			<button class="date-nav-btn" onclick={() => shiftDate(-1)} title={locale.value === 'zh' ? '前一天' : 'Previous day'}>
+				<svg width="10" height="10" viewBox="0 0 10 10"><path d="M7 1L3 5L7 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
 			<input type="date" class="date-input" bind:value={filterDate} onchange={onDateChange} />
+			<button class="date-nav-btn" disabled={!filterDate || filterDate >= todayLocal()} onclick={() => shiftDate(1)} title={locale.value === 'zh' ? '后一天' : 'Next day'}>
+				<svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1L7 5L3 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
 		</div>
 	</div>
 
@@ -2036,9 +2139,33 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-		padding: 0 var(--space-3);
+		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: var(--space-1);
 	}
+	.profit-col-nav {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end; /* match profit-cell right-alignment */
+		width: 52px;
+		flex-shrink: 0;
+		gap: 0;
+	}
+	.col-nav-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 10px;
+		padding: 0;
+		background: none;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0.3;
+		transition: opacity 0.15s;
+	}
+	.col-nav-btn:hover:not(:disabled) { opacity: 0.8; }
+	.col-nav-btn:disabled { opacity: 0.1; cursor: default; }
 	.profit-col-label {
 		font-size: 9px;
 		font-weight: var(--weight-medium);
@@ -2046,9 +2173,15 @@
 		opacity: 0.5;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
-		width: 52px;
-		text-align: right;
+		text-align: center;
 		flex-shrink: 0;
+		white-space: nowrap;
+		user-select: none;
+	}
+	.profit-col-label.offset-active {
+		color: var(--accent, #60a5fa);
+		opacity: 0.9;
+		cursor: pointer;
 	}
 	.strategy-profits {
 		margin-left: auto;
@@ -2112,11 +2245,6 @@
 	}
 
 	/* Custom strategy elements */
-	.custom-strategy-row {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-	}
 	.custom-version-btn {
 		display: flex;
 		align-items: center;
@@ -2129,60 +2257,103 @@
 		background: var(--accent);
 		flex-shrink: 0;
 	}
-	.custom-remove-btn {
+	/* Section config button (gear icon) */
+	.section-config-btn {
 		display: inline-flex;
 		align-items: center;
-		justify-content: center;
-		width: 20px;
-		height: 20px;
+		gap: 3px;
+		margin-left: auto;
+		padding: 2px 4px;
 		border: none;
-		border-radius: 50%;
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0;
-		transition: all var(--motion-fast) var(--easing);
+		opacity: 0.4;
+		transition: opacity 0.15s, color 0.15s;
 	}
-	.custom-strategy-row:hover .custom-remove-btn { opacity: 1; }
-	.custom-remove-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-	.custom-indicator { color: var(--accent); margin-left: 2px; }
-
-	/* Discovered siblings */
-	.sibling-count {
-		font-size: 10px;
+	.section-config-btn:hover { opacity: 1; color: var(--fg-muted); }
+	.section-config-btn.has-hidden { opacity: 0.7; }
+	.config-count {
+		font-size: 9px;
+		font-variant-numeric: tabular-nums;
+		color: var(--fg-subtle);
 		opacity: 0.5;
-		margin-left: auto;
 	}
-	.discovered-row.discovered-hidden {
-		opacity: 0.45;
+	.config-count.has-hidden {
+		opacity: 0.8;
+		color: var(--fg-muted);
 	}
-	.discovered-label {
+
+	/* Config panel (inline settings) */
+	.config-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: var(--space-1) 0;
+		margin-bottom: var(--space-1);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	}
+	.config-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 3px var(--space-2);
+		border-radius: var(--radius-sm);
+		transition: opacity 0.15s;
+	}
+	.config-row.config-hidden { opacity: 0.4; }
+	.config-name {
 		flex: 1;
 		min-width: 0;
-		padding: 4px 6px;
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.discovered-toggle-btn {
+	.config-tag {
+		font-size: 9px;
+		color: var(--fg-subtle);
+		opacity: 0.5;
 		flex-shrink: 0;
-		padding: 4px;
-		background: none;
+	}
+	.config-actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		flex-shrink: 0;
+	}
+	.config-toggle-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
 		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
 		color: var(--fg-subtle);
 		cursor: pointer;
 		opacity: 0.5;
+		transition: opacity 0.15s, color 0.15s, background 0.15s;
+	}
+	.config-toggle-btn:hover { opacity: 1; color: var(--fg-default); background: rgba(255, 255, 255, 0.06); }
+	.config-delete-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border: none;
 		border-radius: var(--radius-sm);
-		transition: opacity 0.15s, color 0.15s;
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0.5;
+		transition: opacity 0.15s, color 0.15s, background 0.15s;
 	}
-	.discovered-toggle-btn:hover {
-		opacity: 1;
-		color: var(--fg-default);
-		background: rgba(255, 255, 255, 0.05);
-	}
-	.discovered-row:hover .discovered-toggle-btn { opacity: 0.8; }
+	.config-delete-btn:hover { opacity: 1; color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
 	/* Add Strategy Button */
 	.add-strategy-btn {
@@ -2475,91 +2646,6 @@
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
 
-	/* Comparison Toggle */
-	.comparison-toggle {
-		margin-bottom: var(--space-4);
-	}
-	.comparison-toggle-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--fg-subtle);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.comparison-toggle-btn:hover { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
-	.comparison-chevron { transition: transform var(--motion-fast) var(--easing); }
-	.comparison-chevron.open { transform: rotate(180deg); }
-
-	/* Comparison Table */
-	.comparison-table-wrapper {
-		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-6);
-		overflow: hidden;
-	}
-	.comparison-scroll {
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
-	}
-	.comparison-table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: var(--text-xs);
-	}
-	.comparison-table th,
-	.comparison-table td {
-		padding: var(--space-2) var(--space-3);
-		text-align: center;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-		white-space: nowrap;
-	}
-	.comparison-table th {
-		font-weight: var(--weight-medium);
-		color: var(--fg-subtle);
-		padding-top: var(--space-3);
-	}
-	.comparison-table td {
-		color: var(--fg-muted);
-		font-family: var(--font-mono, ui-monospace, monospace);
-	}
-	.comparison-table .row-label {
-		text-align: left;
-		font-family: inherit;
-		color: var(--fg-subtle);
-		font-weight: var(--weight-medium);
-	}
-	.comparison-table .active-col {
-		background: rgba(255, 255, 255, 0.04);
-	}
-	.comparison-version-btn {
-		border: none;
-		background: transparent;
-		font-size: var(--text-xs);
-		font-weight: var(--weight-bold);
-		color: var(--fg-subtle);
-		cursor: pointer;
-		padding: var(--space-1) var(--space-2);
-		border-radius: var(--radius-sm);
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.comparison-version-btn:hover { color: var(--fg-muted); }
-	.comparison-version-btn.active { color: var(--accent); }
-	.hedge-badge {
-		font-size: var(--text-xs);
-		padding: 1px var(--space-2);
-		border-radius: var(--radius-sm);
-		font-weight: var(--weight-medium);
-		font-family: inherit;
-	}
-	.hedge-on { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-	.hedge-off { background: rgba(255, 255, 255, 0.06); color: var(--fg-subtle); }
-
 	/* Strategy Banner */
 	.strategy-banner {
 		display: flex;
@@ -2639,6 +2725,22 @@
 		color-scheme: dark;
 	}
 	.date-input:focus { outline: none; border-color: var(--accent); }
+	.date-nav-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		flex-shrink: 0;
+	}
+	.date-nav-btn:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
+	.date-nav-btn:disabled { opacity: 0.25; cursor: default; }
 
 	/* Hourly Chart */
 	.hourly-chart {
@@ -3228,6 +3330,8 @@
 	:global([data-theme="light"]) .date-option-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .date-option-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .date-option-btn.active { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .date-nav-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .date-nav-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .bar-positive { background: rgba(16, 185, 129, 0.85); }
 	:global([data-theme="light"]) .bar-negative { background: rgba(220, 38, 38, 0.85); }
 	:global([data-theme="light"]) .bar-empty { background: rgba(0, 0, 0, 0.04); }
@@ -3240,13 +3344,10 @@
 	:global([data-theme="light"]) .profit-val.negative { color: #dc2626; }
 	:global([data-theme="light"]) .profit-status.pending { color: #d97706; }
 	:global([data-theme="light"]) .profit-refresh-btn:hover { background: rgba(0, 0, 0, 0.04); }
-	:global([data-theme="light"]) .comparison-toggle-btn { border-color: rgba(0, 0, 0, 0.08); }
-	:global([data-theme="light"]) .comparison-toggle-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
-	:global([data-theme="light"]) .comparison-table th,
-	:global([data-theme="light"]) .comparison-table td { border-bottom-color: rgba(0, 0, 0, 0.06); }
-	:global([data-theme="light"]) .comparison-table .active-col { background: rgba(0, 0, 0, 0.03); }
-	:global([data-theme="light"]) .hedge-on { background: rgba(16, 185, 129, 0.1); color: #059669; }
-	:global([data-theme="light"]) .hedge-off { background: rgba(0, 0, 0, 0.04); }
+	:global([data-theme="light"]) .config-count.has-hidden { color: var(--fg-subtle); }
+	:global([data-theme="light"]) .config-panel { border-bottom-color: rgba(0, 0, 0, 0.06); }
+	:global([data-theme="light"]) .config-toggle-btn:hover { background: rgba(0, 0, 0, 0.04); }
+	:global([data-theme="light"]) .config-delete-btn:hover { background: rgba(239, 68, 68, 0.06); }
 	:global([data-theme="light"]) .pnl-divider { background: rgba(0, 0, 0, 0.06); }
 	:global([data-theme="light"]) .refresh-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .refresh-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }

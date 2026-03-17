@@ -423,6 +423,14 @@
 		return new Date().toLocaleDateString('en-CA');
 	}
 
+	function shiftDate(days: number) {
+		const base = filterDate || todayLocal();
+		const d = new Date(base + 'T12:00:00'); // noon to avoid DST edge cases
+		d.setDate(d.getDate() + days);
+		filterDate = d.toLocaleDateString('en-CA');
+		onDateChange();
+	}
+
 	async function fetchStats() {
 		try {
 			const range = getDateRange(selectedHour);
@@ -1480,7 +1488,13 @@
 		<div class="date-filter-options">
 			<button class="date-option-btn" class:active={!filterDate} onclick={() => { filterDate = ''; onDateChange(); }}>{t('btcUpdown.filter.all')}</button>
 			<button class="date-option-btn" class:active={filterDate === todayLocal()} onclick={() => { filterDate = todayLocal(); onDateChange(); }}>{t('btcUpdown.filter.today')}</button>
+			<button class="date-nav-btn" onclick={() => shiftDate(-1)} title={locale.value === 'zh' ? '前一天' : 'Previous day'}>
+				<svg width="10" height="10" viewBox="0 0 10 10"><path d="M7 1L3 5L7 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
 			<input type="date" class="date-input" bind:value={filterDate} onchange={onDateChange} />
+			<button class="date-nav-btn" disabled={!filterDate || filterDate >= todayLocal()} onclick={() => shiftDate(1)} title={locale.value === 'zh' ? '后一天' : 'Next day'}>
+				<svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1L7 5L3 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+			</button>
 		</div>
 	</div>
 
@@ -2867,6 +2881,22 @@
 		color-scheme: dark;
 	}
 	.date-input:focus { outline: none; border-color: var(--accent); }
+	.date-nav-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		flex-shrink: 0;
+	}
+	.date-nav-btn:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.15); color: var(--fg-muted); }
+	.date-nav-btn:disabled { opacity: 0.25; cursor: default; }
 
 	/* Hourly Chart */
 	.hourly-chart {
@@ -3456,6 +3486,8 @@
 	:global([data-theme="light"]) .date-option-btn { border-color: rgba(0, 0, 0, 0.08); }
 	:global([data-theme="light"]) .date-option-btn:hover { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .date-option-btn.active { background: rgba(0, 0, 0, 0.04); border-color: rgba(0, 0, 0, 0.15); }
+	:global([data-theme="light"]) .date-nav-btn { border-color: rgba(0, 0, 0, 0.08); }
+	:global([data-theme="light"]) .date-nav-btn:hover:not(:disabled) { border-color: rgba(0, 0, 0, 0.15); }
 	:global([data-theme="light"]) .bar-positive { background: rgba(16, 185, 129, 0.85); }
 	:global([data-theme="light"]) .bar-negative { background: rgba(220, 38, 38, 0.85); }
 	:global([data-theme="light"]) .bar-empty { background: rgba(0, 0, 0, 0.04); }

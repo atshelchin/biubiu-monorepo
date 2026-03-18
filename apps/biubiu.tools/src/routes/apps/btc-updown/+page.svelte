@@ -1355,12 +1355,22 @@
 
 	// Settings-aware formatting helpers (use user's preferences for locale, currency, timezone)
 
+	function fmtTimeRaw(ts: string, style: 'short' | 'medium'): string {
+		const dateObj = new Date(ts);
+		const tz = preferences.timezone;
+		if (timeFormat === '12') {
+			// Always use en-US for consistent "9:46 AM" format
+			return new Intl.DateTimeFormat('en-US', { timeStyle: style, timeZone: tz, hour12: true }).format(dateObj);
+		}
+		return formatDate(ts, { timeStyle: style });
+	}
+
 	function fmtTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'medium', hour12: timeFormat === '12' });
+		return fmtTimeRaw(ts, 'medium');
 	}
 
 	function fmtShortTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'short', hour12: timeFormat === '12' });
+		return fmtTimeRaw(ts, 'short');
 	}
 
 	function fmtLocalDate(ts: string): string {
@@ -2691,7 +2701,7 @@
 											{#if round.swing_exit_reason}
 												<div class="round-row">
 													<span class="round-label"
-														>{locale.value === 'zh' ? '退出原因' : 'Exit Reason'}</span
+														>{locale.value === 'zh' ? '止损原因' : 'Exit Reason'}</span
 													>
 													<span
 														class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}"
@@ -2702,7 +2712,7 @@
 												{#if round.swing_exit_price !== null}
 													<div class="round-row">
 														<span class="round-label"
-															>{locale.value === 'zh' ? '退出价格' : 'Exit Price'}</span
+															>{locale.value === 'zh' ? '止损价格' : 'Exit Price'}</span
 														>
 														<span class="round-value mono"
 															>{fmtPrice(round.swing_exit_price)}</span
@@ -2713,7 +2723,7 @@
 												{#if exitTime}
 													<div class="round-row">
 														<span class="round-label"
-															>{locale.value === 'zh' ? '退出时间' : 'Exit Time'}</span
+															>{locale.value === 'zh' ? '止损时间' : 'Exit Time'}</span
 														>
 														<span class="round-value mono"
 															>{fmtShortTime(exitTime)}</span
@@ -2802,22 +2812,6 @@
 																	>{round.hedge.direction} @ {formatCurrency(round.hedge.limit_price)} &middot;
 																	{getHedgeStatusLabel(round.hedge.status)}</span
 																>
-															</div>
-														{/if}
-														{#if round.swing_exit_reason}
-															<div class="pnl-row hedge-info">
-																<span class="pnl-label"
-																	>{locale.value === 'zh' ? '波动退出' : 'Swing Exit'}</span
-																>
-																<span class="pnl-value">
-																	{getSwingExitLabel(round.swing_exit_reason)}
-																	{#if round.swing_exit_price !== null}
-																		@ {fmtPrice(round.swing_exit_price)}
-																	{/if}
-																	{#if round.stop_loss_checked_at ?? round.settled_at}
-																		&middot; {fmtShortTime((round.stop_loss_checked_at ?? round.settled_at)!)}
-																	{/if}
-																</span>
 															</div>
 														{/if}
 													</div>

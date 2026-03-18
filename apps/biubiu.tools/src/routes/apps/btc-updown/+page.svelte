@@ -1014,15 +1014,34 @@
 		fetchAllStrategyProfits();
 	}
 
+	function naturalCompare(a: string, b: string): number {
+		const re = /(\d+)|(\D+)/g;
+		const pa = a.match(re) ?? [];
+		const pb = b.match(re) ?? [];
+		for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+			const sa = pa[i] ?? '';
+			const sb = pb[i] ?? '';
+			const na = Number(sa);
+			const nb = Number(sb);
+			if (!isNaN(na) && !isNaN(nb)) {
+				if (na !== nb) return na - nb;
+			} else {
+				const cmp = sa.localeCompare(sb);
+				if (cmp !== 0) return cmp;
+			}
+		}
+		return 0;
+	}
+
 	function sortStrategies<T extends { id: string; label: string }>(list: T[]): T[] {
 		if (!profitSortColumn) return list;
 		const col = profitSortColumn;
 		const dir = profitSortDir === 'desc' ? -1 : 1;
 		if (col === 'name') {
 			return [...list].sort((a, b) => {
-				const na = (allStrategyInfos.get(a.id)?.name ?? a.label).toLowerCase();
-				const nb = (allStrategyInfos.get(b.id)?.name ?? b.label).toLowerCase();
-				return na.localeCompare(nb) * dir;
+				const na = (allStrategyInfos.get(a.id)?.name ?? a.label);
+				const nb = (allStrategyInfos.get(b.id)?.name ?? b.label);
+				return naturalCompare(na, nb) * dir;
 			});
 		}
 		return [...list].sort((a, b) => {
@@ -3345,7 +3364,7 @@
 		align-items: center;
 		gap: var(--space-2);
 		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
-		margin-bottom: var(--space-1);
+		margin-bottom: 2px;
 	}
 	.profit-col-labels-right {
 		margin-left: auto;

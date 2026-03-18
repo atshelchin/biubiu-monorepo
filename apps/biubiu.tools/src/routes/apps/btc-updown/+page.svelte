@@ -8,7 +8,7 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
 	import { onDestroy, untrack } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import {
 		type StrategyEndpoint,
@@ -222,6 +222,13 @@
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
+	let collapsedSections = new SvelteSet<string>();
+
+	function toggleCollapse(key: string) {
+		if (collapsedSections.has(key)) collapsedSections.delete(key);
+		else collapsedSections.add(key);
+		persistState();
+	}
 	const hiddenBuiltinCount = $derived(
 		builtinStrategies.filter((s) => hiddenStrategyIds.has(s.id)).length
 	);
@@ -806,7 +813,8 @@
 			customStrategies,
 			visibleDiscoveredIds: [...visibleDiscoveredIds],
 			hiddenStrategyIds: [...hiddenStrategyIds],
-			activeStrategyId
+			activeStrategyId,
+			collapsedSections: [...collapsedSections]
 		});
 	}
 
@@ -1133,6 +1141,9 @@
 				const needsDefaultHidden = persisted.hiddenStrategyIds === null;
 				hiddenStrategyIds = new Set(persisted.hiddenStrategyIds ?? []);
 				activeStrategyId = persisted.activeStrategyId;
+				if (persisted.collapsedSections?.length) {
+					for (const s of persisted.collapsedSections) collapsedSections.add(s);
+				}
 
 				// Read URL query params for strategy sharing
 				const urlParams = new URLSearchParams(window.location.search);
@@ -1822,6 +1833,9 @@
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
+					<button class="section-collapse-btn" onclick={() => toggleCollapse('builtin')}>
+						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('builtin')}><polyline points="6 9 12 15 18 9"/></svg>
+					</button>
 					<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
 					<button
 						class="section-config-btn"
@@ -1847,102 +1861,66 @@
 						>
 					</button>
 				</div>
+				{#if !collapsedSections.has('builtin')}
 				{#if configPanelSection === 'builtin'}
-					<div class="config-panel">
-						<div class="config-batch-actions">
-							<button class="config-batch-btn" onclick={() => {
-								builtinStrategies.forEach(s => hiddenStrategyIds.delete(s.id));
-								hiddenStrategyIds = new Set(hiddenStrategyIds);
-								persistState();
-								fetchAllStrategyProfits();
-							}}>{t('btcUpdown.strategy.showAll')}</button>
-							<button class="config-batch-btn" onclick={() => {
-								builtinStrategies.forEach(s => {
-									if (s.id !== activeStrategyId) hiddenStrategyIds.add(s.id);
-								});
-								hiddenStrategyIds = new Set(hiddenStrategyIds);
-								persistState();
-								fetchAllStrategyProfits();
-							}}>{t('btcUpdown.strategy.hideAll')}</button>
-						</div>
-						{#each builtinStrategies as s (s.id)}
-							{@const isHidden = hiddenStrategyIds.has(s.id)}
-							<div class="config-row" class:config-hidden={isHidden}>
-								<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-								<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
-									{#if !isHidden}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-												cx="12"
-												cy="12"
-												r="3"
-											/></svg
-										>
-									{:else}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											><path
-												d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-											/><line x1="1" y1="1" x2="23" y2="23" /></svg
-										>
-									{/if}
-								</button>
-							</div>
-						{/each}
+					<div class="config-batch-actions">
+						<button class="config-batch-btn" onclick={() => {
+							builtinStrategies.forEach(s => hiddenStrategyIds.delete(s.id));
+							hiddenStrategyIds = new Set(hiddenStrategyIds);
+							persistState();
+							fetchAllStrategyProfits();
+						}}>{t('btcUpdown.strategy.showAll')}</button>
+						<button class="config-batch-btn" onclick={() => {
+							builtinStrategies.forEach(s => {
+								if (s.id !== activeStrategyId) hiddenStrategyIds.add(s.id);
+							});
+							hiddenStrategyIds = new Set(hiddenStrategyIds);
+							persistState();
+							fetchAllStrategyProfits();
+						}}>{t('btcUpdown.strategy.hideAll')}</button>
 					</div>
 				{/if}
 				{@render columnHeaders()}
 				<div class="version-options">
-					{#each sortStrategies(builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id))) as s (s.id)}
+					{#each sortStrategies(builtinStrategies) as s (s.id)}
 						{@const profits = allStrategyProfits.get(s.id)}
-						<div class="version-row">
+						{@const isHidden = hiddenStrategyIds.has(s.id)}
+						{#if !isHidden || configPanelSection === 'builtin'}
+						<div class="version-row" class:row-hidden={isHidden}>
 							<button
 								class="version-btn"
 								class:active={activeStrategyId === s.id}
 								onclick={() => onStrategyChange(s.id)}
 							>
 								<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-								{#if profits}
+								{#if profits && !isHidden}
 									{@render profitCells(profits)}
 								{/if}
 							</button>
 							{#if activeStrategyId !== s.id}
-								<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
-									<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+								<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? (isHidden ? '显示' : '隐藏') : (isHidden ? 'Show' : 'Hide')}>
+									{#if isHidden}
+										<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+									{/if}
 								</button>
 							{/if}
 						</div>
+						{/if}
 					{/each}
 				</div>
+				{/if}
 				<!-- Custom strategy groups -->
 				{#each customStrategiesByHost as [host, strategies] (host)}
 					{@const siblings = discoveredSiblings.get(host) ?? []}
-					{@const allHostStrategies = [
-						...strategies,
-						...siblings.filter((s) => visibleDiscoveredIds.has(s.id))
-					]}
-					{@const visibleHostStrategies = allHostStrategies.filter(
-						(s) => s.type === 'discovered' || !hiddenStrategyIds.has(s.id)
-					)}
-					{@const totalHostCount = strategies.length + siblings.length}
+					{@const allHostStrategies = [...strategies, ...siblings]}
+					{@const totalHostCount = allHostStrategies.length}
+					{@const visibleCount = allHostStrategies.filter(s => s.type === 'discovered' ? visibleDiscoveredIds.has(s.id) : !hiddenStrategyIds.has(s.id)).length}
 					<div class="version-header custom-header">
+						<button class="section-collapse-btn" onclick={() => toggleCollapse(host)}>
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(host)}><polyline points="6 9 12 15 18 9"/></svg>
+						</button>
 						<span class="version-type-label host-label" title={host}>{host}</span>
 						<button
 							class="host-remove-btn"
@@ -1964,13 +1942,13 @@
 						</button>
 						<button
 							class="section-config-btn"
-							class:has-hidden={visibleHostStrategies.length < totalHostCount}
+							class:has-hidden={visibleCount < totalHostCount}
 							onclick={() => toggleConfigPanel(host)}
 						>
 							<span
 								class="config-count"
-								class:has-hidden={visibleHostStrategies.length < totalHostCount}
-								>{visibleHostStrategies.length}/{totalHostCount}</span
+								class:has-hidden={visibleCount < totalHostCount}
+								>{visibleCount}/{totalHostCount}</span
 							>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -1988,130 +1966,45 @@
 							>
 						</button>
 					</div>
+					{#if !collapsedSections.has(host)}
 					{#if configPanelSection === host}
-						<div class="config-panel">
-							<div class="config-batch-actions">
-								<button class="config-batch-btn" onclick={() => {
-									[...strategies, ...siblings].forEach(s => {
-										if (s.id.startsWith('discovered:')) {
-											visibleDiscoveredIds.add(s.id);
-										} else {
-											hiddenStrategyIds.delete(s.id);
-										}
-									});
-									hiddenStrategyIds = new Set(hiddenStrategyIds);
-									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-									persistState();
-									fetchAllStrategyProfits();
-								}}>{t('btcUpdown.strategy.showAll')}</button>
-								<button class="config-batch-btn" onclick={() => {
-									[...strategies, ...siblings].forEach(s => {
-										if (s.id === activeStrategyId) return;
-										if (s.id.startsWith('discovered:')) {
-											visibleDiscoveredIds.delete(s.id);
-										} else {
-											hiddenStrategyIds.add(s.id);
-										}
-									});
-									hiddenStrategyIds = new Set(hiddenStrategyIds);
-									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-									persistState();
-									fetchAllStrategyProfits();
-								}}>{t('btcUpdown.strategy.hideAll')}</button>
-							</div>
-							{#each strategies as s (s.id)}
-								{@const isHidden = hiddenStrategyIds.has(s.id)}
-								<div class="config-row" class:config-hidden={isHidden}>
-									<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-									<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
-										{#if !isHidden}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-													cx="12"
-													cy="12"
-													r="3"
-												/></svg
-											>
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path
-													d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-												/><line x1="1" y1="1" x2="23" y2="23" /></svg
-											>
-										{/if}
-									</button>
-								</div>
-							{/each}
-							{#each siblings as sib (sib.id)}
-								{@const isVisible = visibleDiscoveredIds.has(sib.id)}
-								<div class="config-row" class:config-hidden={!isVisible}>
-									<span class="config-tag">{t('btcUpdown.strategy.discovered')}</span>
-									<span class="config-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
-									<button
-										class="config-toggle-btn"
-										onclick={() => toggleStrategyVisibility(sib.id)}
-									>
-										{#if isVisible}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-													cx="12"
-													cy="12"
-													r="3"
-												/></svg
-											>
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path
-													d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-												/><line x1="1" y1="1" x2="23" y2="23" /></svg
-											>
-										{/if}
-									</button>
-								</div>
-							{/each}
+						<div class="config-batch-actions">
+							<button class="config-batch-btn" onclick={() => {
+								[...strategies, ...siblings].forEach(s => {
+									if (s.id.startsWith('discovered:')) {
+										visibleDiscoveredIds.add(s.id);
+									} else {
+										hiddenStrategyIds.delete(s.id);
+									}
+								});
+								hiddenStrategyIds = new Set(hiddenStrategyIds);
+								visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+								persistState();
+								fetchAllStrategyProfits();
+							}}>{t('btcUpdown.strategy.showAll')}</button>
+							<button class="config-batch-btn" onclick={() => {
+								[...strategies, ...siblings].forEach(s => {
+									if (s.id === activeStrategyId) return;
+									if (s.id.startsWith('discovered:')) {
+										visibleDiscoveredIds.delete(s.id);
+									} else {
+										hiddenStrategyIds.add(s.id);
+									}
+								});
+								hiddenStrategyIds = new Set(hiddenStrategyIds);
+								visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+								persistState();
+								fetchAllStrategyProfits();
+							}}>{t('btcUpdown.strategy.hideAll')}</button>
 						</div>
 					{/if}
 					{@render columnHeaders()}
 					<div class="version-options">
-						{#each sortStrategies(visibleHostStrategies) as s (s.id)}
+						{#each sortStrategies(allHostStrategies) as s (s.id)}
 							{@const profits = allStrategyProfits.get(s.id)}
-							<div class="version-row">
+							{@const isHidden = s.type === 'discovered' ? !visibleDiscoveredIds.has(s.id) : hiddenStrategyIds.has(s.id)}
+							{#if !isHidden || configPanelSection === host}
+							<div class="version-row" class:row-hidden={isHidden}>
 								<button
 									class="version-btn custom-version-btn"
 									class:active={activeStrategyId === s.id}
@@ -2119,18 +2012,24 @@
 								>
 									<span class="custom-dot"></span>
 									<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-									{#if profits}
+									{#if profits && !isHidden}
 										{@render profitCells(profits)}
 									{/if}
 								</button>
 								{#if activeStrategyId !== s.id}
-									<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
-										<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+									<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? (isHidden ? '显示' : '隐藏') : (isHidden ? 'Show' : 'Hide')}>
+										{#if isHidden}
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+										{:else}
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+										{/if}
 									</button>
 								{/if}
 							</div>
+							{/if}
 						{/each}
 					</div>
+				{/if}
 				{/each}
 				<button class="add-strategy-btn" onclick={() => (showAddStrategy = true)}>
 					<svg
@@ -3629,17 +3528,14 @@
 	.version-row {
 		display: flex;
 		align-items: center;
-		position: relative;
+		gap: 2px;
 	}
 	.version-row .version-btn {
 		flex: 1;
 		min-width: 0;
 	}
 	.row-hide-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -3648,20 +3544,52 @@
 		padding: 0;
 		border: none;
 		border-radius: var(--radius-sm);
-		background: rgba(0, 0, 0, 0.3);
-		color: var(--fg-subtle);
+		background: transparent;
+		color: var(--fg-faint);
 		cursor: pointer;
 		opacity: 0;
-		transition: opacity 0.15s var(--easing);
-		z-index: 1;
+		transition: opacity 0.15s var(--easing), color 0.15s var(--easing), background 0.15s var(--easing);
 	}
 	.version-row:hover .row-hide-btn {
 		opacity: 0.6;
 	}
 	.row-hide-btn:hover {
 		opacity: 1 !important;
-		color: #f87171;
-		background: rgba(248, 113, 113, 0.15);
+		color: var(--fg-subtle);
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.version-row.row-hidden {
+		opacity: 0.35;
+	}
+	.version-row.row-hidden .row-hide-btn {
+		opacity: 0.6;
+	}
+	.version-row.row-hidden:hover {
+		opacity: 0.6;
+	}
+	.section-collapse-btn {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: color 0.15s var(--easing);
+	}
+	.section-collapse-btn:hover {
+		color: var(--fg-base);
+	}
+	.section-collapse-btn svg {
+		transition: transform 0.2s var(--easing);
+	}
+	.section-collapse-btn svg.collapsed {
+		transform: rotate(-90deg);
 	}
 	.custom-version-btn {
 		display: flex;

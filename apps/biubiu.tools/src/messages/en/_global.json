@@ -65,6 +65,8 @@
   "settings.numberFormat": "Number",
   "settings.dateFormat": "Date",
   "settings.currency": "Currency",
+  "settings.timezone": "Timezone",
+  "settings.timeFormat": "Time",
   "settings.theme.light": "Light",
   "settings.theme.dark": "Dark",
   "settings.helpTranslate": "Help improve translation",

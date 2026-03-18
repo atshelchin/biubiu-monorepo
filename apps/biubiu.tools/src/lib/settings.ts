@@ -8,6 +8,7 @@ import { browser } from '$app/environment';
 
 export type Theme = 'dark' | 'light';
 export type TextScale = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+export type TimeFormat = '12' | '24';
 
 export interface Settings {
   // Appearance
@@ -18,6 +19,7 @@ export interface Settings {
   dateLocale: string;
   currency: string;
   timezone: string;
+  timeFormat: TimeFormat;
 }
 
 const STORAGE_KEY = 'biubiu-settings';
@@ -28,6 +30,7 @@ const DEFAULT_SETTINGS: Settings = {
   dateLocale: 'en-US',
   currency: 'USD',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timeFormat: '24',
 };
 
 // Valid values for validation
@@ -94,6 +97,7 @@ export function loadSettings(): Settings {
         dateLocale: parsed.dateLocale || DEFAULT_SETTINGS.dateLocale,
         currency: parsed.currency || DEFAULT_SETTINGS.currency,
         timezone: parsed.timezone || DEFAULT_SETTINGS.timezone,
+        timeFormat: parsed.timeFormat === '12' || parsed.timeFormat === '24' ? parsed.timeFormat : DEFAULT_SETTINGS.timeFormat,
       };
     } catch {
       // Fallback to defaults if parsing fails
@@ -120,6 +124,9 @@ export function saveSettings(settings: Settings): void {
 
   // Save to localStorage
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+
+  // Dispatch custom event for same-tab listeners
+  window.dispatchEvent(new CustomEvent('settings-changed', { detail: settings }));
 
   // Sync all settings to cookies for SSR
   const cookieOptions = ';path=/;max-age=31536000;SameSite=Lax';

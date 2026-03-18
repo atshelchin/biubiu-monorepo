@@ -12,6 +12,7 @@
 		getTextScales,
 		type Theme,
 		type TextScale,
+		type TimeFormat,
 		type Settings
 	} from '$lib/settings';
 	import { translateMode, shortcutKey } from '$lib/translate-mode.svelte';
@@ -26,6 +27,24 @@
 		dateLocale: 'en-US',
 		currency: 'USD',
 		timezone: 'UTC',
+		timeFormat: '24',
+	});
+
+	const localTimezone = browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+	const timezoneOptions = $derived.by(() => {
+		const base = [
+			{ value: localTimezone, label: locale.value === 'zh' ? '本地' : 'Local' },
+			{ value: 'UTC', label: 'UTC' },
+			{ value: 'America/New_York', label: 'ET' },
+			{ value: 'Asia/Shanghai', label: 'UTC+8' },
+		];
+		// Deduplicate if local TZ matches a named option
+		const seen = new Set<string>();
+		return base.filter(o => {
+			if (seen.has(o.value)) return false;
+			seen.add(o.value);
+			return true;
+		});
 	});
 
 	const textScales = getTextScales();
@@ -108,6 +127,17 @@
 	function handleSetCurrency(code: string) {
 		settings = { ...settings, currency: code };
 		preferences.currency = code;
+		saveSettings(settings);
+	}
+
+	function handleSetTimezone(tz: string) {
+		settings = { ...settings, timezone: tz };
+		preferences.timezone = tz;
+		saveSettings(settings);
+	}
+
+	function handleSetTimeFormat(format: TimeFormat) {
+		settings = { ...settings, timeFormat: format };
 		saveSettings(settings);
 	}
 </script>
@@ -286,6 +316,43 @@
 						<span class="currency-code">{currency.code}</span>
 					</button>
 				{/each}
+			</div>
+		</div>
+
+		<!-- Timezone -->
+		<div class="setting-row">
+			<span class="setting-label">{t('settings.timezone')}</span>
+			<div class="format-group">
+				{#each timezoneOptions as tz}
+					<button
+						class="format-btn"
+						class:active={settings.timezone === tz.value}
+						onclick={() => handleSetTimezone(tz.value)}
+					>
+						{tz.label}
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Time Format -->
+		<div class="setting-row">
+			<span class="setting-label">{t('settings.timeFormat')}</span>
+			<div class="format-group">
+				<button
+					class="format-btn"
+					class:active={settings.timeFormat === '24'}
+					onclick={() => handleSetTimeFormat('24')}
+				>
+					14:30
+				</button>
+				<button
+					class="format-btn"
+					class:active={settings.timeFormat === '12'}
+					onclick={() => handleSetTimeFormat('12')}
+				>
+					2:30 PM
+				</button>
 			</div>
 		</div>
 	</section>

@@ -1661,6 +1661,27 @@
 					</button>
 				</div>
 				<div class="profit-column-labels">
+					<span
+						class="profit-col-label name-col-label"
+						class:sort-active={profitSortColumn === 'name'}
+						onclick={() => {
+							if (profitSortColumn === 'name') {
+								profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
+							} else {
+								profitSortColumn = 'name';
+								profitSortDir = 'asc';
+							}
+						}}
+						role="button"
+						tabindex={0}
+						title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
+					>
+						{locale.value === 'zh' ? '策略' : 'Name'}
+						{#if profitSortColumn === 'name'}
+							<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
+						{/if}
+					</span>
+					<span class="profit-col-labels-right">
 					{#each ['round', 'hour', 'day'] as col (col)}
 						{@const offset =
 							col === 'round'
@@ -1677,17 +1698,18 @@
 							<span
 								class="profit-col-label"
 								class:offset-active={offset !== 0}
-								class:sort-active={profitSortColumn === col || (col === 'round' && profitSortColumn === 'name')}
+								class:sort-active={profitSortColumn === col}
 								onclick={() => {
 									if (offset !== 0) {
 										resetProfitColumn(colKey);
 									} else {
-										const sortCol = col === 'round' ? 'name' : col as 'hour' | 'day';
+										const sortCol = col as 'hour' | 'day';
+										if (col === 'round') return;
 										if (profitSortColumn === sortCol) {
 											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 										} else {
 											profitSortColumn = sortCol;
-											profitSortDir = col === 'round' ? 'asc' : 'desc';
+											profitSortDir = 'desc';
 										}
 									}
 								}}
@@ -1702,7 +1724,7 @@
 										: 'Click to sort'}
 							>
 								{getProfitColumnLabel(colKey)}
-								{#if profitSortColumn === col || (col === 'round' && profitSortColumn === 'name')}
+								{#if profitSortColumn === col}
 									<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
 								{/if}
 							</span>
@@ -1713,6 +1735,7 @@
 							>›</button>
 						</div>
 					{/each}
+					</span>
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
@@ -3319,10 +3342,20 @@
 	}
 	.profit-column-labels {
 		display: flex;
-		justify-content: flex-end;
-		gap: var(--space-1); /* match .strategy-profits gap */
+		align-items: center;
+		gap: var(--space-2);
 		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: var(--space-1);
+	}
+	.profit-col-labels-right {
+		margin-left: auto;
+		display: flex;
+		gap: var(--space-1); /* match .strategy-profits gap */
+		flex-shrink: 0;
+	}
+	.name-col-label {
+		text-transform: none;
+		letter-spacing: 0;
 	}
 	.profit-col-nav.horizontal {
 		display: flex;

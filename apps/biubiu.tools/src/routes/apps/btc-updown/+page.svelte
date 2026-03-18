@@ -2339,6 +2339,7 @@
 						bind:value={filterDate}
 						onchange={onDateChange}
 						presets={['all', 'today', '7d', '30d']}
+						navigation
 						max={todayLocal()}
 					/>
 				</div>
@@ -3439,7 +3440,7 @@
 		gap: var(--space-2);
 		padding: var(--space-1) calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: 2px;
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--bg-sunken, rgba(255, 255, 255, 0.03));
 		border-radius: var(--radius-sm);
 	}
 	.profit-col-labels-right {
@@ -5371,6 +5372,8 @@
 		.config-batch-btn {
 			font-size: 11px;
 			padding: 6px 12px;
+
+			
 		}
 		.row-hide-btn {
 			opacity: 0.4;

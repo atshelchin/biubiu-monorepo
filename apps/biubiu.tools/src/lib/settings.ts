@@ -20,6 +20,7 @@ export interface Settings {
   currency: string;
   timezone: string;
   timeFormat: TimeFormat;
+  weekStartDay: number; // 0=Sunday, 1=Monday
 }
 
 const STORAGE_KEY = 'biubiu-settings';
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS: Settings = {
   currency: 'USD',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   timeFormat: '24',
+  weekStartDay: 1,
 };
 
 // Valid values for validation
@@ -98,6 +100,7 @@ export function loadSettings(): Settings {
         currency: parsed.currency || DEFAULT_SETTINGS.currency,
         timezone: parsed.timezone || DEFAULT_SETTINGS.timezone,
         timeFormat: parsed.timeFormat === '12' || parsed.timeFormat === '24' ? parsed.timeFormat : DEFAULT_SETTINGS.timeFormat,
+        weekStartDay: parsed.weekStartDay === 0 || parsed.weekStartDay === 1 ? parsed.weekStartDay : DEFAULT_SETTINGS.weekStartDay,
       };
     } catch {
       // Fallback to defaults if parsing fails
@@ -136,6 +139,7 @@ export function saveSettings(settings: Settings): void {
   document.cookie = `date-locale=${settings.dateLocale}${cookieOptions}`;
   document.cookie = `currency=${settings.currency}${cookieOptions}`;
   document.cookie = `timezone=${encodeURIComponent(settings.timezone)}${cookieOptions}`;
+  document.cookie = `week-start-day=${settings.weekStartDay}${cookieOptions}`;
 }
 
 /**

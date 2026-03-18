@@ -214,6 +214,9 @@
 	let profitRoundOffset = $state(0);
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
+	// Sidebar sort state
+	let profitSortColumn = $state<'hour' | 'day' | null>(null);
+	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
 	const hiddenBuiltinCount = $derived(
@@ -1011,6 +1014,19 @@
 		fetchAllStrategyProfits();
 	}
 
+	function sortStrategies<T extends { id: string }>(list: T[]): T[] {
+		if (!profitSortColumn) return list;
+		const col = profitSortColumn;
+		const dir = profitSortDir === 'desc' ? -1 : 1;
+		return [...list].sort((a, b) => {
+			const pa = allStrategyProfits.get(a.id);
+			const pb = allStrategyProfits.get(b.id);
+			const va = pa ? pa[col].profit : 0;
+			const vb = pb ? pb[col].profit : 0;
+			return (va - vb) * dir;
+		});
+	}
+
 	function resetProfitColumn(column: 'round' | 'hour' | 'day') {
 		if (column === 'round') profitRoundOffset = 0;
 		else if (column === 'hour') profitHourOffset = 0;
@@ -1645,50 +1661,50 @@
 								: col === 'hour'
 									? profitHourOffset
 									: profitDayOffset}
-						<div class="profit-col-nav">
+						{@const colKey = col as 'round' | 'hour' | 'day'}
+						<div class="profit-col-nav horizontal">
 							<button
-								class="col-nav-btn"
-								onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', -1)}
-							>
-								<svg width="8" height="8" viewBox="0 0 8 8"
-									><path
-										d="M1 5L4 2L7 5"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="1.5"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-									/></svg
-								>
-							</button>
+								class="col-nav-btn-h"
+								onclick={() => navigateProfitColumn(colKey, -1)}
+							>‹</button>
 							<span
 								class="profit-col-label"
 								class:offset-active={offset !== 0}
-								onclick={() => offset !== 0 && jumpToColumnContext(col as 'round' | 'hour' | 'day')}
-								role={offset !== 0 ? 'button' : undefined}
-								tabindex={offset !== 0 ? 0 : undefined}
+								class:sort-active={profitSortColumn === col}
+								onclick={() => {
+									if (offset !== 0) {
+										jumpToColumnContext(colKey);
+									} else if (col !== 'round') {
+										if (profitSortColumn === col) {
+											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
+										} else {
+											profitSortColumn = col as 'hour' | 'day';
+											profitSortDir = 'desc';
+										}
+									}
+								}}
+								role="button"
+								tabindex={0}
 								title={offset !== 0
 									? locale.value === 'zh'
 										? '点击跳转查看'
 										: 'Click to view'
-									: ''}>{getProfitColumnLabel(col as 'round' | 'hour' | 'day')}</span
+									: col !== 'round'
+										? locale.value === 'zh'
+											? '点击排序'
+											: 'Click to sort'
+										: ''}
 							>
+								{getProfitColumnLabel(colKey)}
+								{#if profitSortColumn === col}
+									<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
+								{/if}
+							</span>
 							<button
-								class="col-nav-btn"
+								class="col-nav-btn-h"
 								disabled={offset === 0}
-								onclick={() => navigateProfitColumn(col as 'round' | 'hour' | 'day', 1)}
-							>
-								<svg width="8" height="8" viewBox="0 0 8 8"
-									><path
-										d="M1 3L4 6L7 3"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="1.5"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-									/></svg
-								>
-							</button>
+								onclick={() => navigateProfitColumn(colKey, 1)}
+							>›</button>
 						</div>
 					{/each}
 				</div>
@@ -1721,6 +1737,22 @@
 				</div>
 				{#if configPanelSection === 'builtin'}
 					<div class="config-panel">
+						<div class="config-batch-actions">
+							<button class="config-batch-btn" onclick={() => {
+								builtinStrategies.forEach(s => hiddenStrategyIds.delete(s.id));
+								hiddenStrategyIds = new Set(hiddenStrategyIds);
+								persistState();
+								fetchAllStrategyProfits();
+							}}>{t('btcUpdown.strategy.showAll')}</button>
+							<button class="config-batch-btn" onclick={() => {
+								builtinStrategies.forEach(s => {
+									if (s.id !== activeStrategyId) hiddenStrategyIds.add(s.id);
+								});
+								hiddenStrategyIds = new Set(hiddenStrategyIds);
+								persistState();
+								fetchAllStrategyProfits();
+							}}>{t('btcUpdown.strategy.hideAll')}</button>
+						</div>
 						{#each builtinStrategies as s (s.id)}
 							{@const isHidden = hiddenStrategyIds.has(s.id)}
 							<div class="config-row" class:config-hidden={isHidden}>
@@ -1765,7 +1797,7 @@
 					</div>
 				{/if}
 				<div class="version-options">
-					{#each builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id)) as s (s.id)}
+					{#each sortStrategies(builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id))) as s (s.id)}
 						{@const profits = allStrategyProfits.get(s.id)}
 						<button
 							class="version-btn"
@@ -1838,6 +1870,35 @@
 					</div>
 					{#if configPanelSection === host}
 						<div class="config-panel">
+							<div class="config-batch-actions">
+								<button class="config-batch-btn" onclick={() => {
+									[...strategies, ...siblings].forEach(s => {
+										if (s.id.startsWith('discovered:')) {
+											visibleDiscoveredIds.add(s.id);
+										} else {
+											hiddenStrategyIds.delete(s.id);
+										}
+									});
+									hiddenStrategyIds = new Set(hiddenStrategyIds);
+									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+									persistState();
+									fetchAllStrategyProfits();
+								}}>{t('btcUpdown.strategy.showAll')}</button>
+								<button class="config-batch-btn" onclick={() => {
+									[...strategies, ...siblings].forEach(s => {
+										if (s.id === activeStrategyId) return;
+										if (s.id.startsWith('discovered:')) {
+											visibleDiscoveredIds.delete(s.id);
+										} else {
+											hiddenStrategyIds.add(s.id);
+										}
+									});
+									hiddenStrategyIds = new Set(hiddenStrategyIds);
+									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+									persistState();
+									fetchAllStrategyProfits();
+								}}>{t('btcUpdown.strategy.hideAll')}</button>
+							</div>
 							{#each strategies as s (s.id)}
 								{@const isHidden = hiddenStrategyIds.has(s.id)}
 								<div class="config-row" class:config-hidden={isHidden}>
@@ -1927,7 +1988,7 @@
 						</div>
 					{/if}
 					<div class="version-options">
-						{#each visibleHostStrategies as s (s.id)}
+						{#each sortStrategies(visibleHostStrategies) as s (s.id)}
 							{@const profits = allStrategyProfits.get(s.id)}
 							<button
 								class="version-btn custom-version-btn"
@@ -3243,32 +3304,36 @@
 		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: var(--space-1);
 	}
-	.profit-col-nav {
+	.profit-col-nav.horizontal {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-end; /* match profit-cell right-alignment */
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-end;
 		width: 52px;
 		flex-shrink: 0;
 		gap: 0;
 	}
-	.col-nav-btn {
+	.col-nav-btn-h {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 10px;
+		width: 16px;
+		height: 22px;
 		padding: 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
 		opacity: 0.3;
+		font-size: 14px;
+		line-height: 1;
 		transition: opacity 0.15s;
+		flex-shrink: 0;
 	}
-	.col-nav-btn:hover:not(:disabled) {
+	.col-nav-btn-h:hover:not(:disabled) {
 		opacity: 0.8;
 	}
-	.col-nav-btn:disabled {
+	.col-nav-btn-h:disabled {
 		opacity: 0.1;
 		cursor: default;
 	}
@@ -3283,6 +3348,8 @@
 		flex-shrink: 0;
 		white-space: nowrap;
 		user-select: none;
+		cursor: default;
+		padding: 2px 0;
 	}
 	.profit-col-label.offset-active {
 		color: var(--accent, #60a5fa);
@@ -3291,6 +3358,16 @@
 		text-decoration: underline;
 		text-decoration-style: dotted;
 		text-underline-offset: 2px;
+	}
+	.profit-col-label.sort-active {
+		color: var(--accent, #60a5fa);
+		opacity: 0.8;
+		cursor: pointer;
+	}
+	.sort-indicator {
+		font-size: 8px;
+		margin-left: 1px;
+		opacity: 0.7;
 	}
 	.strategy-profits {
 		margin-left: auto;
@@ -3456,6 +3533,28 @@
 		padding: var(--space-1) 0;
 		margin-bottom: var(--space-1);
 		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	}
+	.config-batch-actions {
+		display: flex;
+		gap: var(--space-2);
+		padding: 0 var(--space-2);
+		margin-bottom: var(--space-1);
+	}
+	.config-batch-btn {
+		font-size: 9px;
+		padding: 3px 8px;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		white-space: nowrap;
+	}
+	.config-batch-btn:hover {
+		border-color: rgba(255, 255, 255, 0.2);
+		color: var(--fg-muted);
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.config-row {
 		display: flex;
@@ -5106,21 +5205,23 @@
 			padding: var(--space-2) var(--space-3);
 			min-height: 44px;
 		}
-		.col-nav-btn {
-			width: 32px;
-			height: 20px;
+		.col-nav-btn-h {
+			width: 24px;
+			height: 28px;
+			font-size: 18px;
 		}
 		.profit-refresh-btn {
 			width: 36px;
 			height: 36px;
 		}
 		.profit-col-label {
-			font-size: 10px;
+			font-size: 11px;
+			padding: 4px 0;
 		}
 		.profit-cell {
 			width: 58px;
 		}
-		.profit-col-nav {
+		.profit-col-nav.horizontal {
 			width: 58px;
 		}
 		.strategy-profits {
@@ -5129,6 +5230,18 @@
 		.section-config-btn {
 			width: 32px;
 			height: 32px;
+		}
+		.config-toggle-btn {
+			width: 36px;
+			height: 36px;
+		}
+		.config-row {
+			padding: var(--space-1) var(--space-2);
+			min-height: 40px;
+		}
+		.config-batch-btn {
+			font-size: 11px;
+			padding: 6px 12px;
 		}
 	}
 </style>

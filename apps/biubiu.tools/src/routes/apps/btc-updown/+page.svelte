@@ -215,7 +215,7 @@
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
 	// Sidebar sort state
-	let profitSortColumn = $state<'name' | 'round' | 'hour' | 'day' | null>(null);
+	let profitSortColumn = $state<'name' | 'hour' | 'day' | null>(null);
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
@@ -1044,17 +1044,6 @@
 				return naturalCompare(na, nb) * dir;
 			});
 		}
-		if (col === 'round') {
-			return [...list].sort((a, b) => {
-				const pa = allStrategyProfits.get(a.id);
-				const pb = allStrategyProfits.get(b.id);
-				const ca = pa?.current;
-				const cb = pb?.current;
-				const va = ca && ca.status === 'settled' ? ca.profit : 0;
-				const vb = cb && cb.status === 'settled' ? cb.profit : 0;
-				return (va - vb) * dir;
-			});
-		}
 		return [...list].sort((a, b) => {
 			const pa = allStrategyProfits.get(a.id);
 			const pb = allStrategyProfits.get(b.id);
@@ -1614,28 +1603,6 @@
 			{#snippet profitCells(profits: StrategyProfitData)}
 				<span class="strategy-profits">
 					<span class="profit-cell">
-						{#if profits.current.status === 'settled'}
-							<span
-								class="profit-val"
-								class:positive={profits.current.profit >= 0}
-								class:negative={profits.current.profit < 0}
-								>{profits.current.profit >= 0 ? '+' : ''}{Math.round(profits.current.profit)}</span
-							>
-							{#if profits.current.direction}<span class="profit-dir"
-									>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span
-								>{/if}
-						{:else if profits.current.status === 'skipped'}
-							<span class="profit-status">{t('btcUpdown.strategy.statusSkip')}</span>
-						{:else if profits.current.status === 'entered'}
-							<span class="profit-status pending">{t('btcUpdown.strategy.statusWait')}</span>
-							{#if profits.current.direction}<span class="profit-dir"
-									>{profits.current.direction === 'Up' ? 'Up' : 'Dn'}</span
-								>{/if}
-						{:else}
-							<span class="profit-status">{t('btcUpdown.strategy.statusWatch')}</span>
-						{/if}
-					</span>
-					<span class="profit-cell">
 						<span
 							class="profit-val"
 							class:positive={profits.hour.profit >= 0}
@@ -1683,7 +1650,7 @@
 						{/if}
 					</span>
 					<span class="profit-col-labels-right">
-					{#each ['round', 'hour', 'day'] as col (col)}
+					{#each ['hour', 'day'] as col (col)}
 						{@const offset =
 							col === 'round'
 								? profitRoundOffset
@@ -1704,7 +1671,7 @@
 									if (profitSortColumn === col) {
 										profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 									} else {
-										profitSortColumn = col as 'round' | 'hour' | 'day';
+										profitSortColumn = col as 'hour' | 'day';
 										profitSortDir = 'desc';
 									}
 								}}

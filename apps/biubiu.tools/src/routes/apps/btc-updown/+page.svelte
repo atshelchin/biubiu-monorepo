@@ -215,7 +215,7 @@
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
 	// Sidebar sort state
-	let profitSortColumn = $state<'name' | 'hour' | 'day' | null>(null);
+	let profitSortColumn = $state<'name' | 'round' | 'hour' | 'day' | null>(null);
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
@@ -1044,6 +1044,17 @@
 				return naturalCompare(na, nb) * dir;
 			});
 		}
+		if (col === 'round') {
+			return [...list].sort((a, b) => {
+				const pa = allStrategyProfits.get(a.id);
+				const pb = allStrategyProfits.get(b.id);
+				const ca = pa?.current;
+				const cb = pb?.current;
+				const va = ca && ca.status === 'settled' ? ca.profit : 0;
+				const vb = cb && cb.status === 'settled' ? cb.profit : 0;
+				return (va - vb) * dir;
+			});
+		}
 		return [...list].sort((a, b) => {
 			const pa = allStrategyProfits.get(a.id);
 			const pb = allStrategyProfits.get(b.id);
@@ -1690,28 +1701,16 @@
 								class:offset-active={offset !== 0}
 								class:sort-active={profitSortColumn === col}
 								onclick={() => {
-									if (offset !== 0) {
-										resetProfitColumn(colKey);
+									if (profitSortColumn === col) {
+										profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 									} else {
-										const sortCol = col as 'hour' | 'day';
-										if (col === 'round') return;
-										if (profitSortColumn === sortCol) {
-											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
-										} else {
-											profitSortColumn = sortCol;
-											profitSortDir = 'desc';
-										}
+										profitSortColumn = col as 'round' | 'hour' | 'day';
+										profitSortDir = 'desc';
 									}
 								}}
 								role="button"
 								tabindex={0}
-								title={offset !== 0
-									? locale.value === 'zh'
-										? '点击回到当前'
-										: 'Click to reset'
-									: locale.value === 'zh'
-										? '点击排序'
-										: 'Click to sort'}
+								title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
 							>
 								{getProfitColumnLabel(colKey)}
 								{#if profitSortColumn === col}
@@ -3386,7 +3385,7 @@
 		flex-direction: row;
 		align-items: center;
 		justify-content: center;
-		width: 60px;
+		width: 64px;
 		flex-shrink: 0;
 		gap: 0;
 	}
@@ -3394,15 +3393,15 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 28px;
+		width: 22px;
+		height: 30px;
 		padding: 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.4;
-		font-size: 16px;
+		opacity: 0.5;
+		font-size: 18px;
 		line-height: 1;
 		transition: opacity 0.15s, background 0.15s;
 		flex-shrink: 0;
@@ -3419,10 +3418,10 @@
 		cursor: default;
 	}
 	.profit-col-label {
-		font-size: 10px;
-		font-weight: var(--weight-medium);
+		font-size: 11px;
+		font-weight: var(--weight-semibold);
 		color: var(--fg-subtle);
-		opacity: 0.6;
+		opacity: 0.65;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		text-align: center;
@@ -3452,9 +3451,9 @@
 		cursor: pointer;
 	}
 	.sort-indicator {
-		font-size: 8px;
-		margin-left: 1px;
-		opacity: 0.7;
+		font-size: 10px;
+		margin-left: 2px;
+		opacity: 0.8;
 	}
 	.strategy-profits {
 		margin-left: auto;
@@ -3470,7 +3469,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
-		width: 60px;
+		width: 64px;
 		flex-shrink: 0;
 		gap: 1px;
 	}
@@ -5331,17 +5330,17 @@
 			min-height: 44px;
 		}
 		.col-nav-btn-h {
-			width: 28px;
-			height: 36px;
-			font-size: 20px;
+			width: 32px;
+			height: 40px;
+			font-size: 22px;
 		}
 		.profit-refresh-btn {
 			width: 36px;
 			height: 36px;
 		}
 		.profit-col-label {
-			font-size: 11px;
-			padding: 6px 4px;
+			font-size: 12px;
+			padding: 8px 4px;
 		}
 		.profit-cell {
 			width: 68px;

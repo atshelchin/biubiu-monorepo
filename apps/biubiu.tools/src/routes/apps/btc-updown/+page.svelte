@@ -1673,7 +1673,7 @@
 								class:sort-active={profitSortColumn === col}
 								onclick={() => {
 									if (offset !== 0) {
-										jumpToColumnContext(colKey);
+										resetProfitColumn(colKey);
 									} else if (col !== 'round') {
 										if (profitSortColumn === col) {
 											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
@@ -1687,8 +1687,8 @@
 								tabindex={0}
 								title={offset !== 0
 									? locale.value === 'zh'
-										? '点击跳转查看'
-										: 'Click to view'
+										? '点击回到当前'
+										: 'Click to reset'
 									: col !== 'round'
 										? locale.value === 'zh'
 											? '点击排序'
@@ -1799,16 +1799,23 @@
 				<div class="version-options">
 					{#each sortStrategies(builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id))) as s (s.id)}
 						{@const profits = allStrategyProfits.get(s.id)}
-						<button
-							class="version-btn"
-							class:active={activeStrategyId === s.id}
-							onclick={() => onStrategyChange(s.id)}
-						>
-							<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-							{#if profits}
-								{@render profitCells(profits)}
+						<div class="version-row">
+							<button
+								class="version-btn"
+								class:active={activeStrategyId === s.id}
+								onclick={() => onStrategyChange(s.id)}
+							>
+								<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+								{#if profits}
+									{@render profitCells(profits)}
+								{/if}
+							</button>
+							{#if activeStrategyId !== s.id}
+								<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+								</button>
 							{/if}
-						</button>
+						</div>
 					{/each}
 				</div>
 				<!-- Custom strategy groups -->
@@ -1990,17 +1997,24 @@
 					<div class="version-options">
 						{#each sortStrategies(visibleHostStrategies) as s (s.id)}
 							{@const profits = allStrategyProfits.get(s.id)}
-							<button
-								class="version-btn custom-version-btn"
-								class:active={activeStrategyId === s.id}
-								onclick={() => onStrategyChange(s.id)}
-							>
-								<span class="custom-dot"></span>
-								<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-								{#if profits}
-									{@render profitCells(profits)}
+							<div class="version-row">
+								<button
+									class="version-btn custom-version-btn"
+									class:active={activeStrategyId === s.id}
+									onclick={() => onStrategyChange(s.id)}
+								>
+									<span class="custom-dot"></span>
+									<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+									{#if profits}
+										{@render profitCells(profits)}
+									{/if}
+								</button>
+								{#if activeStrategyId !== s.id}
+									<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
+										<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+									</button>
 								{/if}
-							</button>
+							</div>
 						{/each}
 					</div>
 				{/each}
@@ -3308,8 +3322,8 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
-		justify-content: flex-end;
-		width: 52px;
+		justify-content: center;
+		width: 60px;
 		flex-shrink: 0;
 		gap: 0;
 	}
@@ -3317,18 +3331,22 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 16px;
-		height: 22px;
+		width: 20px;
+		height: 28px;
 		padding: 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.3;
-		font-size: 14px;
+		opacity: 0.4;
+		font-size: 16px;
 		line-height: 1;
-		transition: opacity 0.15s;
+		transition: opacity 0.15s, background 0.15s;
 		flex-shrink: 0;
+		border-radius: var(--radius-sm);
+	}
+	.col-nav-btn-h:active:not(:disabled) {
+		background: rgba(255, 255, 255, 0.06);
 	}
 	.col-nav-btn-h:hover:not(:disabled) {
 		opacity: 0.8;
@@ -3338,18 +3356,24 @@
 		cursor: default;
 	}
 	.profit-col-label {
-		font-size: 9px;
+		font-size: 10px;
 		font-weight: var(--weight-medium);
 		color: var(--fg-subtle);
-		opacity: 0.5;
+		opacity: 0.6;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		text-align: center;
 		flex-shrink: 0;
 		white-space: nowrap;
 		user-select: none;
-		cursor: default;
-		padding: 2px 0;
+		cursor: pointer;
+		padding: 4px 2px;
+		border-radius: var(--radius-sm);
+		transition: opacity 0.15s, background 0.15s;
+	}
+	.profit-col-label:hover {
+		opacity: 0.9;
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.profit-col-label.offset-active {
 		color: var(--accent, #60a5fa);
@@ -3373,7 +3397,7 @@
 		margin-left: auto;
 		display: flex;
 		align-items: flex-start;
-		gap: var(--space-2);
+		gap: var(--space-1);
 		font-size: 10px;
 		font-variant-numeric: tabular-nums;
 		opacity: 0.85;
@@ -3383,7 +3407,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
-		width: 52px;
+		width: 60px;
 		flex-shrink: 0;
 		gap: 1px;
 	}
@@ -3478,6 +3502,42 @@
 		color: #ef4444;
 		background: rgba(239, 68, 68, 0.1);
 	}
+	.version-row {
+		display: flex;
+		align-items: center;
+		gap: 0;
+		position: relative;
+	}
+	.version-row .version-btn {
+		flex: 1;
+		min-width: 0;
+	}
+	.row-hide-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 0;
+		height: 28px;
+		padding: 0;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		opacity: 0;
+		overflow: hidden;
+		transition: all 0.15s var(--easing);
+		flex-shrink: 0;
+	}
+	.version-row:hover .row-hide-btn {
+		width: 24px;
+		opacity: 0.4;
+	}
+	.row-hide-btn:hover {
+		opacity: 1 !important;
+		color: #f87171;
+		background: rgba(248, 113, 113, 0.1);
+	}
 	.custom-version-btn {
 		display: flex;
 		align-items: center;
@@ -3496,16 +3556,17 @@
 		align-items: center;
 		gap: 3px;
 		margin-left: auto;
-		padding: 2px 4px;
-		border: none;
-		border-radius: var(--radius-sm);
+		padding: 4px 8px;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-full);
 		background: transparent;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.4;
+		opacity: 0.6;
 		transition:
 			opacity 0.15s,
-			color 0.15s;
+			color 0.15s,
+			border-color 0.15s;
 	}
 	.section-config-btn:hover {
 		opacity: 1;
@@ -5206,9 +5267,9 @@
 			min-height: 44px;
 		}
 		.col-nav-btn-h {
-			width: 24px;
-			height: 28px;
-			font-size: 18px;
+			width: 28px;
+			height: 36px;
+			font-size: 20px;
 		}
 		.profit-refresh-btn {
 			width: 36px;
@@ -5219,10 +5280,10 @@
 			padding: 4px 0;
 		}
 		.profit-cell {
-			width: 58px;
+			width: 68px;
 		}
 		.profit-col-nav.horizontal {
-			width: 58px;
+			width: 68px;
 		}
 		.strategy-profits {
 			gap: var(--space-3);
@@ -5242,6 +5303,18 @@
 		.config-batch-btn {
 			font-size: 11px;
 			padding: 6px 12px;
+		}
+		.row-hide-btn {
+			width: 28px;
+			opacity: 0.3;
+		}
+		.profit-col-label {
+			font-size: 11px;
+			padding: 6px 4px;
+		}
+		.section-config-btn {
+			padding: 6px 10px;
+			font-size: 11px;
 		}
 	}
 </style>

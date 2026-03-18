@@ -7,6 +7,7 @@ const defaultPreferences: Preferences = {
   currency: 'CNY',
   dateLocale: 'zh-CN',
   timezone: 'Asia/Shanghai',
+  weekStartDay: 1,
 };
 
 /** 全局 i18n 状态 */
@@ -90,6 +91,8 @@ export const preferences = {
   set dateLocale(v: string) { i18nState.preferences.dateLocale = v; },
   get timezone() { return i18nState.preferences.timezone; },
   set timezone(v: string) { i18nState.preferences.timezone = v; },
+  get weekStartDay() { return i18nState.preferences.weekStartDay; },
+  set weekStartDay(v: number) { i18nState.preferences.weekStartDay = v; },
 };
 
 export const locale = {

@@ -3271,7 +3271,7 @@
 		white-space: nowrap;
 	}
 	.version-type-label {
-		font-size: 10px;
+		font-size: calc(10px * var(--text-scale, 1));
 		font-weight: var(--weight-medium);
 		color: var(--fg-subtle);
 		text-transform: uppercase;
@@ -3418,7 +3418,7 @@
 		cursor: pointer;
 	}
 	.sort-indicator {
-		font-size: 10px;
+		font-size: calc(10px * var(--text-scale, 1));
 		margin-left: 2px;
 		opacity: 0.8;
 	}
@@ -3427,7 +3427,7 @@
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-1);
-		font-size: 10px;
+		font-size: calc(10px * var(--text-scale, 1));
 		font-variant-numeric: tabular-nums;
 		opacity: 0.85;
 		flex-shrink: 0;
@@ -3450,7 +3450,7 @@
 		color: #f87171;
 	}
 	.profit-status {
-		font-size: 9px;
+		font-size: calc(9px * var(--text-scale, 1));
 		color: var(--fg-subtle);
 		opacity: 0.6;
 	}
@@ -3459,13 +3459,13 @@
 		opacity: 1;
 	}
 	.profit-dir {
-		font-size: 9px;
+		font-size: calc(9px * var(--text-scale, 1));
 		margin-left: 1px;
 		font-weight: var(--weight-semibold);
 		color: var(--fg-muted);
 	}
 	.profit-meta {
-		font-size: 8px;
+		font-size: calc(8px * var(--text-scale, 1));
 		color: var(--fg-subtle);
 		opacity: 0.5;
 		white-space: nowrap;
@@ -3473,7 +3473,7 @@
 
 	/* Last refresh timestamp */
 	.last-refresh-time {
-		font-size: 9px;
+		font-size: calc(9px * var(--text-scale, 1));
 		color: var(--fg-subtle);
 		opacity: 0.4;
 		font-variant-numeric: tabular-nums;
@@ -3606,7 +3606,7 @@
 		opacity: 0.7;
 	}
 	.config-count {
-		font-size: 9px;
+		font-size: calc(9px * var(--text-scale, 1));
 		font-variant-numeric: tabular-nums;
 		color: var(--fg-subtle);
 		opacity: 0.5;
@@ -3632,7 +3632,7 @@
 		margin-bottom: var(--space-1);
 	}
 	.config-batch-btn {
-		font-size: 9px;
+		font-size: calc(9px * var(--text-scale, 1));
 		padding: 3px 8px;
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-full);

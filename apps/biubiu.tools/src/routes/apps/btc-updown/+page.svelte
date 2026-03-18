@@ -1649,36 +1649,7 @@
 				</span>
 			{/snippet}
 
-			<!-- Strategy Selector -->
-			<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
-				<div class="version-header">
-					<span class="version-label">{t('btcUpdown.strategy.title')}</span>
-					{#if lastProfitRefreshTime > 0}
-						{@const elapsed = Math.floor((now - lastProfitRefreshTime) / 1000)}
-						<span class="last-refresh-time">{elapsed}s</span>
-					{/if}
-					<button
-						class="profit-refresh-btn"
-						class:refreshing={profitRefreshing}
-						onclick={() => fetchAllStrategyProfits()}
-						title={t('btcUpdown.strategy.refresh')}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="13"
-							height="13"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path
-								d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
-							/></svg
-						>
-					</button>
-				</div>
+			{#snippet columnHeaders()}
 				<div class="profit-column-labels">
 					<span
 						class="profit-col-label name-col-label"
@@ -1755,6 +1726,38 @@
 						</div>
 					{/each}
 					</span>
+				</div>
+			{/snippet}
+
+			<!-- Strategy Selector -->
+			<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
+				<div class="version-header">
+					<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+					{#if lastProfitRefreshTime > 0}
+						{@const elapsed = Math.floor((now - lastProfitRefreshTime) / 1000)}
+						<span class="last-refresh-time">{elapsed}s</span>
+					{/if}
+					<button
+						class="profit-refresh-btn"
+						class:refreshing={profitRefreshing}
+						onclick={() => fetchAllStrategyProfits()}
+						title={t('btcUpdown.strategy.refresh')}
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="13"
+							height="13"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path
+								d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+							/></svg
+						>
+					</button>
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
@@ -1844,6 +1847,7 @@
 						{/each}
 					</div>
 				{/if}
+				{@render columnHeaders()}
 				<div class="version-options">
 					{#each sortStrategies(builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id))) as s (s.id)}
 						{@const profits = allStrategyProfits.get(s.id)}
@@ -2042,6 +2046,7 @@
 							{/each}
 						</div>
 					{/if}
+					{@render columnHeaders()}
 					<div class="version-options">
 						{#each sortStrategies(visibleHostStrategies) as s (s.id)}
 							{@const profits = allStrategyProfits.get(s.id)}

@@ -10,6 +10,8 @@ export interface Preferences {
   dateLocale: string;
   /** 时区 */
   timezone: string;
+  /** 一周第一天 (0=Sunday, 1=Monday) */
+  weekStartDay: number;
 }
 
 /** i18n 配置 */

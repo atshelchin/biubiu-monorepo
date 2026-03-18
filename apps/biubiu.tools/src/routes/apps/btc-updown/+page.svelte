@@ -20,6 +20,7 @@
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import PageFooter from '$lib/ui/PageFooter.svelte';
+	import DatePicker from '$lib/ui/DatePicker.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
 	import { onDestroy, untrack } from 'svelte';
@@ -293,7 +294,7 @@
 	let roundsLoading = $state(false);
 
 	// Date filter: '' means "All", 'YYYY-MM-DD' means specific date
-	let filterDate = $state('');
+	let filterDate = $state<{ from: string; to: string }>({ from: '', to: '' });
 	let hourlyData = $state<HourlyStats[]>([]);
 	let selectedHour = $state<number | null>(null);
 
@@ -495,33 +496,31 @@
 	// --- REST API ---
 
 	function getDateRange(hourFilter?: number | null): { from: string; to: string } | null {
-		if (!filterDate) return null;
+		if (!filterDate.from) return null;
 		const h = hourFilter ?? null;
+		const endDate = filterDate.to || filterDate.from;
 		// Convert local date boundaries to UTC for the API
 		const start =
 			h !== null
-				? new Date(`${filterDate}T${String(h).padStart(2, '0')}:00:00`)
-				: new Date(`${filterDate}T00:00:00`);
+				? new Date(`${filterDate.from}T${String(h).padStart(2, '0')}:00:00`)
+				: new Date(`${filterDate.from}T00:00:00`);
 		const end =
 			h !== null
-				? new Date(`${filterDate}T${String(h).padStart(2, '0')}:59:59`)
-				: new Date(`${filterDate}T23:59:59`);
+				? new Date(`${filterDate.from}T${String(h).padStart(2, '0')}:59:59`)
+				: new Date(`${endDate}T23:59:59`);
 		return {
 			from: start.toISOString().slice(0, 19).replace('T', ' '),
 			to: end.toISOString().slice(0, 19).replace('T', ' ')
 		};
 	}
 
+	/** Whether the current filter is exactly one day */
+	const isSingleDayFilter = $derived(
+		filterDate.from !== '' && filterDate.from === filterDate.to
+	);
+
 	function todayLocal(): string {
 		return new Date().toLocaleDateString('en-CA');
-	}
-
-	function shiftDate(days: number) {
-		const base = filterDate || todayLocal();
-		const d = new Date(base + 'T12:00:00'); // noon to avoid DST edge cases
-		d.setDate(d.getDate() + days);
-		filterDate = d.toLocaleDateString('en-CA');
-		onDateChange();
 	}
 
 	async function fetchStats() {
@@ -583,7 +582,7 @@
 	}
 
 	async function fetchHourly() {
-		if (!filterDate) {
+		if (!isSingleDayFilter) {
 			hourlyData = [];
 			return;
 		}
@@ -1100,7 +1099,8 @@
 		if (column === 'day' && profitDayOffset !== 0) {
 			const d = new Date();
 			d.setDate(d.getDate() + profitDayOffset);
-			filterDate = d.toLocaleDateString('en-CA');
+			const ds = d.toLocaleDateString('en-CA');
+			filterDate = { from: ds, to: ds };
 			selectedHour = null;
 			onDateChange();
 		} else if (column === 'hour' && profitHourOffset !== 0) {
@@ -1108,7 +1108,8 @@
 			d.setMinutes(0, 0, 0);
 			d.setHours(d.getHours() + profitHourOffset);
 			// Set date to that hour's date (could be yesterday if offset crosses midnight)
-			filterDate = d.toLocaleDateString('en-CA');
+			const ds = d.toLocaleDateString('en-CA');
+			filterDate = { from: ds, to: ds };
 			selectedHour = d.getHours();
 			roundsPage = 1;
 			fetchHourly();
@@ -1244,7 +1245,7 @@
 				}
 
 				// Default to today's date
-				filterDate = todayLocal();
+				filterDate = { from: todayLocal(), to: todayLocal() };
 
 				// Discover default server strategies (replaces hardcoded list)
 				const lang = locale.value === 'zh' ? 'zh' : 'en';
@@ -1871,34 +1872,37 @@
 			{/snippet}
 
 			<!-- Strategy Selector -->
+			{#snippet refreshIndicator()}
+				{#if lastProfitRefreshTime > 0}
+					{@const elapsed = Math.floor((now - lastProfitRefreshTime) / 1000)}
+					<span class="last-refresh-time">{elapsed}s</span>
+				{/if}
+				<button
+					class="profit-refresh-btn"
+					class:refreshing={profitRefreshing}
+					onclick={() => fetchAllStrategyProfits()}
+					title={t('btcUpdown.strategy.refresh')}
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="12"
+						height="12"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path
+							d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+						/></svg
+					>
+				</button>
+			{/snippet}
+
 			<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
 				<div class="version-header">
 					<span class="version-label">{t('btcUpdown.strategy.title')}</span>
-					{#if lastProfitRefreshTime > 0}
-						{@const elapsed = Math.floor((now - lastProfitRefreshTime) / 1000)}
-						<span class="last-refresh-time">{elapsed}s</span>
-					{/if}
-					<button
-						class="profit-refresh-btn"
-						class:refreshing={profitRefreshing}
-						onclick={() => fetchAllStrategyProfits()}
-						title={t('btcUpdown.strategy.refresh')}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="13"
-							height="13"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path
-								d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
-							/></svg
-						>
-					</button>
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
@@ -1918,6 +1922,7 @@
 						>
 					</button>
 					<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
+					{@render refreshIndicator()}
 					<button
 						class="section-config-btn"
 						class:has-hidden={hiddenBuiltinCount > 0}
@@ -2079,6 +2084,7 @@
 								><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg
 							>
 						</button>
+						{@render refreshIndicator()}
 						<button
 							class="section-config-btn"
 							class:has-hidden={visibleCount < totalHostCount}
@@ -2328,62 +2334,14 @@
 				<!-- Date Filter -->
 				<div class="date-filter glass-card" use:fadeInUp={{ delay: 40 }}>
 					<span class="date-filter-label">{t('btcUpdown.filter.date')}</span>
-					<div class="date-filter-options">
-						<button
-							class="date-option-btn"
-							class:active={!filterDate}
-							onclick={() => {
-								filterDate = '';
-								onDateChange();
-							}}>{t('btcUpdown.filter.all')}</button
-						>
-						<button
-							class="date-option-btn"
-							class:active={filterDate === todayLocal()}
-							onclick={() => {
-								filterDate = todayLocal();
-								onDateChange();
-							}}>{t('btcUpdown.filter.today')}</button
-						>
-						<button
-							class="date-nav-btn"
-							onclick={() => shiftDate(-1)}
-							title={locale.value === 'zh' ? '前一天' : 'Previous day'}
-						>
-							<svg width="10" height="10" viewBox="0 0 10 10"
-								><path
-									d="M7 1L3 5L7 9"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.5"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								/></svg
-							>
-						</button>
-						<label class="date-input-label">
-							<span class="date-input-display">{filterDate ? filterDate.slice(2) : '--/--/--'}</span>
-							<svg class="date-input-cal" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-							<input type="date" class="date-input-native" bind:value={filterDate} onchange={onDateChange} />
-						</label>
-						<button
-							class="date-nav-btn"
-							disabled={!filterDate || filterDate >= todayLocal()}
-							onclick={() => shiftDate(1)}
-							title={locale.value === 'zh' ? '后一天' : 'Next day'}
-						>
-							<svg width="10" height="10" viewBox="0 0 10 10"
-								><path
-									d="M3 1L7 5L3 9"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1.5"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								/></svg
-							>
-						</button>
-					</div>
+					<DatePicker
+						mode="range"
+						bind:value={filterDate}
+						onchange={onDateChange}
+						presets={['all', 'today', '7d', '30d']}
+						navigation
+						max={todayLocal()}
+					/>
 				</div>
 
 				<!-- Stats Overview -->
@@ -2455,13 +2413,13 @@
 					</section>
 				{/if}
 
-				<!-- Hourly Profit Chart -->
-				{#if filterDate}
+				<!-- Hourly Profit Chart (single day only) -->
+				{#if isSingleDayFilter}
 					{@const maxAbs = Math.max(...hourlyData.map((h) => Math.abs(h.profit)), 1)}
 					{@const hourlyMap = new Map(hourlyData.map((h) => [h.hour, h]))}
 					{@const currentLocalHour = new Date().getHours()}
-					{@const isToday = filterDate === todayLocal()}
-					{@const isPastDate = filterDate < todayLocal()}
+					{@const isToday = filterDate.from === todayLocal()}
+					{@const isPastDate = filterDate.from < todayLocal()}
 					<section class="hourly-chart glass-card" use:fadeInUp={{ delay: 50 }}>
 						<h3 class="section-label">{t('btcUpdown.chart.hourlyProfit')}</h3>
 						{#each [[0, 12, 'AM'], [12, 24, 'PM']] as [start, end, label] (label)}
@@ -3480,8 +3438,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
+		padding: var(--space-1) calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: 2px;
+		background: var(--bg-sunken, rgba(255, 255, 255, 0.03));
+		border-radius: var(--radius-sm);
 	}
 	.profit-col-labels-right {
 		margin-left: auto;
@@ -3632,14 +3592,15 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
+		width: 22px;
+		height: 22px;
 		border: none;
-		border-radius: var(--radius-1);
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--fg-subtle);
 		cursor: pointer;
 		transition: all var(--motion-fast) var(--easing);
+		flex-shrink: 0;
 	}
 	.profit-refresh-btn:hover {
 		color: var(--fg-muted);
@@ -3767,7 +3728,6 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
-		margin-left: auto;
 		padding: 4px 8px;
 		border: 1px solid rgba(255, 255, 255, 0.08);
 		border-radius: var(--radius-full);
@@ -4305,87 +4265,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		white-space: nowrap;
-	}
-	.date-filter-options {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-	.date-option-btn {
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--fg-subtle);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.date-option-btn:hover {
-		border-color: rgba(255, 255, 255, 0.15);
-		color: var(--fg-muted);
-	}
-	.date-option-btn.active {
-		background: rgba(255, 255, 255, 0.08);
-		border-color: rgba(255, 255, 255, 0.15);
-		color: var(--fg-base);
-	}
-	.date-input-label {
-		position: relative;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-md);
-		padding: var(--space-1) var(--space-3);
-		cursor: pointer;
-		transition: border-color var(--motion-fast) var(--easing);
-	}
-	.date-input-label:hover {
-		border-color: rgba(255, 255, 255, 0.15);
-	}
-	.date-input-display {
-		font-size: var(--text-sm);
-		font-family: var(--font-mono, ui-monospace, monospace);
-		color: var(--fg-base);
-		white-space: nowrap;
-	}
-	.date-input-cal {
-		color: var(--fg-subtle);
-		flex-shrink: 0;
-	}
-	.date-input-native {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		width: 100%;
-		height: 100%;
-		cursor: pointer;
-		font-size: 16px; /* prevent iOS zoom */
-	}
-	.date-nav-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--fg-subtle);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-		flex-shrink: 0;
-	}
-	.date-nav-btn:hover:not(:disabled) {
-		border-color: rgba(255, 255, 255, 0.15);
-		color: var(--fg-muted);
-	}
-	.date-nav-btn:disabled {
-		opacity: 0.25;
-		cursor: default;
 	}
 
 	/* Hourly Chart */
@@ -5298,26 +5177,6 @@
 	:global([data-theme='light']) .disclaimer svg {
 		color: #d97706;
 	}
-	:global([data-theme='light']) .date-input-label {
-		background: rgba(0, 0, 0, 0.03);
-		border-color: rgba(0, 0, 0, 0.08);
-	}
-	:global([data-theme='light']) .date-option-btn {
-		border-color: rgba(0, 0, 0, 0.08);
-	}
-	:global([data-theme='light']) .date-option-btn:hover {
-		border-color: rgba(0, 0, 0, 0.15);
-	}
-	:global([data-theme='light']) .date-option-btn.active {
-		background: rgba(0, 0, 0, 0.04);
-		border-color: rgba(0, 0, 0, 0.15);
-	}
-	:global([data-theme='light']) .date-nav-btn {
-		border-color: rgba(0, 0, 0, 0.08);
-	}
-	:global([data-theme='light']) .date-nav-btn:hover:not(:disabled) {
-		border-color: rgba(0, 0, 0, 0.15);
-	}
 	:global([data-theme='light']) .bar-positive {
 		background: rgba(16, 185, 129, 0.85);
 	}
@@ -5513,6 +5372,8 @@
 		.config-batch-btn {
 			font-size: 11px;
 			padding: 6px 12px;
+
+			
 		}
 		.row-hide-btn {
 			opacity: 0.4;
@@ -5523,19 +5384,6 @@
 		.date-filter {
 			gap: var(--space-2);
 			padding: var(--space-2) var(--space-3);
-		}
-		.date-filter-options {
-			flex: 1;
-			min-width: 0;
-			flex-wrap: wrap;
-			gap: var(--space-1);
-		}
-		.date-option-btn {
-			padding: var(--space-1) var(--space-2);
-		}
-		.date-nav-btn {
-			width: 24px;
-			height: 24px;
 		}
 		/* Prevent iOS zoom on input focus (requires >= 16px) */
 		.strategy-url-input {

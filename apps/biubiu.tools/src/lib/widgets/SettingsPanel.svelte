@@ -28,6 +28,7 @@
 		currency: 'USD',
 		timezone: 'UTC',
 		timeFormat: '24',
+		weekStartDay: 1,
 	});
 
 	const localTimezone = browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
@@ -90,6 +91,7 @@
 			preferences.dateLocale = settings.dateLocale;
 			preferences.currency = settings.currency;
 			preferences.timezone = settings.timezone;
+			preferences.weekStartDay = settings.weekStartDay;
 			settingsLoaded = true;
 		}
 	});
@@ -138,6 +140,12 @@
 
 	function handleSetTimeFormat(format: TimeFormat) {
 		settings = { ...settings, timeFormat: format };
+		saveSettings(settings);
+	}
+
+	function handleSetWeekStartDay(day: number) {
+		settings = { ...settings, weekStartDay: day };
+		preferences.weekStartDay = day;
 		saveSettings(settings);
 	}
 </script>
@@ -352,6 +360,27 @@
 					onclick={() => handleSetTimeFormat('12')}
 				>
 					2:30 PM
+				</button>
+			</div>
+		</div>
+
+		<!-- Week Start Day -->
+		<div class="setting-row">
+			<span class="setting-label">{locale.value === 'zh' ? '每周起始日' : 'Week starts on'}</span>
+			<div class="format-group">
+				<button
+					class="format-btn"
+					class:active={settings.weekStartDay === 1}
+					onclick={() => handleSetWeekStartDay(1)}
+				>
+					{locale.value === 'zh' ? '周一' : 'Mon'}
+				</button>
+				<button
+					class="format-btn"
+					class:active={settings.weekStartDay === 0}
+					onclick={() => handleSetWeekStartDay(0)}
+				>
+					{locale.value === 'zh' ? '周日' : 'Sun'}
 				</button>
 			</div>
 		</div>

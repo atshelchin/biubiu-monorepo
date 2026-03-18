@@ -1658,11 +1658,13 @@
 									? profitHourOffset
 									: profitDayOffset}
 						{@const colKey = col as 'round' | 'hour' | 'day'}
-						<div class="profit-col-nav horizontal">
+						<div class="profit-col-nav">
 							<button
-								class="col-nav-btn-h"
+								class="col-nav-btn-v"
 								onclick={() => navigateProfitColumn(colKey, -1)}
-							>‹</button>
+							>
+								<svg width="8" height="5" viewBox="0 0 8 5"><path d="M1 4L4 1L7 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+							</button>
 							<span
 								class="profit-col-label"
 								class:offset-active={offset !== 0}
@@ -1685,10 +1687,12 @@
 								{/if}
 							</span>
 							<button
-								class="col-nav-btn-h"
+								class="col-nav-btn-v"
 								disabled={offset === 0}
 								onclick={() => navigateProfitColumn(colKey, 1)}
-							>›</button>
+							>
+								<svg width="8" height="5" viewBox="0 0 8 5"><path d="M1 1L4 4L7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+							</button>
 						</div>
 					{/each}
 					</span>
@@ -3347,40 +3351,36 @@
 		text-transform: none;
 		letter-spacing: 0;
 	}
-	.profit-col-nav.horizontal {
+	.profit-col-nav {
 		display: flex;
-		flex-direction: row;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
 		width: 64px;
 		flex-shrink: 0;
 		gap: 0;
 	}
-	.col-nav-btn-h {
+	.col-nav-btn-v {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 22px;
-		height: 30px;
+		width: 100%;
+		height: 16px;
 		padding: 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.5;
-		font-size: 18px;
-		line-height: 1;
+		opacity: 0.35;
 		transition: opacity 0.15s, background 0.15s;
-		flex-shrink: 0;
 		border-radius: var(--radius-sm);
 	}
-	.col-nav-btn-h:active:not(:disabled) {
+	.col-nav-btn-v:active:not(:disabled) {
 		background: rgba(255, 255, 255, 0.06);
 	}
-	.col-nav-btn-h:hover:not(:disabled) {
+	.col-nav-btn-v:hover:not(:disabled) {
 		opacity: 0.8;
 	}
-	.col-nav-btn-h:disabled {
+	.col-nav-btn-v:disabled {
 		opacity: 0.1;
 		cursor: default;
 	}
@@ -5296,10 +5296,8 @@
 			padding: var(--space-2) var(--space-3);
 			min-height: 44px;
 		}
-		.col-nav-btn-h {
-			width: 32px;
-			height: 40px;
-			font-size: 22px;
+		.col-nav-btn-v {
+			height: 22px;
 		}
 		.profit-refresh-btn {
 			width: 36px;
@@ -5312,7 +5310,7 @@
 		.profit-cell {
 			width: 68px;
 		}
-		.profit-col-nav.horizontal {
+		.profit-col-nav {
 			width: 68px;
 		}
 		.strategy-profits {

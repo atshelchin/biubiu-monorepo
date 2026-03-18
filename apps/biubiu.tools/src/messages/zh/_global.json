@@ -65,6 +65,8 @@
   "settings.numberFormat": "数字",
   "settings.dateFormat": "日期",
   "settings.currency": "货币",
+  "settings.timezone": "时区",
+  "settings.timeFormat": "时间",
   "settings.theme.light": "浅色",
   "settings.theme.dark": "深色",
   "settings.helpTranslate": "帮助改进翻译",

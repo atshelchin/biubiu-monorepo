@@ -35,6 +35,7 @@ export interface PersistedState {
 	visibleDiscoveredIds: string[];
 	hiddenStrategyIds: string[] | null;
 	activeStrategyId: string;
+	collapsedSections?: string[];
 }
 
 export interface DiscoveryResult {
@@ -134,7 +135,10 @@ export function loadPersistedState(): PersistedState {
 			activeStrategyId:
 				typeof parsed.activeStrategyId === 'string'
 					? parsed.activeStrategyId
-					: DEFAULT_STATE.activeStrategyId
+					: DEFAULT_STATE.activeStrategyId,
+			collapsedSections: Array.isArray(parsed.collapsedSections)
+				? parsed.collapsedSections
+				: []
 		};
 	} catch {
 		return DEFAULT_STATE;

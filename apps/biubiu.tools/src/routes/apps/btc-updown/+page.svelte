@@ -1,6 +1,21 @@
 <script lang="ts">
-	import { t, locale, preferences, formatNumber, formatCurrency, formatDate, formatDateTime } from '$lib/i18n';
-	import { loadSettings, applyTheme, applyTextScale, type Theme, type TextScale, type TimeFormat } from '$lib/settings';
+	import {
+		t,
+		locale,
+		preferences,
+		formatNumber,
+		formatCurrency,
+		formatDate,
+		formatDateTime
+	} from '$lib/i18n';
+	import {
+		loadSettings,
+		applyTheme,
+		applyTextScale,
+		type Theme,
+		type TextScale,
+		type TimeFormat
+	} from '$lib/settings';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
@@ -8,7 +23,7 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
 	import { onDestroy, untrack } from 'svelte';
-	import { SvelteMap } from 'svelte/reactivity';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import {
 		type StrategyEndpoint,
@@ -222,6 +237,13 @@
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
+	let collapsedSections = new SvelteSet<string>();
+
+	function toggleCollapse(key: string) {
+		if (collapsedSections.has(key)) collapsedSections.delete(key);
+		else collapsedSections.add(key);
+		persistState();
+	}
 	const hiddenBuiltinCount = $derived(
 		builtinStrategies.filter((s) => hiddenStrategyIds.has(s.id)).length
 	);
@@ -244,11 +266,17 @@
 	let showStickyTitle = $state(false);
 	function observeVisibility(node: HTMLElement) {
 		const observer = new IntersectionObserver(
-			([entry]) => { showStickyTitle = !entry.isIntersecting; },
+			([entry]) => {
+				showStickyTitle = !entry.isIntersecting;
+			},
 			{ threshold: 0 }
 		);
 		observer.observe(node);
-		return { destroy() { observer.disconnect(); } };
+		return {
+			destroy() {
+				observer.disconnect();
+			}
+		};
 	}
 
 	// History / Live tab toggle
@@ -498,8 +526,7 @@
 
 	async function fetchStats() {
 		try {
-			// Stats always show day-level or all-time data, not filtered by hour
-			const range = getDateRange(null);
+			const range = getDateRange(selectedHour);
 			const parts: string[] = [];
 			if (range) {
 				parts.push(`from=${encodeURIComponent(range.from)}`);
@@ -806,7 +833,8 @@
 			customStrategies,
 			visibleDiscoveredIds: [...visibleDiscoveredIds],
 			hiddenStrategyIds: [...hiddenStrategyIds],
-			activeStrategyId
+			activeStrategyId,
+			collapsedSections: [...collapsedSections]
 		});
 	}
 
@@ -1046,8 +1074,8 @@
 		const dir = profitSortDir === 'desc' ? -1 : 1;
 		if (col === 'name') {
 			return [...list].sort((a, b) => {
-				const na = (allStrategyInfos.get(a.id)?.name ?? a.label);
-				const nb = (allStrategyInfos.get(b.id)?.name ?? b.label);
+				const na = allStrategyInfos.get(a.id)?.name ?? a.label;
+				const nb = allStrategyInfos.get(b.id)?.name ?? b.label;
 				return naturalCompare(na, nb) * dir;
 			});
 		}
@@ -1084,8 +1112,8 @@
 			selectedHour = d.getHours();
 			roundsPage = 1;
 			fetchHourly();
+			fetchStats();
 			// Rounds will re-fetch via effect tracking selectedHour
-			// Stats stay at day level (not affected by selectedHour)
 		} else if (column === 'round' && profitRoundOffset !== 0) {
 			// For round, jump to the rounds tab and set page to the offset
 			roundsPage = Math.abs(profitRoundOffset);
@@ -1133,6 +1161,9 @@
 				const needsDefaultHidden = persisted.hiddenStrategyIds === null;
 				hiddenStrategyIds = new Set(persisted.hiddenStrategyIds ?? []);
 				activeStrategyId = persisted.activeStrategyId;
+				if (persisted.collapsedSections?.length) {
+					for (const s of persisted.collapsedSections) collapsedSections.add(s);
+				}
 
 				// Read URL query params for strategy sharing
 				const urlParams = new URLSearchParams(window.location.search);
@@ -1355,12 +1386,26 @@
 
 	// Settings-aware formatting helpers (use user's preferences for locale, currency, timezone)
 
+	function fmtTimeRaw(ts: string, style: 'short' | 'medium'): string {
+		const dateObj = new Date(ts);
+		const tz = preferences.timezone;
+		if (timeFormat === '12') {
+			// Always use en-US for consistent "9:46 AM" format
+			return new Intl.DateTimeFormat('en-US', {
+				timeStyle: style,
+				timeZone: tz,
+				hour12: true
+			}).format(dateObj);
+		}
+		return formatDate(ts, { timeStyle: style });
+	}
+
 	function fmtTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'medium', hour12: timeFormat === '12' });
+		return fmtTimeRaw(ts, 'medium');
 	}
 
 	function fmtShortTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'short', hour12: timeFormat === '12' });
+		return fmtTimeRaw(ts, 'short');
 	}
 
 	function fmtLocalDate(ts: string): string {
@@ -1370,14 +1415,20 @@
 	function tzLabel(): string {
 		const tz = preferences.timezone;
 		switch (tz) {
-			case 'UTC': return 'UTC';
-			case 'America/New_York': return 'ET';
-			case 'Asia/Shanghai': return 'UTC+8';
+			case 'UTC':
+				return 'UTC';
+			case 'America/New_York':
+				return 'ET';
+			case 'Asia/Shanghai':
+				return 'UTC+8';
 			default: {
 				// Use Intl to get short timezone name, e.g. "EST", "GMT+8"
 				try {
-					const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(new Date());
-					return parts.find(p => p.type === 'timeZoneName')?.value ?? tz;
+					const parts = new Intl.DateTimeFormat('en-US', {
+						timeZone: tz,
+						timeZoneName: 'short'
+					}).formatToParts(new Date());
+					return parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
 				} catch {
 					return tz;
 				}
@@ -1406,15 +1457,27 @@
 	}
 
 	function fmtPct(value: number): string {
-		return formatNumber(value, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+		return formatNumber(value, {
+			style: 'percent',
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1
+		});
 	}
 
 	function fmtDateTimeShort(ts: string): string {
-		return formatDateTime(ts, { dateStyle: 'medium', timeStyle: 'short', hour12: timeFormat === '12' });
+		return formatDateTime(ts, {
+			dateStyle: 'medium',
+			timeStyle: 'short',
+			hour12: timeFormat === '12'
+		});
 	}
 
 	function fmtPrice(value: number): string {
-		return formatNumber(value, { style: 'currency', minimumFractionDigits: 4, maximumFractionDigits: 4 });
+		return formatNumber(value, {
+			style: 'currency',
+			minimumFractionDigits: 4,
+			maximumFractionDigits: 4
+		});
 	}
 
 	function formatDuration(startTime: string, _now: number): string {
@@ -1471,9 +1534,15 @@
 			case 'entry':
 				return t('btcUpdown.live.entry', {
 					direction: String(d.direction ?? ''),
-					shares: String(typeof d.shares === 'number' ? formatNumber(d.shares, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (d.shares ?? '')),
+					shares: String(
+						typeof d.shares === 'number'
+							? formatNumber(d.shares, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+							: (d.shares ?? '')
+					),
 					price: String(
-						typeof d.avgPrice === 'number' ? formatNumber(d.avgPrice, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : (d.avgPrice ?? '')
+						typeof d.avgPrice === 'number'
+							? formatNumber(d.avgPrice, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+							: (d.avgPrice ?? '')
 					),
 					cost: String(d.cost ?? '50')
 				});
@@ -1504,12 +1573,18 @@
 				});
 			case 'hedge_sold':
 				return t('btcUpdown.live.hedgeSold', {
-					shares: String(typeof d.shares === 'number' ? formatNumber(d.shares, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (d.shares ?? '')),
+					shares: String(
+						typeof d.shares === 'number'
+							? formatNumber(d.shares, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+							: (d.shares ?? '')
+					),
 					direction: String(d.direction ?? ''),
 					price: String(
 						typeof d.avgPrice === 'number' ? formatCurrency(d.avgPrice) : (d.avgPrice ?? '')
 					),
-					revenue: String(typeof d.revenue === 'number' ? formatCurrency(d.revenue) : (d.revenue ?? ''))
+					revenue: String(
+						typeof d.revenue === 'number' ? formatCurrency(d.revenue) : (d.revenue ?? '')
+					)
 				});
 			case 'hedge_expired':
 				return t('btcUpdown.live.hedgeExpired', {
@@ -1731,51 +1806,66 @@
 						{/if}
 					</span>
 					<span class="profit-col-labels-right">
-					{#each ['hour', 'day'] as col (col)}
-						{@const offset =
-							col === 'round'
-								? profitRoundOffset
-								: col === 'hour'
-									? profitHourOffset
-									: profitDayOffset}
-						{@const colKey = col as 'round' | 'hour' | 'day'}
-						<div class="profit-col-nav">
-							<button
-								class="col-nav-btn-v"
-								onclick={() => navigateProfitColumn(colKey, -1)}
-							>
-								<svg width="8" height="5" viewBox="0 0 8 5"><path d="M1 4L4 1L7 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-							</button>
-							<span
-								class="profit-col-label"
-								class:offset-active={offset !== 0}
-								class:sort-active={profitSortColumn === col}
-								onclick={() => {
-									if (profitSortColumn === col) {
-										profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
-									} else {
-										profitSortColumn = col as 'hour' | 'day';
-										profitSortDir = 'desc';
-									}
-								}}
-								role="button"
-								tabindex={0}
-								title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
-							>
-								{getProfitColumnLabel(colKey)}
-								{#if profitSortColumn === col}
-									<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
-								{/if}
-							</span>
-							<button
-								class="col-nav-btn-v"
-								disabled={offset === 0}
-								onclick={() => navigateProfitColumn(colKey, 1)}
-							>
-								<svg width="8" height="5" viewBox="0 0 8 5"><path d="M1 1L4 4L7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-							</button>
-						</div>
-					{/each}
+						{#each ['hour', 'day'] as col (col)}
+							{@const offset =
+								col === 'round'
+									? profitRoundOffset
+									: col === 'hour'
+										? profitHourOffset
+										: profitDayOffset}
+							{@const colKey = col as 'round' | 'hour' | 'day'}
+							<div class="profit-col-nav">
+								<button class="col-nav-btn-v" onclick={() => navigateProfitColumn(colKey, -1)}>
+									<svg width="8" height="5" viewBox="0 0 8 5"
+										><path
+											d="M1 4L4 1L7 4"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/></svg
+									>
+								</button>
+								<span
+									class="profit-col-label"
+									class:offset-active={offset !== 0}
+									class:sort-active={profitSortColumn === col}
+									onclick={() => {
+										if (profitSortColumn === col) {
+											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
+										} else {
+											profitSortColumn = col as 'hour' | 'day';
+											profitSortDir = 'desc';
+										}
+									}}
+									role="button"
+									tabindex={0}
+									title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
+								>
+									{getProfitColumnLabel(colKey)}
+									{#if profitSortColumn === col}
+										<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
+									{/if}
+								</span>
+								<button
+									class="col-nav-btn-v"
+									disabled={offset === 0}
+									onclick={() => navigateProfitColumn(colKey, 1)}
+								>
+									<svg width="8" height="5" viewBox="0 0 8 5"
+										><path
+											d="M1 1L4 4L7 1"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/></svg
+									>
+								</button>
+							</div>
+						{/each}
 					</span>
 				</div>
 			{/snippet}
@@ -1812,6 +1902,21 @@
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
+					<button class="section-collapse-btn" onclick={() => toggleCollapse('builtin')}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="12"
+							height="12"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							class:collapsed={collapsedSections.has('builtin')}
+							><polyline points="6 9 12 15 18 9" /></svg
+						>
+					</button>
 					<span class="version-type-label">{t('btcUpdown.strategy.builtin')}</span>
 					<button
 						class="section-config-btn"
@@ -1837,102 +1942,124 @@
 						>
 					</button>
 				</div>
-				{#if configPanelSection === 'builtin'}
-					<div class="config-panel">
+				{#if !collapsedSections.has('builtin')}
+					{#if configPanelSection === 'builtin'}
 						<div class="config-batch-actions">
-							<button class="config-batch-btn" onclick={() => {
-								builtinStrategies.forEach(s => hiddenStrategyIds.delete(s.id));
-								hiddenStrategyIds = new Set(hiddenStrategyIds);
-								persistState();
-								fetchAllStrategyProfits();
-							}}>{t('btcUpdown.strategy.showAll')}</button>
-							<button class="config-batch-btn" onclick={() => {
-								builtinStrategies.forEach(s => {
-									if (s.id !== activeStrategyId) hiddenStrategyIds.add(s.id);
-								});
-								hiddenStrategyIds = new Set(hiddenStrategyIds);
-								persistState();
-								fetchAllStrategyProfits();
-							}}>{t('btcUpdown.strategy.hideAll')}</button>
+							<button
+								class="config-batch-btn"
+								onclick={() => {
+									builtinStrategies.forEach((s) => hiddenStrategyIds.delete(s.id));
+									hiddenStrategyIds = new Set(hiddenStrategyIds);
+									persistState();
+									fetchAllStrategyProfits();
+								}}>{t('btcUpdown.strategy.showAll')}</button
+							>
+							<button
+								class="config-batch-btn"
+								onclick={() => {
+									builtinStrategies.forEach((s) => {
+										if (s.id !== activeStrategyId) hiddenStrategyIds.add(s.id);
+									});
+									hiddenStrategyIds = new Set(hiddenStrategyIds);
+									persistState();
+									fetchAllStrategyProfits();
+								}}>{t('btcUpdown.strategy.hideAll')}</button
+							>
 						</div>
-						{#each builtinStrategies as s (s.id)}
+					{/if}
+					{@render columnHeaders()}
+					<div class="version-options">
+						{#each sortStrategies(builtinStrategies) as s (s.id)}
+							{@const profits = allStrategyProfits.get(s.id)}
 							{@const isHidden = hiddenStrategyIds.has(s.id)}
-							<div class="config-row" class:config-hidden={isHidden}>
-								<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-								<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
-									{#if !isHidden}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-												cx="12"
-												cy="12"
-												r="3"
-											/></svg
+							{#if !isHidden || configPanelSection === 'builtin'}
+								<div class="version-row" class:row-hidden={isHidden}>
+									<button
+										class="version-btn"
+										class:active={activeStrategyId === s.id}
+										onclick={() => onStrategyChange(s.id)}
+									>
+										<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
+										{#if profits && !isHidden}
+											{@render profitCells(profits)}
+										{/if}
+									</button>
+									{#if activeStrategyId !== s.id}
+										<button
+											class="row-hide-btn"
+											onclick={() => toggleStrategyVisibility(s.id)}
+											title={locale.value === 'zh'
+												? isHidden
+													? '显示'
+													: '隐藏'
+												: isHidden
+													? 'Show'
+													: 'Hide'}
 										>
-									{:else}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											><path
-												d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-											/><line x1="1" y1="1" x2="23" y2="23" /></svg
-										>
+											{#if isHidden}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="12"
+													height="12"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													><path
+														d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+													/><line x1="1" y1="1" x2="23" y2="23" /></svg
+												>
+											{:else}
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="12"
+													height="12"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+														cx="12"
+														cy="12"
+														r="3"
+													/></svg
+												>
+											{/if}
+										</button>
 									{/if}
-								</button>
-							</div>
+								</div>
+							{/if}
 						{/each}
 					</div>
 				{/if}
-				{@render columnHeaders()}
-				<div class="version-options">
-					{#each sortStrategies(builtinStrategies.filter((s) => !hiddenStrategyIds.has(s.id))) as s (s.id)}
-						{@const profits = allStrategyProfits.get(s.id)}
-						<div class="version-row">
-							<button
-								class="version-btn"
-								class:active={activeStrategyId === s.id}
-								onclick={() => onStrategyChange(s.id)}
-							>
-								<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-								{#if profits}
-									{@render profitCells(profits)}
-								{/if}
-							</button>
-							{#if activeStrategyId !== s.id}
-								<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
-									<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-								</button>
-							{/if}
-						</div>
-					{/each}
-				</div>
 				<!-- Custom strategy groups -->
 				{#each customStrategiesByHost as [host, strategies] (host)}
 					{@const siblings = discoveredSiblings.get(host) ?? []}
-					{@const allHostStrategies = [
-						...strategies,
-						...siblings.filter((s) => visibleDiscoveredIds.has(s.id))
-					]}
-					{@const visibleHostStrategies = allHostStrategies.filter(
-						(s) => s.type === 'discovered' || !hiddenStrategyIds.has(s.id)
-					)}
-					{@const totalHostCount = strategies.length + siblings.length}
+					{@const allHostStrategies = [...strategies, ...siblings]}
+					{@const totalHostCount = allHostStrategies.length}
+					{@const visibleCount = allHostStrategies.filter((s) =>
+						s.type === 'discovered' ? visibleDiscoveredIds.has(s.id) : !hiddenStrategyIds.has(s.id)
+					).length}
 					<div class="version-header custom-header">
+						<button class="section-collapse-btn" onclick={() => toggleCollapse(host)}>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								class:collapsed={collapsedSections.has(host)}
+								><polyline points="6 9 12 15 18 9" /></svg
+							>
+						</button>
 						<span class="version-type-label host-label" title={host}>{host}</span>
 						<button
 							class="host-remove-btn"
@@ -1954,13 +2081,11 @@
 						</button>
 						<button
 							class="section-config-btn"
-							class:has-hidden={visibleHostStrategies.length < totalHostCount}
+							class:has-hidden={visibleCount < totalHostCount}
 							onclick={() => toggleConfigPanel(host)}
 						>
-							<span
-								class="config-count"
-								class:has-hidden={visibleHostStrategies.length < totalHostCount}
-								>{visibleHostStrategies.length}/{totalHostCount}</span
+							<span class="config-count" class:has-hidden={visibleCount < totalHostCount}
+								>{visibleCount}/{totalHostCount}</span
 							>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -1978,149 +2103,119 @@
 							>
 						</button>
 					</div>
-					{#if configPanelSection === host}
-						<div class="config-panel">
+					{#if !collapsedSections.has(host)}
+						{#if configPanelSection === host}
 							<div class="config-batch-actions">
-								<button class="config-batch-btn" onclick={() => {
-									[...strategies, ...siblings].forEach(s => {
-										if (s.id.startsWith('discovered:')) {
-											visibleDiscoveredIds.add(s.id);
-										} else {
-											hiddenStrategyIds.delete(s.id);
-										}
-									});
-									hiddenStrategyIds = new Set(hiddenStrategyIds);
-									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-									persistState();
-									fetchAllStrategyProfits();
-								}}>{t('btcUpdown.strategy.showAll')}</button>
-								<button class="config-batch-btn" onclick={() => {
-									[...strategies, ...siblings].forEach(s => {
-										if (s.id === activeStrategyId) return;
-										if (s.id.startsWith('discovered:')) {
-											visibleDiscoveredIds.delete(s.id);
-										} else {
-											hiddenStrategyIds.add(s.id);
-										}
-									});
-									hiddenStrategyIds = new Set(hiddenStrategyIds);
-									visibleDiscoveredIds = new Set(visibleDiscoveredIds);
-									persistState();
-									fetchAllStrategyProfits();
-								}}>{t('btcUpdown.strategy.hideAll')}</button>
+								<button
+									class="config-batch-btn"
+									onclick={() => {
+										[...strategies, ...siblings].forEach((s) => {
+											if (s.id.startsWith('discovered:')) {
+												visibleDiscoveredIds.add(s.id);
+											} else {
+												hiddenStrategyIds.delete(s.id);
+											}
+										});
+										hiddenStrategyIds = new Set(hiddenStrategyIds);
+										visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+										persistState();
+										fetchAllStrategyProfits();
+									}}>{t('btcUpdown.strategy.showAll')}</button
+								>
+								<button
+									class="config-batch-btn"
+									onclick={() => {
+										[...strategies, ...siblings].forEach((s) => {
+											if (s.id === activeStrategyId) return;
+											if (s.id.startsWith('discovered:')) {
+												visibleDiscoveredIds.delete(s.id);
+											} else {
+												hiddenStrategyIds.add(s.id);
+											}
+										});
+										hiddenStrategyIds = new Set(hiddenStrategyIds);
+										visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+										persistState();
+										fetchAllStrategyProfits();
+									}}>{t('btcUpdown.strategy.hideAll')}</button
+								>
 							</div>
-							{#each strategies as s (s.id)}
-								{@const isHidden = hiddenStrategyIds.has(s.id)}
-								<div class="config-row" class:config-hidden={isHidden}>
-									<span class="config-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-									<button class="config-toggle-btn" onclick={() => toggleStrategyVisibility(s.id)}>
-										{#if !isHidden}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-													cx="12"
-													cy="12"
-													r="3"
-												/></svg
+						{/if}
+						{@render columnHeaders()}
+						<div class="version-options">
+							{#each sortStrategies(allHostStrategies) as s (s.id)}
+								{@const profits = allStrategyProfits.get(s.id)}
+								{@const isHidden =
+									s.type === 'discovered'
+										? !visibleDiscoveredIds.has(s.id)
+										: hiddenStrategyIds.has(s.id)}
+								{#if !isHidden || configPanelSection === host}
+									<div class="version-row" class:row-hidden={isHidden}>
+										<button
+											class="version-btn custom-version-btn"
+											class:active={activeStrategyId === s.id}
+											onclick={() => onStrategyChange(s.id)}
+										>
+											<span class="custom-dot"></span>
+											<span class="strategy-name"
+												>{allStrategyInfos.get(s.id)?.name ?? s.label}</span
 											>
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path
-													d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-												/><line x1="1" y1="1" x2="23" y2="23" /></svg
+											{#if profits && !isHidden}
+												{@render profitCells(profits)}
+											{/if}
+										</button>
+										{#if activeStrategyId !== s.id}
+											<button
+												class="row-hide-btn"
+												onclick={() => toggleStrategyVisibility(s.id)}
+												title={locale.value === 'zh'
+													? isHidden
+														? '显示'
+														: '隐藏'
+													: isHidden
+														? 'Show'
+														: 'Hide'}
 											>
+												{#if isHidden}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														><path
+															d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+														/><line x1="1" y1="1" x2="23" y2="23" /></svg
+													>
+												{:else}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														width="12"
+														height="12"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="2"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+															cx="12"
+															cy="12"
+															r="3"
+														/></svg
+													>
+												{/if}
+											</button>
 										{/if}
-									</button>
-								</div>
-							{/each}
-							{#each siblings as sib (sib.id)}
-								{@const isVisible = visibleDiscoveredIds.has(sib.id)}
-								<div class="config-row" class:config-hidden={!isVisible}>
-									<span class="config-tag">{t('btcUpdown.strategy.discovered')}</span>
-									<span class="config-name">{allStrategyInfos.get(sib.id)?.name ?? sib.label}</span>
-									<button
-										class="config-toggle-btn"
-										onclick={() => toggleStrategyVisibility(sib.id)}
-									>
-										{#if isVisible}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
-													cx="12"
-													cy="12"
-													r="3"
-												/></svg
-											>
-										{:else}
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												><path
-													d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-												/><line x1="1" y1="1" x2="23" y2="23" /></svg
-											>
-										{/if}
-									</button>
-								</div>
+									</div>
+								{/if}
 							{/each}
 						</div>
 					{/if}
-					{@render columnHeaders()}
-					<div class="version-options">
-						{#each sortStrategies(visibleHostStrategies) as s (s.id)}
-							{@const profits = allStrategyProfits.get(s.id)}
-							<div class="version-row">
-								<button
-									class="version-btn custom-version-btn"
-									class:active={activeStrategyId === s.id}
-									onclick={() => onStrategyChange(s.id)}
-								>
-									<span class="custom-dot"></span>
-									<span class="strategy-name">{allStrategyInfos.get(s.id)?.name ?? s.label}</span>
-									{#if profits}
-										{@render profitCells(profits)}
-									{/if}
-								</button>
-								{#if activeStrategyId !== s.id}
-									<button class="row-hide-btn" onclick={() => toggleStrategyVisibility(s.id)} title={locale.value === 'zh' ? '隐藏' : 'Hide'}>
-										<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-									</button>
-								{/if}
-							</div>
-						{/each}
-					</div>
 				{/each}
 				<button class="add-strategy-btn" onclick={() => (showAddStrategy = true)}>
 					<svg
@@ -2142,48 +2237,6 @@
 
 		<!-- Main content -->
 		<div class="main-content">
-			<!-- Sticky strategy title (shown when strategy-info card scrolls away) -->
-			{#if strategyInfo && showStickyTitle}
-				<div class="sticky-strategy-title" transition:fly={{ y: -20, duration: 200 }}>
-					<svg class="sticky-strategy-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M8 1L14.5 5v6L8 15 1.5 11V5L8 1z" stroke="currentColor" stroke-width="1.2"/>
-						<circle cx="8" cy="8" r="2" fill="currentColor"/>
-					</svg>
-					<span class="sticky-strategy-name">{strategyInfo.name}</span>
-				</div>
-			{/if}
-			<!-- Strategy Info Card -->
-			{#if strategyInfo}
-				<div class="strategy-info glass-card" use:observeVisibility use:fadeInUp={{ delay: 15 }}>
-					<h3 class="strategy-info-name">{strategyInfo.name}</h3>
-					{#if strategyInfo.description?.length}
-						<div class="strategy-description">
-							<p>{strategyInfo.description}</p>
-						</div>
-					{/if}
-					<div class="strategy-summary-grid">
-						{#each strategyInfo.summary as item (item.label)}
-							<div class="strategy-summary-item" class:summary-wide={item.value.length > 20}>
-								<span class="strategy-summary-label">{item.label}</span>
-								<span class="strategy-summary-value">{item.value}</span>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-			<!-- Strategy Runtime -->
-			{#if strategyStartTime}
-				<div class="strategy-runtime glass-card" use:fadeInUp={{ delay: 60 }}>
-					<div class="runtime-row">
-						<span class="runtime-label">{t('btcUpdown.stats.duration')}</span>
-						<span class="runtime-value">{formatDuration(strategyStartTime, now)}</span>
-					</div>
-					<div class="runtime-row">
-						<span class="runtime-label">{t('btcUpdown.stats.runningSince', { date: '' })}</span>
-						<span class="runtime-date">{fmtDateTimeShort(strategyStartTime)}</span>
-					</div>
-				</div>
-			{/if}
 			<!-- Disclaimer -->
 			<div
 				class="disclaimer"
@@ -2221,6 +2274,54 @@
 					)}</span
 				>
 			</div>
+
+			<!-- Sticky strategy title (shown when strategy-info card scrolls away) -->
+			{#if strategyInfo && showStickyTitle}
+				<div class="sticky-strategy-title" transition:fly={{ y: -20, duration: 200 }}>
+					<svg
+						class="sticky-strategy-icon"
+						viewBox="0 0 16 16"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path d="M8 1L14.5 5v6L8 15 1.5 11V5L8 1z" stroke="currentColor" stroke-width="1.2" />
+						<circle cx="8" cy="8" r="2" fill="currentColor" />
+					</svg>
+					<span class="sticky-strategy-name">{strategyInfo.name}</span>
+				</div>
+			{/if}
+			<!-- Strategy Info Card -->
+			{#if strategyInfo}
+				<div class="strategy-info glass-card" use:observeVisibility use:fadeInUp={{ delay: 15 }}>
+					<h3 class="strategy-info-name">{strategyInfo.name}</h3>
+					{#if strategyInfo.description?.length}
+						<div class="strategy-description">
+							<p>{strategyInfo.description}</p>
+						</div>
+					{/if}
+					<div class="strategy-summary-grid">
+						{#each strategyInfo.summary as item (item.label)}
+							<div class="strategy-summary-item" class:summary-wide={item.value.length > 20}>
+								<span class="strategy-summary-label">{item.label}</span>
+								<span class="strategy-summary-value">{item.value}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+			<!-- Strategy Runtime -->
+			{#if strategyStartTime}
+				<div class="strategy-runtime glass-card" use:fadeInUp={{ delay: 60 }}>
+					<div class="runtime-row">
+						<span class="runtime-label">{t('btcUpdown.stats.duration')}</span>
+						<span class="runtime-value">{formatDuration(strategyStartTime, now)}</span>
+					</div>
+					<div class="runtime-row">
+						<span class="runtime-label">{t('btcUpdown.stats.runningSince', { date: '' })}</span>
+						<span class="runtime-date">{fmtDateTimeShort(strategyStartTime)}</span>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Data section (wrapped for mobile reordering – appears after live feed on mobile) -->
 			<div class="main-data">
@@ -2260,7 +2361,11 @@
 								/></svg
 							>
 						</button>
-						<input type="date" class="date-input" bind:value={filterDate} onchange={onDateChange} />
+						<label class="date-input-label">
+							<span class="date-input-display">{filterDate ? filterDate.slice(2) : '--/--/--'}</span>
+							<svg class="date-input-cal" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+							<input type="date" class="date-input-native" bind:value={filterDate} onchange={onDateChange} />
+						</label>
 						<button
 							class="date-nav-btn"
 							disabled={!filterDate || filterDate >= todayLocal()}
@@ -2283,6 +2388,23 @@
 
 				<!-- Stats Overview -->
 				{#if stats}
+					{#if selectedHour !== null}
+						<div class="stats-hour-badge">
+							<span
+								>{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(
+									2,
+									'0'
+								)}:59</span
+							>
+							<button
+								class="stats-hour-clear"
+								onclick={() => {
+									selectedHour = null;
+									fetchStats();
+								}}>✕</button
+							>
+						</div>
+					{/if}
 					<section class="stats-grid" use:fadeInUp={{ delay: 45 }}>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
@@ -2356,6 +2478,7 @@
 											onclick={() => {
 												selectedHour = selectedHour === hour ? null : hour;
 												roundsPage = 1;
+												fetchStats();
 											}}
 										>
 											{#if h}
@@ -2387,64 +2510,6 @@
 								</div>
 							</div>
 						{/each}
-						{#if selectedHour !== null}
-							{@const sh = hourlyMap.get(selectedHour)}
-							<div class="chart-detail">
-								{#if sh}
-									<div class="chart-detail-header">
-										<span class="chart-detail-hour"
-											>{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(
-												2,
-												'0'
-											)}:59</span
-										>
-										<span
-											class="chart-detail-profit"
-											class:positive={sh.profit >= 0}
-											class:negative={sh.profit < 0}>{fmtProfit(sh.profit)}</span
-										>
-									</div>
-									<div class="chart-detail-grid">
-										<div class="chart-detail-item">
-											<span class="chart-detail-label">{t('btcUpdown.stats.totalRounds')}</span>
-											<span class="chart-detail-value">{sh.rounds}</span>
-										</div>
-										<div class="chart-detail-item">
-											<span class="chart-detail-label">{t('btcUpdown.stats.winRate')}</span>
-											<span class="chart-detail-value">{fmtPct(sh.winRate)}</span>
-										</div>
-										<div class="chart-detail-item">
-											<span class="chart-detail-label"
-												>{t('btcUpdown.stats.wins')}/{t('btcUpdown.stats.losses')}</span
-											>
-											<span class="chart-detail-value">{sh.wins}/{sh.losses}</span>
-										</div>
-										<div class="chart-detail-item">
-											<span class="chart-detail-label">{t('btcUpdown.stats.invested')}</span>
-											<span class="chart-detail-value">{formatCurrency(sh.invested)}</span>
-										</div>
-										<div class="chart-detail-item">
-											<span class="chart-detail-label">{t('btcUpdown.stats.avgProfit')}</span>
-											<span
-												class="chart-detail-value"
-												class:positive={sh.avgProfit >= 0}
-												class:negative={sh.avgProfit < 0}>{fmtProfit(sh.avgProfit)}</span
-											>
-										</div>
-									</div>
-								{:else}
-									<div class="chart-detail-header">
-										<span class="chart-detail-hour"
-											>{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(
-												2,
-												'0'
-											)}:59</span
-										>
-										<span class="chart-detail-empty">{t('btcUpdown.noRounds')}</span>
-									</div>
-								{/if}
-							</div>
-						{/if}
 					</section>
 				{/if}
 
@@ -2481,7 +2546,9 @@
 								{#each [{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds ?? null }, { value: 'entered', label: t('btcUpdown.filter.entered'), count: stats ? stats.entered - stats.wins - stats.losses : null }, { value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null }, { value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped ?? null }] as filter (filter.value)}
 									<button
 										class="filter-btn"
-										class:active={roundsFilter === filter.value && !signalActionFilter && !resultFilter}
+										class:active={roundsFilter === filter.value &&
+											!signalActionFilter &&
+											!resultFilter}
 										onclick={() => setFilter(filter.value as RoundStatusFilter)}
 									>
 										{filter.label}{#if filter.count !== null}<span class="filter-count"
@@ -2564,8 +2631,8 @@
 									class:active={resultFilter === 'win'}
 									onclick={() => setResultFilter(resultFilter === 'win' ? '' : 'win')}
 								>
-									{t('btcUpdown.filter.win')}{#if stats?.wins != null}<span
-											class="filter-count">{stats.wins}</span
+									{t('btcUpdown.filter.win')}{#if stats?.wins != null}<span class="filter-count"
+											>{stats.wins}</span
 										>{/if}
 								</button>
 								<button
@@ -2573,8 +2640,8 @@
 									class:active={resultFilter === 'loss'}
 									onclick={() => setResultFilter(resultFilter === 'loss' ? '' : 'loss')}
 								>
-									{t('btcUpdown.filter.loss')}{#if stats?.losses != null}<span
-											class="filter-count">{stats.losses}</span
+									{t('btcUpdown.filter.loss')}{#if stats?.losses != null}<span class="filter-count"
+											>{stats.losses}</span
 										>{/if}
 								</button>
 								<button
@@ -2628,9 +2695,7 @@
 											rel="noopener noreferrer">#{round.id}</a
 										>
 										<span class="round-time-window"
-											><span class="round-local-date"
-												>{fmtLocalDate(round.event_start_time)}</span
-											>
+											><span class="round-local-date">{fmtLocalDate(round.event_start_time)}</span>
 											{fmtTimeWindow(round.event_start_time, round.end_time)}</span
 										>
 										<span class="round-badge {getRoundBadgeClass(round)}"
@@ -2675,23 +2740,20 @@
 											{#if round.hedge?.filled_at}
 												<div class="round-row">
 													<span class="round-label">{t('btcUpdown.round.hedgeFilledAt')}</span>
-													<span class="round-value mono"
-														>{fmtShortTime(round.hedge.filled_at)}</span
+													<span class="round-value mono">{fmtShortTime(round.hedge.filled_at)}</span
 													>
 												</div>
 											{/if}
 											{#if round.hedge?.sold_at}
 												<div class="round-row">
 													<span class="round-label">{t('btcUpdown.round.hedgeSoldAt')}</span>
-													<span class="round-value mono"
-														>{fmtShortTime(round.hedge.sold_at)}</span
-													>
+													<span class="round-value mono">{fmtShortTime(round.hedge.sold_at)}</span>
 												</div>
 											{/if}
 											{#if round.swing_exit_reason}
 												<div class="round-row">
 													<span class="round-label"
-														>{locale.value === 'zh' ? '退出原因' : 'Exit Reason'}</span
+														>{locale.value === 'zh' ? '止损原因' : 'Exit Reason'}</span
 													>
 													<span
 														class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}"
@@ -2702,22 +2764,18 @@
 												{#if round.swing_exit_price !== null}
 													<div class="round-row">
 														<span class="round-label"
-															>{locale.value === 'zh' ? '退出价格' : 'Exit Price'}</span
+															>{locale.value === 'zh' ? '止损价格' : 'Exit Price'}</span
 														>
-														<span class="round-value mono"
-															>{fmtPrice(round.swing_exit_price)}</span
-														>
+														<span class="round-value mono">{fmtPrice(round.swing_exit_price)}</span>
 													</div>
 												{/if}
 												{@const exitTime = round.stop_loss_checked_at ?? round.settled_at}
 												{#if exitTime}
 													<div class="round-row">
 														<span class="round-label"
-															>{locale.value === 'zh' ? '退出时间' : 'Exit Time'}</span
+															>{locale.value === 'zh' ? '止损时间' : 'Exit Time'}</span
 														>
-														<span class="round-value mono"
-															>{fmtShortTime(exitTime)}</span
-														>
+														<span class="round-value mono">{fmtShortTime(exitTime)}</span>
 													</div>
 												{/if}
 											{/if}
@@ -2759,24 +2817,19 @@
 														{#if (round.hedge_cost ?? 0) > 0}
 															<div class="pnl-row cost">
 																<span class="pnl-label">{t('btcUpdown.pnl.hedgeCost')}</span>
-																<span class="pnl-value">{fmtProfit(-(round.hedge_cost ?? 0))}</span
-																>
+																<span class="pnl-value">{fmtProfit(-(round.hedge_cost ?? 0))}</span>
 															</div>
 														{/if}
 														{#if (round.main_payout ?? 0) > 0}
 															<div class="pnl-row income">
 																<span class="pnl-label">{t('btcUpdown.pnl.mainPayout')}</span>
-																<span class="pnl-value"
-																	>{fmtProfit(round.main_payout ?? 0)}</span
-																>
+																<span class="pnl-value">{fmtProfit(round.main_payout ?? 0)}</span>
 															</div>
 														{/if}
 														{#if (round.hedge_payout ?? 0) > 0}
 															<div class="pnl-row income">
 																<span class="pnl-label">{t('btcUpdown.pnl.hedgePayout')}</span>
-																<span class="pnl-value"
-																	>{fmtProfit(round.hedge_payout ?? 0)}</span
-																>
+																<span class="pnl-value">{fmtProfit(round.hedge_payout ?? 0)}</span>
 															</div>
 														{/if}
 														{#if (round.hedge_sell_revenue ?? 0) > 0}
@@ -2799,25 +2852,11 @@
 															<div class="pnl-row hedge-info">
 																<span class="pnl-label">{t('btcUpdown.pnl.hedgeStatus')}</span>
 																<span class="pnl-value"
-																	>{round.hedge.direction} @ {formatCurrency(round.hedge.limit_price)} &middot;
+																	>{round.hedge.direction} @ {formatCurrency(
+																		round.hedge.limit_price
+																	)} &middot;
 																	{getHedgeStatusLabel(round.hedge.status)}</span
 																>
-															</div>
-														{/if}
-														{#if round.swing_exit_reason}
-															<div class="pnl-row hedge-info">
-																<span class="pnl-label"
-																	>{locale.value === 'zh' ? '波动退出' : 'Swing Exit'}</span
-																>
-																<span class="pnl-value">
-																	{getSwingExitLabel(round.swing_exit_reason)}
-																	{#if round.swing_exit_price !== null}
-																		@ {fmtPrice(round.swing_exit_price)}
-																	{/if}
-																	{#if round.stop_loss_checked_at ?? round.settled_at}
-																		&middot; {fmtShortTime((round.stop_loss_checked_at ?? round.settled_at)!)}
-																	{/if}
-																</span>
 															</div>
 														{/if}
 													</div>
@@ -2894,29 +2933,31 @@
 									{#if currentRound.entry_price_avg !== null}
 										<div class="round-row">
 											<span class="round-label">{t('btcUpdown.round.entryPrice')}</span>
-											<span class="round-value mono"
-												>{fmtPrice(currentRound.entry_price_avg)}</span
-											>
+											<span class="round-value mono">{fmtPrice(currentRound.entry_price_avg)}</span>
 										</div>
 									{/if}
 									{#if currentRound.entry_shares !== null}
 										<div class="round-row">
 											<span class="round-label">{t('btcUpdown.round.shares')}</span>
-											<span class="round-value mono">{formatNumber(currentRound.entry_shares, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+											<span class="round-value mono"
+												>{formatNumber(currentRound.entry_shares, {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2
+												})}</span
+											>
 										</div>
 									{/if}
 									{#if currentRound.entry_cost !== null}
 										<div class="round-row">
 											<span class="round-label">{t('btcUpdown.round.cost')}</span>
-											<span class="round-value mono">{formatCurrency(currentRound.entry_cost)}</span>
+											<span class="round-value mono">{formatCurrency(currentRound.entry_cost)}</span
+											>
 										</div>
 									{/if}
 									{#if currentRound.entry_time}
 										<div class="round-row">
 											<span class="round-label">{t('btcUpdown.round.entryTime')}</span>
-											<span class="round-value mono"
-												>{fmtShortTime(currentRound.entry_time)}</span
-											>
+											<span class="round-value mono">{fmtShortTime(currentRound.entry_time)}</span>
 										</div>
 									{/if}
 								</div>
@@ -3472,7 +3513,9 @@
 		color: var(--fg-subtle);
 		cursor: pointer;
 		opacity: 0.35;
-		transition: opacity 0.15s, background 0.15s;
+		transition:
+			opacity 0.15s,
+			background 0.15s;
 		border-radius: var(--radius-sm);
 	}
 	.col-nav-btn-v:active:not(:disabled) {
@@ -3499,7 +3542,9 @@
 		cursor: pointer;
 		padding: 4px 2px;
 		border-radius: var(--radius-sm);
-		transition: opacity 0.15s, background 0.15s;
+		transition:
+			opacity 0.15s,
+			background 0.15s;
 	}
 	.profit-col-label:hover {
 		opacity: 0.9;
@@ -3604,8 +3649,12 @@
 		animation: spin 0.8s linear infinite;
 	}
 	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* Custom strategy elements */
@@ -3635,17 +3684,14 @@
 	.version-row {
 		display: flex;
 		align-items: center;
-		position: relative;
+		gap: 2px;
 	}
 	.version-row .version-btn {
 		flex: 1;
 		min-width: 0;
 	}
 	.row-hide-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -3654,20 +3700,55 @@
 		padding: 0;
 		border: none;
 		border-radius: var(--radius-sm);
-		background: rgba(0, 0, 0, 0.3);
-		color: var(--fg-subtle);
+		background: transparent;
+		color: var(--fg-faint);
 		cursor: pointer;
 		opacity: 0;
-		transition: opacity 0.15s var(--easing);
-		z-index: 1;
+		transition:
+			opacity 0.15s var(--easing),
+			color 0.15s var(--easing),
+			background 0.15s var(--easing);
 	}
 	.version-row:hover .row-hide-btn {
 		opacity: 0.6;
 	}
 	.row-hide-btn:hover {
 		opacity: 1 !important;
-		color: #f87171;
-		background: rgba(248, 113, 113, 0.15);
+		color: var(--fg-subtle);
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.version-row.row-hidden {
+		opacity: 0.35;
+	}
+	.version-row.row-hidden .row-hide-btn {
+		opacity: 0.6;
+	}
+	.version-row.row-hidden:hover {
+		opacity: 0.6;
+	}
+	.section-collapse-btn {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		transition: color 0.15s var(--easing);
+	}
+	.section-collapse-btn:hover {
+		color: var(--fg-base);
+	}
+	.section-collapse-btn svg {
+		transition: transform 0.2s var(--easing);
+	}
+	.section-collapse-btn svg.collapsed {
+		transform: rotate(-90deg);
 	}
 	.custom-version-btn {
 		display: flex;
@@ -4069,9 +4150,9 @@
 
 	/* Strategy Info */
 	.strategy-info {
-		padding: var(--space-4) var(--space-5);
+		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-4);
+		margin-bottom: var(--space-2);
 	}
 	.strategy-info-name {
 		font-size: var(--text-sm);
@@ -4126,7 +4207,7 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 		gap: var(--space-2);
-		margin-top:24px;
+		margin-top: 24px;
 	}
 	.strategy-summary-item {
 		display: flex;
@@ -4155,7 +4236,7 @@
 		padding: var(--space-4) var(--space-5);
 		border-radius: var(--radius-lg);
 		text-decoration: none;
-		margin-bottom: var(--space-6);
+		margin-bottom: var(--space-2);
 		transition: all var(--motion-fast) var(--easing);
 	}
 	.strategy-banner:hover {
@@ -4201,7 +4282,7 @@
 		background: rgba(251, 191, 36, 0.06);
 		border: 1px solid rgba(251, 191, 36, 0.12);
 		border-radius: var(--radius-md);
-		margin-bottom: var(--space-4);
+		margin-bottom: var(--space-2);
 	}
 	.disclaimer svg {
 		color: #fbbf24;
@@ -4215,7 +4296,7 @@
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-4);
+		margin-bottom: var(--space-2);
 	}
 	.date-filter-label {
 		font-size: var(--text-xs);
@@ -4250,19 +4331,39 @@
 		border-color: rgba(255, 255, 255, 0.15);
 		color: var(--fg-base);
 	}
-	.date-input {
+	.date-input-label {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 		background: rgba(255, 255, 255, 0.05);
 		border: 1px solid rgba(255, 255, 255, 0.08);
 		border-radius: var(--radius-md);
 		padding: var(--space-1) var(--space-3);
+		cursor: pointer;
+		transition: border-color var(--motion-fast) var(--easing);
+	}
+	.date-input-label:hover {
+		border-color: rgba(255, 255, 255, 0.15);
+	}
+	.date-input-display {
 		font-size: var(--text-sm);
 		font-family: var(--font-mono, ui-monospace, monospace);
 		color: var(--fg-base);
-		color-scheme: dark;
+		white-space: nowrap;
 	}
-	.date-input:focus {
-		outline: none;
-		border-color: var(--accent);
+	.date-input-cal {
+		color: var(--fg-subtle);
+		flex-shrink: 0;
+	}
+	.date-input-native {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		width: 100%;
+		height: 100%;
+		cursor: pointer;
+		font-size: 16px; /* prevent iOS zoom */
 	}
 	.date-nav-btn {
 		display: inline-flex;
@@ -4386,59 +4487,45 @@
 	.chart-col:has(.chart-bar) {
 		cursor: pointer;
 	}
-	.chart-detail {
-		border-top: 1px solid rgba(255, 255, 255, 0.08);
-		padding: var(--space-3) 0 0;
-		margin-top: var(--space-2);
+	/* Stats Grid */
+	.stats-hour-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
+		margin-bottom: var(--space-1);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--accent);
+		background: var(--accent-subtle);
+		border: 1px solid var(--accent-muted);
+		border-radius: var(--radius-full);
 	}
-	.chart-detail-header {
+	.stats-hour-clear {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		margin-bottom: var(--space-2);
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		padding: 0;
+		border: none;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--accent);
+		cursor: pointer;
+		font-size: 10px;
+		line-height: 1;
+		opacity: 0.6;
+		transition: opacity 0.15s var(--easing);
 	}
-	.chart-detail-hour {
-		font-size: 14px;
-		font-weight: 600;
-		font-family: var(--font-mono, ui-monospace, monospace);
-		color: var(--fg-primary);
+	.stats-hour-clear:hover {
+		opacity: 1;
 	}
-	.chart-detail-profit {
-		font-size: 18px;
-		font-weight: 700;
-		font-family: var(--font-mono, ui-monospace, monospace);
-	}
-	.chart-detail-empty {
-		font-size: 13px;
-		color: var(--fg-subtle);
-	}
-	.chart-detail-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-		gap: var(--space-2);
-	}
-	.chart-detail-item {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-	.chart-detail-label {
-		font-size: 11px;
-		color: var(--fg-subtle);
-	}
-	.chart-detail-value {
-		font-size: 14px;
-		font-weight: 600;
-		font-family: var(--font-mono, ui-monospace, monospace);
-		color: var(--fg-primary);
-	}
-
-	/* Stats Grid */
 	.stats-grid {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: var(--space-3);
-		margin-bottom: var(--space-4);
+		margin-bottom: var(--space-2);
 	}
 
 	.stat-card {
@@ -4476,7 +4563,7 @@
 		justify-content: space-between;
 		padding: var(--space-4) var(--space-5);
 		border-radius: var(--radius-lg);
-		margin-bottom: var(--space-6);
+		/* margin-bottom: var(--space-6); */
 	}
 
 	.runtime-row {
@@ -5211,10 +5298,9 @@
 	:global([data-theme='light']) .disclaimer svg {
 		color: #d97706;
 	}
-	:global([data-theme='light']) .date-input {
+	:global([data-theme='light']) .date-input-label {
 		background: rgba(0, 0, 0, 0.03);
 		border-color: rgba(0, 0, 0, 0.08);
-		color-scheme: light;
 	}
 	:global([data-theme='light']) .date-option-btn {
 		border-color: rgba(0, 0, 0, 0.08);
@@ -5243,9 +5329,6 @@
 	}
 	:global([data-theme='light']) .chart-col-selected {
 		background: rgba(0, 0, 0, 0.05);
-	}
-	:global([data-theme='light']) .chart-detail {
-		border-top-color: rgba(0, 0, 0, 0.08);
 	}
 	:global([data-theme='light']) .version-btn {
 		border-color: rgba(0, 0, 0, 0.08);
@@ -5435,6 +5518,28 @@
 			opacity: 0.4;
 			width: 24px;
 			height: 24px;
+		}
+		/* Date filter: compact layout on mobile */
+		.date-filter {
+			gap: var(--space-2);
+			padding: var(--space-2) var(--space-3);
+		}
+		.date-filter-options {
+			flex: 1;
+			min-width: 0;
+			flex-wrap: wrap;
+			gap: var(--space-1);
+		}
+		.date-option-btn {
+			padding: var(--space-1) var(--space-2);
+		}
+		.date-nav-btn {
+			width: 24px;
+			height: 24px;
+		}
+		/* Prevent iOS zoom on input focus (requires >= 16px) */
+		.strategy-url-input {
+			font-size: 16px;
 		}
 	}
 </style>

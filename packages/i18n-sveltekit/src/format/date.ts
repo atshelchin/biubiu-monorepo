@@ -5,6 +5,8 @@ export interface DateFormatOptions {
   timeStyle?: 'full' | 'long' | 'medium' | 'short';
   /** 覆盖偏好中的时区 */
   timeZone?: string;
+  /** 12 小时制 (true) 还是 24 小时制 (false) */
+  hour12?: boolean;
 }
 
 /**
@@ -30,6 +32,10 @@ export function formatDate(
     intlOptions.timeStyle = options.timeStyle;
   }
 
+  if (options?.hour12 !== undefined) {
+    intlOptions.hour12 = options.hour12;
+  }
+
   // 如果没有指定任何样式，使用默认
   if (!options?.dateStyle && !options?.timeStyle) {
     intlOptions.dateStyle = 'medium';
@@ -52,6 +58,7 @@ export function formatDateTime(
     dateStyle: options?.dateStyle ?? 'medium',
     timeStyle: options?.timeStyle ?? 'short',
     timeZone: options?.timeZone,
+    hour12: options?.hour12,
   });
 }
 

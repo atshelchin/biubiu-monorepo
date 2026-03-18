@@ -149,5 +149,8 @@
   "btcUpdown.validate.format": "Response Format",
   "btcUpdown.disclaimer.simulation": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling.",
   "btcUpdown.disclaimer.live": "This strategy is running with REAL MONEY. All gains and losses are real. Please invest responsibly.",
+  "btcUpdown.filter.win": "Win",
+  "btcUpdown.filter.loss": "Loss",
+  "btcUpdown.filter.stopLoss": "Stop Loss",
   "btcUpdown.disclaimer": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling."
 }

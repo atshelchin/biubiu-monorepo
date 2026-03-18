@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t, locale, preferences, formatNumber, formatCurrency, formatDate, formatDateTime } from '$lib/i18n';
-	import { loadSettings, applyTheme, applyTextScale, type Theme, type TextScale } from '$lib/settings';
+	import { loadSettings, applyTheme, applyTextScale, type Theme, type TextScale, type TimeFormat } from '$lib/settings';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
@@ -51,6 +51,7 @@
 	type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 	type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
 	type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';
+	type ResultFilter = '' | 'win' | 'loss' | 'stop_loss';
 
 	interface SSEEvent {
 		id: string;
@@ -88,6 +89,7 @@
 		signalSkip: number;
 		signalSkipWouldWin: number;
 		signalSkipWouldLose: number;
+		stopLossCount: number;
 	}
 
 	interface RoundHedge {
@@ -123,6 +125,7 @@
 		swing_mode: number | null;
 		swing_exit_reason: string | null;
 		swing_exit_price: number | null;
+		stop_loss_checked_at: string | null;
 		event_start_time: string;
 		end_time: string;
 		created_at: string;
@@ -229,6 +232,7 @@
 	let customUrlValidating = $state(false);
 	let validationSteps = $state<ValidationProgress[]>([]);
 
+	let timeFormat = $state<TimeFormat>('24');
 	let connectionStatus = $state<ConnectionStatus>('disconnected');
 	let events = $state<SSEEvent[]>([]);
 	let stats = $state<Stats | null>(null);
@@ -257,6 +261,7 @@
 	let roundsPageSize = 10;
 	let roundsFilter = $state<RoundStatusFilter>('');
 	let signalActionFilter = $state<SignalActionFilter>('');
+	let resultFilter = $state<ResultFilter>('');
 	let roundsLoading = $state(false);
 
 	// Date filter: '' means "All", 'YYYY-MM-DD' means specific date
@@ -529,6 +534,8 @@
 			});
 			if (roundsFilter) params.set('status', roundsFilter);
 			if (signalActionFilter) params.set('signal_action', signalActionFilter);
+			if (resultFilter === 'win' || resultFilter === 'loss') params.set('result', resultFilter);
+			if (resultFilter === 'stop_loss') params.set('swing_exit_reason', 'stop_loss');
 			const range = getDateRange(selectedHour);
 			if (range) {
 				params.set('from', range.from);
@@ -1148,6 +1155,17 @@
 				if (urlDateLocale) preferences.dateLocale = urlDateLocale;
 				if (urlCurrency) preferences.currency = urlCurrency;
 
+				// Load time format from settings
+				const pageSettings = loadSettings();
+				timeFormat = pageSettings.timeFormat;
+				// Listen for settings changes (same-tab custom event)
+				const onSettingsChanged = (e: Event) => {
+					const s = (e as CustomEvent).detail;
+					if (s.timeFormat === '12' || s.timeFormat === '24') timeFormat = s.timeFormat;
+					if (s.timezone) preferences.timezone = s.timezone;
+				};
+				window.addEventListener('settings-changed', onSettingsChanged);
+
 				// Handle custom strategy from URL: auto-add if not already present
 				if (urlStrategy === 'custom' && urlEndpoint) {
 					const normalized = normalizeStrategyUrl(urlEndpoint);
@@ -1290,6 +1308,7 @@
 			const _page = roundsPage;
 			const _filter = roundsFilter;
 			void signalActionFilter;
+			void resultFilter;
 			void selectedHour;
 			untrack(() => {
 				fetchRounds();
@@ -1337,19 +1356,48 @@
 	// Settings-aware formatting helpers (use user's preferences for locale, currency, timezone)
 
 	function fmtTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'medium' });
+		return formatDate(ts, { timeStyle: 'medium', hour12: timeFormat === '12' });
 	}
 
 	function fmtShortTime(ts: string): string {
-		return formatDate(ts, { timeStyle: 'short' });
+		return formatDate(ts, { timeStyle: 'short', hour12: timeFormat === '12' });
 	}
 
 	function fmtLocalDate(ts: string): string {
 		return formatDate(ts, { dateStyle: 'short' });
 	}
 
+	function tzLabel(): string {
+		const tz = preferences.timezone;
+		switch (tz) {
+			case 'UTC': return 'UTC';
+			case 'America/New_York': return 'ET';
+			case 'Asia/Shanghai': return 'UTC+8';
+			default: {
+				// Use Intl to get short timezone name, e.g. "EST", "GMT+8"
+				try {
+					const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(new Date());
+					return parts.find(p => p.type === 'timeZoneName')?.value ?? tz;
+				} catch {
+					return tz;
+				}
+			}
+		}
+	}
+
 	function fmtTimeWindow(start: string, end: string): string {
-		return `${fmtShortTime(start)} - ${fmtShortTime(end)}`;
+		const s = fmtShortTime(start);
+		const e = fmtShortTime(end);
+		if (timeFormat === '12') {
+			// Extract period (AM/PM/上午/下午) from end time, strip from both
+			const periodRe = /\s*(AM|PM|上午|下午|午前|午後)/i;
+			const periodMatch = e.match(periodRe);
+			const period = periodMatch ? periodMatch[1] : '';
+			const sClean = s.replace(periodRe, '').trim();
+			const eClean = e.replace(periodRe, '').trim();
+			return `${sClean} - ${eClean} ${period} ${tzLabel()}`.trim();
+		}
+		return `${s} - ${e} ${tzLabel()}`;
 	}
 
 	function fmtProfit(value: number): string {
@@ -1362,7 +1410,7 @@
 	}
 
 	function fmtDateTimeShort(ts: string): string {
-		return formatDateTime(ts, { dateStyle: 'medium', timeStyle: 'short' });
+		return formatDateTime(ts, { dateStyle: 'medium', timeStyle: 'short', hour12: timeFormat === '12' });
 	}
 
 	function fmtPrice(value: number): string {
@@ -1559,15 +1607,48 @@
 		}
 	}
 
+	function getSwingExitLabel(reason: string): string {
+		const zh = locale.value === 'zh';
+		switch (reason) {
+			case 'stop_loss':
+				return zh ? '止损' : 'Stop Loss';
+			case 'binance_stop_loss':
+				return zh ? '币安止损' : 'Binance Stop Loss';
+			case 'take_profit':
+				return zh ? '止盈' : 'Take Profit';
+			case 'checkpoint_mismatch':
+				return zh ? '信号反转' : 'Signal Reversed';
+			case 'clob_direction_mismatch':
+				return zh ? '方向偏离' : 'Direction Mismatch';
+			case 'price_moved_against':
+				return zh ? '价格反向' : 'Price Moved Against';
+			case 'manual':
+				return zh ? '手动退出' : 'Manual Exit';
+			case 'timeout':
+				return zh ? '超时退出' : 'Timeout';
+			default:
+				return reason;
+		}
+	}
+
 	function setFilter(filter: RoundStatusFilter) {
 		roundsFilter = filter;
 		signalActionFilter = '';
+		resultFilter = '';
 		roundsPage = 1;
 	}
 
 	function setSignalFilter(filter: SignalActionFilter) {
 		signalActionFilter = filter;
 		roundsFilter = '';
+		resultFilter = '';
+		roundsPage = 1;
+	}
+
+	function setResultFilter(filter: ResultFilter) {
+		resultFilter = filter;
+		roundsFilter = '';
+		signalActionFilter = '';
 		roundsPage = 1;
 	}
 </script>
@@ -2400,7 +2481,7 @@
 								{#each [{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds ?? null }, { value: 'entered', label: t('btcUpdown.filter.entered'), count: stats ? stats.entered - stats.wins - stats.losses : null }, { value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null }, { value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped ?? null }] as filter (filter.value)}
 									<button
 										class="filter-btn"
-										class:active={roundsFilter === filter.value}
+										class:active={roundsFilter === filter.value && !signalActionFilter && !resultFilter}
 										onclick={() => setFilter(filter.value as RoundStatusFilter)}
 									>
 										{filter.label}{#if filter.count !== null}<span class="filter-count"
@@ -2474,6 +2555,36 @@
 												: ''}{stats.signalSkipWouldLose - stats.signalSkipWouldWin}</span
 										>
 									{/if}
+								</button>
+							</div>
+							<span class="filter-sep">|</span>
+							<div class="filter-group">
+								<button
+									class="filter-btn"
+									class:active={resultFilter === 'win'}
+									onclick={() => setResultFilter(resultFilter === 'win' ? '' : 'win')}
+								>
+									{t('btcUpdown.filter.win')}{#if stats?.wins != null}<span
+											class="filter-count">{stats.wins}</span
+										>{/if}
+								</button>
+								<button
+									class="filter-btn"
+									class:active={resultFilter === 'loss'}
+									onclick={() => setResultFilter(resultFilter === 'loss' ? '' : 'loss')}
+								>
+									{t('btcUpdown.filter.loss')}{#if stats?.losses != null}<span
+											class="filter-count">{stats.losses}</span
+										>{/if}
+								</button>
+								<button
+									class="filter-btn"
+									class:active={resultFilter === 'stop_loss'}
+									onclick={() => setResultFilter(resultFilter === 'stop_loss' ? '' : 'stop_loss')}
+								>
+									{t('btcUpdown.filter.stopLoss')}{#if stats?.stopLossCount != null}<span
+											class="filter-count">{stats.stopLossCount}</span
+										>{/if}
 								</button>
 							</div>
 						</div>
@@ -2585,19 +2696,7 @@
 													<span
 														class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}"
 													>
-														{round.swing_exit_reason === 'stop_loss'
-															? locale.value === 'zh'
-																? '止损'
-																: 'Stop Loss'
-															: round.swing_exit_reason === 'take_profit'
-																? locale.value === 'zh'
-																	? '止盈'
-																	: 'Take Profit'
-																: round.swing_exit_reason === 'checkpoint_mismatch'
-																	? locale.value === 'zh'
-																		? '信号反转'
-																		: 'Signal Reversed'
-																	: round.swing_exit_reason}
+														{getSwingExitLabel(round.swing_exit_reason)}
 													</span>
 												</div>
 												{#if round.swing_exit_price !== null}
@@ -2607,6 +2706,17 @@
 														>
 														<span class="round-value mono"
 															>{fmtPrice(round.swing_exit_price)}</span
+														>
+													</div>
+												{/if}
+												{@const exitTime = round.stop_loss_checked_at ?? round.settled_at}
+												{#if exitTime}
+													<div class="round-row">
+														<span class="round-label"
+															>{locale.value === 'zh' ? '退出时间' : 'Exit Time'}</span
+														>
+														<span class="round-value mono"
+															>{fmtShortTime(exitTime)}</span
 														>
 													</div>
 												{/if}
@@ -2700,21 +2810,12 @@
 																	>{locale.value === 'zh' ? '波动退出' : 'Swing Exit'}</span
 																>
 																<span class="pnl-value">
-																	{round.swing_exit_reason === 'stop_loss'
-																		? locale.value === 'zh'
-																			? '止损'
-																			: 'Stop Loss'
-																		: round.swing_exit_reason === 'take_profit'
-																			? locale.value === 'zh'
-																				? '止盈'
-																				: 'Take Profit'
-																			: round.swing_exit_reason === 'checkpoint_mismatch'
-																				? locale.value === 'zh'
-																					? '信号反转'
-																					: 'Signal Reversed'
-																				: round.swing_exit_reason}
+																	{getSwingExitLabel(round.swing_exit_reason)}
 																	{#if round.swing_exit_price !== null}
 																		@ {fmtPrice(round.swing_exit_price)}
+																	{/if}
+																	{#if round.stop_loss_checked_at ?? round.settled_at}
+																		&middot; {fmtShortTime((round.stop_loss_checked_at ?? round.settled_at)!)}
 																	{/if}
 																</span>
 															</div>
@@ -3108,7 +3209,7 @@
 	/* 2-column: sidebar sticky col 1, content in col 2 */
 	@media (min-width: 1280px) {
 		main.page {
-			max-width: 1100px;
+			max-width: 1320px;
 		}
 		.page-layout {
 			display: grid;
@@ -3720,7 +3821,7 @@
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
-		z-index: 100;
+		z-index: 300;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -4647,13 +4748,10 @@
 		padding: var(--space-1) var(--space-2);
 		border-radius: var(--radius-sm);
 	}
-	.direction-up {
-		color: #34d399;
-		background: rgba(52, 211, 153, 0.12);
-	}
+	.direction-up,
 	.direction-down {
-		color: #f87171;
-		background: rgba(248, 113, 113, 0.12);
+		color: var(--fg-muted);
+		background: rgba(255, 255, 255, 0.06);
 	}
 
 	/* Positive/Negative */
@@ -4836,7 +4934,8 @@
 		padding: 1px var(--space-2);
 		border-radius: var(--radius-sm);
 	}
-	.swing-exit-stop_loss {
+	.swing-exit-stop_loss,
+	.swing-exit-binance_stop_loss {
 		background: rgba(248, 113, 113, 0.12);
 		color: #f87171;
 	}
@@ -5037,13 +5136,10 @@
 	:global([data-theme='light']) .negative {
 		color: #dc2626;
 	}
-	:global([data-theme='light']) .direction-up {
-		color: #059669;
-		background: rgba(16, 185, 129, 0.1);
-	}
+	:global([data-theme='light']) .direction-up,
 	:global([data-theme='light']) .direction-down {
-		color: #dc2626;
-		background: rgba(220, 38, 38, 0.1);
+		color: var(--fg-muted);
+		background: rgba(0, 0, 0, 0.05);
 	}
 	:global([data-theme='light']) .status-connected {
 		border-color: rgba(16, 185, 129, 0.3);

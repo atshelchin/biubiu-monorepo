@@ -215,7 +215,7 @@
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
 	// Sidebar sort state
-	let profitSortColumn = $state<'hour' | 'day' | null>(null);
+	let profitSortColumn = $state<'name' | 'hour' | 'day' | null>(null);
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
@@ -1014,10 +1014,17 @@
 		fetchAllStrategyProfits();
 	}
 
-	function sortStrategies<T extends { id: string }>(list: T[]): T[] {
+	function sortStrategies<T extends { id: string; label: string }>(list: T[]): T[] {
 		if (!profitSortColumn) return list;
 		const col = profitSortColumn;
 		const dir = profitSortDir === 'desc' ? -1 : 1;
+		if (col === 'name') {
+			return [...list].sort((a, b) => {
+				const na = (allStrategyInfos.get(a.id)?.name ?? a.label).toLowerCase();
+				const nb = (allStrategyInfos.get(b.id)?.name ?? b.label).toLowerCase();
+				return na.localeCompare(nb) * dir;
+			});
+		}
 		return [...list].sort((a, b) => {
 			const pa = allStrategyProfits.get(a.id);
 			const pb = allStrategyProfits.get(b.id);
@@ -1670,16 +1677,17 @@
 							<span
 								class="profit-col-label"
 								class:offset-active={offset !== 0}
-								class:sort-active={profitSortColumn === col}
+								class:sort-active={profitSortColumn === col || (col === 'round' && profitSortColumn === 'name')}
 								onclick={() => {
 									if (offset !== 0) {
 										resetProfitColumn(colKey);
-									} else if (col !== 'round') {
-										if (profitSortColumn === col) {
+									} else {
+										const sortCol = col === 'round' ? 'name' : col as 'hour' | 'day';
+										if (profitSortColumn === sortCol) {
 											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 										} else {
-											profitSortColumn = col as 'hour' | 'day';
-											profitSortDir = 'desc';
+											profitSortColumn = sortCol;
+											profitSortDir = col === 'round' ? 'asc' : 'desc';
 										}
 									}
 								}}
@@ -1689,14 +1697,12 @@
 									? locale.value === 'zh'
 										? '点击回到当前'
 										: 'Click to reset'
-									: col !== 'round'
-										? locale.value === 'zh'
-											? '点击排序'
-											: 'Click to sort'
-										: ''}
+									: locale.value === 'zh'
+										? '点击排序'
+										: 'Click to sort'}
 							>
 								{getProfitColumnLabel(colKey)}
-								{#if profitSortColumn === col}
+								{#if profitSortColumn === col || (col === 'round' && profitSortColumn === 'name')}
 									<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
 								{/if}
 							</span>
@@ -3314,7 +3320,7 @@
 	.profit-column-labels {
 		display: flex;
 		justify-content: flex-end;
-		gap: var(--space-2);
+		gap: var(--space-1); /* match .strategy-profits gap */
 		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
 		margin-bottom: var(--space-1);
 	}
@@ -3505,7 +3511,6 @@
 	.version-row {
 		display: flex;
 		align-items: center;
-		gap: 0;
 		position: relative;
 	}
 	.version-row .version-btn {
@@ -3513,30 +3518,32 @@
 		min-width: 0;
 	}
 	.row-hide-btn {
+		position: absolute;
+		right: 4px;
+		top: 50%;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 0;
-		height: 28px;
+		width: 22px;
+		height: 22px;
 		padding: 0;
 		border: none;
 		border-radius: var(--radius-sm);
-		background: transparent;
+		background: rgba(0, 0, 0, 0.3);
 		color: var(--fg-subtle);
 		cursor: pointer;
 		opacity: 0;
-		overflow: hidden;
-		transition: all 0.15s var(--easing);
-		flex-shrink: 0;
+		transition: opacity 0.15s var(--easing);
+		z-index: 1;
 	}
 	.version-row:hover .row-hide-btn {
-		width: 24px;
-		opacity: 0.4;
+		opacity: 0.6;
 	}
 	.row-hide-btn:hover {
 		opacity: 1 !important;
 		color: #f87171;
-		background: rgba(248, 113, 113, 0.1);
+		background: rgba(248, 113, 113, 0.15);
 	}
 	.custom-version-btn {
 		display: flex;
@@ -5277,7 +5284,7 @@
 		}
 		.profit-col-label {
 			font-size: 11px;
-			padding: 4px 0;
+			padding: 6px 4px;
 		}
 		.profit-cell {
 			width: 68px;
@@ -5286,11 +5293,14 @@
 			width: 68px;
 		}
 		.strategy-profits {
-			gap: var(--space-3);
+			gap: var(--space-1);
+		}
+		.profit-column-labels {
+			gap: var(--space-1);
 		}
 		.section-config-btn {
-			width: 32px;
-			height: 32px;
+			padding: 6px 10px;
+			font-size: 11px;
 		}
 		.config-toggle-btn {
 			width: 36px;
@@ -5305,16 +5315,9 @@
 			padding: 6px 12px;
 		}
 		.row-hide-btn {
-			width: 28px;
-			opacity: 0.3;
-		}
-		.profit-col-label {
-			font-size: 11px;
-			padding: 6px 4px;
-		}
-		.section-config-btn {
-			padding: 6px 10px;
-			font-size: 11px;
+			opacity: 0.4;
+			width: 24px;
+			height: 24px;
 		}
 	}
 </style>

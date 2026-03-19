@@ -1835,9 +1835,9 @@
 							<div class="profit-col-nav">
 								{#if col !== 'all'}
 							<button class="col-nav-btn-v" onclick={() => navigateProfitColumn(colKey, -1)}>
-									<svg width="8" height="5" viewBox="0 0 8 5"
+									<svg width="12" height="7" viewBox="0 0 12 7"
 										><path
-											d="M1 4L4 1L7 4"
+											d="M1 6L6 1L11 6"
 											fill="none"
 											stroke="currentColor"
 											stroke-width="1.5"
@@ -1874,9 +1874,9 @@
 									disabled={offset === 0}
 									onclick={() => navigateProfitColumn(colKey, 1)}
 								>
-									<svg width="8" height="5" viewBox="0 0 8 5"
+									<svg width="12" height="7" viewBox="0 0 12 7"
 										><path
-											d="M1 1L4 4L7 1"
+											d="M1 1L6 6L11 1"
 											fill="none"
 											stroke="currentColor"
 											stroke-width="1.5"
@@ -2388,11 +2388,10 @@
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
 							<span class="stat-value highlight">{fmtPct(stats.winRate)}</span>
-							<span class="stat-sub"
-								>{stats.wins}{t('btcUpdown.stats.wins')} / {stats.losses}{t(
-									'btcUpdown.stats.losses'
-								)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{stats.wins}{t('btcUpdown.stats.wins')}</span>
+								<span>{stats.losses}{t('btcUpdown.stats.losses')}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.totalProfit')}</span>
@@ -2403,18 +2402,18 @@
 							>
 								{fmtProfit(stats.totalProfit)}
 							</span>
-							<span class="stat-sub"
-								>{t('btcUpdown.stats.avgProfit')}: {fmtProfit(stats.avgProfit)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{t('btcUpdown.stats.avgProfit')}</span>
+								<span class:positive={stats.avgProfit >= 0} class:negative={stats.avgProfit < 0}>{fmtProfit(stats.avgProfit)}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.totalRounds')}</span>
 							<span class="stat-value">{stats.totalRounds}</span>
-							<span class="stat-sub"
-								>{stats.entered}
-								{t('btcUpdown.stats.entered')} / {stats.skipped}
-								{t('btcUpdown.stats.skipped')}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{stats.entered} {t('btcUpdown.stats.entered')}</span>
+								<span>{stats.skipped} {t('btcUpdown.stats.skipped')}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.streak')}</span>
@@ -2425,11 +2424,10 @@
 							>
 								{stats.currentStreak > 0 ? `+${stats.currentStreak}` : stats.currentStreak}
 							</span>
-							<span class="stat-sub"
-								>{t('btcUpdown.stats.best')}: {fmtProfit(stats.bestRound)} / {t(
-									'btcUpdown.stats.worst'
-								)}: {fmtProfit(stats.worstRound)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{t('btcUpdown.stats.best')}: <span class="positive">{fmtProfit(stats.bestRound)}</span></span>
+								<span>{t('btcUpdown.stats.worst')}: <span class="negative">{fmtProfit(stats.worstRound)}</span></span>
+							</span>
 						</div>
 					</section>
 				{/if}
@@ -3488,23 +3486,24 @@
 		align-items: center;
 		justify-content: center;
 		width: 100%;
-		height: 16px;
-		padding: 0;
+		min-height: 28px;
+		padding: 4px 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.35;
+		opacity: 0.4;
 		transition:
 			opacity 0.15s,
 			background 0.15s;
 		border-radius: var(--radius-sm);
 	}
 	.col-nav-btn-v:active:not(:disabled) {
-		background: rgba(255, 255, 255, 0.06);
+		background: rgba(255, 255, 255, 0.08);
 	}
 	.col-nav-btn-v:hover:not(:disabled) {
 		opacity: 0.8;
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.col-nav-btn-v:disabled {
 		opacity: 0.1;
@@ -4457,6 +4456,11 @@
 		color: var(--fg-subtle);
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
+	.stat-sub-rows {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
 
 	/* Strategy Runtime */
 	.strategy-runtime {
@@ -5367,6 +5371,10 @@
 			font-size: 12px;
 			padding: 8px 4px;
 		}
+		.col-nav-btn-v {
+			min-height: 36px;
+			padding: 6px 0;
+		}
 		.profit-cell {
 			width: 68px;
 		}
@@ -5402,10 +5410,15 @@
 			width: 24px;
 			height: 24px;
 		}
-		/* Date filter: compact layout on mobile */
+		/* Date filter: stacked layout on mobile */
 		.date-filter {
+			flex-direction: column;
+			align-items: stretch;
 			gap: var(--space-2);
-			padding: var(--space-2) var(--space-3);
+			padding: var(--space-3);
+		}
+		.date-filter-label {
+			display: none;
 		}
 		/* Prevent iOS zoom on input focus (requires >= 16px) */
 		.strategy-url-input {

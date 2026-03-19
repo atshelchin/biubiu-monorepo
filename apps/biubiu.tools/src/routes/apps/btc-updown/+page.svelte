@@ -2388,11 +2388,10 @@
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
 							<span class="stat-value highlight">{fmtPct(stats.winRate)}</span>
-							<span class="stat-sub"
-								>{stats.wins}{t('btcUpdown.stats.wins')} / {stats.losses}{t(
-									'btcUpdown.stats.losses'
-								)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{stats.wins}{t('btcUpdown.stats.wins')}</span>
+								<span>{stats.losses}{t('btcUpdown.stats.losses')}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.totalProfit')}</span>
@@ -2403,18 +2402,18 @@
 							>
 								{fmtProfit(stats.totalProfit)}
 							</span>
-							<span class="stat-sub"
-								>{t('btcUpdown.stats.avgProfit')}: {fmtProfit(stats.avgProfit)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{t('btcUpdown.stats.avgProfit')}</span>
+								<span class:positive={stats.avgProfit >= 0} class:negative={stats.avgProfit < 0}>{fmtProfit(stats.avgProfit)}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.totalRounds')}</span>
 							<span class="stat-value">{stats.totalRounds}</span>
-							<span class="stat-sub"
-								>{stats.entered}
-								{t('btcUpdown.stats.entered')} / {stats.skipped}
-								{t('btcUpdown.stats.skipped')}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{stats.entered} {t('btcUpdown.stats.entered')}</span>
+								<span>{stats.skipped} {t('btcUpdown.stats.skipped')}</span>
+							</span>
 						</div>
 						<div class="stat-card glass-card">
 							<span class="stat-label">{t('btcUpdown.stats.streak')}</span>
@@ -2425,11 +2424,10 @@
 							>
 								{stats.currentStreak > 0 ? `+${stats.currentStreak}` : stats.currentStreak}
 							</span>
-							<span class="stat-sub"
-								>{t('btcUpdown.stats.best')}: {fmtProfit(stats.bestRound)} / {t(
-									'btcUpdown.stats.worst'
-								)}: {fmtProfit(stats.worstRound)}</span
-							>
+							<span class="stat-sub stat-sub-rows">
+								<span>{t('btcUpdown.stats.best')}: <span class="positive">{fmtProfit(stats.bestRound)}</span></span>
+								<span>{t('btcUpdown.stats.worst')}: <span class="negative">{fmtProfit(stats.worstRound)}</span></span>
+							</span>
 						</div>
 					</section>
 				{/if}
@@ -4456,6 +4454,11 @@
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 		font-family: var(--font-mono, ui-monospace, monospace);
+	}
+	.stat-sub-rows {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 	}
 
 	/* Strategy Runtime */

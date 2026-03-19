@@ -210,6 +210,7 @@
 			| { status: 'skipped' | 'watching' };
 		hour: { profit: number; rounds: number; winRate: number };
 		day: { profit: number; rounds: number; winRate: number };
+		all: { profit: number; rounds: number; winRate: number };
 	}
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
 	let lastProfitRefreshTime = $state(0);
@@ -234,7 +235,7 @@
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
 	// Sidebar sort state
-	let profitSortColumn = $state<'name' | 'hour' | 'day' | null>(null);
+	let profitSortColumn = $state<'name' | 'hour' | 'day' | 'all' | null>(null);
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	// Visibility config panel: which section is open (null = closed)
 	let configPanelSection = $state<string | null>(null);
@@ -717,17 +718,19 @@
 						profitRoundOffset === 0
 							? f(`${s.baseUrl}/rounds/current`)
 							: f(`${s.baseUrl}/rounds?page=${roundPage}&pageSize=1`);
-					const [hourRes, dayRes, roundRes] = await Promise.all([
+					const [hourRes, dayRes, allRes, roundRes] = await Promise.all([
 						f(
 							`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`
 						),
 						f(
 							`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`
 						),
+						f(`${s.baseUrl}/stats`),
 						roundPromise
 					]);
 					const hourStats = hourRes.ok ? await hourRes.json() : null;
 					const dayStats = dayRes.ok ? await dayRes.json() : null;
+					const allStats = allRes.ok ? await allRes.json() : null;
 					let current: StrategyProfitData['current'];
 					if (profitRoundOffset === 0) {
 						const curData: CurrentRoundResponse | null = roundRes.ok ? await roundRes.json() : null;
@@ -754,7 +757,8 @@
 						profits: {
 							current,
 							hour: parseStats(hourStats),
-							day: parseStats(dayStats)
+							day: parseStats(dayStats),
+							all: parseStats(allStats)
 						} as StrategyProfitData
 					};
 				} catch {
@@ -1031,7 +1035,8 @@
 		}
 	}
 
-	function navigateProfitColumn(column: 'round' | 'hour' | 'day', dir: -1 | 1) {
+	function navigateProfitColumn(column: 'round' | 'hour' | 'day' | 'all', dir: -1 | 1) {
+		if (column === 'all') return;
 		if (column === 'round') {
 			const next = profitRoundOffset + dir;
 			if (next > 0) return;
@@ -1122,7 +1127,7 @@
 		}
 	}
 
-	function getProfitColumnLabel(column: 'round' | 'hour' | 'day'): string {
+	function getProfitColumnLabel(column: 'round' | 'hour' | 'day' | 'all'): string {
 		if (column === 'round') {
 			if (profitRoundOffset === 0) return t('btcUpdown.strategy.profitLast');
 			return `${profitRoundOffset}`;
@@ -1135,6 +1140,7 @@
 			d.setHours(d.getHours() + profitHourOffset);
 			return `${String(d.getHours()).padStart(2, '0')}:00`;
 		}
+		if (column === 'all') return t('btcUpdown.strategy.profitAll');
 		if (profitDayOffset === 0) return t('btcUpdown.strategy.profitToday');
 		// Show actual date, e.g. "03/15"
 		const d = new Date();
@@ -1781,6 +1787,17 @@
 							>{profits.day.rounds}r {Math.round(profits.day.winRate * 100)}%</span
 						>
 					</span>
+				<span class="profit-cell">
+					<span
+						class="profit-val"
+						class:positive={profits.all.profit >= 0}
+						class:negative={profits.all.profit < 0}
+						>{profits.all.profit >= 0 ? '+' : ''}{Math.round(profits.all.profit)}</span
+					>
+					<span class="profit-meta"
+						>{profits.all.rounds}r {Math.round(profits.all.winRate * 100)}%</span
+					>
+				</span>
 				</span>
 			{/snippet}
 
@@ -1807,16 +1824,17 @@
 						{/if}
 					</span>
 					<span class="profit-col-labels-right">
-						{#each ['hour', 'day'] as col (col)}
+						{#each ['hour', 'day', 'all'] as col (col)}
 							{@const offset =
 								col === 'round'
 									? profitRoundOffset
 									: col === 'hour'
 										? profitHourOffset
-										: profitDayOffset}
-							{@const colKey = col as 'round' | 'hour' | 'day'}
+										: col === 'day' ? profitDayOffset : 0}
+							{@const colKey = col as 'round' | 'hour' | 'day' | 'all'}
 							<div class="profit-col-nav">
-								<button class="col-nav-btn-v" onclick={() => navigateProfitColumn(colKey, -1)}>
+								{#if col !== 'all'}
+							<button class="col-nav-btn-v" onclick={() => navigateProfitColumn(colKey, -1)}>
 									<svg width="8" height="5" viewBox="0 0 8 5"
 										><path
 											d="M1 4L4 1L7 4"
@@ -1828,6 +1846,7 @@
 										/></svg
 									>
 								</button>
+								{/if}
 								<span
 									class="profit-col-label"
 									class:offset-active={offset !== 0}
@@ -1836,7 +1855,7 @@
 										if (profitSortColumn === col) {
 											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 										} else {
-											profitSortColumn = col as 'hour' | 'day';
+											profitSortColumn = col as 'hour' | 'day' | 'all';
 											profitSortDir = 'desc';
 										}
 									}}
@@ -1849,6 +1868,7 @@
 										<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
 									{/if}
 								</span>
+								{#if col !== 'all'}
 								<button
 									class="col-nav-btn-v"
 									disabled={offset === 0}
@@ -1865,6 +1885,7 @@
 										/></svg
 									>
 								</button>
+								{/if}
 							</div>
 						{/each}
 					</span>
@@ -3457,6 +3478,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: center;
 		width: 64px;
 		flex-shrink: 0;
 		gap: 0;

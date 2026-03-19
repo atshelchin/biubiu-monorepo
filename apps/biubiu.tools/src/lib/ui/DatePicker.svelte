@@ -60,18 +60,8 @@
 		return placeholder;
 	});
 
-	/** Get today's date string in the user's configured timezone */
-	const todayStr = $derived.by(() => {
-		const tz = preferences.timezone || undefined;
-		// Format in the user's timezone to get the correct local date
-		const parts = new Intl.DateTimeFormat('en-CA', {
-			timeZone: tz,
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit'
-		}).format(new Date());
-		return parts; // en-CA gives YYYY-MM-DD
-	});
+	/** Get today's date string in the browser's local timezone */
+	const todayStr = $derived(toDateStr(new Date()));
 
 	const navDate = $derived(mode === 'single' ? singleValue : (rangeValue.from === rangeValue.to ? rangeValue.from : ''));
 	const canGoPrev = $derived(!!navDate);

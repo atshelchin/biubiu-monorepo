@@ -331,6 +331,7 @@
 		'round_start',
 		'entry',
 		'settlement',
+		'exit_trigger',
 		'round_skip',
 		'hedge_placed',
 		'hedge_filled',
@@ -348,7 +349,7 @@
 			};
 			events = [sseEvent, ...events].slice(0, MAX_EVENTS);
 		}
-		if (eventType === 'settlement' || eventType === 'round_skip') {
+		if (eventType === 'settlement' || eventType === 'exit_trigger' || eventType === 'round_skip') {
 			fetchStats();
 			fetchCurrentRound();
 			fetchRounds();
@@ -377,6 +378,7 @@
 			'hedge_expired',
 			'price_update',
 			'settlement',
+			'exit_trigger',
 			'round_skip',
 			'heartbeat'
 		];
@@ -1515,6 +1517,8 @@
 				return t('btcUpdown.event.entry');
 			case 'settlement':
 				return t('btcUpdown.event.settlement');
+			case 'exit_trigger':
+				return t('btcUpdown.event.exitTrigger');
 			case 'hedge_placed':
 				return t('btcUpdown.event.hedgePlaced');
 			case 'hedge_filled':
@@ -1563,6 +1567,16 @@
 					profit: fmtProfit((d.totalProfit as number) ?? 0)
 				});
 			}
+			case 'exit_trigger':
+				return t('btcUpdown.live.exitTrigger', {
+					type: String(d.type ?? ''),
+					price: String(
+						typeof d.exitPrice === 'number'
+							? formatNumber(d.exitPrice, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+							: (d.exitPrice ?? '')
+					),
+					profit: fmtProfit((d.profit as number) ?? 0)
+				});
 			case 'hedge_placed':
 				return t('btcUpdown.live.hedgePlaced', {
 					shares: String(d.shares ?? '100'),
@@ -1614,6 +1628,7 @@
 			case 'entry':
 				return 'event-green';
 			case 'settlement':
+			case 'exit_trigger':
 				return 'event-settlement';
 			case 'round_start':
 				return 'event-blue';
@@ -1629,14 +1644,17 @@
 		}
 	}
 
+	function isRoundWon(round: Round): boolean {
+		return round.outcome != null && round.outcome === round.entry_direction;
+	}
+
 	function getRoundStatusLabel(round: Round): string {
 		if (round.status === 'skipped') return t('btcUpdown.round.skip');
 		if (round.status === 'watching') return t('btcUpdown.round.watching');
 		if (round.status === 'pending') return t('btcUpdown.round.pending');
 		if (round.status === 'entered') return t('btcUpdown.round.entered');
 		if (round.status === 'settled') {
-			if (round.total_profit !== null && round.total_profit >= 0) return t('btcUpdown.round.win');
-			return t('btcUpdown.round.loss');
+			return isRoundWon(round) ? t('btcUpdown.round.win') : t('btcUpdown.round.loss');
 		}
 		return round.status;
 	}
@@ -1646,8 +1664,7 @@
 		if (round.status === 'watching' || round.status === 'pending') return 'badge-watching';
 		if (round.status === 'entered') return 'badge-entered';
 		if (round.status === 'settled') {
-			if (round.total_profit !== null && round.total_profit >= 0) return 'badge-win';
-			return 'badge-loss';
+			return isRoundWon(round) ? 'badge-win' : 'badge-loss';
 		}
 		return 'badge-watching';
 	}

@@ -59,7 +59,9 @@
 	}
 
 	function getFetchFn(): (url: string) => Promise<Response> {
-		return activeStrategy.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
+		return activeStrategy.type === 'custom'
+			? strategyFetch
+			: (url: string) => fetch(url, { cache: 'no-store' });
 	}
 
 	// --- Types ---
@@ -715,7 +717,7 @@
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				try {
-					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url);
+					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url, { cache: 'no-store' });
 					const roundPromise =
 						profitRoundOffset === 0
 							? f(`${s.baseUrl}/rounds/current`)

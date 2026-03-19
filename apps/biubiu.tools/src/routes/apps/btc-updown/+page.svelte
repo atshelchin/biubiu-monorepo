@@ -1193,9 +1193,10 @@
 				if (urlDateLocale) preferences.dateLocale = urlDateLocale;
 				if (urlCurrency) preferences.currency = urlCurrency;
 
-				// Load time format from settings
+				// Load time format and timezone from settings
 				const pageSettings = loadSettings();
 				timeFormat = pageSettings.timeFormat;
+				if (pageSettings.timezone) preferences.timezone = pageSettings.timezone;
 				// Listen for settings changes (same-tab custom event)
 				const onSettingsChanged = (e: Event) => {
 					const s = (e as CustomEvent).detail;
@@ -1412,7 +1413,7 @@
 	}
 
 	function fmtShortTime(ts: string): string {
-		return fmtTimeRaw(ts, 'short');
+		return fmtTimeRaw(ts, 'medium');
 	}
 
 	function fmtLocalDate(ts: string): string {

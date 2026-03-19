@@ -131,6 +131,7 @@
   "btcUpdown.strategy.profitLast": "当前",
   "btcUpdown.strategy.profit1h": "1h",
   "btcUpdown.strategy.profitToday": "今日",
+  "btcUpdown.strategy.profitAll": "全部",
   "btcUpdown.strategy.statusSkip": "跳过",
   "btcUpdown.strategy.statusWait": "等待",
   "btcUpdown.strategy.statusWatch": "观望",

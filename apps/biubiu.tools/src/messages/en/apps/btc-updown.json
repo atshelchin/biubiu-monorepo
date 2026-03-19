@@ -131,6 +131,7 @@
   "btcUpdown.strategy.profitLast": "Now",
   "btcUpdown.strategy.profit1h": "1h",
   "btcUpdown.strategy.profitToday": "Today",
+  "btcUpdown.strategy.profitAll": "All",
   "btcUpdown.strategy.statusSkip": "Skip",
   "btcUpdown.strategy.statusWait": "Wait",
   "btcUpdown.strategy.statusWatch": "Watch",

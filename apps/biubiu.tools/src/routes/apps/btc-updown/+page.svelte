@@ -1835,9 +1835,9 @@
 							<div class="profit-col-nav">
 								{#if col !== 'all'}
 							<button class="col-nav-btn-v" onclick={() => navigateProfitColumn(colKey, -1)}>
-									<svg width="8" height="5" viewBox="0 0 8 5"
+									<svg width="12" height="7" viewBox="0 0 12 7"
 										><path
-											d="M1 4L4 1L7 4"
+											d="M1 6L6 1L11 6"
 											fill="none"
 											stroke="currentColor"
 											stroke-width="1.5"
@@ -1874,9 +1874,9 @@
 									disabled={offset === 0}
 									onclick={() => navigateProfitColumn(colKey, 1)}
 								>
-									<svg width="8" height="5" viewBox="0 0 8 5"
+									<svg width="12" height="7" viewBox="0 0 12 7"
 										><path
-											d="M1 1L4 4L7 1"
+											d="M1 1L6 6L11 1"
 											fill="none"
 											stroke="currentColor"
 											stroke-width="1.5"
@@ -3486,23 +3486,24 @@
 		align-items: center;
 		justify-content: center;
 		width: 100%;
-		height: 16px;
-		padding: 0;
+		min-height: 28px;
+		padding: 4px 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
 		cursor: pointer;
-		opacity: 0.35;
+		opacity: 0.4;
 		transition:
 			opacity 0.15s,
 			background 0.15s;
 		border-radius: var(--radius-sm);
 	}
 	.col-nav-btn-v:active:not(:disabled) {
-		background: rgba(255, 255, 255, 0.06);
+		background: rgba(255, 255, 255, 0.08);
 	}
 	.col-nav-btn-v:hover:not(:disabled) {
 		opacity: 0.8;
+		background: rgba(255, 255, 255, 0.04);
 	}
 	.col-nav-btn-v:disabled {
 		opacity: 0.1;
@@ -5369,6 +5370,10 @@
 		.profit-col-label {
 			font-size: 12px;
 			padding: 8px 4px;
+		}
+		.col-nav-btn-v {
+			min-height: 36px;
+			padding: 6px 0;
 		}
 		.profit-cell {
 			width: 68px;

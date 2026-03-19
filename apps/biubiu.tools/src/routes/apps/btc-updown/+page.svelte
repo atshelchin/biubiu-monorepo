@@ -5402,10 +5402,15 @@
 			width: 24px;
 			height: 24px;
 		}
-		/* Date filter: compact layout on mobile */
+		/* Date filter: stacked layout on mobile */
 		.date-filter {
+			flex-direction: column;
+			align-items: stretch;
 			gap: var(--space-2);
-			padding: var(--space-2) var(--space-3);
+			padding: var(--space-3);
+		}
+		.date-filter-label {
+			display: none;
 		}
 		/* Prevent iOS zoom on input focus (requires >= 16px) */
 		.strategy-url-input {

@@ -60,18 +60,8 @@
 		return placeholder;
 	});
 
-	/** Get today's date string in the user's configured timezone */
-	const todayStr = $derived.by(() => {
-		const tz = preferences.timezone || undefined;
-		// Format in the user's timezone to get the correct local date
-		const parts = new Intl.DateTimeFormat('en-CA', {
-			timeZone: tz,
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit'
-		}).format(new Date());
-		return parts; // en-CA gives YYYY-MM-DD
-	});
+	/** Get today's date string in the browser's local timezone */
+	const todayStr = $derived(toDateStr(new Date()));
 
 	const navDate = $derived(mode === 'single' ? singleValue : (rangeValue.from === rangeValue.to ? rangeValue.from : ''));
 	const canGoPrev = $derived(!!navDate);
@@ -786,6 +776,39 @@
 
 	/* --- Mobile: bottom sheet --- */
 	@media (max-width: 768px) {
+		.dp-trigger {
+			flex-direction: column;
+			gap: var(--space-2);
+		}
+		.dp-presets {
+			width: 100%;
+			gap: var(--space-2);
+		}
+		.dp-preset-btn {
+			flex: 1;
+			padding: var(--space-2) var(--space-2);
+			font-size: var(--text-sm);
+			min-height: 36px;
+			justify-content: center;
+			display: inline-flex;
+			align-items: center;
+		}
+		.dp-nav-group {
+			width: 100%;
+			justify-content: center;
+			gap: var(--space-2);
+		}
+		.dp-nav-btn {
+			width: 36px;
+			height: 36px;
+		}
+		.dp-display-btn {
+			flex: 1;
+			justify-content: center;
+			min-height: 36px;
+			font-size: var(--text-sm);
+		}
+
 		.dp-backdrop {
 			background: rgba(0, 0, 0, 0.5);
 		}
@@ -818,14 +841,6 @@
 			width: 40px;
 			height: 40px;
 			font-size: var(--text-sm);
-		}
-
-		.dp-preset-btn {
-			padding: var(--space-1) var(--space-2);
-		}
-		.dp-nav-btn {
-			width: 24px;
-			height: 24px;
 		}
 	}
 </style>

@@ -43,17 +43,8 @@
 		getDiscoveryUrl
 	} from '$lib/btc-updown-strategies';
 	import {
-		type ConnectionStatus,
-		type RoundStatusFilter,
-		type SignalActionFilter,
-		type ResultFilter,
 		type SSEEvent,
-		type Stats,
-		type Round,
-		type HourlyStats,
 		type StrategyProfitData,
-		MAX_EVENTS,
-		FEED_EVENTS,
 	} from '$lib/updown-shared';
 	import {
 		type FormatterContext,
@@ -64,16 +55,11 @@
 		naturalCompare,
 	} from '$lib/updown-shared';
 	import {
-		fetchStats as apiFetchStats,
-		fetchCurrentRound as apiFetchCurrentRound,
-		fetchRounds as apiFetchRounds,
-		fetchHourly as apiFetchHourly,
-		fetchStrategyStart as apiFetchStrategyStart,
-		fetchStrategyInfo as apiFetchStrategyInfo,
 		fetchStrategyProfitData,
 		type ApiFetchOptions,
 	} from '$lib/updown-shared';
-	import { createSSEManager, type SSEManager } from '$lib/updown-shared';
+	import { DashboardStore, type DashboardStoreConfig } from '$lib/updown-shared/stores/dashboard-store.svelte.js';
+	import { clock } from '$lib/updown-shared/stores/clock.svelte.js';
 	import StatsGrid from '$lib/updown-shared/components/StatsGrid.svelte';
 	import HourlyChart from '$lib/updown-shared/components/HourlyChart.svelte';
 	import RoundsHistory from '$lib/updown-shared/components/RoundsHistory.svelte';
@@ -102,15 +88,25 @@
 		return `${activeStrategy.baseUrl}${path}`;
 	}
 
-	function getFetchFn(): (url: string) => Promise<Response> {
+	function getFetchFn(): (url: string, init?: RequestInit) => Promise<Response> {
 		return activeStrategy.type === 'custom'
 			? strategyFetch
-			: (url: string) => fetch(url, { cache: 'no-store' });
+			: (url: string, init?: RequestInit) => fetch(url, { cache: 'no-store', ...init });
 	}
 
 	function getApiOpts(): ApiFetchOptions {
 		return { baseUrl: activeStrategy.baseUrl, fetchFn: getFetchFn() };
 	}
+
+	function getStoreConfig(): DashboardStoreConfig {
+		return {
+			getApiOpts,
+			getSseUrl: () => apiUrl('/sse/live'),
+			isCustomStrategy: () => activeStrategy.type === 'custom',
+		};
+	}
+
+	const store = new DashboardStore(getStoreConfig());
 
 	// --- Reactive State ---
 
@@ -138,7 +134,7 @@
 			builtinStrategies[0] ??
 			FALLBACK_STRATEGIES[0]
 	);
-	let strategyInfo = $state<StrategyInfo | null>(null);
+	// strategyInfo is now in store.strategyInfo
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
 	let lastProfitRefreshTime = $state(0);
@@ -185,12 +181,6 @@
 	let validationSteps = $state<ValidationProgress[]>([]);
 
 	let timeFormat = $state<TimeFormat>('24');
-	let connectionStatus = $state<ConnectionStatus>('disconnected');
-	let events = $state<SSEEvent[]>([]);
-	let stats = $state<Stats | null>(null);
-	let currentRound = $state<Round | null>(null);
-	let strategyStartTime = $state<string | null>(null);
-	let now = $state(Date.now());
 
 	// Sticky strategy title (shown when strategy-info card scrolls out of view)
 	let showStickyTitle = $state(false);
@@ -212,22 +202,7 @@
 	// History / Live tab toggle
 	let historyTab = $state<'rounds' | 'live'>('rounds');
 
-	// History tab state
-	let rounds = $state<Round[]>([]);
-	let roundsTotal = $state(0);
-	let roundsPage = $state(1);
-	let roundsPageSize = 10;
-	let roundsFilter = $state<RoundStatusFilter>('');
-	let signalActionFilter = $state<SignalActionFilter>('');
-	let resultFilter = $state<ResultFilter>('');
-	let roundsLoading = $state(false);
-
-	// Date filter: '' means "All", 'YYYY-MM-DD' means specific date
-	let filterDate = $state<{ from: string; to: string }>({ from: '', to: '' });
-	let hourlyData = $state<HourlyStats[]>([]);
-	let selectedHour = $state<number | null>(null);
-
-	const totalPages = $derived(Math.max(1, Math.ceil(roundsTotal / roundsPageSize)));
+	// (Data state, filter state, and loading state are now in store)
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -237,94 +212,7 @@
 		})
 	);
 
-	// --- SSE Connection (delegated to shared manager) ---
-
-	let sseEventCounter = 0;
-
-	const sseManager = createSSEManager(
-		() => apiUrl('/sse/live'),
-		() => activeStrategy.type === 'custom',
-		{
-			onEvent(eventType, data, timestamp) {
-				if (FEED_EVENTS.has(eventType)) {
-					const sseEvent: SSEEvent = {
-						id: `evt-${++sseEventCounter}`,
-						type: eventType,
-						timestamp,
-						data
-					};
-					events = [sseEvent, ...events].slice(0, MAX_EVENTS);
-				}
-				if (eventType === 'settlement' || eventType === 'exit_trigger' || eventType === 'round_skip') {
-					fetchStats();
-					fetchCurrentRound();
-					fetchRounds();
-				} else if (eventType === 'round_start' || eventType === 'entry') {
-					fetchCurrentRound();
-				}
-			},
-			onStatusChange(status) {
-				connectionStatus = status;
-			}
-		}
-	);
-
-	function connectSSE() { sseManager.connect(); }
-	function disconnectSSE() { sseManager.disconnect(); }
-
-	// --- REST API (delegated to shared module) ---
-
-	/** Whether the current filter is exactly one day */
-	const isSingleDayFilter = $derived(
-		filterDate.from !== '' && filterDate.from === filterDate.to
-	);
-
-	async function fetchStats() {
-		const result = await apiFetchStats(getApiOpts(), filterDate, selectedHour);
-		if (result) stats = result;
-	}
-
-	async function fetchCurrentRound() {
-		const result = await apiFetchCurrentRound(getApiOpts());
-		if (result) currentRound = result.round;
-	}
-
-	async function fetchRounds() {
-		roundsLoading = true;
-		try {
-			const result = await apiFetchRounds(getApiOpts(), {
-				page: roundsPage,
-				pageSize: roundsPageSize,
-				status: roundsFilter || undefined,
-				signalAction: signalActionFilter || undefined,
-				result: (resultFilter === 'win' || resultFilter === 'loss') ? resultFilter : undefined,
-				swingExitReason: resultFilter === 'stop_loss' ? 'stop_loss' : undefined,
-				filterDate,
-				selectedHour,
-			});
-			if (result) {
-				rounds = result.rows;
-				roundsTotal = result.total;
-			}
-		} finally {
-			roundsLoading = false;
-		}
-	}
-
-	async function fetchHourly() {
-		hourlyData = await apiFetchHourly(getApiOpts(), filterDate, isSingleDayFilter);
-	}
-
-	async function fetchStrategyStart() {
-		const result = await apiFetchStrategyStart(getApiOpts());
-		if (result) strategyStartTime = result;
-	}
-
-	async function fetchStrategyInfo() {
-		const lang = locale.value === 'zh' ? 'zh' : 'en';
-		const result = await apiFetchStrategyInfo(getApiOpts(), lang);
-		if (result) strategyInfo = result;
-	}
+	// --- SSE, data fetching, and filter coordination are now in DashboardStore ---
 
 	async function fetchAllStrategies() {
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
@@ -402,30 +290,13 @@
 
 	function onStrategyChange(strategyId: string) {
 		if (strategyId === activeStrategyId) return;
-		disconnectSSE();
 		activeStrategyId = strategyId;
 		syncUrlParams(strategyId);
 		persistState();
-		// Reset state
-		events = [];
-		stats = null;
-		currentRound = null;
-		rounds = [];
-		roundsTotal = 0;
-		roundsPage = 1;
-		hourlyData = [];
-		selectedHour = null;
-		strategyInfo = allStrategyInfos.get(strategyId) ?? null;
-		strategyStartTime = null;
-		// Reconnect and refetch
-		connectSSE();
-		fetchCurrentRound();
-		fetchStrategyInfo();
-		fetchStrategyStart().then(() => {
-			fetchStats();
-			fetchHourly();
-		});
-		fetchRounds();
+		// Store handles: disconnect SSE, reset data, reconnect, refetch all
+		store.switchStrategy(getStoreConfig());
+		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		store.fetchInitialData(lang);
 	}
 
 	function persistState() {
@@ -683,25 +554,16 @@
 			const d = new Date();
 			d.setDate(d.getDate() + profitDayOffset);
 			const ds = d.toLocaleDateString('en-CA');
-			filterDate = { from: ds, to: ds };
-			selectedHour = null;
-			onDateChange();
+			store.setDateRange(ds, ds);
 		} else if (column === 'hour' && profitHourOffset !== 0) {
 			const d = new Date();
 			d.setMinutes(0, 0, 0);
 			d.setHours(d.getHours() + profitHourOffset);
-			// Set date to that hour's date (could be yesterday if offset crosses midnight)
 			const ds = d.toLocaleDateString('en-CA');
-			filterDate = { from: ds, to: ds };
-			selectedHour = d.getHours();
-			roundsPage = 1;
-			fetchHourly();
-			fetchStats();
-			// Rounds will re-fetch via effect tracking selectedHour
+			store.filterDate = { from: ds, to: ds };
+			store.selectHour(d.getHours());
 		} else if (column === 'round' && profitRoundOffset !== 0) {
-			// For round, jump to the rounds tab and set page to the offset
-			roundsPage = Math.abs(profitRoundOffset);
-			fetchRounds();
+			store.setPage(Math.abs(profitRoundOffset));
 		}
 	}
 
@@ -727,11 +589,7 @@
 	}
 
 	function onDateChange() {
-		roundsPage = 1;
-		selectedHour = null;
-		fetchStats();
-		fetchHourly();
-		fetchRounds();
+		store.setDateRange(store.filterDate.from, store.filterDate.to);
 	}
 
 	// --- Effects ---
@@ -830,7 +688,7 @@
 				}
 
 				// Default to today's date
-				filterDate = { from: todayLocal(), to: todayLocal() };
+				store.filterDate = { from: todayLocal(), to: todayLocal() };
 
 				// Discover default server strategies (replaces hardcoded list)
 				const lang = locale.value === 'zh' ? 'zh' : 'en';
@@ -875,15 +733,10 @@
 					// Re-fetch strategy names with current locale (discovery may have used stale lang)
 					fetchAllStrategies();
 					fetchAllStrategyProfits();
-					// Start data fetching now that strategy is finalized from URL/discovery
-					fetchStrategyInfo();
-					connectSSE();
-					fetchCurrentRound();
-					fetchRounds();
-					fetchStrategyStart().then(() => {
-						fetchStats();
-						fetchHourly();
-					});
+					// Start data fetching via store (SSE, rounds, stats, hourly, etc.)
+					store.connect();
+					const lang2 = locale.value === 'zh' ? 'zh' : 'en';
+					store.fetchInitialData(lang2);
 				});
 
 				// Re-probe siblings for custom servers
@@ -914,57 +767,24 @@
 		if (!browser) return;
 		void locale.value; // track locale reactively
 		untrack(() => {
-			fetchStrategyInfo();
+			const lang = locale.value === 'zh' ? 'zh' : 'en';
+			store.fetchStrategyInfo(lang);
 			fetchAllStrategies();
 			fetchAllStrategyProfits();
 		});
 	});
 
+	// Subscribe to clock and check round expiry
 	$effect(() => {
-		if (browser) {
-			const _page = roundsPage;
-			const _filter = roundsFilter;
-			void signalActionFilter;
-			void resultFilter;
-			void selectedHour;
-			untrack(() => {
-				fetchRounds();
-			});
-		}
+		if (!browser) return;
+		const unsub = clock.subscribe();
+		return unsub;
 	});
 
 	$effect(() => {
-		if (browser) {
-			const interval = setInterval(() => {
-				now = Date.now();
-			}, 1000);
-			return () => clearInterval(interval);
-		}
-	});
-
-	// Auto-refresh currentRound when countdown expires or periodically as fallback
-	let lastRoundRefetchTime = 0;
-	$effect(() => {
-		if (!browser || !currentRound) return;
-		const endMs = new Date(currentRound.end_time).getTime();
-		const _now = now; // track reactivity
-		if (_now >= endMs && _now - lastRoundRefetchTime > 5000) {
-			lastRoundRefetchTime = _now;
-			untrack(() => {
-				fetchCurrentRound();
-				fetchRounds();
-			});
-		}
-	});
-
-	// Fallback: periodically re-fetch currentRound in case SSE events are missed
-	$effect(() => {
-		if (browser) {
-			const interval = setInterval(() => {
-				fetchCurrentRound();
-			}, 15_000);
-			return () => clearInterval(interval);
-		}
+		if (!browser) return;
+		const _now = clock.now; // track reactivity
+		store.checkRoundExpiry(_now);
 	});
 
 	// Auto-refresh strategy profits every 30s (only when viewing current data)
@@ -990,7 +810,7 @@
 	});
 
 	onDestroy(() => {
-		disconnectSSE();
+		store.disconnect();
 	});
 
 	// --- Filter helpers ---
@@ -1084,26 +904,7 @@
 		}
 	}
 
-	function setFilter(filter: RoundStatusFilter) {
-		roundsFilter = filter;
-		signalActionFilter = '';
-		resultFilter = '';
-		roundsPage = 1;
-	}
-
-	function setSignalFilter(filter: SignalActionFilter) {
-		signalActionFilter = filter;
-		roundsFilter = '';
-		resultFilter = '';
-		roundsPage = 1;
-	}
-
-	function setResultFilter(filter: ResultFilter) {
-		resultFilter = filter;
-		roundsFilter = '';
-		signalActionFilter = '';
-		roundsPage = 1;
-	}
+	// Filter setters are now store.setFilter(), store.setSignalFilter(), store.setResultFilter()
 </script>
 
 <SEO {...seoProps} />
@@ -1115,13 +916,13 @@
 	<section class="page-header" use:fadeInUp={{ delay: 0 }}>
 		<div class="title-row">
 			<h1 class="page-title">{t('btcUpdown.title')}</h1>
-			<div class="status-badge status-{connectionStatus}">
+			<div class="status-badge status-{store.connectionStatus}">
 				<span class="status-dot"></span>
-				{#if connectionStatus === 'connected'}
+				{#if store.connectionStatus === 'connected'}
 					{t('btcUpdown.connected')}
-				{:else if connectionStatus === 'connecting'}
+				{:else if store.connectionStatus === 'connecting'}
 					{t('btcUpdown.connecting')}
-				{:else if connectionStatus === 'reconnecting'}
+				{:else if store.connectionStatus === 'reconnecting'}
 					{t('btcUpdown.reconnecting')}
 				{:else}
 					{t('btcUpdown.disconnected')}
@@ -1266,7 +1067,7 @@
 			<!-- Strategy Selector -->
 			{#snippet refreshIndicator()}
 				{#if lastProfitRefreshTime > 0}
-					{@const elapsed = Math.floor((now - lastProfitRefreshTime) / 1000)}
+					{@const elapsed = Math.floor((clock.now - lastProfitRefreshTime) / 1000)}
 					<span class="last-refresh-time">{elapsed}s</span>
 				{/if}
 				<button
@@ -1638,7 +1439,7 @@
 			<!-- Disclaimer -->
 			<div
 				class="disclaimer"
-				class:disclaimer-live={strategyInfo?.mode === 'live'}
+				class:disclaimer-live={store.strategyInfo?.mode === 'live'}
 				use:fadeInUp={{ delay: 30 }}
 			>
 				<svg
@@ -1652,7 +1453,7 @@
 					stroke-linecap="round"
 					stroke-linejoin="round"
 				>
-					{#if strategyInfo?.mode === 'live'}
+					{#if store.strategyInfo?.mode === 'live'}
 						<path
 							d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
 						/>
@@ -1666,7 +1467,7 @@
 				</svg>
 				<span
 					>{t(
-						strategyInfo?.mode === 'live'
+						store.strategyInfo?.mode === 'live'
 							? 'btcUpdown.disclaimer.live'
 							: 'btcUpdown.disclaimer.simulation'
 					)}</span
@@ -1674,7 +1475,7 @@
 			</div>
 
 			<!-- Sticky strategy title (shown when strategy-info card scrolls away) -->
-			{#if strategyInfo && showStickyTitle}
+			{#if store.strategyInfo && showStickyTitle}
 				<div class="sticky-strategy-title" transition:fly={{ y: -20, duration: 200 }}>
 					<svg
 						class="sticky-strategy-icon"
@@ -1685,20 +1486,20 @@
 						<path d="M8 1L14.5 5v6L8 15 1.5 11V5L8 1z" stroke="currentColor" stroke-width="1.2" />
 						<circle cx="8" cy="8" r="2" fill="currentColor" />
 					</svg>
-					<span class="sticky-strategy-name">{strategyInfo.name}</span>
+					<span class="sticky-strategy-name">{store.strategyInfo.name}</span>
 				</div>
 			{/if}
 			<!-- Strategy Info Card -->
-			{#if strategyInfo}
+			{#if store.strategyInfo}
 				<div class="strategy-info glass-card" use:observeVisibility use:fadeInUp={{ delay: 15 }}>
-					<h3 class="strategy-info-name">{strategyInfo.name}</h3>
-					{#if strategyInfo.description?.length}
+					<h3 class="strategy-info-name">{store.strategyInfo.name}</h3>
+					{#if store.strategyInfo.description?.length}
 						<div class="strategy-description">
-							<p>{strategyInfo.description}</p>
+							<p>{store.strategyInfo.description}</p>
 						</div>
 					{/if}
 					<div class="strategy-summary-grid">
-						{#each strategyInfo.summary as item (item.label)}
+						{#each store.strategyInfo.summary as item (item.label)}
 							<div class="strategy-summary-item" class:summary-wide={item.value.length > 20}>
 								<span class="strategy-summary-label">{item.label}</span>
 								<span class="strategy-summary-value">{item.value}</span>
@@ -1708,15 +1509,15 @@
 				</div>
 			{/if}
 			<!-- Strategy Runtime -->
-			{#if strategyStartTime}
+			{#if store.strategyStartTime}
 				<div class="strategy-runtime glass-card" use:fadeInUp={{ delay: 60 }}>
 					<div class="runtime-row">
 						<span class="runtime-label">{t('btcUpdown.stats.duration')}</span>
-						<span class="runtime-value">{formatDuration(strategyStartTime, now)}</span>
+						<span class="runtime-value">{formatDuration(store.strategyStartTime, clock.now)}</span>
 					</div>
 					<div class="runtime-row">
 						<span class="runtime-label">{t('btcUpdown.stats.runningSince', { date: '' })}</span>
-						<span class="runtime-date">{fmtDateTimeShort(strategyStartTime)}</span>
+						<span class="runtime-date">{fmtDateTimeShort(store.strategyStartTime)}</span>
 					</div>
 				</div>
 			{/if}
@@ -1728,7 +1529,7 @@
 					<span class="date-filter-label">{t('btcUpdown.filter.date')}</span>
 					<DatePicker
 						mode="range"
-						bind:value={filterDate}
+						bind:value={store.filterDate}
 						onchange={onDateChange}
 						presets={['all', 'today', '7d', '30d']}
 						navigation
@@ -1737,25 +1538,25 @@
 				</div>
 
 				<!-- Stats Overview -->
-				{#if stats}
+				{#if store.stats}
 					<StatsGrid
-						{stats}
-						{selectedHour}
+						stats={store.stats}
+						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
 						{t}
-						onClearHour={() => { selectedHour = null; fetchStats(); }}
+						onClearHour={() => { store.selectHour(null); }}
 					/>
 				{/if}
 
 				<!-- Hourly Profit Chart (single day only) -->
-				{#if isSingleDayFilter}
+				{#if store.isSingleDayFilter}
 					<HourlyChart
-						{hourlyData}
-						filterDateFrom={filterDate.from}
-						{selectedHour}
+						hourlyData={store.hourlyData}
+						filterDateFrom={store.filterDate.from}
+						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
 						{t}
-						onSelectHour={(hour) => { selectedHour = hour; roundsPage = 1; fetchStats(); }}
+						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
 				{/if}
 
@@ -1779,7 +1580,7 @@
 							}}
 						>
 							{t('btcUpdown.tabLive')}
-							{#if connectionStatus === 'connected'}
+							{#if store.connectionStatus === 'connected'}
 								<span class="tab-live-dot"></span>
 							{/if}
 						</button>
@@ -1787,30 +1588,29 @@
 				</div>
 				{#if historyTab === 'rounds'}
 					<RoundsHistory
-						{rounds}
-						roundsTotal={roundsTotal}
-						roundsPage={roundsPage}
-						roundsPageSize={roundsPageSize}
-						roundsLoading={roundsLoading}
-						roundsFilter={roundsFilter}
-						signalActionFilter={signalActionFilter}
-						resultFilter={resultFilter}
-						{stats}
+						rounds={store.rounds}
+						roundsTotal={store.roundsTotal}
+						roundsPage={store.roundsPage}
+						roundsPageSize={store.roundsPageSize}
+						refreshing={store.roundsRefreshing}
+						roundsFilter={store.roundsFilter}
+						signalActionFilter={store.signalActionFilter}
+						resultFilter={store.resultFilter}
+						stats={store.stats}
 						ctx={getFormatterCtx()}
 						{t}
 						{formatCurrency}
-						onPageChange={(page) => { roundsPage = page; }}
-						onFilterChange={setFilter}
-						onSignalFilterChange={setSignalFilter}
-						onResultFilterChange={setResultFilter}
-						onRefresh={() => fetchRounds()}
+						onPageChange={(page) => { store.setPage(page); }}
+						onFilterChange={(f) => store.setFilter(f)}
+						onSignalFilterChange={(f) => store.setSignalFilter(f)}
+						onResultFilterChange={(f) => store.setResultFilter(f)}
+						onRefresh={() => store.refresh()}
 					/>
 				{:else}
 					<LiveFeed
-						{currentRound}
-						{events}
-						{connectionStatus}
-						{now}
+						currentRound={store.currentRound}
+						events={store.events}
+						connectionStatus={store.connectionStatus}
 						ctx={getFormatterCtx()}
 						{t}
 						{formatNumber}

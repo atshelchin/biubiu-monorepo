@@ -5,12 +5,13 @@
 	import { getEventColorClass, getRoundStatusLabel, getRoundBadgeClass } from '../labels.js';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { fly } from 'svelte/transition';
+	import { clock } from '../stores/clock.svelte.js';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		currentRound: Round | null;
 		events: SSEEvent[];
 		connectionStatus: ConnectionStatus;
-		now: number;
 		ctx: FormatterContext;
 		t: TranslateFn;
 		formatNumber: (value: number, opts?: Intl.NumberFormatOptions) => string;
@@ -22,13 +23,15 @@
 		currentRound,
 		events,
 		connectionStatus,
-		now,
 		ctx,
 		t,
 		formatNumber,
 		formatCurrency,
 		getEventMessage
 	}: Props = $props();
+
+	// Subscribe to shared clock for countdown display
+	onMount(() => clock.subscribe());
 
 	const getEventTypeLabel = (type: string) => {
 		const map: Record<string, string> = {
@@ -109,7 +112,7 @@
 		<div class="round-row" style="margin-top: var(--space-2);">
 			<span class="round-label">{t('btcUpdown.round.countdown')}</span>
 			<span class="round-value mono countdown-value"
-				>{formatCountdown(currentRound.end_time, now)}</span
+				>{formatCountdown(currentRound.end_time, clock.now)}</span
 			>
 		</div>
 	{:else}

@@ -16,7 +16,8 @@
 		roundsTotal: number;
 		roundsPage: number;
 		roundsPageSize: number;
-		roundsLoading: boolean;
+		/** True only during user-initiated fetch (filter/page change). Background SSE refreshes stay false. */
+		refreshing: boolean;
 		roundsFilter: RoundStatusFilter;
 		signalActionFilter: SignalActionFilter;
 		resultFilter: ResultFilter;
@@ -32,7 +33,7 @@
 	}
 
 	let {
-		rounds, roundsTotal, roundsPage, roundsPageSize, roundsLoading,
+		rounds, roundsTotal, roundsPage, roundsPageSize, refreshing,
 		roundsFilter, signalActionFilter, resultFilter,
 		stats, ctx, t, formatCurrency,
 		onPageChange, onFilterChange, onSignalFilterChange, onResultFilterChange, onRefresh
@@ -124,7 +125,7 @@
 			</button>
 		</div>
 	</div>
-	<button class="refresh-btn" onclick={onRefresh} disabled={roundsLoading}>
+	<button class="refresh-btn" onclick={onRefresh} disabled={refreshing}>
 		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 			<polyline points="23 4 23 10 17 10" />
 			<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
@@ -133,17 +134,17 @@
 	</button>
 </div>
 
-{#if roundsLoading}
-	<div class="loading-state">
-		<span class="loading-dot"></span>
-	</div>
-{:else if rounds.length === 0}
+{#if rounds.length === 0 && !refreshing}
 	<div class="empty-state" use:fadeInUp={{ delay: 100 }}>
 		<h3 class="empty-title">{t('btcUpdown.noRounds')}</h3>
 		<p class="empty-desc">{t('btcUpdown.noRoundsDesc')}</p>
 	</div>
+{:else if rounds.length === 0 && refreshing}
+	<div class="loading-state">
+		<span class="loading-dot"></span>
+	</div>
 {:else}
-	<div class="rounds-list">
+	<div class="rounds-list" class:refreshing>
 		{#each rounds as round (round.id)}
 			<div class="round-card glass-card" use:fadeInUp={{ delay: 0 }}>
 				<div class="round-header">
@@ -403,6 +404,11 @@
 		display: grid;
 		grid-template-columns: 1fr;
 		gap: var(--space-3);
+		transition: opacity var(--motion-fast) var(--easing);
+	}
+	.rounds-list.refreshing {
+		opacity: 0.6;
+		pointer-events: none;
 	}
 	.round-card {
 		border-radius: var(--radius-lg);

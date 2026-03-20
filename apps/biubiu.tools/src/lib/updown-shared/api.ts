@@ -13,7 +13,8 @@ import type { StrategyInfo } from '$lib/btc-updown-strategies';
 
 export interface ApiFetchOptions {
 	baseUrl: string;
-	fetchFn: (url: string) => Promise<Response>;
+	fetchFn: (url: string, init?: RequestInit) => Promise<Response>;
+	signal?: AbortSignal;
 }
 
 export async function fetchStats(
@@ -29,7 +30,7 @@ export async function fetchStats(
 			parts.push(`to=${encodeURIComponent(range.to)}`);
 		}
 		const qs = parts.length ? '?' + parts.join('&') : '';
-		const res = await opts.fetchFn(`${opts.baseUrl}/stats${qs}`);
+		const res = await opts.fetchFn(`${opts.baseUrl}/stats${qs}`, { signal: opts.signal });
 		if (res.ok) return await res.json();
 	} catch {
 		// non-critical
@@ -41,7 +42,7 @@ export async function fetchCurrentRound(
 	opts: ApiFetchOptions
 ): Promise<CurrentRoundResponse | null> {
 	try {
-		const res = await opts.fetchFn(`${opts.baseUrl}/rounds/current`);
+		const res = await opts.fetchFn(`${opts.baseUrl}/rounds/current`, { signal: opts.signal });
 		if (res.ok) return await res.json();
 	} catch {
 		// non-critical
@@ -76,7 +77,7 @@ export async function fetchRounds(
 			qs.set('from', range.from);
 			qs.set('to', range.to);
 		}
-		const res = await opts.fetchFn(`${opts.baseUrl}/rounds?${qs}`);
+		const res = await opts.fetchFn(`${opts.baseUrl}/rounds?${qs}`, { signal: opts.signal });
 		if (res.ok) return await res.json();
 	} catch {
 		// non-critical
@@ -98,7 +99,7 @@ export async function fetchHourly(
 			parts.push(`to=${encodeURIComponent(range.to)}`);
 		}
 		const qs = parts.length ? '?' + parts.join('&') : '';
-		const res = await opts.fetchFn(`${opts.baseUrl}/stats/hourly${qs}`);
+		const res = await opts.fetchFn(`${opts.baseUrl}/stats/hourly${qs}`, { signal: opts.signal });
 		if (res.ok) {
 			const data: HourlyStats[] = await res.json();
 			const offsetHours = new Date().getTimezoneOffset() / -60;
@@ -115,13 +116,13 @@ export async function fetchHourly(
 
 export async function fetchStrategyStart(opts: ApiFetchOptions): Promise<string | null> {
 	try {
-		const res1 = await opts.fetchFn(`${opts.baseUrl}/rounds?page=1&pageSize=1`);
+		const res1 = await opts.fetchFn(`${opts.baseUrl}/rounds?page=1&pageSize=1`, { signal: opts.signal });
 		if (!res1.ok) return null;
 		const data1: RoundsResponse = await res1.json();
 		if (data1.total === 0) return null;
 
 		const lastPage = Math.ceil(data1.total / 1);
-		const res2 = await opts.fetchFn(`${opts.baseUrl}/rounds?page=${lastPage}&pageSize=1`);
+		const res2 = await opts.fetchFn(`${opts.baseUrl}/rounds?page=${lastPage}&pageSize=1`, { signal: opts.signal });
 		if (!res2.ok) return null;
 		const data2: RoundsResponse = await res2.json();
 		if (data2.rows.length > 0) {
@@ -138,7 +139,7 @@ export async function fetchStrategyInfo(
 	lang: string
 ): Promise<StrategyInfo | null> {
 	try {
-		const res = await opts.fetchFn(`${opts.baseUrl}/strategy?lang=${lang}`);
+		const res = await opts.fetchFn(`${opts.baseUrl}/strategy?lang=${lang}`, { signal: opts.signal });
 		if (res.ok) return await res.json();
 	} catch {
 		// non-critical
@@ -205,18 +206,21 @@ export async function fetchStrategyProfitData(
 	const roundPage = Math.abs(profitOpts.profitRoundOffset);
 
 	try {
+		const init = opts.signal ? { signal: opts.signal } : undefined;
 		const roundPromise =
 			profitOpts.profitRoundOffset === 0
-				? opts.fetchFn(`${opts.baseUrl}/rounds/current`)
-				: opts.fetchFn(`${opts.baseUrl}/rounds?page=${roundPage}&pageSize=1`);
+				? opts.fetchFn(`${opts.baseUrl}/rounds/current`, init)
+				: opts.fetchFn(`${opts.baseUrl}/rounds?page=${roundPage}&pageSize=1`, init);
 		const [hourRes, dayRes, allRes, roundRes] = await Promise.all([
 			opts.fetchFn(
-				`${opts.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`
+				`${opts.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`,
+				init
 			),
 			opts.fetchFn(
-				`${opts.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`
+				`${opts.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`,
+				init
 			),
-			opts.fetchFn(`${opts.baseUrl}/stats`),
+			opts.fetchFn(`${opts.baseUrl}/stats`, init),
 			roundPromise
 		]);
 		const hourStats = hourRes.ok ? await hourRes.json() : null;

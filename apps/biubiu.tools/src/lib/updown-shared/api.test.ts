@@ -100,7 +100,7 @@ describe('fetchCurrentRound', () => {
 		};
 		const result = await fetchCurrentRound(opts);
 		expect(result).toEqual({ round: { id: 1, status: 'watching' } });
-		expect(opts.fetchFn).toHaveBeenCalledWith('http://test/rounds/current');
+		expect(opts.fetchFn).toHaveBeenCalledWith('http://test/rounds/current', { signal: undefined });
 	});
 
 	it('returns null on fetch error', async () => {

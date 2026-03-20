@@ -1368,6 +1368,31 @@
 		}
 	});
 
+	// Auto-refresh currentRound when countdown expires or periodically as fallback
+	let lastRoundRefetchTime = 0;
+	$effect(() => {
+		if (!browser || !currentRound) return;
+		const endMs = new Date(currentRound.end_time).getTime();
+		const _now = now; // track reactivity
+		if (_now >= endMs && _now - lastRoundRefetchTime > 5000) {
+			lastRoundRefetchTime = _now;
+			untrack(() => {
+				fetchCurrentRound();
+				fetchRounds();
+			});
+		}
+	});
+
+	// Fallback: periodically re-fetch currentRound in case SSE events are missed
+	$effect(() => {
+		if (browser) {
+			const interval = setInterval(() => {
+				fetchCurrentRound();
+			}, 15_000);
+			return () => clearInterval(interval);
+		}
+	});
+
 	// Auto-refresh strategy profits every 30s (only when viewing current data)
 	$effect(() => {
 		if (browser) {

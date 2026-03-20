@@ -15,14 +15,50 @@
 
 	let { open, onClose, onSave, initialConfig = null, initialLabel = '', t, lang }: Props = $props();
 
+	const DRAFT_KEY = 'strategy-configurator-draft';
+
 	let config = $state<StrategyConfigV2>(cloneConfig(initialConfig ?? BLANK_CONFIG));
 	let label = $state(initialLabel);
 	let jsonMode = $state(false);
 	let jsonText = $state('');
 	let jsonError = $state('');
+	let showNamingPrompt = $state(false);
 
 	// Progressive reveal: how many steps are visible (1-based)
 	let revealedSteps = $state(initialConfig ? 5 : 1);
+
+	// ── Draft persistence ──
+
+	function saveDraft() {
+		try {
+			localStorage.setItem(DRAFT_KEY, JSON.stringify({ config, revealedSteps }));
+		} catch { /* quota exceeded — ignore */ }
+	}
+
+	function loadDraft(): boolean {
+		try {
+			const raw = localStorage.getItem(DRAFT_KEY);
+			if (!raw) return false;
+			const draft = JSON.parse(raw);
+			if (draft.config?.entry && draft.config?.direction && draft.config?.exit) {
+				config = draft.config as StrategyConfigV2;
+				revealedSteps = draft.revealedSteps ?? 5;
+				return true;
+			}
+		} catch { /* corrupt — ignore */ }
+		return false;
+	}
+
+	function clearDraft() {
+		try { localStorage.removeItem(DRAFT_KEY); } catch {}
+	}
+
+	// Auto-save draft on every config change (debounced via $effect)
+	$effect(() => {
+		// Access config deeply to track all changes
+		void JSON.stringify(config);
+		if (open && !initialConfig) saveDraft();
+	});
 
 	// ML model upload state
 	interface ModelMeta {
@@ -79,14 +115,21 @@
 
 	$effect(() => {
 		if (open) {
-			const c = cloneConfig(initialConfig ?? BLANK_CONFIG);
-			c.risk ??= {};
-			c.risk.cooldown ??= { afterConsecutiveLosses: 3, pauseMinutes: 30 };
-			config = c;
-			label = initialLabel;
-			revealedSteps = initialConfig ? 5 : 1;
+			if (initialConfig) {
+				// Editing existing — use provided config
+				config = cloneConfig(initialConfig);
+				label = initialLabel;
+				revealedSteps = 5;
+			} else if (!loadDraft()) {
+				// New — no draft, start fresh
+				config = cloneConfig(BLANK_CONFIG);
+				label = '';
+				revealedSteps = 1;
+			}
+			// else: draft restored by loadDraft()
 			jsonMode = false;
 			jsonError = '';
+			showNamingPrompt = false;
 		}
 	});
 
@@ -98,7 +141,6 @@
 		const tmpl = TEMPLATES.find((t) => t.id === templateId);
 		if (tmpl) {
 			config = cloneConfig(tmpl.config);
-			if (!label) label = tmpl.label[lang] ?? tmpl.label.en;
 			revealedSteps = 5;
 		}
 	}
@@ -128,6 +170,13 @@
 	function handleSave() {
 		if (!label.trim()) return;
 		onSave(config, label.trim());
+		clearDraft();
+		showNamingPrompt = false;
+	}
+
+	function handleClose() {
+		clearDraft();
+		onClose();
 	}
 
 	function handleImport() {
@@ -140,9 +189,9 @@
 			try {
 				const text = await file.text();
 				const parsed = JSON.parse(text);
-				if (parsed.entry && parsed.direction && parsed.exit && parsed.hedge) {
+				if (parsed.entry && parsed.direction && parsed.exit) {
 					config = parsed as StrategyConfigV2;
-					if (parsed.label) label = parsed.label[lang] ?? parsed.label.en ?? label;
+					if (parsed.label) label = typeof parsed.label === 'string' ? parsed.label : (parsed.label[lang] ?? parsed.label.en ?? '');
 					revealedSteps = 5;
 				} else {
 					jsonError = t('btcUpdown.configurator.jsonInvalid');
@@ -438,41 +487,40 @@
 		{:else}
 			<!-- Progressive Steps -->
 			<div class="steps-scroll">
-				<!-- ═══ Step 1: Basics ═══ -->
+				<!-- ═══ Step 1: Start ═══ -->
 				<div class="step-card">
 					<div class="step-header">
 						<span class="step-num">1</span>
-						<span class="step-title">{lang === 'zh' ? '基本信息' : 'Basics'}</span>
+						<span class="step-title">{lang === 'zh' ? '开始' : 'Start'}</span>
 					</div>
 					<div class="step-body">
-						<div class="field">
-							<label class="field-label">{t('btcUpdown.instance.labelPlaceholder')}</label>
-							<input
-								type="text"
-								class="field-input"
-								bind:value={label}
-								placeholder={lang === 'zh' ? '给策略起个名字' : 'Name your strategy'}
-								onfocus={() => revealNext(0)}
-							/>
-						</div>
-						{#if !initialConfig}
-							<div class="field">
-								<label class="field-label">{lang === 'zh' ? '快速模板' : 'Quick Start'}</label>
+						<div class="start-options">
+							<!-- Templates -->
+							<div class="start-group">
+								<div class="field-label">{lang === 'zh' ? '从模板开始' : 'Start from template'}</div>
 								<div class="template-row">
 									{#each TEMPLATES as tmpl (tmpl.id)}
-										<button class="template-chip" onclick={() => applyTemplate(tmpl.id)}>
+										<button class="template-chip" onclick={() => { applyTemplate(tmpl.id); revealNext(1); }}>
 											{tmpl.label[lang] ?? tmpl.label.en}
 										</button>
 									{/each}
 								</div>
 							</div>
-						{/if}
-						{#if revealedSteps <= 1}
-							<button class="continue-btn" onclick={() => revealNext(1)} disabled={!label.trim()}>
-								{lang === 'zh' ? '继续' : 'Continue'}
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-							</button>
-						{/if}
+							<!-- Import JSON -->
+							<div class="start-group">
+								<button class="start-action-btn" onclick={() => { handleImport(); revealNext(1); }}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+									{lang === 'zh' ? '导入 JSON 文件' : 'Import JSON file'}
+								</button>
+							</div>
+							<!-- Blank -->
+							<div class="start-group">
+								<button class="start-action-btn" onclick={() => { config = cloneConfig(BLANK_CONFIG); revealNext(1); }}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+									{lang === 'zh' ? '从空白开始' : 'Start blank'}
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -983,10 +1031,28 @@
 			<!-- Footer -->
 			<div class="drawer-footer">
 				{#if jsonError}<div class="json-error">{jsonError}</div>{/if}
-				<button class="btn-secondary" onclick={onClose}>{t('btcUpdown.strategy.cancel')}</button>
-				<button class="btn-primary" onclick={handleSave} disabled={!label.trim()}>
-					{initialConfig ? t('btcUpdown.configurator.save') : t('btcUpdown.instance.create')}
-				</button>
+				{#if showNamingPrompt}
+					<div class="naming-prompt">
+						<input
+							type="text"
+							class="field-input naming-input"
+							bind:value={label}
+							placeholder={lang === 'zh' ? '给策略起个名字...' : 'Name your strategy...'}
+							onkeydown={(e) => { if (e.key === 'Enter' && label.trim()) handleSave(); }}
+						/>
+						<button class="btn-primary" onclick={handleSave} disabled={!label.trim()}>
+							{initialConfig ? t('btcUpdown.configurator.save') : t('btcUpdown.instance.create')}
+						</button>
+						<button class="btn-ghost" onclick={() => { showNamingPrompt = false; }}>
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+						</button>
+					</div>
+				{:else}
+					<button class="btn-secondary" onclick={handleClose}>{t('btcUpdown.strategy.cancel')}</button>
+					<button class="btn-primary" onclick={() => { showNamingPrompt = true; }}>
+						{initialConfig ? t('btcUpdown.configurator.save') : t('btcUpdown.instance.create')}
+					</button>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -1607,6 +1673,58 @@
 		font-size: var(--text-xs);
 		text-align: center;
 	}
+
+	/* ── Start Options ── */
+	.start-options {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+	.start-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.start-action-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		width: 100%;
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--bg-base);
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.start-action-btn:hover {
+		border-color: var(--border-strong);
+		color: var(--fg-base);
+	}
+
+	/* ── Naming Prompt ── */
+	.naming-prompt {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex: 1;
+	}
+	.naming-input {
+		flex: 1;
+	}
+	.btn-ghost {
+		background: none;
+		border: none;
+		color: var(--fg-muted);
+		cursor: pointer;
+		padding: var(--space-1);
+		border-radius: var(--radius-md);
+		display: flex;
+		align-items: center;
+	}
+	.btn-ghost:hover { color: var(--fg-base); }
 
 	/* ── Utilities ── */
 	.mt-2 { margin-top: var(--space-2); }

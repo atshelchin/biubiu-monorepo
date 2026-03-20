@@ -72,7 +72,7 @@
 				></span
 			>
 			<span
-				>{t('btcUpdown.stats.worst')}: <span class="negative"
+				>{t('btcUpdown.stats.worst')}: <span class:positive={stats.worstRound >= 0} class:negative={stats.worstRound < 0}
 					>{fmtProfit(ctx, stats.worstRound)}</span
 				></span
 			>

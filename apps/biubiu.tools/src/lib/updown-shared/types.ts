@@ -46,6 +46,8 @@ export interface Stats {
 	signalSkipWouldWin: number;
 	signalSkipWouldLose: number;
 	stopLossCount: number;
+	stopLossCorrect: number;
+	stopLossWrong: number;
 }
 
 export interface RoundHedge {
@@ -70,6 +72,7 @@ export interface Round {
 	entry_time: string | null;
 	entry_remaining: number | null;
 	outcome: string | null;
+	real_outcome: string | null;
 	main_payout: number | null;
 	hedge_cost: number | null;
 	hedge_payout: number | null;

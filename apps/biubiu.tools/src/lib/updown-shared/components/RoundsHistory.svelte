@@ -117,11 +117,14 @@
 				{t('btcUpdown.filter.loss')}{#if stats?.losses != null}<span class="filter-count">{stats.losses}</span>{/if}
 			</button>
 			<button
-				class="filter-btn"
+				class="filter-btn signal-filter-btn"
 				class:active={resultFilter === 'stop_loss'}
 				onclick={() => onResultFilterChange(resultFilter === 'stop_loss' ? '' : 'stop_loss')}
 			>
 				{t('btcUpdown.filter.stopLoss')}{#if stats?.stopLossCount != null}<span class="filter-count">{stats.stopLossCount}</span>{/if}
+				{#if stats && (stats.stopLossCorrect || stats.stopLossWrong)}
+					<span class="filter-wl"><span class="wl-w">{stats.stopLossCorrect}✓</span><span class="wl-l">{stats.stopLossWrong}✗</span></span>
+				{/if}
 			</button>
 		</div>
 	</div>
@@ -210,6 +213,22 @@
 								<div class="round-row">
 									<span class="round-label">{locale.value === 'zh' ? '止损时间' : 'Exit Time'}</span>
 									<span class="round-value mono">{fmtShortTime(ctx, exitTime)}</span>
+								</div>
+							{/if}
+							{#if round.real_outcome}
+								<div class="round-row">
+									<span class="round-label">{locale.value === 'zh' ? '真实结果' : 'Real Outcome'}</span>
+									<span class="round-value exit-quality-row">
+										<span class="direction-tag direction-{round.real_outcome.toLowerCase()}">{round.real_outcome}</span>
+										{#if round.entry_direction}
+											{@const isCorrectExit = round.real_outcome !== round.entry_direction}
+											<span class="exit-quality-badge" class:exit-correct={isCorrectExit} class:exit-wrong={!isCorrectExit}>
+												{isCorrectExit
+													? (locale.value === 'zh' ? '止对了' : 'Good Exit')
+													: (locale.value === 'zh' ? '止错了' : 'Bad Exit')}
+											</span>
+										{/if}
+									</span>
 								</div>
 							{/if}
 						{/if}
@@ -510,6 +529,26 @@
 		background: rgba(251, 191, 36, 0.12);
 		color: #fbbf24;
 	}
+	/* Exit quality */
+	.exit-quality-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.exit-quality-badge {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+		padding: 1px var(--space-2);
+		border-radius: var(--radius-sm);
+	}
+	.exit-correct {
+		background: rgba(52, 211, 153, 0.12);
+		color: #34d399;
+	}
+	.exit-wrong {
+		background: rgba(248, 113, 113, 0.12);
+		color: #f87171;
+	}
 	/* P&L */
 	.pnl-divider {
 		height: 1px;
@@ -722,4 +761,6 @@
 	:global([data-theme='light'] .badge-win) { background: rgba(16, 185, 129, 0.1); color: #059669; }
 	:global([data-theme='light'] .badge-loss) { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
 	:global([data-theme='light'] .badge-skip) { background: rgba(0, 0, 0, 0.04); }
+	:global([data-theme='light']) .exit-correct { background: rgba(16, 185, 129, 0.1); color: #059669; }
+	:global([data-theme='light']) .exit-wrong { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
 </style>

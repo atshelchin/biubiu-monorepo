@@ -42,17 +42,88 @@
 		discoverStrategies,
 		getDiscoveryUrl
 	} from '$lib/btc-updown-strategies';
+	import {
+		type ConnectionStatus,
+		type RoundStatusFilter,
+		type SignalActionFilter,
+		type ResultFilter,
+		type SSEEvent,
+		type Stats,
+		type Round,
+		type HourlyStats,
+		type StrategyProfitData,
+		MAX_EVENTS,
+		HOURS_24,
+		FEED_EVENTS,
+		VALIDATE_STEP_KEYS,
+	} from '$lib/updown-shared';
+	import {
+		type FormatterContext,
+		fmtTime as _fmtTime,
+		fmtShortTime as _fmtShortTime,
+		fmtLocalDate as _fmtLocalDate,
+		fmtTimeWindow as _fmtTimeWindow,
+		fmtProfit as _fmtProfit,
+		fmtPct as _fmtPct,
+		fmtDateTimeShort as _fmtDateTimeShort,
+		fmtPrice as _fmtPrice,
+		formatDuration as _formatDuration,
+		formatCountdown,
+		isRoundWon,
+		todayLocal,
+		naturalCompare,
+	} from '$lib/updown-shared';
+	import {
+		getEventTypeLabel as _getEventTypeLabel,
+		getEventColorClass,
+		getRoundStatusLabel as _getRoundStatusLabel,
+		getRoundBadgeClass,
+		getHedgeStatusLabel as _getHedgeStatusLabel,
+		getSkipReasonLabel as _getSkipReasonLabel,
+		getSwingExitLabel as _getSwingExitLabel,
+	} from '$lib/updown-shared';
+	import {
+		fetchStats as apiFetchStats,
+		fetchCurrentRound as apiFetchCurrentRound,
+		fetchRounds as apiFetchRounds,
+		fetchHourly as apiFetchHourly,
+		fetchStrategyStart as apiFetchStrategyStart,
+		fetchStrategyInfo as apiFetchStrategyInfo,
+		fetchStrategyProfitData,
+		type ApiFetchOptions,
+	} from '$lib/updown-shared';
+	import { createSSEManager, type SSEManager } from '$lib/updown-shared';
 
-	const VALIDATE_STEP_KEYS = {
-		strategy: 'btcUpdown.validate.strategy',
-		stats: 'btcUpdown.validate.stats',
-		rounds: 'btcUpdown.validate.rounds',
-		health: 'btcUpdown.validate.health',
-		format: 'btcUpdown.validate.format'
-	} as const;
+	// --- Formatter context (bridges i18n reactive state to pure functions) ---
 
-	const MAX_EVENTS = 50;
-	const HOURS_24 = Array.from({ length: 24 }, (_, i) => i);
+	function getFormatterCtx(): FormatterContext {
+		return {
+			formatNumber,
+			formatCurrency,
+			formatDate,
+			formatDateTime,
+			timezone: preferences.timezone,
+			timeFormat,
+		};
+	}
+
+	// Convenience wrappers (bind formatter context)
+	const fmtTime = (ts: string) => _fmtTime(getFormatterCtx(), ts);
+	const fmtShortTime = (ts: string) => _fmtShortTime(getFormatterCtx(), ts);
+	const fmtLocalDate = (ts: string) => _fmtLocalDate(getFormatterCtx(), ts);
+	const fmtTimeWindow = (start: string, end: string) => _fmtTimeWindow(getFormatterCtx(), start, end);
+	const fmtProfit = (value: number) => _fmtProfit(getFormatterCtx(), value);
+	const fmtPct = (value: number) => _fmtPct(getFormatterCtx(), value);
+	const fmtDateTimeShort = (ts: string) => _fmtDateTimeShort(getFormatterCtx(), ts);
+	const fmtPrice = (value: number) => _fmtPrice(getFormatterCtx(), value);
+	const formatDuration = (startTime: string, _now: number) => _formatDuration(startTime, _now);
+
+	// Label wrappers (bind translate function / locale)
+	const getEventTypeLabel = (type: string) => _getEventTypeLabel(t, type);
+	const getRoundStatusLabel = (round: Round) => _getRoundStatusLabel(t, round);
+	const getHedgeStatusLabel = (status: string) => _getHedgeStatusLabel(t, status);
+	const getSkipReasonLabel = (reason: string) => _getSkipReasonLabel(t, reason);
+	const getSwingExitLabel = (reason: string) => _getSwingExitLabel(locale.value, reason);
 
 	function apiUrl(path: string): string {
 		return `${activeStrategy.baseUrl}${path}`;
@@ -64,117 +135,8 @@
 			: (url: string) => fetch(url, { cache: 'no-store' });
 	}
 
-	// --- Types ---
-
-	type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
-	type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
-	type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';
-	type ResultFilter = '' | 'win' | 'loss' | 'stop_loss';
-
-	interface SSEEvent {
-		id: string;
-		type: string;
-		timestamp: string;
-		data: Record<string, unknown>;
-	}
-
-	interface Stats {
-		totalRounds: number;
-		entered: number;
-		skipped: number;
-		wins: number;
-		losses: number;
-		winRate: number;
-		totalInvested: number;
-		totalHedgeCost: number;
-		totalPayout: number;
-		totalFees: number;
-		totalProfit: number;
-		avgProfit: number;
-		bestRound: number;
-		worstRound: number;
-		currentStreak: number;
-		maxWinStreak: number;
-		maxLoseStreak: number;
-		hedgeFills: number;
-		hedgeSellRevenue: number;
-		signalBet: number;
-		signalBetWins: number;
-		signalBetLosses: number;
-		signalReverse: number;
-		signalReverseWins: number;
-		signalReverseLosses: number;
-		signalSkip: number;
-		signalSkipWouldWin: number;
-		signalSkipWouldLose: number;
-		stopLossCount: number;
-	}
-
-	interface RoundHedge {
-		direction: string;
-		status: string;
-		limit_price: number;
-		target_shares: number;
-		filled_at: string | null;
-		sell_price_avg: number | null;
-		sell_revenue: number | null;
-		sold_at: string | null;
-	}
-
-	interface Round {
-		id: number;
-		market_slug: string;
-		status: string;
-		entry_direction: string | null;
-		entry_price_avg: number | null;
-		entry_shares: number | null;
-		entry_cost: number | null;
-		entry_time: string | null;
-		entry_remaining: number | null;
-		outcome: string | null;
-		main_payout: number | null;
-		hedge_cost: number | null;
-		hedge_payout: number | null;
-		hedge_sell_revenue: number | null;
-		platform_fee: number | null;
-		total_profit: number | null;
-		signal_action: string | null;
-		skip_reason: string | null;
-		swing_mode: number | null;
-		swing_exit_reason: string | null;
-		swing_exit_price: number | null;
-		stop_loss_checked_at: string | null;
-		event_start_time: string;
-		end_time: string;
-		created_at: string;
-		settled_at: string | null;
-		hedge: RoundHedge | null;
-	}
-
-	interface CurrentRoundResponse {
-		round: Round | null;
-		fills?: unknown[];
-		snapshots?: unknown[];
-		hedge?: unknown;
-	}
-
-	interface RoundsResponse {
-		rows: Round[];
-		total: number;
-		page: number;
-		pageSize: number;
-	}
-
-	interface HourlyStats {
-		hour: number;
-		rounds: number;
-		wins: number;
-		losses: number;
-		invested: number;
-		payout: number;
-		profit: number;
-		winRate: number;
-		avgProfit: number;
+	function getApiOpts(): ApiFetchOptions {
+		return { baseUrl: activeStrategy.baseUrl, fetchFn: getFetchFn() };
 	}
 
 	// --- Reactive State ---
@@ -205,15 +167,6 @@
 	);
 	let strategyInfo = $state<StrategyInfo | null>(null);
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
-	interface StrategyProfitData {
-		current:
-			| { status: 'settled'; profit: number; direction: string | null }
-			| { status: 'entered'; direction: string | null }
-			| { status: 'skipped' | 'watching' };
-		hour: { profit: number; rounds: number; winRate: number };
-		day: { profit: number; rounds: number; winRate: number };
-		all: { profit: number; rounds: number; winRate: number };
-	}
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
 	let lastProfitRefreshTime = $state(0);
 	let profitRefreshing = $state(false);
@@ -301,21 +254,6 @@
 	let hourlyData = $state<HourlyStats[]>([]);
 	let selectedHour = $state<number | null>(null);
 
-	// Non-reactive connection refs
-	const connRef: {
-		es: EventSource | null;
-		reader: ReadableStreamDefaultReader<Uint8Array> | null;
-		abortController: AbortController | null;
-		timer: ReturnType<typeof setTimeout> | null;
-		counter: number;
-	} = {
-		es: null,
-		reader: null,
-		abortController: null,
-		timer: null,
-		counter: 0
-	};
-
 	const totalPages = $derived(Math.max(1, Math.ceil(roundsTotal / roundsPageSize)));
 
 	const seoProps = $derived(
@@ -326,322 +264,93 @@
 		})
 	);
 
-	// --- SSE Connection ---
+	// --- SSE Connection (delegated to shared manager) ---
 
-	// Events to show in the feed (skip noisy ones)
-	const FEED_EVENTS = new Set([
-		'round_start',
-		'entry',
-		'settlement',
-		'exit_trigger',
-		'round_skip',
-		'hedge_placed',
-		'hedge_filled',
-		'hedge_sold',
-		'hedge_expired'
-	]);
+	let sseEventCounter = 0;
 
-	function handleSSEEvent(eventType: string, data: Record<string, unknown>, timestamp: string) {
-		if (FEED_EVENTS.has(eventType)) {
-			const sseEvent: SSEEvent = {
-				id: `evt-${++connRef.counter}`,
-				type: eventType,
-				timestamp,
-				data
-			};
-			events = [sseEvent, ...events].slice(0, MAX_EVENTS);
-		}
-		if (eventType === 'settlement' || eventType === 'exit_trigger' || eventType === 'round_skip') {
-			fetchStats();
-			fetchCurrentRound();
-			fetchRounds();
-		} else if (eventType === 'round_start' || eventType === 'entry') {
-			fetchCurrentRound();
-		}
-	}
-
-	function connectSSEViaEventSource(sseUrl: string) {
-		const es = new EventSource(sseUrl);
-		connRef.es = es;
-
-		es.onopen = () => {
-			connectionStatus = 'connected';
-		};
-
-		const eventTypes = [
-			'round_start',
-			'waiting_for_window',
-			'window_check',
-			'window_miss',
-			'entry',
-			'hedge_placed',
-			'hedge_filled',
-			'hedge_sold',
-			'hedge_expired',
-			'price_update',
-			'settlement',
-			'exit_trigger',
-			'round_skip',
-			'heartbeat'
-		];
-
-		for (const eventType of eventTypes) {
-			es.addEventListener(eventType, (e: MessageEvent) => {
-				try {
-					const parsed = JSON.parse(e.data);
-					handleSSEEvent(
-						eventType,
-						parsed.data ?? parsed,
-						parsed.timestamp ?? new Date().toISOString()
-					);
-				} catch {
-					// ignore parse errors
+	const sseManager = createSSEManager(
+		() => apiUrl('/sse/live'),
+		() => activeStrategy.type === 'custom',
+		{
+			onEvent(eventType, data, timestamp) {
+				if (FEED_EVENTS.has(eventType)) {
+					const sseEvent: SSEEvent = {
+						id: `evt-${++sseEventCounter}`,
+						type: eventType,
+						timestamp,
+						data
+					};
+					events = [sseEvent, ...events].slice(0, MAX_EVENTS);
 				}
-			});
-		}
-
-		es.onerror = () => {
-			connectionStatus = 'disconnected';
-			connRef.es?.close();
-			connRef.es = null;
-			// For custom strategies, try proxy fallback on first failure
-			if (activeStrategy.type === 'custom' && !connRef.reader) {
-				connectSSEViaProxy(sseUrl);
-				return;
-			}
-			connRef.timer = setTimeout(() => {
-				connRef.timer = null;
-				connectSSE();
-			}, 3000);
-		};
-	}
-
-	async function connectSSEViaProxy(sseUrl: string) {
-		connectionStatus = 'connecting';
-		const proxyUrl = `/api/proxy?url=${encodeURIComponent(sseUrl)}`;
-		try {
-			const controller = new AbortController();
-			connRef.abortController = controller;
-			const res = await fetch(proxyUrl, { signal: controller.signal });
-			if (!res.body) return;
-			connRef.reader = res.body.getReader();
-			connectionStatus = 'connected';
-			const decoder = new TextDecoder();
-			let buffer = '';
-			while (true) {
-				const { done, value } = await connRef.reader.read();
-				if (done) break;
-				buffer += decoder.decode(value, { stream: true });
-				// Parse SSE lines
-				const lines = buffer.split('\n');
-				buffer = lines.pop() ?? '';
-				let currentEvent = '';
-				for (const line of lines) {
-					if (line.startsWith('event: ')) {
-						currentEvent = line.slice(7).trim();
-					} else if (line.startsWith('data: ') && currentEvent) {
-						try {
-							const parsed = JSON.parse(line.slice(6));
-							handleSSEEvent(
-								currentEvent,
-								parsed.data ?? parsed,
-								parsed.timestamp ?? new Date().toISOString()
-							);
-						} catch {
-							/* ignore */
-						}
-						currentEvent = '';
-					} else if (line.trim() === '') {
-						currentEvent = '';
-					}
+				if (eventType === 'settlement' || eventType === 'exit_trigger' || eventType === 'round_skip') {
+					fetchStats();
+					fetchCurrentRound();
+					fetchRounds();
+				} else if (eventType === 'round_start' || eventType === 'entry') {
+					fetchCurrentRound();
 				}
+			},
+			onStatusChange(status) {
+				connectionStatus = status;
 			}
-		} catch {
-			// Connection closed or aborted
 		}
-		// Reconnect if not intentionally disconnected
-		if (connRef.reader || connRef.abortController) {
-			connRef.reader = null;
-			connRef.abortController = null;
-			connectionStatus = 'disconnected';
-			connRef.timer = setTimeout(() => {
-				connRef.timer = null;
-				connectSSE();
-			}, 3000);
-		}
-	}
+	);
 
-	function connectSSE() {
-		disconnectSSE();
-		connectionStatus = 'connecting';
-		const sseUrl = apiUrl('/sse/live');
-		connectSSEViaEventSource(sseUrl);
-	}
+	function connectSSE() { sseManager.connect(); }
+	function disconnectSSE() { sseManager.disconnect(); }
 
-	function disconnectSSE() {
-		if (connRef.timer) {
-			clearTimeout(connRef.timer);
-			connRef.timer = null;
-		}
-		if (connRef.es) {
-			connRef.es.close();
-			connRef.es = null;
-		}
-		if (connRef.reader) {
-			connRef.reader.cancel();
-			connRef.reader = null;
-		}
-		if (connRef.abortController) {
-			connRef.abortController.abort();
-			connRef.abortController = null;
-		}
-		connectionStatus = 'disconnected';
-	}
-
-	// --- REST API ---
-
-	function getDateRange(hourFilter?: number | null): { from: string; to: string } | null {
-		if (!filterDate.from) return null;
-		const h = hourFilter ?? null;
-		const endDate = filterDate.to || filterDate.from;
-		// Convert local date boundaries to UTC for the API
-		const start =
-			h !== null
-				? new Date(`${filterDate.from}T${String(h).padStart(2, '0')}:00:00`)
-				: new Date(`${filterDate.from}T00:00:00`);
-		const end =
-			h !== null
-				? new Date(`${filterDate.from}T${String(h).padStart(2, '0')}:59:59`)
-				: new Date(`${endDate}T23:59:59`);
-		return {
-			from: start.toISOString().slice(0, 19).replace('T', ' '),
-			to: end.toISOString().slice(0, 19).replace('T', ' ')
-		};
-	}
+	// --- REST API (delegated to shared module) ---
 
 	/** Whether the current filter is exactly one day */
 	const isSingleDayFilter = $derived(
 		filterDate.from !== '' && filterDate.from === filterDate.to
 	);
 
-	function todayLocal(): string {
-		return new Date().toLocaleDateString('en-CA');
-	}
-
 	async function fetchStats() {
-		try {
-			const range = getDateRange(selectedHour);
-			const parts: string[] = [];
-			if (range) {
-				parts.push(`from=${encodeURIComponent(range.from)}`);
-				parts.push(`to=${encodeURIComponent(range.to)}`);
-			}
-			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await getFetchFn()(apiUrl(`/stats${qs}`));
-			if (res.ok) stats = await res.json();
-		} catch {
-			// non-critical
-		}
+		const result = await apiFetchStats(getApiOpts(), filterDate, selectedHour);
+		if (result) stats = result;
 	}
 
 	async function fetchCurrentRound() {
-		try {
-			const res = await getFetchFn()(apiUrl('/rounds/current'));
-			if (res.ok) {
-				const data: CurrentRoundResponse = await res.json();
-				currentRound = data.round;
-			}
-		} catch {
-			// non-critical
-		}
+		const result = await apiFetchCurrentRound(getApiOpts());
+		if (result) currentRound = result.round;
 	}
 
 	async function fetchRounds() {
 		roundsLoading = true;
 		try {
-			const params = new URLSearchParams({
-				page: String(roundsPage),
-				pageSize: String(roundsPageSize)
+			const result = await apiFetchRounds(getApiOpts(), {
+				page: roundsPage,
+				pageSize: roundsPageSize,
+				status: roundsFilter || undefined,
+				signalAction: signalActionFilter || undefined,
+				result: (resultFilter === 'win' || resultFilter === 'loss') ? resultFilter : undefined,
+				swingExitReason: resultFilter === 'stop_loss' ? 'stop_loss' : undefined,
+				filterDate,
+				selectedHour,
 			});
-			if (roundsFilter) params.set('status', roundsFilter);
-			if (signalActionFilter) params.set('signal_action', signalActionFilter);
-			if (resultFilter === 'win' || resultFilter === 'loss') params.set('result', resultFilter);
-			if (resultFilter === 'stop_loss') params.set('swing_exit_reason', 'stop_loss');
-			const range = getDateRange(selectedHour);
-			if (range) {
-				params.set('from', range.from);
-				params.set('to', range.to);
+			if (result) {
+				rounds = result.rows;
+				roundsTotal = result.total;
 			}
-
-			const res = await getFetchFn()(apiUrl(`/rounds?${params}`));
-			if (res.ok) {
-				const data: RoundsResponse = await res.json();
-				rounds = data.rows;
-				roundsTotal = data.total;
-			}
-		} catch {
-			// non-critical
 		} finally {
 			roundsLoading = false;
 		}
 	}
 
 	async function fetchHourly() {
-		if (!isSingleDayFilter) {
-			hourlyData = [];
-			return;
-		}
-		try {
-			const range = getDateRange();
-			const parts: string[] = [];
-			if (range) {
-				parts.push(`from=${encodeURIComponent(range.from)}`);
-				parts.push(`to=${encodeURIComponent(range.to)}`);
-			}
-			const qs = parts.length ? '?' + parts.join('&') : '';
-			const res = await getFetchFn()(apiUrl(`/stats/hourly${qs}`));
-			if (res.ok) {
-				const data: HourlyStats[] = await res.json();
-				// Convert UTC hours to local hours
-				const offsetHours = new Date().getTimezoneOffset() / -60;
-				hourlyData = data.map((h) => ({
-					...h,
-					hour: (((h.hour + offsetHours) % 24) + 24) % 24
-				}));
-			}
-		} catch {
-			// non-critical
-		}
+		hourlyData = await apiFetchHourly(getApiOpts(), filterDate, isSingleDayFilter);
 	}
 
 	async function fetchStrategyStart() {
-		try {
-			const f = getFetchFn();
-			const res1 = await f(apiUrl('/rounds?page=1&pageSize=1'));
-			if (!res1.ok) return;
-			const data1: RoundsResponse = await res1.json();
-			if (data1.total === 0) return;
-
-			const lastPage = Math.ceil(data1.total / 1);
-			const res2 = await f(apiUrl(`/rounds?page=${lastPage}&pageSize=1`));
-			if (!res2.ok) return;
-			const data2: RoundsResponse = await res2.json();
-			if (data2.rows.length > 0) {
-				strategyStartTime = data2.rows[0].event_start_time;
-			}
-		} catch {
-			// non-critical
-		}
+		const result = await apiFetchStrategyStart(getApiOpts());
+		if (result) strategyStartTime = result;
 	}
 
 	async function fetchStrategyInfo() {
-		try {
-			const lang = locale.value === 'zh' ? 'zh' : 'en';
-			const res = await getFetchFn()(apiUrl(`/strategy?lang=${lang}`));
-			if (res.ok) strategyInfo = await res.json();
-		} catch {
-			// non-critical
-		}
+		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const result = await apiFetchStrategyInfo(getApiOpts(), lang);
+		if (result) strategyInfo = result;
 	}
 
 	async function fetchAllStrategies() {
@@ -657,120 +366,31 @@
 				}
 			})
 		);
-		// Don't clear — only update entries that returned successfully (avoids race with discovery)
 		for (const r of results) {
 			if (r.info) allStrategyInfos.set(r.id, r.info);
 		}
 	}
 
-	function toUTCString(d: Date): string {
-		return d.toISOString().slice(0, 19).replace('T', ' ');
-	}
-
-	function parseCurrentRound(data: CurrentRoundResponse | null): StrategyProfitData['current'] {
-		const round = data?.round ?? null;
-		if (!round) return { status: 'watching' };
-		if (round.status === 'settled') {
-			return {
-				status: 'settled',
-				profit: round.total_profit ?? 0,
-				direction: round.entry_direction
-			};
-		}
-		if (round.status === 'skipped') return { status: 'skipped' };
-		if (round.status === 'entered') return { status: 'entered', direction: round.entry_direction };
-		return { status: 'watching' };
-	}
-
-	function parseStats(data: Stats | null): { profit: number; rounds: number; winRate: number } {
-		if (!data) return { profit: 0, rounds: 0, winRate: 0 };
-		return { profit: data.totalProfit, rounds: data.entered, winRate: data.winRate };
-	}
-
 	async function fetchAllStrategyProfits() {
 		profitRefreshing = true;
-		const now = Date.now();
-		const localOffset = new Date(now).getTimezoneOffset() * 60_000;
-		const localMs = now - localOffset;
-
-		// Hour range with offset
-		const currentHourStartMs = localMs - (localMs % 3_600_000) + localOffset;
-		const hourShift = profitHourOffset * 3_600_000;
-		const hourFrom = toUTCString(new Date(currentHourStartMs + hourShift));
-		const hourTo =
-			profitHourOffset === 0
-				? toUTCString(new Date(now))
-				: toUTCString(new Date(currentHourStartMs + hourShift + 3_600_000));
-
-		// Day range with offset
-		const todayStart = new Date(`${todayLocal()}T00:00:00`).getTime();
-		const dayShift = profitDayOffset * 86_400_000;
-		const dayFrom = toUTCString(new Date(todayStart + dayShift));
-		const dayTo =
-			profitDayOffset === 0
-				? toUTCString(new Date(now))
-				: toUTCString(new Date(todayStart + dayShift + 86_400_000));
-
-		// Round offset: 0 = current, negative = historical page
-		const roundPage = Math.abs(profitRoundOffset);
-
+		const profitOpts = { profitRoundOffset, profitHourOffset, profitDayOffset };
 		const results = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
-				try {
-					const f = s.type === 'custom' ? strategyFetch : (url: string) => fetch(url, { cache: 'no-store' });
-					const roundPromise =
-						profitRoundOffset === 0
-							? f(`${s.baseUrl}/rounds/current`)
-							: f(`${s.baseUrl}/rounds?page=${roundPage}&pageSize=1`);
-					const [hourRes, dayRes, allRes, roundRes] = await Promise.all([
-						f(
-							`${s.baseUrl}/stats?from=${encodeURIComponent(hourFrom)}&to=${encodeURIComponent(hourTo)}`
-						),
-						f(
-							`${s.baseUrl}/stats?from=${encodeURIComponent(dayFrom)}&to=${encodeURIComponent(dayTo)}`
-						),
-						f(`${s.baseUrl}/stats`),
-						roundPromise
-					]);
-					const hourStats = hourRes.ok ? await hourRes.json() : null;
-					const dayStats = dayRes.ok ? await dayRes.json() : null;
-					const allStats = allRes.ok ? await allRes.json() : null;
-					let current: StrategyProfitData['current'];
-					if (profitRoundOffset === 0) {
-						const curData: CurrentRoundResponse | null = roundRes.ok ? await roundRes.json() : null;
-						current = parseCurrentRound(curData);
-					} else {
-						const data = roundRes.ok ? await roundRes.json() : null;
-						const row = data?.rows?.[0] ?? null;
-						if (row && row.status === 'settled') {
-							current = {
-								status: 'settled',
-								profit: row.total_profit ?? 0,
-								direction: row.entry_direction
-							};
-						} else if (row && row.status === 'skipped') {
-							current = { status: 'skipped' };
-						} else if (row && row.status === 'entered') {
-							current = { status: 'entered', direction: row.entry_direction };
-						} else {
-							current = { status: 'watching' };
-						}
-					}
-					return {
-						id: s.id,
-						profits: {
-							current,
-							hour: parseStats(hourStats),
-							day: parseStats(dayStats),
-							all: parseStats(allStats)
-						} as StrategyProfitData
-					};
-				} catch {
-					return { id: s.id, profits: null };
-				}
+				const fetchFn = s.type === 'custom'
+					? strategyFetch
+					: (url: string) => fetch(url, { cache: 'no-store' });
+				const profits = await fetchStrategyProfitData(
+					{ baseUrl: s.baseUrl, fetchFn },
+					profitOpts
+				);
+				return { id: s.id, profits };
 			})
 		);
-		allStrategyProfits.clear();
+		// Update in-place to avoid UI flash (bug fix: was allStrategyProfits.clear())
+		const newIds = new Set(results.map((r) => r.id));
+		for (const key of allStrategyProfits.keys()) {
+			if (!newIds.has(key)) allStrategyProfits.delete(key);
+		}
 		for (const r of results) allStrategyProfits.set(r.id, r.profits);
 		lastProfitRefreshTime = Date.now();
 		profitRefreshing = false;
@@ -1055,25 +675,6 @@
 			profitDayOffset = next;
 		}
 		fetchAllStrategyProfits();
-	}
-
-	function naturalCompare(a: string, b: string): number {
-		const re = /(\d+)|(\D+)/g;
-		const pa = a.match(re) ?? [];
-		const pb = b.match(re) ?? [];
-		for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-			const sa = pa[i] ?? '';
-			const sb = pb[i] ?? '';
-			const na = Number(sa);
-			const nb = Number(sb);
-			if (!isNaN(na) && !isNaN(nb)) {
-				if (na !== nb) return na - nb;
-			} else {
-				const cmp = sa.localeCompare(sb);
-				if (cmp !== 0) return cmp;
-			}
-		}
-		return 0;
 	}
 
 	function sortStrategies<T extends { id: string; label: string }>(list: T[]): T[] {
@@ -1419,147 +1020,7 @@
 		disconnectSSE();
 	});
 
-	// --- Helpers (ET timezone) ---
-
-	// Settings-aware formatting helpers (use user's preferences for locale, currency, timezone)
-
-	function fmtTimeRaw(ts: string, style: 'short' | 'medium'): string {
-		const dateObj = new Date(ts);
-		const tz = preferences.timezone;
-		if (timeFormat === '12') {
-			// Always use en-US for consistent "9:46 AM" format
-			return new Intl.DateTimeFormat('en-US', {
-				timeStyle: style,
-				timeZone: tz,
-				hour12: true
-			}).format(dateObj);
-		}
-		return formatDate(ts, { timeStyle: style });
-	}
-
-	function fmtTime(ts: string): string {
-		return fmtTimeRaw(ts, 'medium');
-	}
-
-	function fmtShortTime(ts: string): string {
-		return fmtTimeRaw(ts, 'medium');
-	}
-
-	function fmtLocalDate(ts: string): string {
-		return formatDate(ts, { dateStyle: 'short' });
-	}
-
-	function tzLabel(): string {
-		const tz = preferences.timezone;
-		switch (tz) {
-			case 'UTC':
-				return 'UTC';
-			case 'America/New_York':
-				return 'ET';
-			case 'Asia/Shanghai':
-				return 'UTC+8';
-			default: {
-				// Use Intl to get short timezone name, e.g. "EST", "GMT+8"
-				try {
-					const parts = new Intl.DateTimeFormat('en-US', {
-						timeZone: tz,
-						timeZoneName: 'short'
-					}).formatToParts(new Date());
-					return parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
-				} catch {
-					return tz;
-				}
-			}
-		}
-	}
-
-	function fmtTimeWindow(start: string, end: string): string {
-		const s = fmtShortTime(start);
-		const e = fmtShortTime(end);
-		if (timeFormat === '12') {
-			// Extract period (AM/PM/上午/下午) from end time, strip from both
-			const periodRe = /\s*(AM|PM|上午|下午|午前|午後)/i;
-			const periodMatch = e.match(periodRe);
-			const period = periodMatch ? periodMatch[1] : '';
-			const sClean = s.replace(periodRe, '').trim();
-			const eClean = e.replace(periodRe, '').trim();
-			return `${sClean} - ${eClean} ${period} ${tzLabel()}`.trim();
-		}
-		return `${s} - ${e} ${tzLabel()}`;
-	}
-
-	function fmtProfit(value: number): string {
-		const sign = value >= 0 ? '+' : '';
-		return sign + formatCurrency(value);
-	}
-
-	function fmtPct(value: number): string {
-		return formatNumber(value, {
-			style: 'percent',
-			minimumFractionDigits: 1,
-			maximumFractionDigits: 1
-		});
-	}
-
-	function fmtDateTimeShort(ts: string): string {
-		return formatDateTime(ts, {
-			dateStyle: 'medium',
-			timeStyle: 'short',
-			hour12: timeFormat === '12'
-		});
-	}
-
-	function fmtPrice(value: number): string {
-		return formatNumber(value, {
-			style: 'currency',
-			minimumFractionDigits: 4,
-			maximumFractionDigits: 4
-		});
-	}
-
-	function formatDuration(startTime: string, _now: number): string {
-		const diff = _now - new Date(startTime).getTime();
-		const days = Math.floor(diff / 86400000);
-		const hours = Math.floor((diff % 86400000) / 3600000);
-		const minutes = Math.floor((diff % 3600000) / 60000);
-		const seconds = Math.floor((diff % 60000) / 1000);
-		if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-		if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-		return `${minutes}m ${seconds}s`;
-	}
-
-	function formatCountdown(endTime: string, _now: number): string {
-		const diff = new Date(endTime).getTime() - _now;
-		if (diff <= 0) return '0m 0s';
-		const minutes = Math.floor(diff / 60000);
-		const seconds = Math.floor((diff % 60000) / 1000);
-		return `${minutes}m ${seconds}s`;
-	}
-
-	function getEventTypeLabel(type: string): string {
-		switch (type) {
-			case 'round_start':
-				return t('btcUpdown.event.roundStart');
-			case 'entry':
-				return t('btcUpdown.event.entry');
-			case 'settlement':
-				return t('btcUpdown.event.settlement');
-			case 'exit_trigger':
-				return t('btcUpdown.event.exitTrigger');
-			case 'hedge_placed':
-				return t('btcUpdown.event.hedgePlaced');
-			case 'hedge_filled':
-				return t('btcUpdown.event.hedgeFilled');
-			case 'hedge_sold':
-				return t('btcUpdown.event.hedgeSold');
-			case 'hedge_expired':
-				return t('btcUpdown.event.hedgeExpired');
-			case 'round_skip':
-				return t('btcUpdown.event.roundSkip');
-			default:
-				return type;
-		}
-	}
+	// --- Filter helpers ---
 
 	function getEventMessage(event: SSEEvent): string {
 		const d = event.data;
@@ -1647,114 +1108,6 @@
 				});
 			default:
 				return String(d.message ?? event.type);
-		}
-	}
-
-	function getEventColorClass(type: string): string {
-		switch (type) {
-			case 'entry':
-				return 'event-green';
-			case 'settlement':
-			case 'exit_trigger':
-				return 'event-settlement';
-			case 'round_start':
-				return 'event-blue';
-			case 'hedge_placed':
-			case 'hedge_filled':
-			case 'hedge_sold':
-			case 'hedge_expired':
-				return 'event-amber';
-			case 'round_skip':
-				return 'event-gray';
-			default:
-				return 'event-gray';
-		}
-	}
-
-	function isRoundWon(round: Round): boolean {
-		return round.outcome != null && round.outcome === round.entry_direction;
-	}
-
-	function getRoundStatusLabel(round: Round): string {
-		if (round.status === 'skipped') return t('btcUpdown.round.skip');
-		if (round.status === 'watching') return t('btcUpdown.round.watching');
-		if (round.status === 'pending') return t('btcUpdown.round.pending');
-		if (round.status === 'entered') return t('btcUpdown.round.entered');
-		if (round.status === 'settled') {
-			return isRoundWon(round) ? t('btcUpdown.round.win') : t('btcUpdown.round.loss');
-		}
-		return round.status;
-	}
-
-	function getRoundBadgeClass(round: Round): string {
-		if (round.status === 'skipped') return 'badge-skip';
-		if (round.status === 'watching' || round.status === 'pending') return 'badge-watching';
-		if (round.status === 'entered') return 'badge-entered';
-		if (round.status === 'settled') {
-			return isRoundWon(round) ? 'badge-win' : 'badge-loss';
-		}
-		return 'badge-watching';
-	}
-
-	function getHedgeStatusLabel(status: string): string {
-		switch (status) {
-			case 'filled':
-				return t('btcUpdown.hedge.filled');
-			case 'expired':
-				return t('btcUpdown.hedge.expired');
-			case 'sold':
-				return t('btcUpdown.hedge.sold');
-			case 'open':
-				return t('btcUpdown.hedge.open');
-			case 'pending':
-				return t('btcUpdown.hedge.pending');
-			default:
-				return status;
-		}
-	}
-
-	function getSkipReasonLabel(reason: string): string {
-		if (reason.startsWith('signal_skip')) {
-			const match = reason.match(/score=(\d+)/);
-			return t('btcUpdown.skip.signalSkip', { score: match?.[1] ?? '0' });
-		}
-		switch (reason) {
-			case 'no_qualifying_signal':
-				return t('btcUpdown.skip.noQualifyingSignal');
-			case 'no_signal':
-				return t('btcUpdown.skip.noSignal');
-			case 'market_expired':
-				return t('btcUpdown.skip.marketExpired');
-			case 'window_expired':
-				return t('btcUpdown.skip.windowExpired');
-			case 'daemon_restarted':
-				return t('btcUpdown.skip.daemonRestarted');
-			default:
-				return reason;
-		}
-	}
-
-	function getSwingExitLabel(reason: string): string {
-		const zh = locale.value === 'zh';
-		switch (reason) {
-			case 'stop_loss':
-				return zh ? '止损' : 'Stop Loss';
-			case 'binance_stop_loss':
-				return zh ? '币安止损' : 'Binance Stop Loss';
-			case 'take_profit':
-				return zh ? '止盈' : 'Take Profit';
-			case 'checkpoint_mismatch':
-				return zh ? '信号反转' : 'Signal Reversed';
-			case 'clob_direction_mismatch':
-				return zh ? '方向偏离' : 'Direction Mismatch';
-			case 'price_moved_against':
-				return zh ? '价格反向' : 'Price Moved Against';
-			case 'manual':
-				return zh ? '手动退出' : 'Manual Exit';
-			case 'timeout':
-				return zh ? '超时退出' : 'Timeout';
-			default:
-				return reason;
 		}
 	}
 
@@ -3824,15 +3177,6 @@
 		color: var(--fg-muted);
 	}
 
-	/* Config panel (inline settings) */
-	.config-panel {
-		display: flex;
-		flex-direction: column;
-		gap: 1px;
-		padding: var(--space-1) 0;
-		margin-bottom: var(--space-1);
-		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-	}
 	.config-batch-actions {
 		display: flex;
 		gap: var(--space-2);
@@ -4108,12 +3452,6 @@
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
 	}
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
 	/* Validation Steps */
 	.validation-steps {
 		display: flex;
@@ -4252,49 +3590,6 @@
 		font-weight: var(--weight-medium);
 		color: var(--fg-base);
 		font-family: var(--font-mono, ui-monospace, monospace);
-	}
-
-	/* Strategy Banner */
-	.strategy-banner {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-4) var(--space-5);
-		border-radius: var(--radius-lg);
-		text-decoration: none;
-		margin-bottom: var(--space-2);
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.strategy-banner:hover {
-		transform: translateY(-1px);
-		background: rgba(255, 255, 255, 0.08);
-	}
-	.strategy-icon {
-		color: var(--accent);
-		flex-shrink: 0;
-	}
-	.strategy-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		flex: 1;
-		min-width: 0;
-	}
-	.strategy-title {
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		color: var(--fg-base);
-	}
-	.strategy-desc {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.strategy-arrow {
-		color: var(--fg-subtle);
-		flex-shrink: 0;
 	}
 
 	/* Disclaimer */
@@ -5238,9 +4533,6 @@
 	:global([data-theme='light']) .badge-skip {
 		background: rgba(0, 0, 0, 0.04);
 	}
-	:global([data-theme='light']) .strategy-banner:hover {
-		background: rgba(0, 0, 0, 0.04);
-	}
 	:global([data-theme='light']) .disclaimer {
 		background: rgba(217, 119, 6, 0.06);
 		border-color: rgba(217, 119, 6, 0.15);
@@ -5284,9 +4576,6 @@
 	}
 	:global([data-theme='light']) .config-count.has-hidden {
 		color: var(--fg-subtle);
-	}
-	:global([data-theme='light']) .config-panel {
-		border-bottom-color: rgba(0, 0, 0, 0.06);
 	}
 	:global([data-theme='light']) .config-toggle-btn:hover {
 		background: rgba(0, 0, 0, 0.04);
@@ -5393,9 +4682,6 @@
 		.stat-value {
 			font-size: var(--text-lg);
 		}
-		.strategy-banner {
-			padding: var(--space-3) var(--space-4);
-		}
 		.strategy-runtime {
 			flex-direction: column;
 			gap: var(--space-2);
@@ -5404,9 +4690,6 @@
 		.version-btn {
 			padding: var(--space-2) var(--space-3);
 			min-height: 44px;
-		}
-		.col-nav-btn-v {
-			height: 22px;
 		}
 		.profit-refresh-btn {
 			width: 36px;

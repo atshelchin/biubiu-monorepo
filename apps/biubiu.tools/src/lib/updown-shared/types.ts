@@ -1,5 +1,9 @@
 // Shared types for Up/Down prediction dashboards (BTC, ETH, etc.)
 
+// Re-export types used by components (canonical definitions live in formatters.ts / labels.ts)
+export type { FormatterContext } from './formatters.js';
+export type { TranslateFn } from './labels.js';
+
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 export type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
 export type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';

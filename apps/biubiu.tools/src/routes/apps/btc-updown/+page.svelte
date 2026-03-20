@@ -154,10 +154,12 @@
 			if (ep) {
 				const fetchFn = createEndpointFetchFn(ep);
 				const baseUrl = `${ep.url}/api/engine/${parsed.instanceId}`;
+				// SSE: EventSource can't send custom headers, pass auth via query params
+				const sseUrl = `${baseUrl}/sse/live?token=${encodeURIComponent(ep.token)}&clientId=${encodeURIComponent(ep.clientId)}`;
 				return {
 					getApiOpts: () => ({ baseUrl, fetchFn }),
-					getSseUrl: () => `${baseUrl}/sse/live`,
-					isCustomStrategy: () => true,
+					getSseUrl: () => sseUrl,
+					isCustomStrategy: () => false, // not proxied — direct EventSource with query auth
 				};
 			}
 		}
@@ -356,7 +358,9 @@
 	async function fetchAllStrategyProfits() {
 		profitRefreshing = true;
 		const profitOpts = { profitRoundOffset, profitHourOffset, profitDayOffset };
-		const results = await Promise.all(
+
+		// Fetch profits for simulation strategies
+		const strategyResults = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				const fetchFn = s.type === 'custom'
 					? strategyFetch
@@ -368,6 +372,23 @@
 				return { id: s.id, profits };
 			})
 		);
+
+		// Fetch profits for live instances
+		const instanceResults: { id: string; profits: StrategyProfitData | null }[] = [];
+		for (const ep of endpointStore.endpoints) {
+			const instances = endpointInstances.get(ep.url) ?? [];
+			const fetchFn = createEndpointFetchFn(ep);
+			const epResults = await Promise.all(
+				instances.map(async (inst) => {
+					const baseUrl = `${ep.url}/api/engine/${inst.id}`;
+					const profits = await fetchStrategyProfitData({ baseUrl, fetchFn }, profitOpts);
+					return { id: makeInstanceId(ep.url, inst.id), profits };
+				})
+			);
+			instanceResults.push(...epResults);
+		}
+
+		const results = [...strategyResults, ...instanceResults];
 		// Update in-place to avoid UI flash (bug fix: was allStrategyProfits.clear())
 		const newIds = new Set(results.map((r) => r.id));
 		for (const key of allStrategyProfits.keys()) {
@@ -1643,6 +1664,7 @@
 										<div class="version-options">
 											{#each instances as inst (inst.id)}
 												{@const instStrategyId = makeInstanceId(ep.url, inst.id)}
+												{@const instProfits = allStrategyProfits.get(instStrategyId)}
 												<div class="version-row">
 													<button
 														class="version-btn"
@@ -1651,9 +1673,13 @@
 													>
 														<span class="inst-status-dot inst-status-{inst.status}"></span>
 														<span class="strategy-name">{inst.label}</span>
-														<span class="inst-profit" class:positive={inst.stats.profit > 0} class:negative={inst.stats.profit < 0}>
-															{fmtProfit(inst.stats.profit)}
-														</span>
+														{#if instProfits}
+															{@render profitCells(instProfits)}
+														{:else}
+															<span class="inst-profit" class:positive={inst.stats.profit > 0} class:negative={inst.stats.profit < 0}>
+																{fmtProfit(inst.stats.profit)}
+															</span>
+														{/if}
 													</button>
 												</div>
 											{/each}

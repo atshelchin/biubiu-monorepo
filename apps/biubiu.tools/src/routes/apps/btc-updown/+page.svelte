@@ -66,9 +66,14 @@
 	import LiveFeed from '$lib/updown-shared/components/LiveFeed.svelte';
 	import AddStrategyModal from '$lib/updown-shared/components/AddStrategyModal.svelte';
 	import StrategyControlPanel from '$lib/updown-shared/components/StrategyControlPanel.svelte';
+	import ConfiguratorDrawer from '$lib/updown-shared/configurator/ConfiguratorDrawer.svelte';
+	import type { StrategyConfigV2 } from '$lib/updown-shared/configurator/types.js';
 	import { EndpointStore } from '$lib/updown-shared/auth/endpoint-store.svelte.js';
 	import {
 		fetchEngineStatus,
+		startInstance,
+		stopInstance,
+		pauseInstance,
 		type StrategyInstance,
 	} from '$lib/updown-shared/auth/engine-client.js';
 	import type { ManagedEndpoint } from '$lib/updown-shared/auth/types.js';
@@ -184,6 +189,85 @@
 	/** Show management panel when an instance-based strategy is active OR when an endpoint is explicitly active */
 	const showManagementEndpoint = $derived(selectedInstanceEndpoint ?? managedEndpoint);
 
+	// Instance action state
+	let instanceActionLoading = $state<string | null>(null);
+	let instanceActionError = $state('');
+
+	// Configurator: when set, main area shows configurator instead of data panels
+	let configuratorEndpoint = $state<ManagedEndpoint | null>(null);
+	let configuratorActive = $derived(configuratorEndpoint !== null);
+
+	async function handleConfiguratorSave(config: StrategyConfigV2, label: string) {
+		if (!configuratorEndpoint) return;
+		const ep = configuratorEndpoint;
+		try {
+			// Map StrategyConfigV2 to InstanceOverrides + createInstance
+			const { createInstance: create } = await import('$lib/updown-shared/auth/engine-client.js');
+			const overrides: Record<string, unknown> = {
+				entryAmount: config.entry.amount,
+				priceMin: 0.01,
+				priceMax: config.entry.maxBuyPrice,
+				hedgingEnabled: config.hedge.enabled,
+				hedgeLimitPrice: config.hedge.limitPrice,
+				hedgeShares: config.hedge.shares,
+				hedgeSellThreshold: config.hedge.sellThreshold,
+			};
+			if (config.entry.method === 'swing_limit' && config.entry.swingTargetPrice != null) {
+				overrides.volatileSwingBuyPrice = config.entry.swingTargetPrice;
+			}
+			for (const rule of config.exit) {
+				if (rule.type === 'take_profit') overrides.volatileSwingTakeProfitPct = rule.pct;
+				if (rule.type === 'stop_loss') overrides.volatileSwingStopLossPrice = rule.price;
+			}
+			// Use first available base strategy
+			const { fetchBaseStrategies } = await import('$lib/updown-shared/auth/engine-client.js');
+			const { strategies } = await fetchBaseStrategies(ep);
+			const baseId = strategies[0]?.id ?? 'v1';
+			await create(ep, { baseStrategyId: baseId, label, overrides });
+			configuratorEndpoint = null;
+			await refreshEndpointInstances();
+			await fetchAllStrategyProfits();
+		} catch (err) {
+			instanceActionError = err instanceof Error ? err.message : 'Failed to create';
+		}
+	}
+
+	/** Get the current instance's status from the cached instance list */
+	const activeInstanceStatus = $derived.by(() => {
+		const parsed = parseInstanceId(activeStrategyId);
+		if (!parsed) return null;
+		const instances = endpointInstances.get(parsed.epUrl);
+		return instances?.find((i) => i.id === parsed.instanceId)?.status ?? null;
+	});
+
+	/** Handle instance lifecycle actions from strategy info panel */
+	async function handleInstanceAction(action: 'start' | 'stop' | 'pause') {
+		const parsed = parseInstanceId(activeStrategyId);
+		if (!parsed) return;
+		const ep = findEndpoint(parsed.epUrl);
+		if (!ep) return;
+
+		instanceActionLoading = action;
+		instanceActionError = '';
+		try {
+			let result: { ok: boolean; error?: string };
+			switch (action) {
+				case 'start': result = await startInstance(ep, parsed.instanceId); break;
+				case 'stop': result = await stopInstance(ep, parsed.instanceId); break;
+				case 'pause': result = await pauseInstance(ep, parsed.instanceId); break;
+			}
+			if (!result.ok) {
+				instanceActionError = result.error ?? 'Action failed';
+			}
+			await refreshEndpointInstances();
+			fetchAllStrategyProfits();
+		} catch (err) {
+			instanceActionError = err instanceof Error ? err.message : 'Action failed';
+		} finally {
+			instanceActionLoading = null;
+		}
+	}
+
 	// Endpoint inline state
 	let epRegisterError = $state('');
 
@@ -257,6 +341,7 @@
 			builtinStrategies[0] ??
 			FALLBACK_STRATEGIES[0]
 	);
+	const isLiveMode = $derived(isInstanceId(activeStrategyId) || store.strategyInfo?.mode === 'live');
 	// strategyInfo is now in store.strategyInfo
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
@@ -442,6 +527,9 @@
 		store.switchStrategy(getStoreConfig());
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
 		store.fetchInitialData(lang);
+		// Set date to today (same as mount behavior) — this won't re-fetch
+		// since filterDate was already reset; it just shows "today" in the picker
+		store.filterDate = { from: todayLocal(), to: todayLocal() };
 	}
 
 	function persistState() {
@@ -483,6 +571,7 @@
 					if (instances?.length) {
 						const first = instances.find((i) => i.status === 'running') ?? instances[0];
 						if (first) onStrategyChange(makeInstanceId(managed.baseUrl.replace(/\/+$/, ''), first.id));
+						fetchAllStrategyProfits();
 					}
 				});
 				// Auto-prompt passkey registration if available
@@ -927,8 +1016,10 @@
 					store.fetchInitialData(lang2);
 				});
 
-				// Load instances for any managed endpoints
-				refreshEndpointInstances();
+				// Load instances for any managed endpoints, then refresh profits to include them
+				refreshEndpointInstances().then(() => {
+					if (endpointInstances.size > 0) fetchAllStrategyProfits();
+				});
 
 				// Re-probe siblings for custom servers
 				const customHosts = new Set<string>();
@@ -1625,6 +1716,7 @@
 							<span class="version-type-label">{t('btcUpdown.live.sectionTitle')}</span>
 						</div>
 						{#if !collapsedSections.has('managed')}
+							{@render columnHeaders()}
 							{#each endpointStore.endpoints as ep (ep.url + ep.clientId)}
 								{@const epKey = `ep:${ep.url}`}
 								{@const instances = endpointInstances.get(ep.url) ?? []}
@@ -1686,6 +1778,9 @@
 											{#if instances.length === 0}
 												<div class="ep-empty">{t('btcUpdown.instance.empty')}</div>
 											{/if}
+											<button class="sidebar-create-btn" onclick={() => { configuratorEndpoint = ep; }}>
+												+ {t('btcUpdown.instance.create')}
+											</button>
 										</div>
 									{/if}
 								</div>
@@ -1702,17 +1797,29 @@
 
 		<!-- Main content -->
 		<div class="main-content">
+			<!-- Inline Configurator (takes over main area when active) -->
+			{#if configuratorActive && configuratorEndpoint}
+				<div class="configurator-area" use:fadeInUp={{ delay: 0 }}>
+					<ConfiguratorDrawer
+						open={true}
+						onClose={() => { configuratorEndpoint = null; }}
+						onSave={handleConfiguratorSave}
+						{t}
+						lang={locale.value === 'zh' ? 'zh' : 'en'}
+					/>
+				</div>
+			{:else}
 			<!-- Live Endpoint Management (shown when a managed endpoint with trading is active) -->
 			{#if showManagementEndpoint?.permissions?.trading && showManagementEndpoint}
 				<div class="live-management glass-card" use:fadeInUp={{ delay: 15 }}>
-					<StrategyControlPanel endpoint={showManagementEndpoint} {t} onInstanceChange={refreshEndpointInstances} />
+					<StrategyControlPanel endpoint={showManagementEndpoint} {t} onInstanceChange={() => refreshEndpointInstances().then(() => fetchAllStrategyProfits())} onConfiguratorToggle={(open) => { if (open && showManagementEndpoint) configuratorEndpoint = showManagementEndpoint; }} />
 				</div>
 			{/if}
 
 			<!-- Disclaimer -->
 			<div
 				class="disclaimer"
-				class:disclaimer-live={store.strategyInfo?.mode === 'live'}
+				class:disclaimer-live={isLiveMode}
 				use:fadeInUp={{ delay: 30 }}
 			>
 				<svg
@@ -1726,7 +1833,7 @@
 					stroke-linecap="round"
 					stroke-linejoin="round"
 				>
-					{#if store.strategyInfo?.mode === 'live'}
+					{#if isLiveMode}
 						<path
 							d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
 						/>
@@ -1740,7 +1847,7 @@
 				</svg>
 				<span
 					>{t(
-						store.strategyInfo?.mode === 'live'
+						isLiveMode
 							? 'btcUpdown.disclaimer.live'
 							: 'btcUpdown.disclaimer.simulation'
 					)}</span
@@ -1779,6 +1886,32 @@
 							</div>
 						{/each}
 					</div>
+					{#if isInstanceId(activeStrategyId) && selectedInstanceEndpoint}
+						{@const status = activeInstanceStatus}
+						<div class="instance-actions">
+							{#if instanceActionError}
+								<div class="instance-action-error">{instanceActionError}</div>
+							{/if}
+							<div class="instance-action-buttons">
+								{#if status === 'stopped' || status === 'paused'}
+									<button class="btn-instance btn-instance-start" onclick={() => handleInstanceAction('start')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'start' ? '...' : t('btcUpdown.instance.start')}
+									</button>
+								{/if}
+								{#if status === 'running'}
+									<button class="btn-instance btn-instance-pause" onclick={() => handleInstanceAction('pause')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'pause' ? '...' : t('btcUpdown.instance.pause')}
+									</button>
+									<button class="btn-instance btn-instance-stop" onclick={() => handleInstanceAction('stop')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'stop' ? '...' : t('btcUpdown.instance.stop')}
+									</button>
+								{/if}
+								<span class="instance-status-badge" class:status-running={status === 'running'} class:status-paused={status === 'paused'} class:status-stopped={status === 'stopped'}>
+									{status ?? 'unknown'}
+								</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 			<!-- Strategy Runtime -->
@@ -1893,6 +2026,7 @@
 				{/if}
 			</div>
 			<!-- /.main-data -->
+		{/if}
 		</div>
 		<!-- /.main-content -->
 	</div>
@@ -2657,6 +2791,65 @@
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
 
+	/* Instance actions in strategy info card */
+	.instance-actions {
+		margin-top: var(--space-4);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--border-subtle);
+	}
+	.instance-action-error {
+		font-size: var(--text-xs);
+		color: var(--error);
+		margin-bottom: var(--space-2);
+	}
+	.instance-action-buttons {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.btn-instance {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		background: transparent;
+		color: var(--fg-base);
+	}
+	.btn-instance:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.btn-instance:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.btn-instance-start {
+		color: var(--success);
+		border-color: rgba(34, 197, 94, 0.3);
+	}
+	.btn-instance-stop {
+		color: var(--error);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+	.btn-instance-pause {
+		color: var(--warning);
+		border-color: rgba(251, 191, 36, 0.3);
+	}
+	.instance-status-badge {
+		margin-left: auto;
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		padding: 2px var(--space-2);
+		border-radius: var(--radius-full);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.status-running { color: var(--success); background: rgba(34, 197, 94, 0.1); }
+	.status-paused { color: var(--warning); background: rgba(251, 191, 36, 0.1); }
+	.status-stopped { color: var(--fg-subtle); background: rgba(255, 255, 255, 0.05); }
+
 	/* Disclaimer */
 	.disclaimer {
 		display: flex;
@@ -3091,6 +3284,25 @@
 		color: var(--fg-faint);
 		padding: var(--space-1) var(--space-4);
 		font-style: italic;
+	}
+	.sidebar-create-btn {
+		width: 100%;
+		padding: var(--space-1) var(--space-4);
+		background: none;
+		border: 1px dashed var(--border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		margin-top: var(--space-1);
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.sidebar-create-btn:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	.configurator-area {
+		padding: var(--space-4) 0;
 	}
 	.inst-status-dot {
 		width: 6px;

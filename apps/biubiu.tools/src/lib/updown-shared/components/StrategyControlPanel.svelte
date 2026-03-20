@@ -22,9 +22,11 @@
 		t: TranslateFn;
 		/** Called after instance is created/modified so parent can refresh */
 		onInstanceChange?: () => void;
+		/** Called when configurator open state changes, so parent can hide data panels */
+		onConfiguratorToggle?: (open: boolean) => void;
 	}
 
-	let { endpoint, t, onInstanceChange }: Props = $props();
+	let { endpoint, t, onInstanceChange, onConfiguratorToggle }: Props = $props();
 
 	// State
 	let instances = $state<StrategyInstance[]>([]);
@@ -33,9 +35,14 @@
 	let error = $state('');
 	let actionLoading = $state<string | null>(null);
 
-	// Configurator drawer
+	// Configurator
 	let showConfigurator = $state(false);
 	let editingInstance = $state<StrategyInstance | null>(null);
+
+	// Notify parent when configurator visibility changes
+	$effect(() => {
+		onConfiguratorToggle?.(showConfigurator);
+	});
 
 	// Create form (simple fallback)
 	let showCreateForm = $state(false);
@@ -104,15 +111,15 @@
 			// Map full config to InstanceOverrides
 			const overrides: Record<string, unknown> = {
 				entryAmount: config.entry.amount,
-				priceMin: config.entry.priceRange[0],
-				priceMax: config.entry.priceRange[1],
+				priceMin: 0.01,
+				priceMax: config.entry.maxBuyPrice,
 				hedgingEnabled: config.hedge.enabled,
 				hedgeLimitPrice: config.hedge.limitPrice,
 				hedgeShares: config.hedge.shares,
 				hedgeSellThreshold: config.hedge.sellThreshold,
 			};
-			if (config.entry.method === 'swing_limit' && config.entry.swingBuyPrice != null) {
-				overrides.volatileSwingBuyPrice = config.entry.swingBuyPrice;
+			if (config.entry.method === 'swing_limit' && config.entry.swingTargetPrice != null) {
+				overrides.volatileSwingBuyPrice = config.entry.swingTargetPrice;
 			}
 			// Find take_profit and stop_loss in exit rules
 			for (const rule of config.exit) {
@@ -383,7 +390,7 @@
 		onClose={() => { showConfigurator = false; editingInstance = null; }}
 		onSave={handleConfiguratorSave}
 		initialConfig={editingInstance ? {
-			entry: { amount: editingInstance.overrides.entryAmount ?? 50, priceRange: [editingInstance.overrides.priceMin ?? 0.55, editingInstance.overrides.priceMax ?? 0.70] as [number, number], windows: [{ window: 1 as const, start: 220, end: 190 }], method: 'market' as const },
+			entry: { amount: editingInstance.overrides.entryAmount ?? 50, maxBuyPrice: (editingInstance.overrides.priceMax as number) ?? 0.65, windows: [{ window: 1 as const, start: 220, end: 190 }], method: 'market' as const },
 			direction: { method: 'clob_follow' as const },
 			exit: [{ type: 'settlement' as const }],
 			hedge: { enabled: (editingInstance.overrides.hedgingEnabled as boolean) ?? false, limitPrice: (editingInstance.overrides.hedgeLimitPrice as number) ?? 0.10, shares: (editingInstance.overrides.hedgeShares as number) ?? 50, sellThreshold: (editingInstance.overrides.hedgeSellThreshold as number) ?? 35 }

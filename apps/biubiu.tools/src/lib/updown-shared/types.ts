@@ -48,6 +48,7 @@ export interface Stats {
 	stopLossCount: number;
 	stopLossCorrect: number;
 	stopLossWrong: number;
+	stopLossProfit: number;
 }
 
 export interface RoundHedge {

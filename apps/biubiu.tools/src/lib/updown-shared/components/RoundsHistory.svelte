@@ -124,6 +124,11 @@
 				{t('btcUpdown.filter.stopLoss')}{#if stats?.stopLossCount != null}<span class="filter-count">{stats.stopLossCount}</span>{/if}
 				{#if stats && (stats.stopLossCorrect || stats.stopLossWrong)}
 					<span class="filter-wl"><span class="wl-w">{stats.stopLossCorrect}✓</span><span class="wl-l">{stats.stopLossWrong}✗</span></span>
+					<span
+						class="filter-delta"
+						class:positive={stats.stopLossProfit > 0}
+						class:negative={stats.stopLossProfit < 0}
+					>{stats.stopLossProfit > 0 ? '+' : ''}{formatCurrency(stats.stopLossProfit)}</span>
 				{/if}
 			</button>
 		</div>

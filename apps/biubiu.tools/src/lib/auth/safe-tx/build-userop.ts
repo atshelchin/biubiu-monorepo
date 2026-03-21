@@ -38,11 +38,6 @@ export interface UserOperation {
 	gasFees: Hex;
 	paymasterAndData: Hex;
 	signature: Hex;
-	/** v0.7 分离的 paymaster 字段（优先于 paymasterAndData） */
-	paymaster?: Address;
-	paymasterData?: Hex;
-	paymasterVerificationGasLimit?: Hex;
-	paymasterPostOpGasLimit?: Hex;
 }
 
 export interface GasParams {
@@ -282,24 +277,6 @@ export function formatUserOpForRpc(
 		factoryData = '0x' + userOp.initCode.slice(42);
 	}
 
-	// v0.7 paymaster fields — prefer explicit fields over packed paymasterAndData
-	let paymaster: string | undefined = userOp.paymaster;
-	let paymasterData: string | undefined = userOp.paymasterData;
-	let paymasterVerificationGasLimit: string | undefined = userOp.paymasterVerificationGasLimit;
-	let paymasterPostOpGasLimit: string | undefined = userOp.paymasterPostOpGasLimit;
-
-	// Fallback: parse from packed paymasterAndData if explicit fields not set
-	if (!paymaster && userOp.paymasterAndData && userOp.paymasterAndData !== '0x' && userOp.paymasterAndData.length > 42) {
-		paymaster = '0x' + userOp.paymasterAndData.slice(2, 42);
-		const pmRest = userOp.paymasterAndData.slice(42);
-		if (pmRest.length >= 64) {
-			paymasterVerificationGasLimit = '0x' + pmRest.slice(0, 32);
-			paymasterPostOpGasLimit = '0x' + pmRest.slice(32, 64);
-			paymasterData = '0x' + pmRest.slice(64);
-		} else {
-			paymasterData = '0x' + pmRest;
-		}
-	}
 
 	return {
 		sender: userOp.sender,
@@ -312,10 +289,6 @@ export function formatUserOpForRpc(
 		preVerificationGas: userOp.preVerificationGas,
 		maxFeePerGas,
 		maxPriorityFeePerGas,
-		paymaster,
-		paymasterVerificationGasLimit,
-		paymasterPostOpGasLimit,
-		paymasterData,
 		signature: userOp.signature
 	};
 }

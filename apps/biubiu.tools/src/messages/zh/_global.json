@@ -176,6 +176,7 @@
   "auth.send.statusConfirmed": "交易已确认！",
   "auth.send.statusFailed": "交易失败",
   "auth.send.viewOnExplorer": "在区块浏览器上查看",
+  "auth.send.needNativeGas": "Gas 不足，请先向钱包充值原生代币（ETH/BNB/POL）用于支付交易手续费。",
   "auth.send.done": "完成",
   "auth.uploadRetry.title": "保存到服务器",
   "auth.uploadRetry.description": "通行密钥已在设备上创建成功，但保存到服务器失败。请重试 — 账号创建需要此步骤完成。",

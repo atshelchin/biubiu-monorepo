@@ -75,21 +75,16 @@
 		error = null;
 		result = null;
 
+		// 检查该网络是否有 native token 余额用于 gas
 		const sameNetworkNative = balances.find(
 			(b) => b.network === selectedToken.network && !b.tokenAddress
 		);
-		const hasNativeGas = sameNetworkNative && parseFloat(sameNetworkNative.balance) > 0.01;
+		const hasNativeGas = sameNetworkNative && parseFloat(sameNetworkNative.balance) > 0.005;
 
-		let gasTokenAddress: string | null = null;
-		if (!hasNativeGas) {
-			const stablecoin = balances.find(
-				(b) => b.network === selectedToken.network &&
-					b.tokenAddress &&
-					(b.symbol === 'USDC' || b.symbol === 'USDT')
-			);
-			if (stablecoin?.tokenAddress) {
-				gasTokenAddress = stablecoin.tokenAddress;
-			}
+		if (!hasNativeGas && selectedToken.tokenAddress) {
+			// 发送 ERC-20 但没有 native gas
+			error = t('auth.send.needNativeGas');
+			return;
 		}
 
 		const sendResult = await sendToken({
@@ -102,7 +97,6 @@
 			network: selectedToken.network,
 			tokenAddress: selectedToken.tokenAddress ?? null,
 			decimals: selectedToken.decimals,
-			gasTokenAddress,
 			onStatus: (s) => { status = s; }
 		});
 

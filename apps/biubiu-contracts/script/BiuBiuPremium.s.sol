@@ -13,7 +13,7 @@ contract BiuBiuPremiumScript is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Get contract bytecode
+        // Get contract bytecode (no constructor args)
         bytes memory bytecode = type(BiuBiuPremium).creationCode;
 
         // Salt for deterministic address (can be changed)
@@ -24,8 +24,8 @@ contract BiuBiuPremiumScript is Script {
 
         console.log("BiuBiuPremium deployed at:", address(premium));
         console.log("Vault address:", premium.VAULT());
-        console.log("Monthly price:", premium.MONTHLY_PRICE());
-        console.log("Yearly price:", premium.YEARLY_PRICE());
+        console.log("Monthly price (USD):", premium.MONTHLY_PRICE_USD());
+        console.log("Yearly price (USD):", premium.YEARLY_PRICE_USD());
 
         vm.stopBroadcast();
     }

@@ -10,6 +10,8 @@ export interface FormatterContext {
 	formatDateTime: (ts: string, options?: Intl.DateTimeFormatOptions) => string;
 	timezone: string;
 	timeFormat: '12' | '24';
+	/** USD → 用户本地货币的汇率（默认 1） */
+	exchangeRate: number;
 }
 
 export function fmtTimeRaw(ctx: FormatterContext, ts: string, style: 'short' | 'medium'): string {
@@ -74,8 +76,9 @@ export function fmtTimeWindow(ctx: FormatterContext, start: string, end: string)
 }
 
 export function fmtProfit(ctx: FormatterContext, value: number): string {
-	const sign = value >= 0 ? '+' : '';
-	return sign + ctx.formatCurrency(value);
+	const converted = value * (ctx.exchangeRate ?? 1);
+	const sign = converted >= 0 ? '+' : '';
+	return sign + ctx.formatCurrency(converted);
 }
 
 export function fmtPct(ctx: FormatterContext, value: number): string {

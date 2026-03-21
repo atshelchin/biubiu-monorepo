@@ -1,28 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BiuBiuToolProxy} from "./BiuBiuToolProxy.sol";
+import {IBiuBiuPremium} from "../interfaces/IBiuBiuPremium.sol";
+import {ERC721Base} from "../libraries/ERC721Base.sol";
+import {ReentrancyGuard} from "../libraries/ReentrancyGuard.sol";
+import {UniswapOracle} from "../libraries/UniswapOracle.sol";
+import {Referral} from "../libraries/Referral.sol";
 import {Base64} from "../libraries/Base64.sol";
 import {Strings} from "../libraries/Strings.sol";
 import {DateTime} from "../libraries/DateTime.sol";
 
 /**
  * @title BiuBiuPremium
- * @notice Main contract with NFT metadata and ERC721 hooks
- * @dev Final layer inheriting all functionality
- *
- * Inheritance chain:
- *   ERC721Base + IBiuBiuPremium + ReentrancyGuard
- *       ↓
- *   BiuBiuCore (constants, storage, promo code)
- *       ↓
- *   BiuBiuSubscription (subscribe, renew, activate)
- *       ↓
- *   BiuBiuToolProxy (callTool)
- *       ↓
- *   BiuBiuPremium (NFT metadata, tokenURI)
+ * @notice Subscription NFT with USD pricing via Uniswap V3 oracle
+ * @dev Deployed on Arbitrum only. Single contract: pricing, subscription, NFT metadata.
  */
-contract BiuBiuPremium is BiuBiuToolProxy {
+contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
+    // ============ Constants ============
+
+    uint256 public constant MONTHLY_PRICE_USD = 100e8; // $100 (8 decimals)
+    uint256 public constant YEARLY_PRICE_USD = 1000e8; // $1,000 (8 decimals)
+    uint256 public constant MONTHLY_DURATION = 30 days;
+    uint256 public constant YEARLY_DURATION = 365 days;
+
+    address public constant VAULT = 0x7602db7FbBc4f0FD7dfA2Be206B39e002A5C94cA;
+
+    // ============ State Variables ============
+
+    uint256 internal _nextTokenId = 1;
+    mapping(uint256 => TokenAttributes) internal _tokenAttributes;
+    mapping(address => uint256) public activeSubscription;
+
     // ============ ERC721 Overrides ============
 
     function name() public pure override returns (string memory) {
@@ -76,7 +84,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
     // ============ ERC721 Hooks ============
 
     function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal override {
-        // Handle mint
         if (from == address(0)) {
             if (activeSubscription[to] == 0) {
                 activeSubscription[to] = tokenId;
@@ -84,9 +91,7 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             }
             _tokenAttributes[tokenId] =
                 TokenAttributes({mintedAt: block.timestamp, mintedBy: msg.sender, renewalCount: 0, expiry: 0});
-        }
-        // Handle transfer (not mint or burn)
-        else if (to != address(0)) {
+        } else if (to != address(0)) {
             if (activeSubscription[from] == tokenId) {
                 activeSubscription[from] = 0;
                 emit Deactivated(from, tokenId);
@@ -98,9 +103,138 @@ contract BiuBiuPremium is BiuBiuToolProxy {
         }
     }
 
-    // ============ Receive ETH ============
+    // ============ View Functions ============
 
-    receive() external payable {}
+    function nextTokenId() external view returns (uint256) {
+        return _nextTokenId;
+    }
+
+    function getSubscriptionInfo(address user)
+        external
+        view
+        returns (bool isPremium, uint256 expiryTime, uint256 remainingTime)
+    {
+        uint256 activeTokenId = activeSubscription[user];
+        if (activeTokenId == 0) return (false, 0, 0);
+        expiryTime = _tokenAttributes[activeTokenId].expiry;
+        isPremium = expiryTime > block.timestamp;
+        remainingTime = isPremium ? expiryTime - block.timestamp : 0;
+    }
+
+    function getTokenSubscriptionInfo(uint256 tokenId)
+        external
+        view
+        returns (uint256 expiryTime, bool isExpired, address tokenOwner)
+    {
+        tokenOwner = _owners[tokenId];
+        if (tokenOwner == address(0)) revert TokenNotExists();
+        expiryTime = _tokenAttributes[tokenId].expiry;
+        isExpired = expiryTime <= block.timestamp;
+    }
+
+    function getTokenAttributes(uint256 tokenId)
+        external
+        view
+        returns (uint256 mintedAt, address mintedBy, uint256 renewalCount, uint256 expiry)
+    {
+        if (_owners[tokenId] == address(0)) revert TokenNotExists();
+        TokenAttributes storage attrs = _tokenAttributes[tokenId];
+        return (attrs.mintedAt, attrs.mintedBy, attrs.renewalCount, attrs.expiry);
+    }
+
+    function subscriptionExpiry(uint256 tokenId) external view returns (uint256) {
+        return _tokenAttributes[tokenId].expiry;
+    }
+
+    function getPrice(SubscriptionTier tier) external view returns (uint256) {
+        (uint256 priceWei,) = _getTierInfo(tier);
+        return priceWei;
+    }
+
+    /// @notice Get current ETH/USD price from Uniswap V3 (8 decimals, e.g. 200000000000 = $2000)
+    function getEthUsdPrice() external view returns (uint256) {
+        return UniswapOracle.getEthUsdPrice();
+    }
+
+    // ============ Subscription Functions ============
+
+    function subscribe(SubscriptionTier tier, address referrer, address recipient, string calldata source)
+        external
+        payable
+        nonReentrant
+    {
+        address to = recipient == address(0) ? msg.sender : recipient;
+        uint256 activeTokenId = activeSubscription[to];
+
+        if (activeTokenId != 0) {
+            _renewSubscription(activeTokenId, tier, referrer, source);
+        } else {
+            uint256 tokenId = _nextTokenId++;
+            _safeMint(to, tokenId);
+            _renewSubscription(tokenId, tier, referrer, source);
+        }
+    }
+
+    function subscribeToToken(uint256 tokenId, SubscriptionTier tier, address referrer, string calldata source)
+        external
+        payable
+        nonReentrant
+    {
+        if (_owners[tokenId] == address(0)) revert TokenNotExists();
+        _renewSubscription(tokenId, tier, referrer, source);
+    }
+
+    function activate(uint256 tokenId) external {
+        if (_owners[tokenId] != msg.sender) revert NotTokenOwner();
+        activeSubscription[msg.sender] = tokenId;
+        emit Activated(msg.sender, tokenId);
+    }
+
+    // ============ Internal: Pricing ============
+
+    function _getTierInfo(SubscriptionTier tier) private view returns (uint256 priceWei, uint256 duration) {
+        uint256 usdPrice = tier == SubscriptionTier.Monthly ? MONTHLY_PRICE_USD : YEARLY_PRICE_USD;
+        priceWei = UniswapOracle.usdToEth(usdPrice);
+        duration = tier == SubscriptionTier.Monthly ? MONTHLY_DURATION : YEARLY_DURATION;
+    }
+
+    function _renewSubscription(uint256 tokenId, SubscriptionTier tier, address referrer, string calldata source)
+        private
+    {
+        if (_owners[tokenId] == address(0)) revert TokenNotExists();
+
+        (uint256 price, uint256 duration) = _getTierInfo(tier);
+
+        if (msg.value < price) revert InsufficientPayment();
+
+        // Refund excess ETH
+        if (msg.value > price) {
+            (bool ok,) = payable(msg.sender).call{value: msg.value - price}("");
+            if (!ok) revert RefundFailed();
+        }
+
+        // Update subscription expiry
+        TokenAttributes storage attrs = _tokenAttributes[tokenId];
+        uint256 currentExpiry = attrs.expiry;
+        uint256 newExpiry = currentExpiry > block.timestamp ? currentExpiry + duration : block.timestamp + duration;
+        attrs.expiry = newExpiry;
+
+        unchecked {
+            attrs.renewalCount += 1;
+        }
+
+        // Referral split (50%)
+        uint256 referralAmount = Referral.processHalf(referrer, msg.sender, price);
+        if (referralAmount > 0) {
+            emit ReferralPaid(referrer, referralAmount);
+        }
+
+        // Sweep remaining balance to VAULT
+        // forge-lint: disable-next-line(unchecked-call)
+        payable(VAULT).call{value: address(this).balance}("");
+
+        emit Subscribed(msg.sender, tokenId, tier, newExpiry, referrer, referralAmount, price, source);
+    }
 
     // ============ SVG Generation ============
 
@@ -127,7 +261,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
         pure
         returns (string memory)
     {
-        // Part 1: defs — deep purple bg + gold gradient
         string memory svg = string(
             abi.encodePacked(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560">',
@@ -142,7 +275,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 2: close gradient + glow filter + close defs
         svg = string(
             abi.encodePacked(
                 svg,
@@ -153,7 +285,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 3: background + gold double border + chain-link logo
         svg = string(
             abi.encodePacked(
                 svg,
@@ -167,7 +298,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 4: PREMIUM label + divider + token ID
         svg = string(
             abi.encodePacked(
                 svg,
@@ -181,7 +311,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 5: divider + date + footer + close
         svg = string(
             abi.encodePacked(
                 svg,
@@ -202,7 +331,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
         pure
         returns (string memory)
     {
-        // Part 1: defs + background + outer border
         string memory svg = string(
             abi.encodePacked(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560">',
@@ -217,7 +345,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 2: inner border + chain-link logo (gray) + PREMIUM + divider
         svg = string(
             abi.encodePacked(
                 svg,
@@ -231,7 +358,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 3: token ID + divider + EXPIRED
         svg = string(
             abi.encodePacked(
                 svg,
@@ -245,7 +371,6 @@ contract BiuBiuPremium is BiuBiuToolProxy {
             )
         );
 
-        // Part 4: date + footer + close
         svg = string(
             abi.encodePacked(
                 svg,

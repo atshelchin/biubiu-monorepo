@@ -165,6 +165,10 @@ export class DashboardStore {
 		this.strategyInfo = null;
 		this.strategyStartTime = null;
 		this.selectedHour = null;
+		this.filterDate = { from: '', to: '' };
+		this.roundsFilter = '';
+		this.signalActionFilter = '';
+		this.resultFilter = '';
 		this.roundsPage = 1;
 		this.sseEventCounter = 0;
 		this.lastRoundRefetchTime = 0;

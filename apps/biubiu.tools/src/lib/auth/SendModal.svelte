@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t, formatCurrency, preferences } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { sendToken, type SendStatus, type SendResult } from './safe-tx/send-token.js';
 	import { CHAIN_CONFIG } from './safe-tx/constants.js';
-	import { formatBalance, type TokenBalance } from './wallet.js';
+	import { formatBalance, tokenValueUsd, type TokenBalance } from './wallet.js';
 	import { isAddress } from 'viem';
 
 	interface Props {
@@ -33,6 +33,14 @@
 		return num > 0 && num <= parseFloat(selectedToken.balance);
 	});
 	const canSubmit = $derived(isValidRecipient && isValidAmount() && !status && selectedToken);
+
+	/** 输入金额对应的法币预估值 */
+	const amountFiat = $derived.by(() => {
+		if (!selectedToken?.priceUsd || !amount) return null;
+		const num = parseFloat(amount);
+		if (isNaN(num) || num <= 0) return null;
+		return num * selectedToken.priceUsd;
+	});
 
 	function handleClose() {
 		if (status && status !== 'confirmed' && status !== 'failed') return;
@@ -135,12 +143,18 @@
 				<!-- Step 1: Select Token -->
 				<div class="token-list">
 					{#each balances as token, i}
+						{@const val = tokenValueUsd(token)}
 						<button class="token-row" onclick={() => selectToken(i)}>
 							<div class="token-info">
 								<span class="token-symbol">{token.symbol}</span>
 								<span class="token-chain">{token.chainName}</span>
 							</div>
-							<span class="token-amount">{formatBalance(token.balance)}</span>
+							<div class="token-amounts">
+								<span class="token-amount">{formatBalance(token.balance)}</span>
+								{#if val != null && val > 0}
+									<span class="token-fiat">{formatCurrency(val, preferences.currency)}</span>
+								{/if}
+							</div>
 							<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<polyline points="9 18 15 12 9 6"/>
 							</svg>
@@ -195,6 +209,9 @@
 						/>
 						<span class="amount-unit">{selectedToken?.symbol ?? ''}</span>
 					</div>
+					{#if amountFiat != null}
+						<span class="amount-fiat">≈ {formatCurrency(amountFiat, preferences.currency)}</span>
+					{/if}
 				</div>
 
 				{#if error}
@@ -304,10 +321,23 @@
 		color: var(--fg-faint);
 	}
 
+	.token-amounts {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 1px;
+	}
+
 	.token-amount {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
+	}
+
+	.token-fiat {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
 	}
 
 	.chevron-icon {
@@ -401,6 +431,12 @@
 	}
 
 	.amount-input { flex: 1; }
+
+	.amount-fiat {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
 
 	.amount-unit {
 		font-size: var(--text-sm);

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { formatDateTime, formatDate } from '$lib/i18n';
+	import { formatDateTime, formatDate, formatCurrency, preferences } from '$lib/i18n';
 	import { localizeHref } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import DepositModal from './DepositModal.svelte';
 	import SendModal from './SendModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
-	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
+	import { fetchAllBalances, formatBalance, tokenValueUsd, totalValueUsd, fetchExchangeRate, type TokenBalance } from './wallet.js';
 	import { subscriptionStore } from '$lib/subscription';
 	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
 
@@ -27,8 +27,11 @@
 	let balances = $state<TokenBalance[]>([]);
 	let balancesLoading = $state(false);
 	let balancesLoaded = $state(false);
+	let exchangeRate = $state(1);
 
 	const user = $derived(authStore.user);
+	const total = $derived(totalValueUsd(balances) * exchangeRate);
+	const userCurrency = $derived(preferences.currency);
 
 	const profileUrl = $derived.by(() => {
 		if (!user) return '';
@@ -58,7 +61,12 @@
 	async function loadBalances() {
 		if (!user?.safeAddress) return;
 		balancesLoading = true;
-		balances = await fetchAllBalances(user.safeAddress);
+		const [tokens, rate] = await Promise.all([
+			fetchAllBalances(user.safeAddress),
+			fetchExchangeRate(preferences.currency)
+		]);
+		balances = tokens;
+		exchangeRate = rate;
 		balancesLoading = false;
 		balancesLoaded = true;
 	}
@@ -172,6 +180,9 @@
 			<div class="balances-section">
 				<div class="balances-header">
 					<span class="section-label">{t('auth.wallet.balances')}</span>
+					{#if balancesLoaded && balances.length > 0 && total > 0}
+						<span class="balances-total">{formatCurrency(total, userCurrency)}</span>
+					{/if}
 					<button class="refresh-btn" onclick={loadBalances} disabled={balancesLoading} title={t('auth.wallet.refresh')}>
 						<svg class:spinning={balancesLoading} xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="23 4 23 10 17 10"/>
@@ -187,12 +198,18 @@
 				{:else if balances.length > 0}
 					<div class="balances-list">
 						{#each balances as token}
+							{@const valueUsd = tokenValueUsd(token)}
 							<div class="balance-row">
 								<div class="token-info">
 									<span class="token-symbol">{token.symbol}</span>
 									<span class="token-chain">{token.chainName}</span>
 								</div>
-								<span class="token-balance">{formatBalance(token.balance)}</span>
+								<div class="token-values">
+									<span class="token-balance">{formatBalance(token.balance)}</span>
+									{#if valueUsd != null && valueUsd > 0}
+										<span class="token-value">{formatCurrency(valueUsd * exchangeRate, userCurrency)}</span>
+									{/if}
+								</div>
 							</div>
 						{/each}
 					</div>
@@ -515,7 +532,16 @@
 	.balances-header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: var(--space-2);
+	}
+
+	.balances-total {
+		flex: 1;
+		text-align: right;
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
 	}
 
 	.refresh-btn {
@@ -587,10 +613,23 @@
 		color: var(--fg-faint);
 	}
 
+	.token-values {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 1px;
+	}
+
 	.token-balance {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		color: var(--fg-base);
+	}
+
+	.token-value {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
 	}
 
 	.balances-empty {

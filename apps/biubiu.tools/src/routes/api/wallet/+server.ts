@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			body: JSON.stringify({
 				addresses: [{ address, networks: SUPPORTED_NETWORKS }],
 				withMetadata: true,
-				withPrices: false,
+				withPrices: true,
 				includeNativeTokens: true,
 				includeErc20Tokens: true
 			})
@@ -75,6 +75,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			logo: string | null;
 			name: string;
 			tokenAddress: string | null;
+			priceUsd: number | null;
 		}> = [];
 
 		for (const token of data?.data?.tokens ?? []) {
@@ -90,6 +91,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			const symbol = token.tokenMetadata?.symbol || (isNative ? nativeFallback?.symbol : null) || '???';
 			const name = token.tokenMetadata?.name || (isNative ? nativeFallback?.name : null) || '';
 
+			// 价格（USD）
+			const priceEntry = token.tokenPrices?.[0];
+			const priceUsd = priceEntry?.currency === 'usd' ? parseFloat(priceEntry.value) : null;
+
 			tokens.push({
 				network: token.network,
 				chainName: NETWORK_NAMES[token.network] ?? token.network,
@@ -98,7 +103,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				decimals,
 				logo: token.tokenMetadata?.logo ?? null,
 				name,
-				tokenAddress: isNative ? null : (token.tokenAddress ?? null)
+				tokenAddress: isNative ? null : (token.tokenAddress ?? null),
+				priceUsd: priceUsd && !isNaN(priceUsd) ? priceUsd : null
 			});
 		}
 

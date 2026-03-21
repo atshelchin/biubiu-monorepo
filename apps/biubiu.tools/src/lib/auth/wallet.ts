@@ -15,6 +15,32 @@ export interface TokenBalance {
 	name: string;
 	/** token 合约地址（native token 为 null） */
 	tokenAddress: string | null;
+	/** 单价（USD），null 表示无报价 */
+	priceUsd: number | null;
+}
+
+/** 单个 token 的 USD 价值 */
+export function tokenValueUsd(token: TokenBalance): number | null {
+	if (token.priceUsd == null) return null;
+	return parseFloat(token.balance) * token.priceUsd;
+}
+
+/** 所有 token 的 USD 总价值 */
+export function totalValueUsd(tokens: TokenBalance[]): number {
+	return tokens.reduce((sum, t) => sum + (tokenValueUsd(t) ?? 0), 0);
+}
+
+/** 获取 USD → 目标货币的汇率 */
+export async function fetchExchangeRate(currency: string): Promise<number> {
+	if (currency === 'USD') return 1;
+	try {
+		const res = await fetch(`/api/exchange-rate?currency=${encodeURIComponent(currency)}`);
+		if (!res.ok) return 1;
+		const data = await res.json();
+		return data.rate ?? 1;
+	} catch {
+		return 1;
+	}
 }
 
 /**

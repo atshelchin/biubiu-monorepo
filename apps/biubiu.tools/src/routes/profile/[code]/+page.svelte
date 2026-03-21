@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { t, locale, formatDateTime, formatDate } from '$lib/i18n';
+	import { t, locale, formatDateTime, formatDate, formatCurrency, preferences } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { computeSafeAddress } from '$lib/auth/compute-safe-address.js';
-	import { fetchAllBalances, formatBalance, type TokenBalance } from '$lib/auth/wallet.js';
+	import { fetchAllBalances, formatBalance, tokenValueUsd, totalValueUsd, fetchExchangeRate, type TokenBalance } from '$lib/auth/wallet.js';
 	import { getSubscriptionInfo, type SubscriptionInfo } from '$lib/subscription';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import { onMount } from 'svelte';
@@ -28,6 +28,10 @@
 	let copiedField = $state<string | null>(null);
 	let subInfo = $state<SubscriptionInfo | null>(null);
 	let subLoaded = $state(false);
+	let exchangeRate = $state(1);
+
+	const total = $derived(totalValueUsd(balances) * exchangeRate);
+	const userCurrency = $derived(preferences.currency);
 
 	function decodeProfile(code: string): ProfileData | null {
 		try {
@@ -57,6 +61,7 @@
 		safeAddress = computeSafeAddress(data.publicKey);
 		loadBalances();
 		loadSubscription();
+		fetchExchangeRate(preferences.currency).then(r => { exchangeRate = r; });
 	});
 
 	async function loadSubscription() {
@@ -230,6 +235,9 @@
 			<div class="balances-section" use:fadeInUp={{ delay: 200 }}>
 				<div class="balances-header">
 					<span class="label">{t('auth.wallet.balances')}</span>
+					{#if balancesLoaded && balances.length > 0 && total > 0}
+						<span class="balances-total">{formatCurrency(total, userCurrency)}</span>
+					{/if}
 					<button class="refresh-btn" onclick={loadBalances} disabled={balancesLoading} title={t('auth.wallet.refresh')}>
 						<svg class:spinning={balancesLoading} xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="23 4 23 10 17 10"/>
@@ -245,12 +253,18 @@
 				{:else if balances.length > 0}
 					<div class="balances-list">
 						{#each balances as token}
+							{@const valueUsd = tokenValueUsd(token)}
 							<div class="balance-row">
 								<div class="token-info">
 									<span class="token-symbol">{token.symbol}</span>
 									<span class="token-chain">{token.chainName}</span>
 								</div>
-								<span class="token-balance">{formatBalance(token.balance)}</span>
+								<div class="token-values">
+									{#if valueUsd != null && valueUsd > 0}
+										<span class="token-value">{formatCurrency(valueUsd * exchangeRate, userCurrency)}</span>
+									{/if}
+									<span class="token-balance">{formatBalance(token.balance)}</span>
+								</div>
 							</div>
 						{/each}
 					</div>
@@ -486,7 +500,16 @@
 	.balances-header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: var(--space-2);
+	}
+
+	.balances-total {
+		flex: 1;
+		text-align: right;
+		font-family: var(--font-mono);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
 	}
 
 	.refresh-btn {
@@ -558,10 +581,24 @@
 		color: var(--fg-faint);
 	}
 
-	.token-balance {
+	.token-values {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 1px;
+	}
+
+	.token-value {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
 		color: var(--fg-base);
+	}
+
+	.token-balance {
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
 	}
 
 	.balances-empty {

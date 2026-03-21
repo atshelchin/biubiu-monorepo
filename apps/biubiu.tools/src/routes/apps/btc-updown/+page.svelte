@@ -8,6 +8,7 @@
 		formatDate,
 		formatDateTime
 	} from '$lib/i18n';
+	import { fetchExchangeRate } from '$lib/auth/wallet.js';
 	import {
 		loadSettings,
 		applyTheme,
@@ -78,6 +79,14 @@
 	} from '$lib/updown-shared/auth/engine-client.js';
 	import type { ManagedEndpoint } from '$lib/updown-shared/auth/types.js';
 
+	// --- Exchange rate (USD → user currency) ---
+	let exchangeRate = $state(1);
+
+	$effect(() => {
+		const cur = preferences.currency;
+		fetchExchangeRate(cur).then(r => { exchangeRate = r; });
+	});
+
 	// --- Formatter context (bridges i18n reactive state to pure functions) ---
 
 	function getFormatterCtx(): FormatterContext {
@@ -88,6 +97,7 @@
 			formatDateTime,
 			timezone: preferences.timezone,
 			timeFormat,
+			exchangeRate,
 		};
 	}
 

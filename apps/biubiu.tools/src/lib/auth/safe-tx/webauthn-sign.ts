@@ -5,7 +5,7 @@
  * 然后提取 authenticatorData、clientDataFields、r、s。
  */
 import { type Hex } from 'viem';
-import { fromBase64url, derToRawSignature, bufToHex, P256_N } from '../crypto-utils.js';
+import { fromBase64url, derToRawSignature, bufToHex } from '../crypto-utils.js';
 
 export interface WebAuthnSignatureResult {
 	authenticatorData: Hex;
@@ -25,7 +25,6 @@ export interface WebAuthnSignatureResult {
  */
 function extractClientDataFields(clientDataJSON: ArrayBuffer): string {
 	const json = new TextDecoder().decode(clientDataJSON);
-	console.log('[webauthn] clientDataJSON:', json);
 
 	// 找到 "challenge":"..." 的闭合引号
 	const challengeKey = '"challenge":"';
@@ -46,7 +45,6 @@ function extractClientDataFields(clientDataJSON: ArrayBuffer): string {
 	//                              ^ valueEnd
 	// 跳过 ",(两个字符) → 从 valueEnd+2 开始
 	const afterChallenge = json.slice(valueEnd + 2, json.length - 1);
-	console.log('[webauthn] clientDataFields:', JSON.stringify(afterChallenge));
 	return afterChallenge;
 }
 
@@ -111,11 +109,6 @@ export async function signSafeOpWithPasskey(
 	const rawSig = derToRawSignature(response.signature);
 	let r = BigInt('0x' + bufToHex(rawSig.slice(0, 32)));
 	let s = BigInt('0x' + bufToHex(rawSig.slice(32)));
-
-	// 不做 S-value normalization — WebAuthn.sol 用 verifySignatureAllowMalleability
-	console.log('[webauthn] raw r:', r.toString());
-	console.log('[webauthn] raw s:', s.toString());
-	console.log('[webauthn] s > n/2:', s > P256_N / 2n);
 
 	return {
 		ok: true,

@@ -13,7 +13,6 @@ import {
 	calculateSafeOpHash,
 	packAccountGasLimits,
 	packGasFees,
-	formatUserOpForRpc,
 	type UserOperation,
 	type GasParams
 } from './build-userop.js';
@@ -159,27 +158,16 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		);
 
 		// 5. WebAuthn 签名
-		console.log('[send] safeOpHash:', safeOpHash);
-		console.log('[send] safeAddress:', safeAddress);
-		console.log('[send] nonce:', nonce);
-		console.log('[send] chainId:', chainCfg.chainId);
-		console.log('[send] deployed:', deployed);
-
 		onStatus('signing');
 		const sigResult = await signSafeOpWithPasskey(safeOpHash, credentialId, rpId);
 		if (!sigResult.ok) {
+			onStatus('failed');
 			return { success: false, error: sigResult.error };
 		}
 
 		const { authenticatorData, clientDataFields, r, s } = sigResult.result;
-		console.log('[send] authenticatorData:', authenticatorData);
-		console.log('[send] clientDataFields:', JSON.stringify(clientDataFields));
-		console.log('[send] sig r:', r.toString());
-		console.log('[send] sig s:', s.toString());
-
 		const contractSig = buildContractSignatureWebAuthn(authenticatorData, clientDataFields, r, s);
 		const signature = buildUserOpSignature(0, 0, contractSig);
-		console.log('[send] signature length:', signature.length);
 
 		const finalUserOp: UserOperation = {
 			sender: safeAddress,
@@ -194,28 +182,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		};
 
 		// 6. 提交
-		console.log('[send] finalUserOp:', JSON.stringify({
-			sender: finalUserOp.sender,
-			nonce: finalUserOp.nonce,
-			initCode: finalUserOp.initCode.slice(0, 20) + '...' + finalUserOp.initCode.length + ' chars',
-			callData: finalUserOp.callData.slice(0, 20) + '...',
-			accountGasLimits: finalUserOp.accountGasLimits,
-			preVerificationGas: finalUserOp.preVerificationGas,
-			gasFees: finalUserOp.gasFees,
-			signatureLen: finalUserOp.signature.length
-		}));
-		console.log('[send] gas used for hash:', JSON.stringify({
-			verificationGasLimit: refinedGas.verificationGasLimit.toString(),
-			callGasLimit: refinedGas.callGasLimit.toString(),
-			preVerificationGas: refinedGas.preVerificationGas.toString(),
-			maxFeePerGas: refinedGas.maxFeePerGas.toString(),
-			maxPriorityFeePerGas: refinedGas.maxPriorityFeePerGas.toString()
-		}));
-
-		// 打印完整签名用于离线调试
-		console.log('[send] FULL signature hex:', finalUserOp.signature);
-		console.log('[send] formatted UserOp:', JSON.stringify(formatUserOpForRpc(finalUserOp)));
-
+		// 6. 提交
 		onStatus('submitting');
 		const userOpHash = await sendUserOperation(finalUserOp, network);
 

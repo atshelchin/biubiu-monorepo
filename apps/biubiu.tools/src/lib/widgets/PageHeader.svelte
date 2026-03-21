@@ -7,6 +7,9 @@
 	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import { authStore } from '$lib/auth';
+	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
+	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
+	import { subscriptionStore } from '$lib/subscription';
 	import logo from '$lib/assets/logo.svg';
 
 	// Settings modal state
@@ -18,6 +21,15 @@
 	// Profile modal state
 	let showProfile = $state(false);
 
+	// Subscription modal state
+	let showSubscription = $state(false);
+	let subscriptionMode = $state<'subscribe' | 'renew' | 'transfer'>('subscribe');
+
+	function openSubscription(mode: 'subscribe' | 'renew' | 'transfer') {
+		subscriptionMode = mode;
+		showSubscription = true;
+	}
+
 	// Mobile drawer state
 	let showMobileDrawer = $state(false);
 
@@ -26,6 +38,16 @@
 		{ key: 'nav.tools', href: '/apps/balance-radar', icon: 'tools' },
 		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu-monorepo', icon: 'github', external: true }
 	];
+
+	// 登录后加载订阅状态
+	$effect(() => {
+		if (authStore.isLoggedIn && authStore.user?.safeAddress) {
+			subscriptionStore.load(authStore.user.safeAddress as `0x${string}`);
+		}
+		if (!authStore.isLoggedIn) {
+			subscriptionStore.reset();
+		}
+	});
 
 	function openSettings() {
 		showMobileDrawer = false;
@@ -65,8 +87,9 @@
 					onclick={() => (showProfile = true)}
 					title={authStore.displayName}
 				>
-					<span class="user-avatar">{authStore.displayName.charAt(0).toUpperCase()}</span>
+					<span class="user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
 					<span class="user-name">{authStore.displayName}</span>
+					<SubscriptionBadge size="sm" />
 				</button>
 			{:else}
 				<button
@@ -115,7 +138,10 @@
 <AuthModal open={showAuth} onClose={() => (showAuth = false)} />
 
 <!-- Profile Modal -->
-<ProfileModal open={showProfile} onClose={() => (showProfile = false)} />
+<ProfileModal open={showProfile} onClose={() => (showProfile = false)} onSubscription={openSubscription} />
+
+<!-- Subscription Modal -->
+<SubscriptionModal open={showSubscription} onClose={() => (showSubscription = false)} mode={subscriptionMode} />
 
 <!-- Settings Modal -->
 <ResponsiveModal open={showSettings} onClose={() => (showSettings = false)} title={t('settings.title')}>
@@ -153,8 +179,9 @@
 				class="drawer-settings-btn"
 				onclick={() => { showMobileDrawer = false; showProfile = true; }}
 			>
-				<span class="drawer-user-avatar">{authStore.displayName.charAt(0).toUpperCase()}</span>
+				<span class="drawer-user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
 				<span>{authStore.displayName}</span>
+				<SubscriptionBadge size="sm" />
 				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<polyline points="9 18 15 12 9 6"/>
 				</svg>
@@ -468,6 +495,12 @@
 		font-weight: var(--weight-semibold);
 	}
 
+	.user-avatar.premium {
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		box-shadow: 0 0 0 1.5px var(--bg-base), 0 0 0 2.5px rgba(201, 162, 39, 0.45);
+	}
+
 	.user-name {
 		max-width: 100px;
 		overflow: hidden;
@@ -488,6 +521,12 @@
 		font-size: var(--text-sm);
 		font-weight: var(--weight-semibold);
 		flex-shrink: 0;
+	}
+
+	.drawer-user-avatar.premium {
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		box-shadow: 0 0 0 1.5px var(--bg-base), 0 0 0 2.5px rgba(201, 162, 39, 0.45);
 	}
 
 </style>

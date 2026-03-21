@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { t, locale, formatDateTime } from '$lib/i18n';
+	import { t, locale, formatDateTime, formatDate } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { computeSafeAddress } from '$lib/auth/compute-safe-address.js';
 	import { fetchAllBalances, formatBalance, type TokenBalance } from '$lib/auth/wallet.js';
+	import { getSubscriptionInfo, type SubscriptionInfo } from '$lib/subscription';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import { onMount } from 'svelte';
+	import type { Address } from 'viem';
 
 	// Decode base64url from route param
 	interface ProfileData {
@@ -24,6 +26,8 @@
 	let balancesLoading = $state(false);
 	let balancesLoaded = $state(false);
 	let copiedField = $state<string | null>(null);
+	let subInfo = $state<SubscriptionInfo | null>(null);
+	let subLoaded = $state(false);
 
 	function decodeProfile(code: string): ProfileData | null {
 		try {
@@ -52,7 +56,19 @@
 		profileData = data;
 		safeAddress = computeSafeAddress(data.publicKey);
 		loadBalances();
+		loadSubscription();
 	});
+
+	async function loadSubscription() {
+		if (!safeAddress) return;
+		try {
+			subInfo = await getSubscriptionInfo(safeAddress as Address);
+		} catch {
+			// Contract not deployed or RPC error
+		} finally {
+			subLoaded = true;
+		}
+	}
 
 	async function loadBalances() {
 		if (!safeAddress) return;
@@ -110,12 +126,42 @@
 		<div class="profile-card" use:fadeInUp={{ delay: 0 }}>
 			<!-- Avatar + Name -->
 			<div class="profile-header">
-				<div class="avatar">
+				<div class="avatar" class:premium={subInfo?.isPremium}>
 					{profileData.name.charAt(0).toUpperCase()}
 				</div>
-				<h1 class="name">{profileData.name}</h1>
+				<div class="name-row">
+					<h1 class="name">{profileData.name}</h1>
+					{#if subInfo?.isPremium}
+						<span class="premium-badge">
+							<svg viewBox="0 0 16 16" fill="currentColor" width="10" height="10">
+								<path d="M8 1.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.2 3.8 14.5l.8-4.7L1.2 6.5l4.7-.7z"/>
+							</svg>
+							PREMIUM
+						</span>
+					{/if}
+				</div>
 				<span class="created-at">{formatDateTime(new Date(profileData.createdAt))}</span>
 			</div>
+
+			<!-- Subscription Status -->
+			{#if subLoaded && subInfo?.isPremium}
+				<div class="sub-status" use:fadeInUp={{ delay: 50 }}>
+					<div class="sub-status-header">
+						<span class="label">{t('sub.membership')}</span>
+						<span class="sub-badge-active">{t('sub.active')}</span>
+					</div>
+					<div class="sub-status-info">
+						<div class="sub-row">
+							<span class="sub-label">{t('sub.expiresOn')}</span>
+							<span class="sub-value">{formatDate(new Date(Number(subInfo.expiryTime) * 1000))}</span>
+						</div>
+						<div class="sub-row">
+							<span class="sub-label">{t('sub.remaining')}</span>
+							<span class="sub-value">{Math.ceil(Number(subInfo.remainingTime) / 86400)} {t('sub.days')}</span>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Info Section -->
 			<div class="info-section" use:fadeInUp={{ delay: 100 }}>
@@ -292,6 +338,84 @@
 	.created-at {
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
+	}
+
+	.name-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.avatar.premium {
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		box-shadow: 0 0 0 3px var(--bg-base), 0 0 0 4px rgba(201, 162, 39, 0.45);
+	}
+
+	.premium-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		padding: 4px 10px;
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		border-radius: 4px;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Subscription Status */
+	.sub-status {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.sub-status-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.sub-badge-active {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		padding: 2.5px 8px;
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		border-radius: var(--radius-full);
+		text-transform: uppercase;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	}
+
+	.sub-status-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+	}
+
+	.sub-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.sub-label {
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+	}
+
+	.sub-value {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-base);
 	}
 
 	/* Info */

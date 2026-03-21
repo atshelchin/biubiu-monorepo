@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { formatDateTime } from '$lib/i18n';
+	import { formatDateTime, formatDate } from '$lib/i18n';
 	import { localizeHref } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
@@ -8,13 +8,17 @@
 	import SendModal from './SendModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
+	import { subscriptionStore } from '$lib/subscription';
+	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
 
 	interface Props {
 		open: boolean;
 		onClose: () => void;
+		/** 打开订阅弹窗（由 PageHeader 处理，避免弹窗嵌套） */
+		onSubscription?: (mode: 'subscribe' | 'renew' | 'transfer') => void;
 	}
 
-	let { open, onClose }: Props = $props();
+	let { open, onClose, onSubscription }: Props = $props();
 
 	let showLogoutConfirm = $state(false);
 	let showDeposit = $state(false);
@@ -81,10 +85,13 @@
 		<div class="profile-content">
 			<!-- Avatar + Name -->
 			<div class="profile-header">
-				<div class="profile-avatar">
+				<div class="profile-avatar" class:premium={subscriptionStore.isPremium}>
 					{user.name.charAt(0).toUpperCase()}
 				</div>
-				<div class="profile-name">{user.name}</div>
+				<div class="profile-name-row">
+					<span class="profile-name">{user.name}</span>
+					<SubscriptionBadge size="md" />
+				</div>
 				<div class="profile-created">{formatDateTime(new Date(user.createdAt))}</div>
 				<a class="profile-link" href={profileUrl} onclick={onClose}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -94,6 +101,50 @@
 					</svg>
 					{t('auth.profile.viewProfile')}
 				</a>
+			</div>
+
+			<!-- Subscription -->
+			<div class="sub-section">
+				{#if subscriptionStore.isPremium}
+					<div class="sub-active">
+						<div class="sub-active-header">
+							<span class="section-label">{t('sub.membership')}</span>
+							<span class="sub-active-badge">{t('sub.active')}</span>
+						</div>
+						<div class="sub-active-info">
+							<div class="sub-info-row">
+								<span class="sub-info-label">{t('sub.expiresOn')}</span>
+								<span class="sub-info-value">
+									{#if subscriptionStore.expiryDate}
+										{formatDate(subscriptionStore.expiryDate)}
+									{/if}
+								</span>
+							</div>
+							<div class="sub-info-row">
+								<span class="sub-info-label">{t('sub.remaining')}</span>
+								<span class="sub-info-value">{subscriptionStore.remainingDays} {t('sub.days')}</span>
+							</div>
+						</div>
+						<div class="sub-actions">
+							<button class="sub-action-btn" onclick={() => { onClose(); onSubscription?.('renew'); }}>
+								{t('sub.renew')}
+							</button>
+							<button class="sub-action-btn secondary" onclick={() => { onClose(); onSubscription?.('transfer'); }}>
+								{t('sub.transfer')}
+							</button>
+						</div>
+					</div>
+				{:else}
+					<button class="sub-cta" onclick={() => { onClose(); onSubscription?.('subscribe'); }}>
+						<div class="sub-cta-text">
+							<span class="sub-cta-title">{t('sub.upgradePro')}</span>
+							<span class="sub-cta-desc">{t('sub.upgradeDesc')}</span>
+						</div>
+						<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="9 18 15 12 9 6"/>
+						</svg>
+					</button>
+				{/if}
 			</div>
 
 			<!-- Wallet -->
@@ -234,10 +285,22 @@
 		font-weight: var(--weight-bold);
 	}
 
+	.profile-name-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
 	.profile-name {
 		font-size: var(--text-lg);
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
+	}
+
+	.profile-avatar.premium {
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		box-shadow: 0 0 0 2.5px var(--bg-base), 0 0 0 3.5px rgba(201, 162, 39, 0.5);
 	}
 
 	.profile-created {
@@ -265,6 +328,138 @@
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		font-weight: var(--weight-medium);
+	}
+
+	/* Subscription */
+	.sub-section {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.sub-active {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.sub-active-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.sub-active-badge {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		padding: 2.5px 8px;
+		background: linear-gradient(160deg, #c9a227, #a8851a);
+		color: #fff;
+		border-radius: var(--radius-full);
+		text-transform: uppercase;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	}
+
+	.sub-active-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+	}
+
+	.sub-info-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.sub-info-label {
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+	}
+
+	.sub-info-value {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-base);
+	}
+
+	.sub-actions {
+		display: flex;
+		gap: var(--space-2);
+	}
+
+	.sub-action-btn {
+		flex: 1;
+		padding: var(--space-2) var(--space-3);
+		border: none;
+		border-radius: var(--radius-md);
+		background: var(--accent);
+		color: var(--accent-fg, var(--fg-inverse));
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.sub-action-btn:hover {
+		background: var(--accent-hover);
+	}
+
+	.sub-action-btn.secondary {
+		background: var(--bg-raised);
+		color: var(--fg-base);
+		border: 1px solid var(--border-base);
+	}
+
+	.sub-action-btn.secondary:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-strong);
+	}
+
+	.sub-cta {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		width: 100%;
+		padding: var(--space-3) var(--space-4);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
+		background: transparent;
+		cursor: pointer;
+		text-align: left;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.sub-cta:hover {
+		border-color: var(--border-base);
+		background: var(--bg-raised);
+	}
+
+	.sub-cta-text {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.sub-cta-title {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+	}
+
+	.sub-cta-desc {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+
+	.sub-cta .chevron-icon {
+		flex-shrink: 0;
+		color: var(--fg-faint);
 	}
 
 	/* Address */

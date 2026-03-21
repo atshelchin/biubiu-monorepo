@@ -190,10 +190,6 @@ contract BiuBiuPremium is ERC721Base, IBiuBiuPremium, ReentrancyGuard {
         emit Activated(msg.sender, tokenId);
     }
 
-    // ============ Receive ETH ============
-
-    receive() external payable {}
-
     // ============ Internal: Pricing ============
 
     function _getTierInfo(SubscriptionTier tier) private view returns (uint256 priceWei, uint256 duration) {

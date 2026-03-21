@@ -64,7 +64,7 @@
 		inset: 0;
 		background: var(--bg-overlay);
 		backdrop-filter: blur(var(--blur-sm));
-		z-index: var(--z-modal);
+		z-index: calc(var(--z-modal) + 20);
 		animation: fadeIn var(--motion-fast) var(--easing);
 	}
 
@@ -75,7 +75,7 @@
 
 	.confirm-panel {
 		position: fixed;
-		z-index: calc(var(--z-modal) + 1);
+		z-index: calc(var(--z-modal) + 21);
 		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);

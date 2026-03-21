@@ -5,7 +5,7 @@
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import DepositModal from './DepositModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
-	import { fetchAllBalances, formatBalance, type ChainBalance } from './wallet.js';
+	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
 
 	interface Props {
 		open: boolean;
@@ -16,16 +16,15 @@
 
 	let showLogoutConfirm = $state(false);
 	let showDeposit = $state(false);
-	let showDetails = $state(false);
 	let copiedField = $state<string | null>(null);
-	let balances = $state<ChainBalance[]>([]);
+	let balances = $state<TokenBalance[]>([]);
 	let balancesLoading = $state(false);
+	let balancesLoaded = $state(false);
 
 	const user = $derived(authStore.user);
 
-	// 打开 modal 时加载余额
 	$effect(() => {
-		if (open && user?.safeAddress) {
+		if (open && user?.safeAddress && !balancesLoaded) {
 			loadBalances();
 		}
 	});
@@ -35,6 +34,7 @@
 		balancesLoading = true;
 		balances = await fetchAllBalances(user.safeAddress);
 		balancesLoading = false;
+		balancesLoaded = true;
 	}
 
 	function handleLogout() {
@@ -86,7 +86,7 @@
 				</button>
 			</div>
 
-			<!-- Balances -->
+			<!-- Balances (only non-zero) -->
 			<div class="balances-section">
 				<div class="balances-header">
 					<span class="section-label">{t('auth.wallet.balances')}</span>
@@ -98,29 +98,30 @@
 					</button>
 				</div>
 
-				{#if balancesLoading && balances.length === 0}
+				{#if balancesLoading && !balancesLoaded}
 					<div class="balances-loading">
 						<span class="spinner-sm"></span>
 					</div>
 				{:else if balances.length > 0}
 					<div class="balances-list">
-						{#each balances as chain}
+						{#each balances as token}
 							<div class="balance-row">
-								<span class="chain-name">{chain.name}</span>
-								<span class="chain-balance" class:zero={chain.balanceRaw === 0n} class:error={chain.error}>
-									{#if chain.error}
-										—
-									{:else}
-										{formatBalance(chain.balance)} {chain.symbol}
-									{/if}
-								</span>
+								<div class="token-info">
+									<span class="token-symbol">{token.symbol}</span>
+									<span class="token-chain">{token.chainName}</span>
+								</div>
+								<span class="token-balance">{formatBalance(token.balance)}</span>
 							</div>
 						{/each}
+					</div>
+				{:else if balancesLoaded}
+					<div class="balances-empty">
+						<span>{t('auth.wallet.noBalance')}</span>
 					</div>
 				{/if}
 			</div>
 
-			<!-- Actions -->
+			<!-- Deposit -->
 			<button class="action-btn deposit" onclick={() => (showDeposit = true)}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<line x1="12" y1="5" x2="12" y2="19"/>
@@ -128,57 +129,6 @@
 				</svg>
 				{t('auth.wallet.deposit')}
 			</button>
-
-			<!-- Technical Details (collapsed) -->
-			<button
-				class="details-toggle"
-				onclick={() => (showDetails = !showDetails)}
-			>
-				<span>{t('auth.profile.technicalDetails')}</span>
-				<svg
-					class="chevron"
-					class:expanded={showDetails}
-					xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-					fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-				>
-					<polyline points="6 9 12 15 18 9"/>
-				</svg>
-			</button>
-
-			{#if showDetails}
-				<div class="details-fields">
-					<div class="detail-field">
-						<span class="detail-label">{t('auth.profile.rpId')}</span>
-						<span class="detail-value">{user.rpId}</span>
-					</div>
-
-					<div class="detail-field">
-						<span class="detail-label">{t('auth.profile.credentialId')}</span>
-						<button
-							class="detail-value copyable"
-							onclick={() => copyToClipboard(user.credentialId, 'credentialId')}
-						>
-							<span>{user.credentialId}</span>
-							{#if copiedField === 'credentialId'}
-								<span class="copied-badge">{t('auth.profile.copied')}</span>
-							{/if}
-						</button>
-					</div>
-
-					<div class="detail-field">
-						<span class="detail-label">{t('auth.profile.publicKey')}</span>
-						<button
-							class="detail-value copyable"
-							onclick={() => copyToClipboard(user.publicKey, 'publicKey')}
-						>
-							<span>{user.publicKey}</span>
-							{#if copiedField === 'publicKey'}
-								<span class="copied-badge">{t('auth.profile.copied')}</span>
-							{/if}
-						</button>
-					</div>
-				</div>
-			{/if}
 
 			<!-- Logout -->
 			<button class="logout-btn" onclick={() => (showLogoutConfirm = true)}>
@@ -193,7 +143,6 @@
 	{/if}
 </ResponsiveModal>
 
-<!-- Deposit Modal -->
 {#if user}
 	<DepositModal
 		open={showDeposit}
@@ -202,7 +151,6 @@
 	/>
 {/if}
 
-<!-- Logout Confirm -->
 <ConfirmModal
 	open={showLogoutConfirm}
 	title={t('auth.logout')}
@@ -219,7 +167,6 @@
 		gap: var(--space-4);
 	}
 
-	/* Header */
 	.profile-header {
 		display: flex;
 		flex-direction: column;
@@ -253,7 +200,6 @@
 		color: var(--fg-subtle);
 	}
 
-	/* Section label */
 	.section-label {
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
@@ -262,7 +208,7 @@
 		font-weight: var(--weight-medium);
 	}
 
-	/* Wallet address */
+	/* Address */
 	.wallet-section {
 		display: flex;
 		flex-direction: column;
@@ -295,17 +241,8 @@
 		line-height: var(--leading-relaxed);
 	}
 
-	.copy-icon {
-		flex-shrink: 0;
-		color: var(--fg-faint);
-	}
-
-	.copied-badge {
-		flex-shrink: 0;
-		font-size: var(--text-xs);
-		color: var(--success);
-		font-family: var(--font-sans);
-	}
+	.copy-icon { flex-shrink: 0; color: var(--fg-faint); }
+	.copied-badge { flex-shrink: 0; font-size: var(--text-xs); color: var(--success); }
 
 	/* Balances */
 	.balances-section {
@@ -332,22 +269,11 @@
 		transition: color var(--motion-fast) var(--easing);
 	}
 
-	.refresh-btn:hover:not(:disabled) {
-		color: var(--fg-muted);
-	}
+	.refresh-btn:hover:not(:disabled) { color: var(--fg-muted); }
+	.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-	.refresh-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-
-	.spinning {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+	.spinning { animation: spin 1s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
 
 	.balances-loading {
 		display: flex;
@@ -383,26 +309,37 @@
 		border-top: 1px solid var(--border-subtle);
 	}
 
-	.chain-name {
+	.token-info {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-2);
+	}
+
+	.token-symbol {
 		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
 		color: var(--fg-base);
 	}
 
-	.chain-balance {
+	.token-chain {
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+	}
+
+	.token-balance {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		color: var(--fg-base);
 	}
 
-	.chain-balance.zero {
+	.balances-empty {
+		padding: var(--space-3);
+		text-align: center;
+		font-size: var(--text-xs);
 		color: var(--fg-faint);
 	}
 
-	.chain-balance.error {
-		color: var(--fg-faint);
-	}
-
-	/* Action buttons */
+	/* Actions */
 	.action-btn {
 		display: flex;
 		align-items: center;
@@ -425,77 +362,6 @@
 
 	.action-btn.deposit:hover {
 		background: var(--accent-hover);
-	}
-
-	/* Technical details toggle */
-	.details-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-1);
-		padding: var(--space-1) 0;
-		border: none;
-		background: transparent;
-		color: var(--fg-faint);
-		font-size: var(--text-xs);
-		cursor: pointer;
-		transition: color var(--motion-fast) var(--easing);
-	}
-
-	.details-toggle:hover {
-		color: var(--fg-subtle);
-	}
-
-	.chevron {
-		transition: transform var(--motion-fast) var(--easing);
-	}
-
-	.chevron.expanded {
-		transform: rotate(180deg);
-	}
-
-	/* Detail fields */
-	.details-fields {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3);
-		background: var(--bg-sunken);
-		border-radius: var(--radius-md);
-	}
-
-	.detail-field {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.detail-label {
-		font-size: var(--text-xs);
-		color: var(--fg-faint);
-	}
-
-	.detail-value {
-		font-family: var(--font-mono);
-		font-size: var(--text-xs);
-		color: var(--fg-subtle);
-		word-break: break-all;
-		line-height: var(--leading-relaxed);
-	}
-
-	.detail-value.copyable {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-2);
-		padding: 0;
-		border: none;
-		background: transparent;
-		cursor: pointer;
-		text-align: left;
-	}
-
-	.detail-value.copyable:hover {
-		color: var(--fg-muted);
 	}
 
 	/* Logout */
@@ -523,9 +389,6 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.spinning,
-		.spinner-sm {
-			animation: none;
-		}
+		.spinning, .spinner-sm { animation: none; }
 	}
 </style>

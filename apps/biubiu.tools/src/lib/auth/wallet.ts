@@ -1,82 +1,124 @@
 /**
  * 多链钱包余额查询。
  *
- * 通过公共 RPC 查询 Safe 地址在各链上的 native token 余额。
- * 主网络: Arbitrum，同时支持查询其他 EVM 链余额。
+ * 查询 native token + USDC/USDT 余额，只返回有余额的条目。
  */
-import { createPublicClient, http, formatEther, type Chain } from 'viem';
+import { createPublicClient, http, formatEther, formatUnits, erc20Abi, type Chain } from 'viem';
 import { arbitrum, mainnet, base, optimism, polygon } from 'viem/chains';
 
-export interface ChainBalance {
+export interface TokenBalance {
 	chainId: number;
-	name: string;
+	chainName: string;
 	symbol: string;
-	balance: string; // formatted (e.g. "0.1234")
+	balance: string;
 	balanceRaw: bigint;
-	loading: boolean;
-	error: boolean;
 }
 
-export const SUPPORTED_CHAINS: { chain: Chain; symbol: string }[] = [
-	{ chain: arbitrum, symbol: 'ETH' },
-	{ chain: mainnet, symbol: 'ETH' },
-	{ chain: base, symbol: 'ETH' },
-	{ chain: optimism, symbol: 'ETH' },
-	{ chain: polygon, symbol: 'POL' }
+/** 各链 USDC/USDT 合约地址 */
+const STABLECOINS: Record<number, { symbol: string; address: `0x${string}`; decimals: number }[]> = {
+	[arbitrum.id]: [
+		{ symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6 },
+		{ symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6 }
+	],
+	[mainnet.id]: [
+		{ symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
+		{ symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6 }
+	],
+	[base.id]: [
+		{ symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 },
+		{ symbol: 'USDT', address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6 }
+	],
+	[optimism.id]: [
+		{ symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', decimals: 6 },
+		{ symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6 }
+	],
+	[polygon.id]: [
+		{ symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6 },
+		{ symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6 }
+	]
+};
+
+const CHAINS: { chain: Chain; nativeSymbol: string }[] = [
+	{ chain: arbitrum, nativeSymbol: 'ETH' },
+	{ chain: mainnet, nativeSymbol: 'ETH' },
+	{ chain: base, nativeSymbol: 'ETH' },
+	{ chain: optimism, nativeSymbol: 'ETH' },
+	{ chain: polygon, nativeSymbol: 'POL' }
 ];
 
 /**
- * 查询单条链的余额
+ * 查询单链的所有余额（native + stablecoins），只返回非零项
  */
-async function fetchChainBalance(
+async function fetchChainBalances(
 	chain: Chain,
-	symbol: string,
+	nativeSymbol: string,
 	address: `0x${string}`
-): Promise<ChainBalance> {
-	const result: ChainBalance = {
-		chainId: chain.id,
-		name: chain.name,
-		symbol,
-		balance: '0',
-		balanceRaw: 0n,
-		loading: false,
-		error: false
-	};
+): Promise<TokenBalance[]> {
+	const results: TokenBalance[] = [];
 
 	try {
-		const client = createPublicClient({
-			chain,
-			transport: http()
-		});
+		const client = createPublicClient({ chain, transport: http() });
 
-		const balanceRaw = await client.getBalance({ address });
-		result.balanceRaw = balanceRaw;
-		result.balance = formatEther(balanceRaw);
+		// 并发查询 native + 所有 stablecoin
+		const tokens = STABLECOINS[chain.id] ?? [];
+		const [nativeBalance, ...tokenBalances] = await Promise.all([
+			client.getBalance({ address }),
+			...tokens.map((t) =>
+				client.readContract({
+					address: t.address,
+					abi: erc20Abi,
+					functionName: 'balanceOf',
+					args: [address]
+				})
+			)
+		]);
+
+		if (nativeBalance > 0n) {
+			results.push({
+				chainId: chain.id,
+				chainName: chain.name,
+				symbol: nativeSymbol,
+				balance: formatEther(nativeBalance),
+				balanceRaw: nativeBalance
+			});
+		}
+
+		tokens.forEach((t, i) => {
+			const raw = tokenBalances[i] as bigint;
+			if (raw > 0n) {
+				results.push({
+					chainId: chain.id,
+					chainName: chain.name,
+					symbol: t.symbol,
+					balance: formatUnits(raw, t.decimals),
+					balanceRaw: raw
+				});
+			}
+		});
 	} catch {
-		result.error = true;
+		// 链不可达，跳过
 	}
 
-	return result;
-}
-
-/**
- * 并发查询所有链的余额
- */
-export async function fetchAllBalances(address: string): Promise<ChainBalance[]> {
-	const addr = address as `0x${string}`;
-	const results = await Promise.all(
-		SUPPORTED_CHAINS.map(({ chain, symbol }) => fetchChainBalance(chain, symbol, addr))
-	);
 	return results;
 }
 
 /**
- * 格式化余额显示（最多 6 位小数，去尾零）
+ * 并发查询所有链余额，只返回有余额的条目
+ */
+export async function fetchAllBalances(address: string): Promise<TokenBalance[]> {
+	const addr = address as `0x${string}`;
+	const perChain = await Promise.all(
+		CHAINS.map(({ chain, nativeSymbol }) => fetchChainBalances(chain, nativeSymbol, addr))
+	);
+	return perChain.flat();
+}
+
+/**
+ * 格式化余额（最多 6 位小数，去尾零）
  */
 export function formatBalance(balance: string): string {
 	const num = parseFloat(balance);
 	if (num === 0) return '0';
 	if (num < 0.000001) return '<0.000001';
-	// 最多 6 位小数，去掉尾部零
 	return num.toFixed(6).replace(/\.?0+$/, '');
 }

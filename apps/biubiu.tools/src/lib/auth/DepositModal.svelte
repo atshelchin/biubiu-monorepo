@@ -30,7 +30,7 @@
 	}
 </script>
 
-<ResponsiveModal {open} {onClose} title={t('auth.wallet.deposit')}>
+<ResponsiveModal {open} {onClose} title={t('auth.wallet.deposit')} zOffset={10}>
 	<div class="deposit-content">
 		<p class="deposit-description">{t('auth.wallet.depositDescription')}</p>
 
@@ -42,9 +42,9 @@
 					class="qr-code"
 					xmlns="http://www.w3.org/2000/svg"
 				>
-					{#each { length: qrMatrix.size } as _, y}
-						{#each { length: qrMatrix.size } as _, x}
-							{#if qrMatrix.data[y * qrMatrix.size + x]}
+					{#each qrMatrix.data as row, y}
+						{#each row as cell, x}
+							{#if cell}
 								<rect {x} {y} width="1" height="1" />
 							{/if}
 						{/each}

@@ -61,6 +61,26 @@
 		error = null;
 		result = null;
 
+		// 判断是否需要 ERC-20 代付 gas
+		// 如果该网络没有 native token 余额，用 stablecoin (USDC/USDT) 代付
+		const sameNetworkNative = balances.find(
+			(b) => b.network === selectedToken.network && !b.tokenAddress
+		);
+		const hasNativeGas = sameNetworkNative && parseFloat(sameNetworkNative.balance) > 0.01;
+
+		let gasTokenAddress: string | null = null;
+		if (!hasNativeGas) {
+			// 找该网络上的 stablecoin 作为 gas token
+			const stablecoin = balances.find(
+				(b) => b.network === selectedToken.network &&
+					b.tokenAddress &&
+					(b.symbol === 'USDC' || b.symbol === 'USDT')
+			);
+			if (stablecoin?.tokenAddress) {
+				gasTokenAddress = stablecoin.tokenAddress;
+			}
+		}
+
 		const sendResult = await sendToken({
 			safeAddress: user.safeAddress as `0x${string}`,
 			publicKeyHex: user.publicKey,
@@ -71,6 +91,7 @@
 			network: selectedToken.network,
 			tokenAddress: selectedToken.tokenAddress ?? null,
 			decimals: selectedToken.decimals,
+			gasTokenAddress,
 			onStatus: (s) => { status = s; }
 		});
 

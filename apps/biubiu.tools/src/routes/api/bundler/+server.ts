@@ -76,7 +76,11 @@ const BUNDLER_METHODS = new Set([
 	'eth_sendUserOperation',
 	'eth_getUserOperationReceipt',
 	'eth_getUserOperationByHash',
-	'eth_supportedEntryPoints'
+	'eth_supportedEntryPoints',
+	// Paymaster methods
+	'pm_getPaymasterStubData',
+	'pm_getPaymasterData',
+	'pimlico_getTokenQuotes'
 ]);
 
 const RPC_METHODS = new Set([

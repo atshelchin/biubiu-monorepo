@@ -252,7 +252,7 @@
 					</div>
 				{:else if balances.length > 0}
 					<div class="balances-list">
-						{#each balances as token}
+						{#each balances.filter(t => !t.spam) as token}
 							{@const valueUsd = tokenValueUsd(token)}
 							<div class="balance-row">
 								<div class="token-info">

@@ -155,6 +155,8 @@
   "auth.wallet.refresh": "Refresh",
   "auth.wallet.deposit": "Deposit",
   "auth.wallet.noBalance": "No assets yet — deposit to get started",
+  "auth.wallet.showUnverified": "{count} unverified token(s)",
+  "auth.wallet.hideUnverified": "Hide unverified",
   "auth.wallet.supportedNetworks": "Supported Networks",
   "auth.wallet.depositReceived": "Deposit received!",
   "auth.wallet.waitingForDeposit": "Listening for incoming deposits...",

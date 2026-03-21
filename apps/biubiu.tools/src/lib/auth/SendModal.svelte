@@ -143,6 +143,7 @@
 				<!-- Step 1: Select Token -->
 				<div class="token-list">
 					{#each balances as token, i}
+						{#if !token.spam}
 						{@const val = tokenValueUsd(token)}
 						<button class="token-row" onclick={() => selectToken(i)}>
 							<div class="token-info">
@@ -159,6 +160,7 @@
 								<polyline points="9 18 15 12 9 6"/>
 							</svg>
 						</button>
+						{/if}
 					{/each}
 				</div>
 

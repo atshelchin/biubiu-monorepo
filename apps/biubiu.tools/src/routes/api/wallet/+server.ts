@@ -15,6 +15,17 @@ const NETWORK_NAMES: Record<string, string> = {
 	'avax-mainnet': 'Avalanche'
 };
 
+/** Native token 信息（Alchemy 对 native token 可能不返回 metadata） */
+const NATIVE_TOKENS: Record<string, { symbol: string; name: string }> = {
+	'eth-mainnet': { symbol: 'ETH', name: 'Ether' },
+	'arb-mainnet': { symbol: 'ETH', name: 'Ether' },
+	'base-mainnet': { symbol: 'ETH', name: 'Ether' },
+	'opt-mainnet': { symbol: 'ETH', name: 'Ether' },
+	'matic-mainnet': { symbol: 'POL', name: 'POL' },
+	'bnb-mainnet': { symbol: 'BNB', name: 'BNB' },
+	'avax-mainnet': { symbol: 'AVAX', name: 'Avalanche' }
+};
+
 const SUPPORTED_NETWORKS = Object.keys(NETWORK_NAMES);
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -73,14 +84,19 @@ export const GET: RequestHandler = async ({ url }) => {
 			const balance = formatTokenBalance(rawBalance, decimals);
 			if (parseFloat(balance) === 0) continue;
 
+			const isNative = !token.tokenAddress || token.tokenAddress === '0x0000000000000000000000000000000000000000';
+			const nativeFallback = NATIVE_TOKENS[token.network];
+			const symbol = token.tokenMetadata?.symbol || (isNative ? nativeFallback?.symbol : null) || '???';
+			const name = token.tokenMetadata?.name || (isNative ? nativeFallback?.name : null) || '';
+
 			tokens.push({
 				network: token.network,
 				chainName: NETWORK_NAMES[token.network] ?? token.network,
-				symbol: token.tokenMetadata?.symbol ?? '???',
+				symbol,
 				balance,
 				decimals,
 				logo: token.tokenMetadata?.logo ?? null,
-				name: token.tokenMetadata?.name ?? ''
+				name
 			});
 		}
 

@@ -198,6 +198,7 @@
   "sub.bestValue": "Best Value",
   "sub.payAmount": "Pay",
   "sub.network": "Network",
+  "sub.contract": "Contract",
   "sub.priceNote": "Price includes 3% buffer for price fluctuation. Excess ETH is auto-refunded.",
   "sub.priceError": "Failed to load pricing. Please try again.",
   "sub.expiresOn": "Expires",

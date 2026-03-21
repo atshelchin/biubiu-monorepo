@@ -378,6 +378,17 @@
 						</div>
 					{/if}
 					<p class="price-note">{t('sub.priceNote')}</p>
+					<div class="contract-info">
+						<span class="contract-label">{t('sub.contract')}</span>
+						<a class="contract-link" href="https://arbiscan.io/address/{PREMIUM_CONTRACT_ADDRESS}" target="_blank" rel="noopener noreferrer">
+							{PREMIUM_CONTRACT_ADDRESS.slice(0, 6)}...{PREMIUM_CONTRACT_ADDRESS.slice(-4)}
+							<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+								<polyline points="15 3 21 3 21 9"/>
+								<line x1="10" y1="14" x2="21" y2="3"/>
+							</svg>
+						</a>
+					</div>
 				{/if}
 			</div>
 
@@ -534,6 +545,35 @@
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 		margin: var(--space-1) 0 0;
+	}
+
+	.contract-info {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: var(--space-1);
+		padding-top: var(--space-2);
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.contract-label {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+
+	.contract-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.contract-link:hover {
+		color: var(--accent);
 	}
 
 	.price-loading {

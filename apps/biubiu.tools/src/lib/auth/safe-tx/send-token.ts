@@ -154,7 +154,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			// approve paymaster 花费 gas token（用一个较大的固定额度，实际只扣需要的）
 			const approveData = encodeFunctionData({
 				abi: erc20Abi, functionName: 'approve',
-				args: [paymasterAddress, parseUnits('10', decimals)] // 授权足够的金额
+				args: [paymasterAddress, 2n ** 128n - 1n] // 单笔足够的授权额度
 			});
 
 			if (gasTokenAddress === tokenAddress) {
@@ -183,7 +183,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 
 			const approveData = encodeFunctionData({
 				abi: erc20Abi, functionName: 'approve',
-				args: [paymasterAddress, parseUnits('10', 6)] // USDC/USDT 6 decimals
+				args: [paymasterAddress, 2n ** 128n - 1n]
 			});
 
 			// Native transfer 不需要 data，但 MultiSend 需要包装

@@ -113,7 +113,7 @@ export function encodeSetupData(x: bigint, y: bigint): Hex {
 			stateMutability: 'nonpayable'
 		}],
 		functionName: 'configure',
-		args: [{ x, y, verifiers: 0n }]
+		args: [{ x, y, verifiers: 0x100n }] // RIP-7212 P256 预编译地址
 	});
 
 	// 用 MultiSend 批量 delegatecall

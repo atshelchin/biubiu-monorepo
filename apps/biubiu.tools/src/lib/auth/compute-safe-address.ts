@@ -20,7 +20,7 @@ import {
 
 // ============ Contract Addresses (Base Mainnet) ============
 
-const CONTRACTS = {
+export const CONTRACTS = {
 	// Safe 1.4.1
 	safeProxyFactory: '0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67' as const,
 	safeSingleton: '0x29fcB43b46531BcA003ddC8FCB67FFE91900C762' as const, // SafeL2
@@ -63,7 +63,7 @@ export function parseP256PublicKey(publicKeyHex: string): { x: bigint; y: bigint
  * Encode Safe.setup() calldata
  * owners: [SafeWebAuthnSharedSigner]，threshold: 1
  */
-function encodeSetupData(): Hex {
+export function encodeSetupData(): Hex {
 	// enableModules([safe4337Module])
 	const enableModulesData = encodeFunctionData({
 		abi: [
@@ -118,7 +118,7 @@ function encodeSetupData(): Hex {
 /**
  * 从 P256 公钥计算 saltNonce（确保不同公钥产生不同 Safe 地址）
  */
-function calculateSaltNonce(x: bigint, y: bigint): bigint {
+export function calculateSaltNonce(x: bigint, y: bigint): bigint {
 	const hash = keccak256(
 		encodeAbiParameters(
 			[{ type: 'uint256' }, { type: 'uint256' }],

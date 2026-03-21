@@ -4,6 +4,7 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import DepositModal from './DepositModal.svelte';
+	import SendModal from './SendModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
 
@@ -16,6 +17,7 @@
 
 	let showLogoutConfirm = $state(false);
 	let showDeposit = $state(false);
+	let showSend = $state(false);
 	let copiedField = $state<string | null>(null);
 	let balances = $state<TokenBalance[]>([]);
 	let balancesLoading = $state(false);
@@ -32,6 +34,11 @@
 			balancesLoaded = false;
 		}
 	});
+
+	/** Arbitrum 上的 ETH 余额（供 Send 使用） */
+	const arbEthBalance = $derived(
+		balances.find((b) => b.network === 'arb-mainnet' && b.symbol === 'ETH')?.balance ?? '0'
+	);
 
 	async function loadBalances() {
 		if (!user?.safeAddress) return;
@@ -125,14 +132,23 @@
 				{/if}
 			</div>
 
-			<!-- Deposit -->
-			<button class="action-btn deposit" onclick={() => (showDeposit = true)}>
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="12" y1="5" x2="12" y2="19"/>
-					<polyline points="19 12 12 19 5 12"/>
-				</svg>
-				{t('auth.wallet.deposit')}
-			</button>
+			<!-- Actions -->
+			<div class="action-row">
+				<button class="action-btn deposit" onclick={() => (showDeposit = true)}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="12" y1="5" x2="12" y2="19"/>
+						<polyline points="19 12 12 19 5 12"/>
+					</svg>
+					{t('auth.wallet.deposit')}
+				</button>
+				<button class="action-btn send" onclick={() => (showSend = true)}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="12" y1="19" x2="12" y2="5"/>
+						<polyline points="5 12 12 5 19 12"/>
+					</svg>
+					{t('auth.send.title')}
+				</button>
+			</div>
 
 			<!-- Logout -->
 			<button class="logout-btn" onclick={() => (showLogoutConfirm = true)}>
@@ -152,6 +168,11 @@
 		open={showDeposit}
 		onClose={() => (showDeposit = false)}
 		address={user.safeAddress}
+	/>
+	<SendModal
+		open={showSend}
+		onClose={() => { showSend = false; loadBalances(); }}
+		balance={arbEthBalance}
 	/>
 {/if}
 
@@ -344,6 +365,11 @@
 	}
 
 	/* Actions */
+	.action-row {
+		display: flex;
+		gap: var(--space-2);
+	}
+
 	.action-btn {
 		display: flex;
 		align-items: center;
@@ -366,6 +392,17 @@
 
 	.action-btn.deposit:hover {
 		background: var(--accent-hover);
+	}
+
+	.action-btn.send {
+		background: var(--bg-raised);
+		color: var(--fg-base);
+		border: 1px solid var(--border-base);
+	}
+
+	.action-btn.send:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-strong);
 	}
 
 	/* Logout */

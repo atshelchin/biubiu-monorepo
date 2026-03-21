@@ -9,6 +9,7 @@
  */
 import type { AuthUser, IndexChallenge, LocalKey, StoredKey } from './types.js';
 import { computeSafeAddress } from './compute-safe-address.js';
+import { toBase64url, fromBase64url, bufToHex, derToRawSignature } from './crypto-utils.js';
 
 const INDEX_BASE = 'https://webauthnp256-publickey-index.biubiu.tools';
 const RP_NAME = 'BiuBiu Tools';
@@ -23,58 +24,9 @@ function getRpId(): string {
 	return 'biubiu.tools';
 }
 
-function toBase64url(buffer: ArrayBuffer): string {
-	const bytes = new Uint8Array(buffer);
-	let str = '';
-	for (const b of bytes) str += String.fromCharCode(b);
-	return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function fromBase64url(b64url: string): ArrayBuffer {
-	const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
-	const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-	const binary = atob(b64 + pad);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	return bytes.buffer;
-}
-
-function bufToHex(buffer: ArrayBuffer | Uint8Array): string {
-	const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-	return Array.from(bytes)
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-}
-
 function extractRawP256Key(spki: ArrayBuffer): Uint8Array {
 	const bytes = new Uint8Array(spki);
 	return bytes.slice(bytes.length - 65);
-}
-
-function derToRawSignature(der: ArrayBuffer): Uint8Array {
-	const bytes = new Uint8Array(der);
-	let offset = 2;
-
-	if (bytes[offset] !== 0x02) throw new Error('Invalid DER signature');
-	offset++;
-	const rLen = bytes[offset++];
-	let r = bytes.slice(offset, offset + rLen);
-	offset += rLen;
-
-	if (bytes[offset] !== 0x02) throw new Error('Invalid DER signature');
-	offset++;
-	const sLen = bytes[offset++];
-	let s = bytes.slice(offset, offset + sLen);
-
-	if (r.length === 33 && r[0] === 0) r = r.slice(1);
-	if (s.length === 33 && s[0] === 0) s = s.slice(1);
-
-	const raw = new Uint8Array(64);
-	raw.set(r.length <= 32 ? r : r.slice(r.length - 32), 32 - Math.min(r.length, 32));
-	raw.set(s.length <= 32 ? s : s.slice(s.length - 32), 64 - Math.min(s.length, 32));
-	return raw;
 }
 
 // ─── LocalKey 本地存储（通过 credentialId 索引） ───

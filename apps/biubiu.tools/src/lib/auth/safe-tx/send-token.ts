@@ -11,8 +11,7 @@ import {
 	numberToHex,
 	encodeFunctionData,
 	erc20Abi,
-	parseUnits,
-	concat
+	parseUnits
 } from 'viem';
 import {
 	buildCallData,
@@ -233,8 +232,12 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			};
 
 			const stubData = await getPaymasterStubData(stubUserOp, network, gasTokenAddress);
-			// 组装 paymasterAndData = paymaster + paymasterData
-			paymasterAndData = concat([stubData.paymaster as Hex, stubData.paymasterData]) as Hex;
+			// 组装 paymasterAndData = paymaster + verificationGasLimit(16) + postOpGasLimit(16) + data
+			const pmVerGas = stubData.paymasterVerificationGasLimit ?? '0x00';
+			const pmPostGas = stubData.paymasterPostOpGasLimit ?? '0x00';
+			const pmVerGasPad = BigInt(pmVerGas).toString(16).padStart(32, '0');
+			const pmPostGasPad = BigInt(pmPostGas).toString(16).padStart(32, '0');
+			paymasterAndData = (stubData.paymaster + pmVerGasPad + pmPostGasPad + (stubData.paymasterData?.slice(2) ?? '')) as Hex;
 		}
 
 		const dummyUserOp: UserOperation = {
@@ -273,7 +276,9 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			};
 
 			const pmData = await getPaymasterData(finalStubOp, network, gasTokenAddress);
-			paymasterAndData = concat([pmData.paymaster as Hex, pmData.paymasterData]) as Hex;
+			const pmVerGas2 = BigInt(pmData.paymasterVerificationGasLimit ?? '0x00').toString(16).padStart(32, '0');
+			const pmPostGas2 = BigInt(pmData.paymasterPostOpGasLimit ?? '0x00').toString(16).padStart(32, '0');
+			paymasterAndData = (pmData.paymaster + pmVerGas2 + pmPostGas2 + (pmData.paymasterData?.slice(2) ?? '')) as Hex;
 		}
 
 		// 5. 计算 SafeOp Hash

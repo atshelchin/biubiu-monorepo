@@ -277,6 +277,24 @@ export function formatUserOpForRpc(
 		factoryData = '0x' + userOp.initCode.slice(42);
 	}
 
+	// Parse paymasterAndData into separate v0.7 fields
+	let paymaster: string | undefined;
+	let paymasterData: string | undefined;
+	let paymasterVerificationGasLimit: string | undefined;
+	let paymasterPostOpGasLimit: string | undefined;
+	if (userOp.paymasterAndData && userOp.paymasterAndData !== '0x' && userOp.paymasterAndData.length > 42) {
+		paymaster = '0x' + userOp.paymasterAndData.slice(2, 42);
+		const pmRest = userOp.paymasterAndData.slice(42);
+		if (pmRest.length >= 64) {
+			// packed: verificationGasLimit (16 bytes) + postOpGasLimit (16 bytes) + data
+			paymasterVerificationGasLimit = '0x' + pmRest.slice(0, 32);
+			paymasterPostOpGasLimit = '0x' + pmRest.slice(32, 64);
+			paymasterData = '0x' + pmRest.slice(64);
+		} else {
+			paymasterData = '0x' + pmRest;
+		}
+	}
+
 	return {
 		sender: userOp.sender,
 		nonce: userOp.nonce,
@@ -288,6 +306,10 @@ export function formatUserOpForRpc(
 		preVerificationGas: userOp.preVerificationGas,
 		maxFeePerGas,
 		maxPriorityFeePerGas,
+		paymaster,
+		paymasterVerificationGasLimit,
+		paymasterPostOpGasLimit,
+		paymasterData,
 		signature: userOp.signature
 	};
 }

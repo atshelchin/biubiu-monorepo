@@ -50,6 +50,21 @@ export async function getUserOperationReceipt(
 	return rpc('eth_getUserOperationReceipt', [userOpHash], network);
 }
 
+/**
+ * 模拟 handleOps 调用，用于调试签名错误。
+ * 通过 eth_call 模拟，解析 revert 数据获取详细错误。
+ */
+export async function simulateHandleOps(userOp: UserOperation, network: string): Promise<void> {
+	const formatted = formatUserOpForRpc(userOp);
+
+	// 构建 handleOps calldata
+	// handleOps(PackedUserOperation[] ops, address payable beneficiary)
+	// 但 eth_call 不支持直接调 handleOps（需要 bundler context）
+	// 改用 pimlico_sendUserOperation 的错误详情
+	const result = await rpc<string>('eth_sendUserOperation', [formatted, CONTRACTS.entryPoint], network);
+	console.log('[simulate] sendUserOperation result:', result);
+}
+
 export async function isDeployed(address: string, network: string): Promise<boolean> {
 	const code = await rpc<Hex>('eth_getCode', [address, 'latest'], network);
 	return code !== '0x' && code !== '0x0';

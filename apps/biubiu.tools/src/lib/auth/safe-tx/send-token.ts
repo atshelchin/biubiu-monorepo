@@ -13,6 +13,7 @@ import {
 	calculateSafeOpHash,
 	packAccountGasLimits,
 	packGasFees,
+	formatUserOpForRpc,
 	type UserOperation,
 	type GasParams
 } from './build-userop.js';
@@ -210,6 +211,10 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			maxFeePerGas: refinedGas.maxFeePerGas.toString(),
 			maxPriorityFeePerGas: refinedGas.maxPriorityFeePerGas.toString()
 		}));
+
+		// 打印完整签名用于离线调试
+		console.log('[send] FULL signature hex:', finalUserOp.signature);
+		console.log('[send] formatted UserOp:', JSON.stringify(formatUserOpForRpc(finalUserOp)));
 
 		onStatus('submitting');
 		const userOpHash = await sendUserOperation(finalUserOp, network);

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 import {GeneratedERC1155} from "./GeneratedERC1155.sol";
 
 /**
  * @title ERC1155Generator
  * @notice Factory for creating customizable ERC1155 multi-token collections
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Features bitmap:
  *   bit 0:  publicMint        - anyone can mint (with payment)
@@ -27,7 +27,7 @@ import {GeneratedERC1155} from "./GeneratedERC1155.sol";
  *   - Achievement Collection: minterRole + soulbound + supplyTracking + dynamicToken
  *   - Membership Collection: publicMint + minterRole + royalty + supplyTracking + pausable
  */
-contract ERC1155Generator is ERC2771Context {
+contract ERC1155Generator is BiuBiuPayable {
     // ============ Errors ============
 
     error InvalidConfig();
@@ -74,10 +74,6 @@ contract ERC1155Generator is ERC2771Context {
     /// @notice Collections created by a specific address
     mapping(address => address[]) public collectionsByCreator;
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Create Collection ============
 
     /**
@@ -85,8 +81,13 @@ contract ERC1155Generator is ERC2771Context {
      * @param config Collection configuration
      * @return collection Address of the newly created collection
      */
-    function createCollection(CollectionConfig calldata config) external returns (address collection) {
-        address sender = _msgSender();
+    function createCollection(CollectionConfig calldata config, PayInfo calldata pay)
+        external
+        payable
+        paid(pay)
+        returns (address collection)
+    {
+        address sender = msg.sender;
 
         // Validate
         if (bytes(config.name).length == 0 || bytes(config.symbol).length == 0) {
@@ -130,11 +131,13 @@ contract ERC1155Generator is ERC2771Context {
      * @param baseURI Base URI for metadata
      * @return collection Address of the newly created collection
      */
-    function createGameCollection(string calldata name, string calldata symbol, string calldata baseURI)
+    function createGameCollection(string calldata name, string calldata symbol, string calldata baseURI, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
         returns (address collection)
     {
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
 
@@ -169,9 +172,10 @@ contract ERC1155Generator is ERC2771Context {
         string calldata symbol,
         string calldata baseURI,
         uint256[] calldata tokenIds,
-        uint256[] calldata maxSupplies
-    ) external returns (address collection) {
-        address sender = _msgSender();
+        uint256[] calldata maxSupplies,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
         if (tokenIds.length != maxSupplies.length) revert InvalidConfig();
@@ -198,11 +202,13 @@ contract ERC1155Generator is ERC2771Context {
      * @param baseURI Base URI for metadata
      * @return collection Address of the newly created collection
      */
-    function createAchievementCollection(string calldata name, string calldata symbol, string calldata baseURI)
-        external
-        returns (address collection)
-    {
-        address sender = _msgSender();
+    function createAchievementCollection(
+        string calldata name,
+        string calldata symbol,
+        string calldata baseURI,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
 
@@ -236,9 +242,10 @@ contract ERC1155Generator is ERC2771Context {
         string calldata symbol,
         string calldata baseURI,
         address royaltyReceiver,
-        uint96 royaltyBps
-    ) external returns (address collection) {
-        address sender = _msgSender();
+        uint96 royaltyBps,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
         if (royaltyReceiver == address(0)) revert InvalidConfig();

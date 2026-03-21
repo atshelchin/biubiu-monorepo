@@ -124,23 +124,6 @@ contract ChainedMultiSend is ERC2771Context {
     function executeChainDelegated(ChainedCall[] calldata calls) external payable returns (bytes[] memory results) {
         if (calls.length == 0) revert EmptyCalls();
 
-        // Check membership and handle payment
-        // When called via delegatecall from Safe, msg.sender is Safe's address
-        (bool isPremium,,) = IBiuBiuPremium(biubiuPremium).getSubscriptionInfo(msg.sender);
-
-        if (!isPremium) {
-            // Non-premium users pay per-use fee
-            uint256 perUsePrice = IBiuBiuPremium(biubiuPremium).PER_USE_PRICE();
-            if (msg.value < perUsePrice) revert InsufficientPayment();
-
-            // Send fee to vault
-            address vault = IBiuBiuPremium(biubiuPremium).VAULT();
-            (bool success,) = vault.call{value: perUsePrice}("");
-            if (!success) revert PaymentFailed();
-
-            emit PerUsePayment(msg.sender, perUsePrice);
-        }
-
         results = new bytes[](calls.length);
 
         for (uint256 i; i < calls.length;) {

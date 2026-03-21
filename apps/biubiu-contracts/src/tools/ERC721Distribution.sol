@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 
 /**
  * @title ERC721Distribution
  * @notice Gas-optimized tool for distributing ERC721 NFTs to multiple wallets
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Two distribution modes:
  *   1. Batch: tokenIds[i] → recipients[i] (one-to-one mapping)
@@ -14,7 +14,7 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  *
  * User must call setApprovalForAll(this, true) on the NFT contract first.
  */
-contract ERC721Distribution is ERC2771Context {
+contract ERC721Distribution is BiuBiuPayable {
     // ============ Errors ============
 
     error NoRecipients();
@@ -45,10 +45,6 @@ contract ERC721Distribution is ERC2771Context {
     event DistributedPartial(address indexed sender, address indexed nft, uint8 indexed mode, uint256 successCount, uint256 failCount);
     event TransferSkipped(address indexed nft, address indexed recipient, uint256 indexed index, uint256 tokenId);
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Distribution Methods ============
 
     /**
@@ -59,15 +55,15 @@ contract ERC721Distribution is ERC2771Context {
      * @param options Failure handling options
      * @return result Distribution result
      */
-    function batchTransfer(address nft, uint256[] calldata tokenIds, address[] calldata recipients, Options calldata options)
-        external
+    function batchTransfer(address nft, uint256[] calldata tokenIds, address[] calldata recipients, Options calldata options, PayInfo calldata pay)
+        external payable paid(pay)
         returns (Result memory result)
     {
         uint256 len = tokenIds.length;
         if (len == 0) revert NoRecipients();
         if (len != recipients.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         result = _batchTransfer(nft, sender, tokenIds, recipients, options);
         _emitResult(nft, 1, result, len);
     }
@@ -80,14 +76,14 @@ contract ERC721Distribution is ERC2771Context {
      * @param options Failure handling options
      * @return result Distribution result
      */
-    function batchTransferToOne(address nft, uint256[] calldata tokenIds, address recipient, Options calldata options)
-        external
+    function batchTransferToOne(address nft, uint256[] calldata tokenIds, address recipient, Options calldata options, PayInfo calldata pay)
+        external payable paid(pay)
         returns (Result memory result)
     {
         uint256 len = tokenIds.length;
         if (len == 0) revert NoRecipients();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         uint256[] memory tempFailedIndices = new uint256[](len);
         uint256[] memory tempFailedTokenIds = new uint256[](len);
@@ -119,15 +115,15 @@ contract ERC721Distribution is ERC2771Context {
      * @param options Failure handling options
      * @return result Distribution result
      */
-    function randomDistribute(address nft, uint256[] calldata tokenIds, address[] calldata recipients, Options calldata options)
-        external
+    function randomDistribute(address nft, uint256[] calldata tokenIds, address[] calldata recipients, Options calldata options, PayInfo calldata pay)
+        external payable paid(pay)
         returns (Result memory result)
     {
         uint256 len = tokenIds.length;
         if (len == 0) revert NoRecipients();
         if (len != recipients.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         // Copy tokenIds to memory for shuffling
         uint256[] memory shuffled = new uint256[](len);
@@ -212,9 +208,9 @@ contract ERC721Distribution is ERC2771Context {
 
     function _emitResult(address nft, uint8 mode, Result memory result, uint256 recipientCount) private {
         if (result.failedIndices.length > 0) {
-            emit DistributedPartial(_msgSender(), nft, mode, result.successCount, result.failedIndices.length);
+            emit DistributedPartial(msg.sender, nft, mode, result.successCount, result.failedIndices.length);
         } else {
-            emit Distributed(_msgSender(), nft, mode, recipientCount);
+            emit Distributed(msg.sender, nft, mode, recipientCount);
         }
     }
 

@@ -4,7 +4,7 @@
  * 查询 native token + USDC/USDT 余额，只返回有余额的条目。
  */
 import { createPublicClient, http, formatEther, formatUnits, erc20Abi, type Chain } from 'viem';
-import { arbitrum, mainnet, base, optimism, polygon } from 'viem/chains';
+import { arbitrum, mainnet, base, optimism, polygon, bsc, avalanche } from 'viem/chains';
 
 export interface TokenBalance {
 	chainId: number;
@@ -35,6 +35,14 @@ const STABLECOINS: Record<number, { symbol: string; address: `0x${string}`; deci
 	[polygon.id]: [
 		{ symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6 },
 		{ symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6 }
+	],
+	[bsc.id]: [
+		{ symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18 },
+		{ symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 }
+	],
+	[avalanche.id]: [
+		{ symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', decimals: 6 },
+		{ symbol: 'USDT', address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', decimals: 6 }
 	]
 };
 
@@ -43,7 +51,9 @@ const CHAINS: { chain: Chain; nativeSymbol: string }[] = [
 	{ chain: mainnet, nativeSymbol: 'ETH' },
 	{ chain: base, nativeSymbol: 'ETH' },
 	{ chain: optimism, nativeSymbol: 'ETH' },
-	{ chain: polygon, nativeSymbol: 'POL' }
+	{ chain: polygon, nativeSymbol: 'POL' },
+	{ chain: bsc, nativeSymbol: 'BNB' },
+	{ chain: avalanche, nativeSymbol: 'AVAX' }
 ];
 
 /**

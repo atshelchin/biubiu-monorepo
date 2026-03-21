@@ -23,9 +23,13 @@
 
 	const user = $derived(authStore.user);
 
+	// 每次打开 modal 都刷新余额
 	$effect(() => {
-		if (open && user?.safeAddress && !balancesLoaded) {
+		if (open && user?.safeAddress) {
 			loadBalances();
+		}
+		if (!open) {
+			balancesLoaded = false;
 		}
 	});
 

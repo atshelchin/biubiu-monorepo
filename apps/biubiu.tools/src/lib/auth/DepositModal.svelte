@@ -13,7 +13,7 @@
 	let { open, onClose, address }: Props = $props();
 
 	let copiedAddress = $state(false);
-	let receivedTokens = $state<TokenBalance[]>([]);
+	let receivedTokens = $state<Array<{ symbol: string; chainName: string; amount: string }>>([]);
 	let polling = $state(false);
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
 	let lastBalanceSnapshot: Map<string, string> = new Map();
@@ -84,23 +84,23 @@
 
 		pollTimer = setInterval(async () => {
 			const current = await fetchAllBalances(address);
-			const newTokens: TokenBalance[] = [];
+			const deposits: Array<{ symbol: string; chainName: string; amount: string }> = [];
 
 			for (const t of current) {
 				const key = balanceKey(t);
-				const prev = lastBalanceSnapshot.get(key);
-				if (!prev) {
-					// 全新 token
-					newTokens.push(t);
-				} else if (parseFloat(t.balance) > parseFloat(prev)) {
-					// 余额增加
-					newTokens.push(t);
+				const prev = lastBalanceSnapshot.get(key) ?? '0';
+				const diff = parseFloat(t.balance) - parseFloat(prev);
+				if (diff > 0) {
+					deposits.push({
+						symbol: t.symbol,
+						chainName: t.chainName,
+						amount: formatBalance(String(diff))
+					});
 				}
 			}
 
-			if (newTokens.length > 0) {
-				receivedTokens = newTokens;
-				// 更新快照
+			if (deposits.length > 0) {
+				receivedTokens = deposits;
 				lastBalanceSnapshot = new Map(current.map((t) => [balanceKey(t), t.balance]));
 			}
 		}, 10_000);
@@ -135,10 +135,10 @@
 				</svg>
 				<div class="received-info">
 					<span class="received-title">{t('auth.wallet.depositReceived')}</span>
-					{#each receivedTokens as token}
+					{#each receivedTokens as deposit}
 						<span class="received-detail">
-							{formatBalance(token.balance)} {token.symbol}
-							<span class="received-chain">{token.chainName}</span>
+							+{deposit.amount} {deposit.symbol}
+							<span class="received-chain">{deposit.chainName}</span>
 						</span>
 					{/each}
 				</div>

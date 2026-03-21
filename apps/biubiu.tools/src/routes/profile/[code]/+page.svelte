@@ -11,7 +11,8 @@
 	import { onMount } from 'svelte';
 	import type { Address } from 'viem';
 
-	// Decode base64url from route param
+	const INDEX_BASE = 'https://webauthnp256-publickey-index.biubiu.tools';
+
 	interface ProfileData {
 		name: string;
 		publicKey: string;
@@ -20,6 +21,7 @@
 	}
 
 	let profileData = $state<ProfileData | null>(null);
+	let profileLoading = $state(true);
 	let decodeError = $state(false);
 	let safeAddress = $state('');
 	let balances = $state<TokenBalance[]>([]);
@@ -33,7 +35,8 @@
 	const total = $derived(totalValueUsd(balances) * exchangeRate);
 	const userCurrency = $derived(preferences.currency);
 
-	function decodeProfile(code: string): ProfileData | null {
+	/** 兼容旧 base64url 格式的 profile 链接 */
+	function tryDecodeBase64(code: string): ProfileData | null {
 		try {
 			const b64 = code.replace(/-/g, '+').replace(/_/g, '/');
 			const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
@@ -41,24 +44,47 @@
 			const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
 			const json = new TextDecoder().decode(bytes);
 			const data = JSON.parse(json);
-			if (!data.name || !data.publicKey || !data.credentialId || !data.createdAt) {
-				return null;
-			}
+			if (!data.name || !data.publicKey || !data.credentialId || !data.createdAt) return null;
 			return data as ProfileData;
 		} catch {
 			return null;
 		}
 	}
 
-	onMount(() => {
+	/** 从 index server 查询 profile */
+	async function fetchProfile(credentialId: string): Promise<ProfileData | null> {
+		try {
+			const params = new URLSearchParams({ rpId: 'biubiu.tools', credentialId });
+			const res = await fetch(`${INDEX_BASE}/api/query?${params}`);
+			if (!res.ok) return null;
+			const data = await res.json();
+			if (!data.name || !data.publicKey) return null;
+			return data as ProfileData;
+		} catch {
+			return null;
+		}
+	}
+
+	onMount(async () => {
 		const code = $page.params.code ?? '';
-		const data = decodeProfile(code);
+
+		// 短格式：credentialId → 从 index server 查询
+		// 旧格式：base64url JSON → 直接解析（向后兼容）
+		let data: ProfileData | null = null;
+		if (code.length < 100) {
+			data = await fetchProfile(code);
+		} else {
+			data = tryDecodeBase64(code);
+		}
+
 		if (!data) {
 			decodeError = true;
+			profileLoading = false;
 			return;
 		}
 		profileData = data;
 		safeAddress = computeSafeAddress(data.publicKey);
+		profileLoading = false;
 		loadBalances();
 		loadSubscription();
 		fetchExchangeRate(preferences.currency).then(r => { exchangeRate = r; });
@@ -115,7 +141,11 @@
 <PageHeader />
 
 <div class="page">
-	{#if decodeError}
+	{#if profileLoading}
+		<div class="loading-card">
+			<span class="spinner"></span>
+		</div>
+	{:else if decodeError}
 		<div class="error-card" use:fadeInUp={{ delay: 0 }}>
 			<div class="error-icon">
 				<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -284,6 +314,13 @@
 		margin: 0 auto;
 		padding: var(--space-8) var(--space-4);
 		min-height: 100vh;
+	}
+
+	/* Loading */
+	.loading-card {
+		display: flex;
+		justify-content: center;
+		padding: var(--space-16) 0;
 	}
 
 	/* Error */

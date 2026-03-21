@@ -198,6 +198,7 @@
   "sub.bestValue": "更划算",
   "sub.payAmount": "支付",
   "sub.network": "网络",
+  "sub.contract": "合约",
   "sub.priceNote": "价格含 3% 缓冲以应对价格波动，多余的 ETH 会自动退还。",
   "sub.priceError": "加载价格失败，请重试。",
   "sub.expiresOn": "到期时间",

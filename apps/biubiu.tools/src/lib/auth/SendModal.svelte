@@ -47,7 +47,9 @@
 		if (!selectedToken) return;
 		const isNative = !selectedToken.tokenAddress;
 		if (isNative) {
-			const max = Math.max(0, parseFloat(selectedToken.balance) - 0.0003);
+			// 预留 gas 费：首次部署 ~0.15，后续 ~0.02
+			const gasReserve = parseFloat(selectedToken.balance) > 0.3 ? 0.15 : 0.02;
+			const max = Math.max(0, parseFloat(selectedToken.balance) - gasReserve);
 			amount = max > 0 ? formatBalance(String(max)) : '0';
 		} else {
 			amount = formatBalance(selectedToken.balance);

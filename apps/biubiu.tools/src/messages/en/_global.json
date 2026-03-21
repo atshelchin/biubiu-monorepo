@@ -170,7 +170,7 @@
   "auth.send.statusWaiting": "Waiting for confirmation...",
   "auth.send.statusConfirmed": "Transaction confirmed!",
   "auth.send.statusFailed": "Transaction failed",
-  "auth.send.viewOnExplorer": "View on Arbiscan",
+  "auth.send.viewOnExplorer": "View on Explorer",
   "auth.send.done": "Done",
   "auth.uploadRetry.title": "Save to Server",
   "auth.uploadRetry.description": "Your passkey was created successfully, but saving to the server failed. Please retry — your account won't be complete until this succeeds.",

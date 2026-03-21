@@ -236,7 +236,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 				onStatus('failed');
 				return { success: false, error: 'Transaction reverted' };
 			}
-			await new Promise((resolve) => setTimeout(resolve, 3000));
+			await new Promise((resolve) => setTimeout(resolve, 1500));
 		}
 
 		return { success: false, error: 'Transaction confirmation timed out' };

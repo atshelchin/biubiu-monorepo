@@ -14,6 +14,23 @@
 
 	let showLogoutConfirm = $state(false);
 	let copiedField = $state<string | null>(null);
+	let showNetworks = $state(false);
+
+	/** Safe 1.4.1 + ERC-4337 + SafeWebAuthnSharedSigner 已部署的网络 */
+	const SUPPORTED_NETWORKS = [
+		{ name: 'Ethereum', chainId: 1 },
+		{ name: 'Base', chainId: 8453 },
+		{ name: 'Arbitrum', chainId: 42161 },
+		{ name: 'Optimism', chainId: 10 },
+		{ name: 'Polygon', chainId: 137 },
+		{ name: 'BNB Chain', chainId: 56 },
+		{ name: 'Gnosis', chainId: 100 },
+		{ name: 'Avalanche', chainId: 43114 },
+		{ name: 'Linea', chainId: 59144 },
+		{ name: 'Scroll', chainId: 534352 },
+		{ name: 'Celo', chainId: 42220 },
+		{ name: 'Sepolia', chainId: 11155111 }
+	];
 
 	function handleLogout() {
 		showLogoutConfirm = false;
@@ -74,6 +91,27 @@
 							</svg>
 						{/if}
 					</button>
+					<button
+						class="networks-toggle"
+						onclick={() => (showNetworks = !showNetworks)}
+					>
+						<span>{t('auth.profile.supportedNetworks')}</span>
+						<svg
+							class="chevron"
+							class:expanded={showNetworks}
+							xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						>
+							<polyline points="6 9 12 15 18 9"/>
+						</svg>
+					</button>
+					{#if showNetworks}
+						<div class="networks-list">
+							{#each SUPPORTED_NETWORKS as network}
+								<span class="network-tag">{network.name}</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<div class="profile-field">
@@ -247,6 +285,48 @@
 		font-size: var(--text-xs);
 		color: var(--success);
 		font-family: var(--font-sans);
+	}
+
+	/* Networks toggle */
+	.networks-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.networks-toggle:hover {
+		color: var(--fg-muted);
+	}
+
+	.chevron {
+		transition: transform var(--motion-fast) var(--easing);
+	}
+
+	.chevron.expanded {
+		transform: rotate(180deg);
+	}
+
+	.networks-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+		padding: var(--space-2) 0;
+	}
+
+	.network-tag {
+		padding: var(--space-1) var(--space-2);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
 	}
 
 	/* Logout */

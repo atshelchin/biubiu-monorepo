@@ -154,6 +154,8 @@
   "auth.wallet.deposit": "Deposit",
   "auth.wallet.noBalance": "No assets yet — deposit to get started",
   "auth.wallet.supportedNetworks": "Supported Networks",
+  "auth.wallet.depositReceived": "Deposit received!",
+  "auth.wallet.waitingForDeposit": "Listening for incoming deposits...",
   "auth.wallet.depositHint": "Only send assets on supported networks shown above. Sending on unsupported networks may result in permanent loss.",
   "auth.send.title": "Send",
   "auth.send.recipient": "Recipient Address",

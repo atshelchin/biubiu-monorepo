@@ -93,7 +93,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 	}
 
 	const { x: pubX, y: pubY } = parseP256PublicKey(publicKeyHex);
-	const amountWei = parseUnits(amount, decimals);
+	const amountWei = parseUnits(String(amount), decimals);
 	const isNative = !tokenAddress;
 
 	try {

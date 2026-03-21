@@ -154,6 +154,8 @@
   "auth.wallet.deposit": "充值",
   "auth.wallet.noBalance": "暂无资产 — 充值即可开始",
   "auth.wallet.supportedNetworks": "支持的网络",
+  "auth.wallet.depositReceived": "充值到账！",
+  "auth.wallet.waitingForDeposit": "正在监听入账...",
   "auth.wallet.depositHint": "仅在以上支持的网络上发送资产。在不支持的网络上发送可能导致资产永久丢失。",
   "auth.send.title": "发送",
   "auth.send.recipient": "收款地址",

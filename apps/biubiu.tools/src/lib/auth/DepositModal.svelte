@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { encode } from 'uqr';
+	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
 
 	interface Props {
 		open: boolean;
@@ -12,6 +13,10 @@
 	let { open, onClose, address }: Props = $props();
 
 	let copiedAddress = $state(false);
+	let receivedTokens = $state<TokenBalance[]>([]);
+	let polling = $state(false);
+	let pollTimer: ReturnType<typeof setInterval> | null = null;
+	let lastBalanceSnapshot: Map<string, string> = new Map();
 
 	const SUPPORTED_CHAINS = [
 		{
@@ -56,6 +61,59 @@
 		return encode(address, { ecc: 'M' });
 	});
 
+	// 打开时开始轮询余额变化
+	$effect(() => {
+		if (open && address) {
+			startPolling();
+		}
+		if (!open) {
+			stopPolling();
+			receivedTokens = [];
+		}
+	});
+
+	function balanceKey(t: TokenBalance): string {
+		return `${t.network}:${t.symbol}`;
+	}
+
+	async function startPolling() {
+		// 先拍一次快照
+		const initial = await fetchAllBalances(address);
+		lastBalanceSnapshot = new Map(initial.map((t) => [balanceKey(t), t.balance]));
+		polling = true;
+
+		pollTimer = setInterval(async () => {
+			const current = await fetchAllBalances(address);
+			const newTokens: TokenBalance[] = [];
+
+			for (const t of current) {
+				const key = balanceKey(t);
+				const prev = lastBalanceSnapshot.get(key);
+				if (!prev) {
+					// 全新 token
+					newTokens.push(t);
+				} else if (parseFloat(t.balance) > parseFloat(prev)) {
+					// 余额增加
+					newTokens.push(t);
+				}
+			}
+
+			if (newTokens.length > 0) {
+				receivedTokens = newTokens;
+				// 更新快照
+				lastBalanceSnapshot = new Map(current.map((t) => [balanceKey(t), t.balance]));
+			}
+		}, 10_000);
+	}
+
+	function stopPolling() {
+		polling = false;
+		if (pollTimer) {
+			clearInterval(pollTimer);
+			pollTimer = null;
+		}
+	}
+
 	async function copyAddress() {
 		try {
 			await navigator.clipboard.writeText(address);
@@ -69,6 +127,24 @@
 
 <ResponsiveModal {open} {onClose} title={t('auth.wallet.deposit')} zOffset={10}>
 	<div class="deposit-content">
+		<!-- Deposit Received Banner -->
+		{#if receivedTokens.length > 0}
+			<div class="received-banner">
+				<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="20 6 9 17 4 12"/>
+				</svg>
+				<div class="received-info">
+					<span class="received-title">{t('auth.wallet.depositReceived')}</span>
+					{#each receivedTokens as token}
+						<span class="received-detail">
+							{formatBalance(token.balance)} {token.symbol}
+							<span class="received-chain">{token.chainName}</span>
+						</span>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<!-- QR Code -->
 		{#if qrMatrix}
 			<div class="qr-container">
@@ -113,6 +189,14 @@
 			</div>
 		</div>
 
+		<!-- Polling indicator -->
+		{#if polling && receivedTokens.length === 0}
+			<p class="polling-hint">
+				<span class="polling-dot"></span>
+				{t('auth.wallet.waitingForDeposit')}
+			</p>
+		{/if}
+
 		<p class="deposit-hint">{t('auth.wallet.depositHint')}</p>
 	</div>
 </ResponsiveModal>
@@ -123,6 +207,47 @@
 		flex-direction: column;
 		align-items: center;
 		gap: var(--space-4);
+	}
+
+	/* Received banner */
+	.received-banner {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
+		width: 100%;
+		padding: var(--space-3);
+		background: var(--success-muted);
+		border: 1px solid var(--success);
+		border-radius: var(--radius-md);
+		color: var(--success);
+		animation: slideDown var(--motion-normal) var(--easing);
+	}
+
+	@keyframes slideDown {
+		from { opacity: 0; transform: translateY(-8px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
+	.received-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.received-title {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+	}
+
+	.received-detail {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+	}
+
+	.received-chain {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		margin-left: var(--space-1);
 	}
 
 	/* QR Code */
@@ -229,11 +354,39 @@
 		height: 100%;
 	}
 
+	/* Polling hint */
+	.polling-hint {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		margin: 0;
+	}
+
+	.polling-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: var(--radius-full);
+		background: var(--accent);
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 0.4; }
+		50% { opacity: 1; }
+	}
+
 	.deposit-hint {
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 		text-align: center;
 		margin: 0;
 		line-height: var(--leading-relaxed);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.received-banner { animation: none; }
+		.polling-dot { animation: none; opacity: 1; }
 	}
 </style>

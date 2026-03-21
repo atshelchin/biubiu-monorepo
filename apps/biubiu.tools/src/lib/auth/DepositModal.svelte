@@ -3,6 +3,7 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { encode } from 'uqr';
 	import { fetchAllBalances, formatBalance, type TokenBalance } from './wallet.js';
+	import { detectBrowser } from './browser-check.js';
 
 	interface Props {
 		open: boolean;
@@ -12,6 +13,7 @@
 
 	let { open, onClose, address }: Props = $props();
 
+	const browserInfo = detectBrowser();
 	let copiedAddress = $state(false);
 	let receivedTokens = $state<Array<{ symbol: string; chainName: string; amount: string }>>([]);
 	let polling = $state(false);
@@ -198,6 +200,9 @@
 		{/if}
 
 		<p class="deposit-hint">{t('auth.wallet.depositHint')}</p>
+		{#if !browserInfo.supported}
+			<p class="browser-warn">{t('auth.browser.depositWarn', { browser: browserInfo.name })}</p>
+		{/if}
 	</div>
 </ResponsiveModal>
 
@@ -382,6 +387,17 @@
 		color: var(--fg-subtle);
 		text-align: center;
 		margin: 0;
+		line-height: var(--leading-relaxed);
+	}
+
+	.browser-warn {
+		font-size: var(--text-xs);
+		color: var(--error);
+		text-align: center;
+		margin: 0;
+		padding: var(--space-2) var(--space-3);
+		background: var(--error-muted);
+		border-radius: var(--radius-md);
 		line-height: var(--leading-relaxed);
 	}
 

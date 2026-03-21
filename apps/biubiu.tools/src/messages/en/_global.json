@@ -148,6 +148,7 @@
   "auth.profile.createdAt": "Created",
   "auth.profile.safeAddress": "Wallet",
   "auth.profile.walletWarning": "Losing your passkey means losing access to this wallet. No recovery possible.",
+  "auth.profile.viewProfile": "View profile page",
   "auth.profile.clickToCopy": "Click to copy",
   "auth.profile.copied": "Copied",
   "auth.wallet.balances": "Balances",
@@ -179,5 +180,13 @@
   "auth.uploadRetry.title": "Save to Server",
   "auth.uploadRetry.description": "Your passkey was created successfully, but saving to the server failed. Please retry — your account won't be complete until this succeeds.",
   "auth.uploadRetry.button": "Retry Save",
-  "auth.uploadRetry.loading": "Saving..."
+  "auth.uploadRetry.loading": "Saving...",
+
+  "profilePage.title": "Profile",
+  "profilePage.description": "View user profile and wallet information",
+  "profilePage.walletAddress": "Wallet Address",
+  "profilePage.publicKey": "Public Key",
+  "profilePage.credentialId": "Credential ID",
+  "profilePage.invalidLink": "Invalid Profile Link",
+  "profilePage.invalidLinkDesc": "This profile link is invalid or has been corrupted."
 }

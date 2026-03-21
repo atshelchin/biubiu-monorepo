@@ -148,6 +148,7 @@
   "auth.profile.createdAt": "创建时间",
   "auth.profile.safeAddress": "钱包",
   "auth.profile.walletWarning": "丢失通行密钥即丧失钱包控制权，无法恢复。",
+  "auth.profile.viewProfile": "查看个人主页",
   "auth.profile.clickToCopy": "点击复制",
   "auth.profile.copied": "已复制",
   "auth.wallet.balances": "余额",
@@ -179,5 +180,13 @@
   "auth.uploadRetry.title": "保存到服务器",
   "auth.uploadRetry.description": "通行密钥已在设备上创建成功，但保存到服务器失败。请重试 — 账号创建需要此步骤完成。",
   "auth.uploadRetry.button": "重试保存",
-  "auth.uploadRetry.loading": "保存中..."
+  "auth.uploadRetry.loading": "保存中...",
+
+  "profilePage.title": "个人主页",
+  "profilePage.description": "查看用户资料和钱包信息",
+  "profilePage.walletAddress": "钱包地址",
+  "profilePage.publicKey": "公钥",
+  "profilePage.credentialId": "凭证 ID",
+  "profilePage.invalidLink": "无效的个人主页链接",
+  "profilePage.invalidLinkDesc": "此链接无效或已损坏。"
 }

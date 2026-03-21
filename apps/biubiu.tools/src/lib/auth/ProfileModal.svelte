@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { formatDateTime } from '$lib/i18n';
+	import { localizeHref } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import DepositModal from './DepositModal.svelte';
@@ -24,6 +25,21 @@
 	let balancesLoaded = $state(false);
 
 	const user = $derived(authStore.user);
+
+	const profileUrl = $derived.by(() => {
+		if (!user) return '';
+		const payload = JSON.stringify({
+			name: user.name,
+			publicKey: user.publicKey,
+			credentialId: user.credentialId,
+			createdAt: user.createdAt
+		});
+		const bytes = new TextEncoder().encode(payload);
+		let binary = '';
+		for (const b of bytes) binary += String.fromCharCode(b);
+		const code = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+		return localizeHref(`/profile/${code}`);
+	});
 
 	// 每次打开 modal 都刷新余额
 	$effect(() => {
@@ -70,6 +86,14 @@
 				</div>
 				<div class="profile-name">{user.name}</div>
 				<div class="profile-created">{formatDateTime(new Date(user.createdAt))}</div>
+				<a class="profile-link" href={profileUrl} onclick={onClose}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+						<polyline points="15 3 21 3 21 9"/>
+						<line x1="10" y1="14" x2="21" y2="3"/>
+					</svg>
+					{t('auth.profile.viewProfile')}
+				</a>
 			</div>
 
 			<!-- Wallet -->
@@ -219,6 +243,20 @@
 	.profile-created {
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
+	}
+
+	.profile-link {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.profile-link:hover {
+		color: var(--accent);
 	}
 
 	.section-label {

@@ -17,6 +17,8 @@ export interface TokenBalance {
 	tokenAddress: string | null;
 	/** 单价（USD），null 表示无报价 */
 	priceUsd: number | null;
+	/** 疑似垃圾币（无报价且不在已知白名单） */
+	spam: boolean;
 }
 
 /** 单个 token 的 USD 价值 */

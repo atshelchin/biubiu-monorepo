@@ -30,8 +30,11 @@
 	let exchangeRate = $state(1);
 
 	const user = $derived(authStore.user);
-	const total = $derived(totalValueUsd(balances) * exchangeRate);
+	const validTokens = $derived(balances.filter(t => !t.spam));
+	const spamTokens = $derived(balances.filter(t => t.spam));
+	const total = $derived(totalValueUsd(validTokens) * exchangeRate);
 	const userCurrency = $derived(preferences.currency);
+	let showSpam = $state(false);
 
 	const profileUrl = $derived.by(() => {
 		if (!user) return '';
@@ -195,9 +198,9 @@
 					<div class="balances-loading">
 						<span class="spinner-sm"></span>
 					</div>
-				{:else if balances.length > 0}
+				{:else if validTokens.length > 0}
 					<div class="balances-list">
-						{#each balances as token}
+						{#each validTokens as token}
 							{@const valueUsd = tokenValueUsd(token)}
 							<div class="balance-row">
 								<div class="token-info">
@@ -213,6 +216,28 @@
 							</div>
 						{/each}
 					</div>
+
+					{#if spamTokens.length > 0}
+						<button class="spam-toggle" onclick={() => (showSpam = !showSpam)}>
+							<span>{showSpam ? t('auth.wallet.hideUnverified') : t('auth.wallet.showUnverified', { count: spamTokens.length })}</span>
+							<svg class="spam-chevron" class:open={showSpam} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="6 9 12 15 18 9"/>
+							</svg>
+						</button>
+						{#if showSpam}
+							<div class="balances-list spam-list">
+								{#each spamTokens as token}
+									<div class="balance-row">
+										<div class="token-info">
+											<span class="token-symbol">{token.symbol}</span>
+											<span class="token-chain">{token.chainName}</span>
+										</div>
+										<span class="token-balance">{formatBalance(token.balance)}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					{/if}
 				{:else if balancesLoaded}
 					<div class="balances-empty">
 						<span>{t('auth.wallet.noBalance')}</span>
@@ -630,6 +655,35 @@
 		font-family: var(--font-mono);
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
+	}
+
+	.spam-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-1);
+		width: 100%;
+		padding: var(--space-2);
+		border: none;
+		background: transparent;
+		color: var(--fg-faint);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.spam-toggle:hover { color: var(--fg-subtle); }
+
+	.spam-chevron {
+		transition: transform var(--motion-fast) var(--easing);
+	}
+
+	.spam-chevron.open {
+		transform: rotate(180deg);
+	}
+
+	.spam-list {
+		opacity: 0.5;
 	}
 
 	.balances-empty {

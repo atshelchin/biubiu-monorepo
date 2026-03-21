@@ -40,8 +40,12 @@ function extractClientDataFields(clientDataJSON: ArrayBuffer): string {
 		valueEnd++;
 	}
 
-	// clientDataFields = 从闭合引号之后到 } 之前
-	const afterChallenge = json.slice(valueEnd + 1, json.length - 1);
+	// clientDataFields = challenge 闭合引号后，跳过 ", 分隔符，到 } 之前
+	// 合约模板已包含 ", — 我们只需要后续字段内容，不含前导逗号
+	// 浏览器: ..."challenge":"xxx","origin":"..."...}
+	//                              ^ valueEnd
+	// 跳过 ",(两个字符) → 从 valueEnd+2 开始
+	const afterChallenge = json.slice(valueEnd + 2, json.length - 1);
 	console.log('[webauthn] clientDataFields:', JSON.stringify(afterChallenge));
 	return afterChallenge;
 }

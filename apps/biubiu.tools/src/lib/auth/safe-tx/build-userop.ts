@@ -244,7 +244,7 @@ export function buildUserOpSignature(
  */
 export function buildDummySignature(): Hex {
 	const dummyAuthData = pad('0x01', { size: 37, dir: 'right' });
-	const dummyClientDataFields = ',"origin":"https://biubiu.tools","crossOrigin":false';
+	const dummyClientDataFields = '"origin":"https://biubiu.tools","crossOrigin":false';
 
 	const contractSig = buildContractSignatureWebAuthn(
 		dummyAuthData,

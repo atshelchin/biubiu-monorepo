@@ -215,10 +215,14 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		onStatus('estimating');
 		const dummySignature = buildDummySignature();
 
+		// Paymaster 字段
+		let pmPaymaster: Address | undefined;
+		let pmData: Hex | undefined;
+		let pmVerGasLimit: Hex | undefined;
+		let pmPostOpGasLimit: Hex | undefined;
 		let paymasterAndData: Hex = '0x';
 
 		if (usePaymaster) {
-			// 先构建 dummy UserOp 获取 paymaster stub data
 			const stubUserOp: UserOperation = {
 				sender: safeAddress,
 				nonce: numberToHex(nonce),
@@ -231,13 +235,15 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 				signature: dummySignature
 			};
 
-			const stubData = await getPaymasterStubData(stubUserOp, network, gasTokenAddress);
-			// 组装 paymasterAndData = paymaster + verificationGasLimit(16) + postOpGasLimit(16) + data
-			const pmVerGas = stubData.paymasterVerificationGasLimit ?? '0x00';
-			const pmPostGas = stubData.paymasterPostOpGasLimit ?? '0x00';
-			const pmVerGasPad = BigInt(pmVerGas).toString(16).padStart(32, '0');
-			const pmPostGasPad = BigInt(pmPostGas).toString(16).padStart(32, '0');
-			paymasterAndData = (stubData.paymaster + pmVerGasPad + pmPostGasPad + (stubData.paymasterData?.slice(2) ?? '')) as Hex;
+			const stubResult = await getPaymasterStubData(stubUserOp, network, gasTokenAddress);
+			pmPaymaster = stubResult.paymaster;
+			pmData = stubResult.paymasterData;
+			pmVerGasLimit = stubResult.paymasterVerificationGasLimit;
+			pmPostOpGasLimit = stubResult.paymasterPostOpGasLimit;
+			// 仍然需要 packed paymasterAndData 用于 SafeOp hash 计算
+			const verHex = BigInt(pmVerGasLimit ?? '0x0').toString(16).padStart(32, '0');
+			const postHex = BigInt(pmPostOpGasLimit ?? '0x0').toString(16).padStart(32, '0');
+			paymasterAndData = (pmPaymaster + verHex + postHex + (pmData?.slice(2) ?? '')) as Hex;
 		}
 
 		const dummyUserOp: UserOperation = {
@@ -249,6 +255,10 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			preVerificationGas: numberToHex(initialGas.preVerificationGas),
 			gasFees: packGasFees(initialGas.maxPriorityFeePerGas, initialGas.maxFeePerGas),
 			paymasterAndData,
+			paymaster: pmPaymaster,
+			paymasterData: pmData,
+			paymasterVerificationGasLimit: pmVerGasLimit,
+			paymasterPostOpGasLimit: pmPostOpGasLimit,
 			signature: dummySignature
 		};
 
@@ -263,7 +273,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 
 		// 4. 获取最终 paymaster data（如果用 paymaster）
 		if (usePaymaster) {
-			const finalStubOp: UserOperation = {
+			const finalPmOp: UserOperation = {
 				sender: safeAddress,
 				nonce: numberToHex(nonce),
 				initCode,
@@ -275,10 +285,14 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 				signature: dummySignature
 			};
 
-			const pmData = await getPaymasterData(finalStubOp, network, gasTokenAddress);
-			const pmVerGas2 = BigInt(pmData.paymasterVerificationGasLimit ?? '0x00').toString(16).padStart(32, '0');
-			const pmPostGas2 = BigInt(pmData.paymasterPostOpGasLimit ?? '0x00').toString(16).padStart(32, '0');
-			paymasterAndData = (pmData.paymaster + pmVerGas2 + pmPostGas2 + (pmData.paymasterData?.slice(2) ?? '')) as Hex;
+			const pmResult = await getPaymasterData(finalPmOp, network, gasTokenAddress);
+			pmPaymaster = pmResult.paymaster;
+			pmData = pmResult.paymasterData;
+			pmVerGasLimit = pmResult.paymasterVerificationGasLimit;
+			pmPostOpGasLimit = pmResult.paymasterPostOpGasLimit;
+			const verHex = BigInt(pmVerGasLimit ?? '0x0').toString(16).padStart(32, '0');
+			const postHex = BigInt(pmPostOpGasLimit ?? '0x0').toString(16).padStart(32, '0');
+			paymasterAndData = (pmPaymaster + verHex + postHex + (pmData?.slice(2) ?? '')) as Hex;
 		}
 
 		// 5. 计算 SafeOp Hash
@@ -308,6 +322,10 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			preVerificationGas: numberToHex(refinedGas.preVerificationGas),
 			gasFees: packGasFees(refinedGas.maxPriorityFeePerGas, refinedGas.maxFeePerGas),
 			paymasterAndData,
+			paymaster: pmPaymaster,
+			paymasterData: pmData,
+			paymasterVerificationGasLimit: pmVerGasLimit,
+			paymasterPostOpGasLimit: pmPostOpGasLimit,
 			signature
 		};
 

@@ -3,6 +3,7 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { registerPasskey, retryUpload } from './passkey-auth.js';
+	import { detectBrowser } from './browser-check.js';
 	import type { LocalKey } from './types.js';
 
 	interface Props {
@@ -12,7 +13,8 @@
 
 	let { open, onClose }: Props = $props();
 
-	let mode = $state<'login' | 'register' | 'risk-confirm' | 'upload-retry'>('login');
+	let mode = $state<'login' | 'register' | 'browser-warning' | 'risk-confirm' | 'upload-retry'>('login');
+	const browserInfo = detectBrowser();
 	let name = $state('');
 	let riskAccepted = $state(false);
 	let loading = $state(false);
@@ -44,7 +46,11 @@
 		if (!name.trim()) return;
 		error = null;
 		authStore.clearError();
-		mode = 'risk-confirm';
+		if (!browserInfo.supported) {
+			mode = 'browser-warning';
+		} else {
+			mode = 'risk-confirm';
+		}
 	}
 
 	async function handleRegister() {
@@ -98,7 +104,9 @@
 				? t('auth.register.title')
 				: mode === 'upload-retry'
 					? t('auth.uploadRetry.title')
-					: t('auth.risk.title')
+					: mode === 'browser-warning'
+						? t('auth.browser.title')
+						: t('auth.risk.title')
 	);
 </script>
 
@@ -174,6 +182,33 @@
 				{t('auth.login.switch')}
 			</button>
 
+		{:else if mode === 'browser-warning'}
+			<!-- Browser Incompatibility Warning -->
+			<div class="risk-warning">
+				<div class="risk-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"/>
+						<line x1="15" y1="9" x2="9" y2="15"/>
+						<line x1="9" y1="9" x2="15" y2="15"/>
+					</svg>
+				</div>
+				<h3 class="risk-heading">{t('auth.browser.heading')}</h3>
+				<p class="browser-detected">{t('auth.browser.detected', { browser: browserInfo.name })}</p>
+				<ul class="risk-list">
+					<li>{t('auth.browser.item1')}</li>
+					<li>{t('auth.browser.item2')}</li>
+				</ul>
+				<p class="browser-supported">{t('auth.browser.supported')}</p>
+				<p class="browser-list">Chrome, Safari, Edge, Firefox, Brave, Opera</p>
+			</div>
+
+			<button
+				class="auth-btn secondary"
+				onclick={() => { mode = 'register'; }}
+			>
+				{t('common.cancel')}
+			</button>
+
 		{:else if mode === 'risk-confirm'}
 			<!-- Risk Confirmation View -->
 			<div class="risk-warning">
@@ -189,6 +224,7 @@
 					<li>{t('auth.risk.item1')}</li>
 					<li>{t('auth.risk.item2')}</li>
 					<li>{t('auth.risk.item3')}</li>
+					<li>{t('auth.risk.item4')}</li>
 				</ul>
 			</div>
 
@@ -428,6 +464,27 @@
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
 		line-height: var(--leading-relaxed);
+	}
+
+	/* Browser warning */
+	.browser-detected {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--error);
+		margin: 0 0 var(--space-2);
+	}
+
+	.browser-supported {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		margin: var(--space-3) 0 var(--space-1);
+	}
+
+	.browser-list {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-base);
+		margin: 0;
 	}
 
 	/* Checkbox */

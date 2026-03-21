@@ -36,20 +36,7 @@
 	const userCurrency = $derived(preferences.currency);
 	let showSpam = $state(false);
 
-	const profileUrl = $derived.by(() => {
-		if (!user) return '';
-		const payload = JSON.stringify({
-			name: user.name,
-			publicKey: user.publicKey,
-			credentialId: user.credentialId,
-			createdAt: user.createdAt
-		});
-		const bytes = new TextEncoder().encode(payload);
-		let binary = '';
-		for (const b of bytes) binary += String.fromCharCode(b);
-		const code = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-		return localizeHref(`/profile/${code}`);
-	});
+	const profileUrl = $derived(user ? localizeHref(`/profile/${user.credentialId}`) : '');
 
 	// 每次打开 modal 都刷新余额
 	$effect(() => {

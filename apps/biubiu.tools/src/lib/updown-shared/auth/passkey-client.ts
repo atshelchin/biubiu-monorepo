@@ -198,11 +198,10 @@ export async function registerPasskey(
  */
 export async function signOperation(
 	endpoint: ManagedEndpoint
-): Promise<{ ok: true; signature: OperationSignature } | { ok: false; error: string }> {
-	if (!endpoint.credentialId) {
-		return { ok: false, error: 'No passkey registered for this endpoint' };
-	}
-
+): Promise<
+	| { ok: true; signature: OperationSignature; discoveredCredentialId?: string }
+	| { ok: false; error: string }
+> {
 	// 1. 获取 challenge
 	const challengeData = await fetchChallenge(endpoint);
 	if (!challengeData) {
@@ -210,22 +209,24 @@ export async function signOperation(
 	}
 
 	// 2. 签名
+	const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+		challenge: fromBase64url(challengeData.challenge),
+		rpId: getRpId(),
+		userVerification: 'preferred',
+		timeout: 60_000
+	};
+
+	// If we know the credentialId, restrict to it; otherwise use discoverable credentials
+	// (covers passkeys synced via iCloud Keychain / cross-browser)
+	if (endpoint.credentialId) {
+		publicKeyOptions.allowCredentials = [
+			{ id: fromBase64url(endpoint.credentialId), type: 'public-key' }
+		];
+	}
+
 	let assertion: PublicKeyCredential;
 	try {
-		const result = await navigator.credentials.get({
-			publicKey: {
-				challenge: fromBase64url(challengeData.challenge),
-				rpId: getRpId(),
-				allowCredentials: [
-					{
-						id: fromBase64url(endpoint.credentialId),
-						type: 'public-key'
-					}
-				],
-				userVerification: 'preferred',
-				timeout: 60_000
-			}
-		});
+		const result = await navigator.credentials.get({ publicKey: publicKeyOptions });
 
 		if (!result || !(result instanceof PublicKeyCredential)) {
 			return { ok: false, error: 'Assertion failed' };
@@ -235,19 +236,25 @@ export async function signOperation(
 		if (err instanceof DOMException && err.name === 'NotAllowedError') {
 			return { ok: false, error: 'User cancelled signature' };
 		}
-		return { ok: false, error: `WebAuthn error: ${err instanceof Error ? err.message : String(err)}` };
+		return {
+			ok: false,
+			error: `WebAuthn error: ${err instanceof Error ? err.message : String(err)}`
+		};
 	}
 
 	const assertionResponse = assertion.response as AuthenticatorAssertionResponse;
+	const credentialId = toBase64url(assertion.rawId);
 
 	return {
 		ok: true,
 		signature: {
-			credentialId: toBase64url(assertion.rawId),
+			credentialId,
 			authenticatorData: toBase64url(assertionResponse.authenticatorData),
 			clientDataJSON: toBase64url(assertionResponse.clientDataJSON),
 			signature: toBase64url(assertionResponse.signature)
-		}
+		},
+		// If we didn't have the credentialId before, return it so caller can save
+		discoveredCredentialId: endpoint.credentialId ? undefined : credentialId
 	};
 }
 
@@ -270,6 +277,17 @@ export async function signedFetch(
 		});
 	}
 
+	// Auto-save discovered credentialId (passkey synced from another browser)
+	if (sigResult.discoveredCredentialId) {
+		saveDiscoveredCredentialId(
+			endpoint.url,
+			endpoint.clientId,
+			sigResult.discoveredCredentialId
+		);
+		// Update the in-memory endpoint too so subsequent calls don't re-discover
+		endpoint.credentialId = sigResult.discoveredCredentialId;
+	}
+
 	return authFetch(endpoint, path, {
 		method,
 		body: JSON.stringify({
@@ -277,4 +295,23 @@ export async function signedFetch(
 			signature: sigResult.signature
 		})
 	});
+}
+
+/**
+ * Save a discovered credentialId back to localStorage.
+ * Called when a passkey synced via iCloud Keychain is used for the first time in this browser.
+ */
+function saveDiscoveredCredentialId(url: string, clientId: string, credentialId: string): void {
+	const STORAGE_KEY = 'biubiu-updown-managed-endpoints';
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) return;
+		const endpoints = JSON.parse(raw) as ManagedEndpoint[];
+		const updated = endpoints.map((e) =>
+			e.url === url && e.clientId === clientId ? { ...e, credentialId } : e
+		);
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+	} catch {
+		// Non-critical
+	}
 }

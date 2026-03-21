@@ -4,10 +4,19 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ResponsiveDrawer from '$lib/ui/ResponsiveDrawer.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
+	import AuthModal from '$lib/auth/AuthModal.svelte';
+	import ProfileModal from '$lib/auth/ProfileModal.svelte';
+	import { authStore } from '$lib/auth';
 	import logo from '$lib/assets/logo.svg';
 
 	// Settings modal state
 	let showSettings = $state(false);
+
+	// Auth modal state
+	let showAuth = $state(false);
+
+	// Profile modal state
+	let showProfile = $state(false);
 
 	// Mobile drawer state
 	let showMobileDrawer = $state(false);
@@ -49,6 +58,30 @@
 
 		<!-- Header Actions -->
 		<div class="header-actions">
+			<!-- Auth Button (Desktop) -->
+			{#if authStore.isLoggedIn}
+				<button
+					class="user-btn desktop-only"
+					onclick={() => (showProfile = true)}
+					title={authStore.displayName}
+				>
+					<span class="user-avatar">{authStore.displayName.charAt(0).toUpperCase()}</span>
+					<span class="user-name">{authStore.displayName}</span>
+				</button>
+			{:else}
+				<button
+					class="auth-btn desktop-only"
+					onclick={() => (showAuth = true)}
+					aria-label={t('auth.login.title')}
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+						<circle cx="12" cy="7" r="4"/>
+					</svg>
+					{t('auth.login.title')}
+				</button>
+			{/if}
+
 			<!-- Settings Button (Desktop) -->
 			<button
 				class="settings-btn desktop-only"
@@ -78,6 +111,12 @@
 	</div>
 </header>
 
+<!-- Auth Modal -->
+<AuthModal open={showAuth} onClose={() => (showAuth = false)} />
+
+<!-- Profile Modal -->
+<ProfileModal open={showProfile} onClose={() => (showProfile = false)} />
+
 <!-- Settings Modal -->
 <ResponsiveModal open={showSettings} onClose={() => (showSettings = false)} title={t('settings.title')}>
 	<SettingsPanel />
@@ -105,6 +144,36 @@
 				{/if}
 			{/each}
 		</nav>
+
+		<div class="drawer-divider"></div>
+
+		<!-- Auth Button (Mobile) -->
+		{#if authStore.isLoggedIn}
+			<button
+				class="drawer-settings-btn"
+				onclick={() => { showMobileDrawer = false; showProfile = true; }}
+			>
+				<span class="drawer-user-avatar">{authStore.displayName.charAt(0).toUpperCase()}</span>
+				<span>{authStore.displayName}</span>
+				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="9 18 15 12 9 6"/>
+				</svg>
+			</button>
+		{:else}
+			<button
+				class="drawer-settings-btn"
+				onclick={() => { showMobileDrawer = false; showAuth = true; }}
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+					<circle cx="12" cy="7" r="4"/>
+				</svg>
+				<span>{t('auth.login.title')}</span>
+				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="9 18 15 12 9 6"/>
+				</svg>
+			</button>
+		{/if}
 
 		<div class="drawer-divider"></div>
 
@@ -342,4 +411,83 @@
 		margin-left: auto;
 		color: var(--fg-faint);
 	}
+
+	/* Auth Button (Desktop) */
+	.auth-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		background: transparent;
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.auth-btn:hover {
+		color: var(--fg-base);
+		border-color: var(--border-strong);
+		background: var(--bg-raised);
+	}
+
+	/* User Button (Desktop - Logged In) */
+	.user-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-base);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.user-btn:hover {
+		border-color: var(--border-strong);
+		background: var(--bg-raised);
+	}
+
+	.user-avatar {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		border-radius: var(--radius-full);
+		background: var(--accent-muted);
+		color: var(--accent);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+	}
+
+	.user-name {
+		max-width: 100px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Drawer Auth */
+	.drawer-user-avatar {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius-full);
+		background: var(--accent-muted);
+		color: var(--accent);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		flex-shrink: 0;
+	}
+
 </style>

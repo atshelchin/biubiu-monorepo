@@ -35,11 +35,6 @@
 		}
 	});
 
-	/** Arbitrum 上的 ETH 余额（供 Send 使用） */
-	const arbEthBalance = $derived(
-		balances.find((b) => b.network === 'arb-mainnet' && b.symbol === 'ETH')?.balance ?? '0'
-	);
-
 	async function loadBalances() {
 		if (!user?.safeAddress) return;
 		balancesLoading = true;
@@ -172,7 +167,7 @@
 	<SendModal
 		open={showSend}
 		onClose={() => { showSend = false; loadBalances(); }}
-		balance={arbEthBalance}
+		balances={balances}
 	/>
 {/if}
 

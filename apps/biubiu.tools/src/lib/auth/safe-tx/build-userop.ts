@@ -18,8 +18,7 @@ import {
 import {
 	CONTRACTS,
 	SAFE_OP_TYPEHASH,
-	DOMAIN_SEPARATOR_TYPEHASH,
-	ARBITRUM_CHAIN_ID
+	DOMAIN_SEPARATOR_TYPEHASH
 } from './constants.js';
 import {
 	encodeSetupData,
@@ -129,7 +128,7 @@ export function buildInitCode(publicKeyHex: string): Hex {
 
 // ─── SafeOp Hash (EIP-712) ───
 
-function calculateDomainSeparator(chainId: bigint = ARBITRUM_CHAIN_ID): Hex {
+function calculateDomainSeparator(chainId: bigint): Hex {
 	return keccak256(
 		encodeAbiParameters(
 			[{ type: 'bytes32' }, { type: 'uint256' }, { type: 'address' }],
@@ -144,7 +143,7 @@ export function calculateSafeOpHash(
 	nonce: bigint,
 	initCode: Hex,
 	gas: GasParams,
-	chainId: bigint = ARBITRUM_CHAIN_ID,
+	chainId: bigint,
 	validAfter: number = 0,
 	validUntil: number = 0,
 	paymasterAndData: Hex = '0x'

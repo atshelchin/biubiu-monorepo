@@ -74,6 +74,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			decimals: number;
 			logo: string | null;
 			name: string;
+			tokenAddress: string | null;
 		}> = [];
 
 		for (const token of data?.data?.tokens ?? []) {
@@ -96,7 +97,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				balance,
 				decimals,
 				logo: token.tokenMetadata?.logo ?? null,
-				name
+				name,
+				tokenAddress: isNative ? null : (token.tokenAddress ?? null)
 			});
 		}
 

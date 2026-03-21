@@ -13,6 +13,8 @@ export interface TokenBalance {
 	decimals: number;
 	logo: string | null;
 	name: string;
+	/** token 合约地址（native token 为 null） */
+	tokenAddress: string | null;
 }
 
 /**

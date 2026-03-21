@@ -1,9 +1,9 @@
 /**
- * Safe 提现编排器。
+ * Safe 提现编排器（多网络、支持 native + ERC-20）。
  *
  * 单次签名流程：dummy signature 估算 gas → 真实签名 → 提交。
  */
-import { type Address, type Hex, numberToHex } from 'viem';
+import { type Address, type Hex, numberToHex, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { parseP256PublicKey } from '../compute-safe-address.js';
 import {
 	buildCallData,
@@ -26,7 +26,7 @@ import {
 	sendUserOperation,
 	getUserOperationReceipt
 } from './bundler-client.js';
-import { ARBITRUM_CHAIN_ID } from './constants.js';
+import { CHAIN_CONFIG } from './constants.js';
 
 export type SendStatus =
 	| 'checking'
@@ -41,6 +41,7 @@ export type SendStatus =
 export interface SendResult {
 	success: boolean;
 	txHash?: string;
+	explorerUrl?: string;
 	error?: string;
 }
 
@@ -50,31 +51,75 @@ export interface SendParams {
 	credentialId: string;
 	rpId: string;
 	recipient: Address;
-	amount: bigint;
+	/** 发送数量（人类可读格式，如 "0.1"） */
+	amount: string;
+	/** Alchemy 网络标识（如 "arb-mainnet"） */
+	network: string;
+	/** token 合约地址（native token 为 null） */
+	tokenAddress: string | null;
+	/** token 精度 */
+	decimals: number;
 	onStatus: (status: SendStatus) => void;
 }
 
-export async function sendEth(params: SendParams): Promise<SendResult> {
-	const { safeAddress, publicKeyHex, credentialId, rpId, recipient, amount, onStatus } =
-		params;
+/**
+ * 构建 ERC-20 transfer calldata
+ */
+function buildErc20TransferData(to: Address, amount: bigint): Hex {
+	return encodeFunctionData({
+		abi: erc20Abi,
+		functionName: 'transfer',
+		args: [to, amount]
+	});
+}
+
+export async function sendToken(params: SendParams): Promise<SendResult> {
+	const {
+		safeAddress,
+		publicKeyHex,
+		credentialId,
+		rpId,
+		recipient,
+		amount,
+		network,
+		tokenAddress,
+		decimals,
+		onStatus
+	} = params;
+
+	const chainCfg = CHAIN_CONFIG[network];
+	if (!chainCfg) {
+		return { success: false, error: `Unsupported network: ${network}` };
+	}
+
 	const { x: pubX, y: pubY } = parseP256PublicKey(publicKeyHex);
+	const amountWei = parseUnits(amount, decimals);
+	const isNative = !tokenAddress;
 
 	try {
 		// 1. 检查部署状态 + nonce
 		onStatus('checking');
-		const deployed = await isDeployed(safeAddress);
-		const nonce = deployed ? await getNonce(safeAddress) : 0n;
+		const deployed = await isDeployed(safeAddress, network);
+		const nonce = deployed ? await getNonce(safeAddress, network) : 0n;
 
-		// 2. 构建 callData + initCode
+		// 2. 构建 callData
 		onStatus('building');
-		const callData = buildCallData(recipient, amount);
-		const initCode: Hex = !deployed ? buildInitCode(publicKeyHex) : '0x';
-		const gasPrices = await getGasPrices();
+		let callData: Hex;
+		if (isNative) {
+			// native token: 直接转账
+			callData = buildCallData(recipient, amountWei);
+		} else {
+			// ERC-20: token.transfer(recipient, amount)
+			const transferData = buildErc20TransferData(recipient, amountWei);
+			callData = buildCallData(tokenAddress as Address, 0n, transferData);
+		}
 
-		// 初始 gas（偏高，后面会被估算覆盖）
+		const initCode: Hex = !deployed ? buildInitCode(publicKeyHex) : '0x';
+		const gasPrices = await getGasPrices(network);
+
 		const initialGas: GasParams = {
 			verificationGasLimit: deployed ? 300000n : 600000n,
-			callGasLimit: 100000n,
+			callGasLimit: isNative ? 100000n : 150000n,
 			preVerificationGas: 60000n,
 			...gasPrices
 		};
@@ -87,19 +132,15 @@ export async function sendEth(params: SendParams): Promise<SendResult> {
 			nonce: numberToHex(nonce),
 			initCode,
 			callData,
-			accountGasLimits: packAccountGasLimits(
-				initialGas.verificationGasLimit,
-				initialGas.callGasLimit
-			),
+			accountGasLimits: packAccountGasLimits(initialGas.verificationGasLimit, initialGas.callGasLimit),
 			preVerificationGas: numberToHex(initialGas.preVerificationGas),
 			gasFees: packGasFees(initialGas.maxPriorityFeePerGas, initialGas.maxFeePerGas),
 			paymasterAndData: '0x',
 			signature: dummySignature
 		};
 
-		const estimates = await estimateUserOperationGas(dummyUserOp);
+		const estimates = await estimateUserOperationGas(dummyUserOp, network);
 
-		// 用估算值 + 20% buffer
 		const refinedGas: GasParams = {
 			verificationGasLimit: (BigInt(estimates.verificationGasLimit) * 13n) / 10n,
 			callGasLimit: (BigInt(estimates.callGasLimit) * 13n) / 10n,
@@ -107,17 +148,17 @@ export async function sendEth(params: SendParams): Promise<SendResult> {
 			...gasPrices
 		};
 
-		// 4. 用真实 gas 计算 safeOpHash
+		// 4. 真实 gas 算 safeOpHash
 		const safeOpHash = calculateSafeOpHash(
 			safeAddress,
 			callData,
 			nonce,
 			initCode,
 			refinedGas,
-			ARBITRUM_CHAIN_ID
+			chainCfg.chainId
 		);
 
-		// 5. WebAuthn 签名（用户只需认证一次）
+		// 5. WebAuthn 签名
 		onStatus('signing');
 		const sigResult = await signSafeOpWithPasskey(safeOpHash, credentialId, rpId);
 		if (!sigResult.ok) {
@@ -125,16 +166,7 @@ export async function sendEth(params: SendParams): Promise<SendResult> {
 		}
 
 		const { authenticatorData, clientDataFields, r, s } = sigResult.result;
-
-		// 6. 构建最终 UserOp
-		const contractSig = buildContractSignatureWebAuthn(
-			authenticatorData,
-			clientDataFields,
-			r,
-			s,
-			pubX,
-			pubY
-		);
+		const contractSig = buildContractSignatureWebAuthn(authenticatorData, clientDataFields, r, s, pubX, pubY);
 		const signature = buildUserOpSignature(0, 0, contractSig);
 
 		const finalUserOp: UserOperation = {
@@ -142,31 +174,29 @@ export async function sendEth(params: SendParams): Promise<SendResult> {
 			nonce: numberToHex(nonce),
 			initCode,
 			callData,
-			accountGasLimits: packAccountGasLimits(
-				refinedGas.verificationGasLimit,
-				refinedGas.callGasLimit
-			),
+			accountGasLimits: packAccountGasLimits(refinedGas.verificationGasLimit, refinedGas.callGasLimit),
 			preVerificationGas: numberToHex(refinedGas.preVerificationGas),
 			gasFees: packGasFees(refinedGas.maxPriorityFeePerGas, refinedGas.maxFeePerGas),
 			paymasterAndData: '0x',
 			signature
 		};
 
-		// 7. 提交
+		// 6. 提交
 		onStatus('submitting');
-		const userOpHash = await sendUserOperation(finalUserOp);
+		const userOpHash = await sendUserOperation(finalUserOp, network);
 
-		// 8. 等待确认
+		// 7. 等待确认
 		onStatus('waiting');
 		const startTime = Date.now();
 		while (Date.now() - startTime < 120_000) {
-			const receipt = await getUserOperationReceipt(userOpHash);
+			const receipt = await getUserOperationReceipt(userOpHash, network);
 			if (receipt) {
 				if (receipt.success) {
 					onStatus('confirmed');
 					return {
 						success: true,
-						txHash: receipt.receipt.transactionHash
+						txHash: receipt.receipt.transactionHash,
+						explorerUrl: `${chainCfg.explorerUrl}${receipt.receipt.transactionHash}`
 					};
 				}
 				onStatus('failed');
@@ -178,9 +208,6 @@ export async function sendEth(params: SendParams): Promise<SendResult> {
 		return { success: false, error: 'Transaction confirmation timed out' };
 	} catch (err) {
 		onStatus('failed');
-		return {
-			success: false,
-			error: err instanceof Error ? err.message : String(err)
-		};
+		return { success: false, error: err instanceof Error ? err.message : String(err) };
 	}
 }

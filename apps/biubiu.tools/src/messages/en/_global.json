@@ -176,7 +176,7 @@
   "auth.send.statusConfirmed": "Transaction confirmed!",
   "auth.send.statusFailed": "Transaction failed",
   "auth.send.viewOnExplorer": "View on Explorer",
-  "auth.send.needNativeGas": "Insufficient gas. Please deposit native tokens (ETH/BNB/POL) to this wallet for transaction fees.",
+  "auth.send.needNativeGas": "Insufficient gas. Please deposit {token} on {chain} to this wallet for transaction fees.",
   "auth.send.done": "Done",
   "auth.uploadRetry.title": "Save to Server",
   "auth.uploadRetry.description": "Your passkey was created successfully, but saving to the server failed. Please retry — your account won't be complete until this succeeds.",

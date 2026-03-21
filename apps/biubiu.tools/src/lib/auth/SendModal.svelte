@@ -3,6 +3,7 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { sendToken, type SendStatus, type SendResult } from './safe-tx/send-token.js';
+	import { CHAIN_CONFIG } from './safe-tx/constants.js';
 	import { formatBalance, type TokenBalance } from './wallet.js';
 	import { isAddress } from 'viem';
 
@@ -82,8 +83,9 @@
 		const hasNativeGas = sameNetworkNative && parseFloat(sameNetworkNative.balance) > 0.005;
 
 		if (!hasNativeGas && selectedToken.tokenAddress) {
-			// 发送 ERC-20 但没有 native gas
-			error = t('auth.send.needNativeGas');
+			const chainCfg = CHAIN_CONFIG[selectedToken.network];
+			const nativeName = chainCfg?.nativeSymbol ?? 'native token';
+			error = t('auth.send.needNativeGas', { token: nativeName, chain: selectedToken.chainName });
 			return;
 		}
 

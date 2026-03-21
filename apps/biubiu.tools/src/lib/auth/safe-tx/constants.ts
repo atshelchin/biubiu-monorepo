@@ -8,56 +8,63 @@ export { CONTRACTS } from '../compute-safe-address.js';
 /** Alchemy 网络标识 → 链配置 */
 export const CHAIN_CONFIG: Record<
 	string,
-	{ chainId: bigint; alchemySlug: string; explorerUrl: string; explorerName: string }
+	{ chainId: bigint; alchemySlug: string; explorerUrl: string; explorerName: string; nativeSymbol: string }
 > = {
 	'eth-mainnet': {
 		chainId: 1n,
 		alchemySlug: 'eth-mainnet',
 		explorerUrl: 'https://etherscan.io/tx/',
-		explorerName: 'Etherscan'
+		explorerName: 'Etherscan',
+		nativeSymbol: 'ETH'
 	},
 	'arb-mainnet': {
 		chainId: 42161n,
 		alchemySlug: 'arb-mainnet',
 		explorerUrl: 'https://arbiscan.io/tx/',
-		explorerName: 'Arbiscan'
+		explorerName: 'Arbiscan',
+		nativeSymbol: 'ETH'
 	},
 	'base-mainnet': {
 		chainId: 8453n,
 		alchemySlug: 'base-mainnet',
 		explorerUrl: 'https://basescan.org/tx/',
-		explorerName: 'BaseScan'
+		explorerName: 'BaseScan',
+		nativeSymbol: 'ETH'
 	},
 	'opt-mainnet': {
 		chainId: 10n,
 		alchemySlug: 'opt-mainnet',
 		explorerUrl: 'https://optimistic.etherscan.io/tx/',
-		explorerName: 'Optimism Explorer'
+		explorerName: 'Optimism Explorer',
+		nativeSymbol: 'ETH'
 	},
 	'matic-mainnet': {
 		chainId: 137n,
 		alchemySlug: 'polygon-mainnet',
 		explorerUrl: 'https://polygonscan.com/tx/',
-		explorerName: 'PolygonScan'
+		explorerName: 'PolygonScan',
+		nativeSymbol: 'POL'
 	},
 	'bnb-mainnet': {
 		chainId: 56n,
 		alchemySlug: 'bnb-mainnet',
 		explorerUrl: 'https://bscscan.com/tx/',
-		explorerName: 'BscScan'
+		explorerName: 'BscScan',
+		nativeSymbol: 'BNB'
 	},
 	'avax-mainnet': {
 		chainId: 43114n,
 		alchemySlug: 'avax-mainnet',
 		explorerUrl: 'https://snowtrace.io/tx/',
-		explorerName: 'Snowtrace'
+		explorerName: 'Snowtrace',
+		nativeSymbol: 'AVAX'
 	},
-	// Testnets
 	'polygon-amoy': {
 		chainId: 80002n,
 		alchemySlug: 'polygon-amoy',
 		explorerUrl: 'https://amoy.polygonscan.com/tx/',
-		explorerName: 'Amoy Explorer'
+		explorerName: 'Amoy Explorer',
+		nativeSymbol: 'POL'
 	}
 };
 

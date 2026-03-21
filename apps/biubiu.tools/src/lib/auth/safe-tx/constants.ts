@@ -51,6 +51,13 @@ export const CHAIN_CONFIG: Record<
 		alchemySlug: 'avax-mainnet',
 		explorerUrl: 'https://snowtrace.io/tx/',
 		explorerName: 'Snowtrace'
+	},
+	// Testnets
+	'polygon-amoy': {
+		chainId: 80002n,
+		alchemySlug: 'polygon-amoy',
+		explorerUrl: 'https://amoy.polygonscan.com/tx/',
+		explorerName: 'Amoy Explorer'
 	}
 };
 

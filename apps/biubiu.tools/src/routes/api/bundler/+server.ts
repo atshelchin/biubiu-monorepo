@@ -23,7 +23,8 @@ const CHAIN_IDS: Record<string, number> = {
 	'opt-mainnet': 10,
 	'matic-mainnet': 137,
 	'bnb-mainnet': 56,
-	'avax-mainnet': 43114
+	'avax-mainnet': 43114,
+	'polygon-amoy': 80002
 };
 
 const ALCHEMY_SLUGS: Record<string, string> = {
@@ -33,7 +34,8 @@ const ALCHEMY_SLUGS: Record<string, string> = {
 	'opt-mainnet': 'opt-mainnet',
 	'matic-mainnet': 'polygon-mainnet',
 	'bnb-mainnet': 'bnb-mainnet',
-	'avax-mainnet': 'avax-mainnet'
+	'avax-mainnet': 'avax-mainnet',
+	'polygon-amoy': 'polygon-amoy'
 };
 
 // ─── Bundler Adapters ───
@@ -116,10 +118,15 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!targetUrl) return jsonError(`${adapter.name} not configured or network unsupported`, 503);
 	} else {
 		// 标准 RPC → Alchemy
-		if (!ALCHEMY_API_KEY) return jsonError('RPC not configured', 503);
+		if (!ALCHEMY_API_KEY) {
+			console.error('[bundler] ALCHEMY_API_KEY is empty');
+			return jsonError('RPC not configured', 503);
+		}
 		const slug = ALCHEMY_SLUGS[network] ?? network;
 		targetUrl = `https://${slug}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 	}
+
+	console.log(`[bundler] ${method} → ${targetUrl.replace(/[?=].*/, '...')}`);
 
 	try {
 		const res = await fetch(targetUrl, {
@@ -145,7 +152,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		console.error(`[bundler] ${method} failed:`, msg);
+		const cause = err instanceof Error && err.cause ? ` cause: ${err.cause}` : '';
+		console.error(`[bundler] ${method} failed: ${msg}${cause}`);
+		console.error(`[bundler] targetUrl: ${targetUrl}`);
 		return jsonRpcError(`Request failed: ${msg}`, 502);
 	}
 };

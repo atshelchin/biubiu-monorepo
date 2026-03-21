@@ -25,6 +25,7 @@ export interface WebAuthnSignatureResult {
  */
 function extractClientDataFields(clientDataJSON: ArrayBuffer): string {
 	const json = new TextDecoder().decode(clientDataJSON);
+	console.log('[webauthn] clientDataJSON:', json);
 
 	// 找到 "challenge":"..." 的闭合引号
 	const challengeKey = '"challenge":"';
@@ -41,6 +42,7 @@ function extractClientDataFields(clientDataJSON: ArrayBuffer): string {
 
 	// clientDataFields = 从闭合引号之后到 } 之前
 	const afterChallenge = json.slice(valueEnd + 1, json.length - 1);
+	console.log('[webauthn] clientDataFields:', JSON.stringify(afterChallenge));
 	return afterChallenge;
 }
 
@@ -106,11 +108,10 @@ export async function signSafeOpWithPasskey(
 	let r = BigInt('0x' + bufToHex(rawSig.slice(0, 32)));
 	let s = BigInt('0x' + bufToHex(rawSig.slice(32)));
 
-	// S-value normalization (low-s): if s > n/2, flip to n - s
-	const halfN = P256_N / 2n;
-	if (s > halfN) {
-		s = P256_N - s;
-	}
+	// 不做 S-value normalization — WebAuthn.sol 用 verifySignatureAllowMalleability
+	console.log('[webauthn] raw r:', r.toString());
+	console.log('[webauthn] raw s:', s.toString());
+	console.log('[webauthn] s > n/2:', s > P256_N / 2n);
 
 	return {
 		ok: true,

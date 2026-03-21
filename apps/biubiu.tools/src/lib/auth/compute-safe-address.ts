@@ -113,7 +113,8 @@ export function encodeSetupData(x: bigint, y: bigint): Hex {
 			stateMutability: 'nonpayable'
 		}],
 		functionName: 'configure',
-		args: [{ x, y, verifiers: 0x100n }] // RIP-7212 P256 预编译地址
+		// daimo P256Verifier 合约（所有主要 EVM 链都有部署）
+		args: [{ x, y, verifiers: BigInt('0xc2b78104907F722DABAc4C69f826a522B2754De4') }]
 	});
 
 	// 用 MultiSend 批量 delegatecall

@@ -193,6 +193,24 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		};
 
 		// 6. 提交
+		console.log('[send] finalUserOp:', JSON.stringify({
+			sender: finalUserOp.sender,
+			nonce: finalUserOp.nonce,
+			initCode: finalUserOp.initCode.slice(0, 20) + '...' + finalUserOp.initCode.length + ' chars',
+			callData: finalUserOp.callData.slice(0, 20) + '...',
+			accountGasLimits: finalUserOp.accountGasLimits,
+			preVerificationGas: finalUserOp.preVerificationGas,
+			gasFees: finalUserOp.gasFees,
+			signatureLen: finalUserOp.signature.length
+		}));
+		console.log('[send] gas used for hash:', JSON.stringify({
+			verificationGasLimit: refinedGas.verificationGasLimit.toString(),
+			callGasLimit: refinedGas.callGasLimit.toString(),
+			preVerificationGas: refinedGas.preVerificationGas.toString(),
+			maxFeePerGas: refinedGas.maxFeePerGas.toString(),
+			maxPriorityFeePerGas: refinedGas.maxPriorityFeePerGas.toString()
+		}));
+
 		onStatus('submitting');
 		const userOpHash = await sendUserOperation(finalUserOp, network);
 

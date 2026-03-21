@@ -1,10 +1,32 @@
+/**
+ * Bundler + RPC 代理。
+ *
+ * 适配器模式：通过 BUNDLER_PROVIDER env 切换 bundler 提供商。
+ * Bundler 方法（UserOp）→ Pimlico / Alchemy
+ * 标准 RPC 方法 → Alchemy
+ */
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
-const ALCHEMY_API_KEY = env.ALCHEMY_API_KEY ?? '';
+// ─── Config ───
 
-/** Alchemy 网络标识 → RPC slug */
-const NETWORK_SLUGS: Record<string, string> = {
+const ALCHEMY_API_KEY = env.ALCHEMY_API_KEY ?? '';
+const PIMLICO_API_KEY = env.PIMLICO_API_KEY ?? '';
+const BUNDLER_PROVIDER = env.BUNDLER_PROVIDER ?? 'pimlico'; // 'pimlico' | 'alchemy'
+
+// ─── Network Maps ───
+
+const CHAIN_IDS: Record<string, number> = {
+	'eth-mainnet': 1,
+	'arb-mainnet': 42161,
+	'base-mainnet': 8453,
+	'opt-mainnet': 10,
+	'matic-mainnet': 137,
+	'bnb-mainnet': 56,
+	'avax-mainnet': 43114
+};
+
+const ALCHEMY_SLUGS: Record<string, string> = {
 	'eth-mainnet': 'eth-mainnet',
 	'arb-mainnet': 'arb-mainnet',
 	'base-mainnet': 'base-mainnet',
@@ -14,78 +36,130 @@ const NETWORK_SLUGS: Record<string, string> = {
 	'avax-mainnet': 'avax-mainnet'
 };
 
-const ALLOWED_METHODS = new Set([
+// ─── Bundler Adapters ───
+
+interface BundlerAdapter {
+	name: string;
+	buildUrl(network: string): string | null;
+	/** Pimlico 专用方法 */
+	extraMethods?: string[];
+}
+
+const adapters: Record<string, BundlerAdapter> = {
+	pimlico: {
+		name: 'Pimlico',
+		buildUrl(network: string) {
+			if (!PIMLICO_API_KEY) return null;
+			const chainId = CHAIN_IDS[network];
+			if (!chainId) return null;
+			return `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${PIMLICO_API_KEY}`;
+		},
+		extraMethods: ['pimlico_getUserOperationGasPrice']
+	},
+	alchemy: {
+		name: 'Alchemy',
+		buildUrl(network: string) {
+			if (!ALCHEMY_API_KEY) return null;
+			const slug = ALCHEMY_SLUGS[network];
+			if (!slug) return null;
+			return `https://${slug}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+		}
+	}
+};
+
+// ─── Method Classification ───
+
+const BUNDLER_METHODS = new Set([
 	'eth_estimateUserOperationGas',
 	'eth_sendUserOperation',
 	'eth_getUserOperationReceipt',
 	'eth_getUserOperationByHash',
-	'eth_supportedEntryPoints',
+	'eth_supportedEntryPoints'
+]);
+
+const RPC_METHODS = new Set([
 	'eth_getCode',
 	'eth_call',
 	'eth_gasPrice',
 	'eth_maxPriorityFeePerGas'
 ]);
 
-export const POST: RequestHandler = async ({ request }) => {
-	if (!ALCHEMY_API_KEY) {
-		return new Response(JSON.stringify({ error: 'Bundler not configured' }), {
-			status: 503,
-			headers: { 'Content-Type': 'application/json' }
-		});
-	}
+// ─── Handler ───
 
+export const POST: RequestHandler = async ({ request }) => {
 	let body: { method: string; params: unknown[]; network?: string };
 	try {
 		body = await request.json();
 	} catch {
-		return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-			status: 400,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return jsonError('Invalid JSON', 400);
 	}
 
-	if (!body.method || !ALLOWED_METHODS.has(body.method)) {
-		return new Response(JSON.stringify({ error: `Method not allowed: ${body.method}` }), {
-			status: 403,
-			headers: { 'Content-Type': 'application/json' }
-		});
+	const method = body.method;
+	const adapter = adapters[BUNDLER_PROVIDER];
+	const adapterExtras = new Set(adapter?.extraMethods ?? []);
+
+	if (!method || (!BUNDLER_METHODS.has(method) && !RPC_METHODS.has(method) && !adapterExtras.has(method))) {
+		return jsonError(`Method not allowed: ${method}`, 403);
 	}
 
 	const network = body.network ?? 'arb-mainnet';
-	const slug = NETWORK_SLUGS[network];
-	if (!slug) {
-		return new Response(JSON.stringify({ error: `Unsupported network: ${network}` }), {
-			status: 400,
-			headers: { 'Content-Type': 'application/json' }
-		});
+	if (!CHAIN_IDS[network]) {
+		return jsonError(`Unsupported network: ${network}`, 400);
 	}
 
-	const bundlerUrl = `https://${slug}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+	// 路由：bundler 方法 → bundler adapter，标准 RPC → Alchemy
+	let targetUrl: string | null;
+
+	if (BUNDLER_METHODS.has(method) || adapterExtras.has(method)) {
+		if (!adapter) return jsonError(`Unknown bundler provider: ${BUNDLER_PROVIDER}`, 503);
+		targetUrl = adapter.buildUrl(network);
+		if (!targetUrl) return jsonError(`${adapter.name} not configured or network unsupported`, 503);
+	} else {
+		// 标准 RPC → Alchemy
+		if (!ALCHEMY_API_KEY) return jsonError('RPC not configured', 503);
+		const slug = ALCHEMY_SLUGS[network] ?? network;
+		targetUrl = `https://${slug}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+	}
 
 	try {
-		const res = await fetch(bundlerUrl, {
+		const res = await fetch(targetUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				jsonrpc: '2.0',
 				id: Date.now(),
-				method: body.method,
+				method,
 				params: body.params ?? []
 			})
 		});
+
+		if (!res.ok) {
+			const text = await res.text().catch(() => '');
+			console.error(`[bundler] ${method} → ${res.status}: ${text}`);
+			return jsonRpcError(`Provider returned ${res.status}`, 502);
+		}
 
 		const data = await res.json();
 		return new Response(JSON.stringify(data), {
 			headers: { 'Content-Type': 'application/json' }
 		});
-	} catch {
-		return new Response(
-			JSON.stringify({
-				jsonrpc: '2.0',
-				id: Date.now(),
-				error: { code: -32000, message: 'Bundler request failed' }
-			}),
-			{ status: 502, headers: { 'Content-Type': 'application/json' } }
-		);
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		console.error(`[bundler] ${method} failed:`, msg);
+		return jsonRpcError(`Request failed: ${msg}`, 502);
 	}
 };
+
+function jsonError(message: string, status: number) {
+	return new Response(JSON.stringify({ error: message }), {
+		status,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
+function jsonRpcError(message: string, status: number) {
+	return new Response(
+		JSON.stringify({ jsonrpc: '2.0', id: Date.now(), error: { code: -32000, message } }),
+		{ status, headers: { 'Content-Type': 'application/json' } }
+	);
+}

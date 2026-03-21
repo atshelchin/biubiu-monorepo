@@ -9,12 +9,13 @@
 	interface Props {
 		open: boolean;
 		onClose: () => void;
-		/** 当前有余额的 token 列表 */
 		balances: TokenBalance[];
 	}
 
 	let { open, onClose, balances }: Props = $props();
 
+	/** 'select' | 'form' */
+	let step = $state<'select' | 'form'>('select');
 	let selectedIndex = $state(0);
 	let recipient = $state('');
 	let amount = $state('');
@@ -34,6 +35,7 @@
 
 	function handleClose() {
 		if (status && status !== 'confirmed' && status !== 'failed') return;
+		step = 'select';
 		recipient = '';
 		amount = '';
 		selectedIndex = 0;
@@ -43,11 +45,23 @@
 		onClose();
 	}
 
+	function selectToken(index: number) {
+		selectedIndex = index;
+		amount = '';
+		error = null;
+		step = 'form';
+	}
+
+	function goBack() {
+		step = 'select';
+		amount = '';
+		error = null;
+	}
+
 	function setMax() {
 		if (!selectedToken) return;
 		const isNative = !selectedToken.tokenAddress;
 		if (isNative) {
-			// 预留 gas 费：首次部署 ~0.15，后续 ~0.02
 			const gasReserve = parseFloat(selectedToken.balance) > 0.3 ? 0.15 : 0.02;
 			const max = Math.max(0, parseFloat(selectedToken.balance) - gasReserve);
 			amount = max > 0 ? formatBalance(String(max)) : '0';
@@ -61,8 +75,6 @@
 		error = null;
 		result = null;
 
-		// 判断是否需要 ERC-20 代付 gas
-		// 如果该网络没有 native token 余额，用 stablecoin (USDC/USDT) 代付
 		const sameNetworkNative = balances.find(
 			(b) => b.network === selectedToken.network && !b.tokenAddress
 		);
@@ -70,7 +82,6 @@
 
 		let gasTokenAddress: string | null = null;
 		if (!hasNativeGas) {
-			// 找该网络上的 stablecoin 作为 gas token
 			const stablecoin = balances.find(
 				(b) => b.network === selectedToken.network &&
 					b.tokenAddress &&
@@ -113,74 +124,91 @@
 			case 'failed': return t('auth.send.statusFailed');
 		}
 	}
+
+	const title = $derived(
+		status ? t('auth.send.title') :
+		step === 'select' ? t('auth.send.selectToken') :
+		t('auth.send.title')
+	);
 </script>
 
-<ResponsiveModal {open} onClose={handleClose} title={t('auth.send.title')} zOffset={10}>
+<ResponsiveModal {open} onClose={handleClose} {title} zOffset={10}>
 	<div class="send-content">
 		{#if !status}
-			<!-- Token Selector -->
-			{#if balances.length > 1}
-				<div class="token-selector">
+			{#if step === 'select'}
+				<!-- Step 1: Select Token -->
+				<div class="token-list">
 					{#each balances as token, i}
-						<button
-							class="token-option"
-							class:selected={selectedIndex === i}
-							onclick={() => { selectedIndex = i; amount = ''; }}
-						>
-							<span class="token-symbol-badge">{token.symbol}</span>
-							<span class="token-chain-name">{token.chainName}</span>
-							<span class="token-bal">{formatBalance(token.balance)}</span>
+						<button class="token-row" onclick={() => selectToken(i)}>
+							<div class="token-info">
+								<span class="token-symbol">{token.symbol}</span>
+								<span class="token-chain">{token.chainName}</span>
+							</div>
+							<span class="token-amount">{formatBalance(token.balance)}</span>
+							<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="9 18 15 12 9 6"/>
+							</svg>
 						</button>
 					{/each}
 				</div>
-			{:else if balances.length === 1}
-				<div class="single-token">
-					<span class="token-symbol-badge">{balances[0].symbol}</span>
-					<span class="token-chain-name">{balances[0].chainName}</span>
-					<span class="token-bal">{formatBalance(balances[0].balance)}</span>
-				</div>
-			{/if}
 
-			<!-- Recipient -->
-			<div class="input-group">
-				<label class="input-label" for="send-recipient">{t('auth.send.recipient')}</label>
-				<input
-					id="send-recipient"
-					type="text"
-					class="input-field"
-					placeholder="0x..."
-					bind:value={recipient}
-					spellcheck="false"
-				/>
-			</div>
+				{#if balances.length === 0}
+					<p class="empty-hint">{t('auth.wallet.noBalance')}</p>
+				{/if}
 
-			<!-- Amount -->
-			<div class="input-group">
-				<div class="amount-header">
-					<label class="input-label" for="send-amount">{t('auth.send.amount')}</label>
-					<button class="max-btn" onclick={setMax}>Max</button>
-				</div>
-				<div class="amount-row">
+			{:else}
+				<!-- Step 2: Amount + Recipient -->
+				<!-- Selected token summary -->
+				<button class="selected-token-bar" onclick={goBack}>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="15 18 9 12 15 6"/>
+					</svg>
+					<span class="token-symbol">{selectedToken?.symbol}</span>
+					<span class="token-chain">{selectedToken?.chainName}</span>
+					<span class="token-amount">{selectedToken ? formatBalance(selectedToken.balance) : ''}</span>
+				</button>
+
+				<!-- Recipient -->
+				<div class="input-group">
+					<label class="input-label" for="send-recipient">{t('auth.send.recipient')}</label>
 					<input
-						id="send-amount"
-						type="number"
-						class="input-field amount-input"
-						placeholder="0.0"
-						bind:value={amount}
-						step="any"
-						min="0"
+						id="send-recipient"
+						type="text"
+						class="input-field"
+						placeholder="0x..."
+						bind:value={recipient}
+						spellcheck="false"
 					/>
-					<span class="amount-unit">{selectedToken?.symbol ?? ''}</span>
 				</div>
-			</div>
 
-			{#if error}
-				<p class="send-error">{error}</p>
+				<!-- Amount -->
+				<div class="input-group">
+					<div class="amount-header">
+						<label class="input-label" for="send-amount">{t('auth.send.amount')}</label>
+						<button class="max-btn" onclick={setMax}>Max</button>
+					</div>
+					<div class="amount-row">
+						<input
+							id="send-amount"
+							type="number"
+							class="input-field amount-input"
+							placeholder="0.0"
+							bind:value={amount}
+							step="any"
+							min="0"
+						/>
+						<span class="amount-unit">{selectedToken?.symbol ?? ''}</span>
+					</div>
+				</div>
+
+				{#if error}
+					<p class="send-error">{error}</p>
+				{/if}
+
+				<button class="send-btn" onclick={handleSend} disabled={!canSubmit}>
+					{t('auth.send.button')}
+				</button>
 			{/if}
-
-			<button class="send-btn" onclick={handleSend} disabled={!canSubmit}>
-				{t('auth.send.button')}
-			</button>
 
 		{:else}
 			<!-- Status Phase -->
@@ -234,23 +262,21 @@
 	.send-content {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
 
-	/* Token selector */
-	.token-selector {
+	/* Step 1: Token List */
+	.token-list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
-		max-height: 160px;
-		overflow-y: auto;
 	}
 
-	.token-option {
+	.token-row {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
+		gap: var(--space-3);
+		padding: var(--space-3);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 		background: transparent;
@@ -259,40 +285,67 @@
 		transition: all var(--motion-fast) var(--easing);
 	}
 
-	.token-option:hover {
+	.token-row:hover {
 		background: var(--bg-raised);
+		border-color: var(--border-base);
 	}
 
-	.token-option.selected {
-		border-color: var(--accent);
-		background: var(--accent-subtle);
-	}
-
-	.single-token {
+	.token-info {
 		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
-		border-radius: var(--radius-md);
+		flex-direction: column;
+		gap: 2px;
+		flex: 1;
 	}
 
-	.token-symbol-badge {
+	.token-symbol {
 		font-size: var(--text-sm);
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
 	}
 
-	.token-chain-name {
+	.token-chain {
 		font-size: var(--text-xs);
 		color: var(--fg-faint);
 	}
 
-	.token-bal {
-		margin-left: auto;
+	.token-amount {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
+	}
+
+	.chevron-icon {
+		color: var(--fg-faint);
+		flex-shrink: 0;
+	}
+
+	.empty-hint {
+		text-align: center;
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		margin: var(--space-4) 0;
+	}
+
+	/* Step 2: Selected token bar */
+	.selected-token-bar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		text-align: left;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.selected-token-bar:hover {
+		border-color: var(--border-base);
+	}
+
+	.selected-token-bar .token-amount {
+		margin-left: auto;
 	}
 
 	/* Input */

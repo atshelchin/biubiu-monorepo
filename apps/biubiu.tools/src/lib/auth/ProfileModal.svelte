@@ -72,7 +72,7 @@
 				<div class="profile-created">{formatDateTime(new Date(user.createdAt))}</div>
 			</div>
 
-			<!-- Safe Address -->
+			<!-- Wallet -->
 			<div class="wallet-section">
 				<span class="section-label">{t('auth.profile.safeAddress')}</span>
 				<button
@@ -90,6 +90,7 @@
 						</svg>
 					{/if}
 				</button>
+				<p class="wallet-warning">{t('auth.profile.walletWarning')}</p>
 			</div>
 
 			<!-- Balances (only non-zero) -->
@@ -263,6 +264,13 @@
 
 	.copy-icon { flex-shrink: 0; color: var(--fg-faint); }
 	.copied-badge { flex-shrink: 0; font-size: var(--text-xs); color: var(--success); }
+
+	.wallet-warning {
+		font-size: var(--text-xs);
+		color: var(--warning);
+		margin: 0;
+		line-height: var(--leading-relaxed);
+	}
 
 	/* Balances */
 	.balances-section {

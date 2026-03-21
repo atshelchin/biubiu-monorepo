@@ -146,6 +146,7 @@
   "auth.profile.title": "个人资料",
   "auth.profile.name": "账号名",
   "auth.profile.createdAt": "创建时间",
+  "auth.profile.safeAddress": "Safe 钱包 (Base)",
   "auth.profile.rpId": "域名",
   "auth.profile.credentialId": "凭证 ID",
   "auth.profile.publicKey": "公钥",

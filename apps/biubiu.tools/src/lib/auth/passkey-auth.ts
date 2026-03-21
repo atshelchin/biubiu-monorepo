@@ -8,6 +8,7 @@
  * 4. 重试会重新获取 challenge + 重新签名（challenge 会过期）
  */
 import type { AuthUser, IndexChallenge, LocalKey, StoredKey } from './types.js';
+import { computeSafeAddress } from './compute-safe-address.js';
 
 const INDEX_BASE = 'https://webauthnp256-publickey-index.biubiu.tools';
 const RP_NAME = 'BiuBiu Tools';
@@ -85,6 +86,20 @@ function loadLocalKeys(): LocalKey[] {
 	} catch {
 		return [];
 	}
+}
+
+/** 从公钥等信息构建 AuthUser（统一计算 safeAddress） */
+function buildAuthUser(data: {
+	name: string;
+	credentialId: string;
+	publicKey: string;
+	rpId: string;
+	createdAt: number;
+}): AuthUser {
+	return {
+		...data,
+		safeAddress: computeSafeAddress(data.publicKey)
+	};
 }
 
 function saveLocalKey(key: LocalKey): void {
@@ -284,13 +299,13 @@ export async function registerPasskey(name: string): Promise<RegisterResult> {
 	if (uploadResult.ok) {
 		return {
 			ok: true,
-			user: {
+			user: buildAuthUser({
 				name,
 				credentialId,
 				publicKey: publicKeyHex,
 				rpId,
 				createdAt: localKey.createdAt
-			}
+			})
 		};
 	}
 
@@ -315,13 +330,13 @@ export async function retryUpload(
 	if (result.ok) {
 		return {
 			ok: true,
-			user: {
+			user: buildAuthUser({
 				name: localKey.name,
 				credentialId: localKey.credentialId,
 				publicKey: localKey.publicKey,
 				rpId: localKey.rpId,
 				createdAt: localKey.createdAt
-			}
+			})
 		};
 	}
 
@@ -374,13 +389,13 @@ export async function loginWithPasskey(): Promise<
 	if (local) {
 		return {
 			ok: true,
-			user: {
+			user: buildAuthUser({
 				name: local.name,
 				credentialId: local.credentialId,
 				publicKey: local.publicKey,
 				rpId: local.rpId,
 				createdAt: local.createdAt
-			}
+			})
 		};
 	}
 
@@ -402,13 +417,13 @@ export async function loginWithPasskey(): Promise<
 		const stored: StoredKey = await res.json();
 		return {
 			ok: true,
-			user: {
+			user: buildAuthUser({
 				name: stored.name,
 				credentialId: stored.credentialId,
 				publicKey: stored.publicKey,
 				rpId: stored.rpId,
 				createdAt: stored.createdAt
-			}
+			})
 		};
 	} catch {
 		return { ok: false, error: 'Cannot reach the key index server' };

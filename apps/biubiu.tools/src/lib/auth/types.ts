@@ -12,6 +12,8 @@ export interface AuthUser {
 	publicKey: string;
 	/** RP ID（biubiu.tools / localhost） */
 	rpId: string;
+	/** 关联的 Safe 钱包地址（Base Mainnet，从公钥确定性派生） */
+	safeAddress: string;
 	/** 注册时间戳 */
 	createdAt: number;
 }

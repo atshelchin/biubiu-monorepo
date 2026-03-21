@@ -146,6 +146,7 @@
   "auth.profile.title": "Profile",
   "auth.profile.name": "Account Name",
   "auth.profile.createdAt": "Created",
+  "auth.profile.safeAddress": "Safe Wallet (Base)",
   "auth.profile.rpId": "Domain",
   "auth.profile.credentialId": "Credential ID",
   "auth.profile.publicKey": "Public Key",

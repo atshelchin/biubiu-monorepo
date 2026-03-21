@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 
 /**
  * @title ETHDistribution
  * @notice Gas-optimized tool for distributing ETH to multiple wallets
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Four distribution modes:
  *   1. Equal: total ETH divided equally among recipients
@@ -17,7 +17,7 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  * All modes support Options for gas limit protection and partial failure handling.
  * Set allowPartialFailure=false for strict mode (reverts on any failure).
  */
-contract ETHDistribution is ERC2771Context {
+contract ETHDistribution is BiuBiuPayable {
     // ============ Errors ============
 
     error NoRecipients();
@@ -56,10 +56,6 @@ contract ETHDistribution is ERC2771Context {
 
     uint256 public constant DEFAULT_GAS_LIMIT = 50000;
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Distribution Methods ============
 
     /**
@@ -83,7 +79,7 @@ contract ETHDistribution is ERC2771Context {
 
         uint256 refund = msg.value - result.totalSent;
         if (refund != 0) {
-            _send(_msgSender(), refund);
+            _send(msg.sender, refund);
         }
 
         _emitResult(1, result, len);
@@ -116,7 +112,7 @@ contract ETHDistribution is ERC2771Context {
 
         uint256 refund = msg.value - result.totalSent;
         if (refund != 0) {
-            _send(_msgSender(), refund);
+            _send(msg.sender, refund);
         }
 
         _emitResult(2, result, len);
@@ -150,7 +146,7 @@ contract ETHDistribution is ERC2771Context {
             unchecked { ++i; }
         }
 
-        emit Distributed(_msgSender(), 3, msg.value, len);
+        emit Distributed(msg.sender, 3, msg.value, len);
     }
 
     /**
@@ -183,10 +179,10 @@ contract ETHDistribution is ERC2771Context {
 
         uint256 refund = msg.value - totalSent;
         if (refund != 0) {
-            _send(_msgSender(), refund);
+            _send(msg.sender, refund);
         }
 
-        emit Distributed(_msgSender(), 4, totalSent, len);
+        emit Distributed(msg.sender, 4, totalSent, len);
     }
 
     // ============ Validation ============
@@ -230,7 +226,7 @@ contract ETHDistribution is ERC2771Context {
 
         uint256 refund = msg.value - validCount;
         if (refund != 0) {
-            _send(_msgSender(), refund);
+            _send(msg.sender, refund);
         }
     }
 
@@ -315,9 +311,9 @@ contract ETHDistribution is ERC2771Context {
 
     function _emitResult(uint8 mode, Result memory result, uint256 recipientCount) private {
         if (result.failedIndices.length > 0) {
-            emit DistributedPartial(_msgSender(), mode, result.totalSent, result.successCount, result.failedIndices.length);
+            emit DistributedPartial(msg.sender, mode, result.totalSent, result.successCount, result.failedIndices.length);
         } else {
-            emit Distributed(_msgSender(), mode, result.totalSent, recipientCount);
+            emit Distributed(msg.sender, mode, result.totalSent, recipientCount);
         }
     }
 

@@ -8,6 +8,7 @@
 		formatDate,
 		formatDateTime
 	} from '$lib/i18n';
+	import { fetchExchangeRate } from '$lib/auth/wallet.js';
 	import {
 		loadSettings,
 		applyTheme,
@@ -65,6 +66,26 @@
 	import RoundsHistory from '$lib/updown-shared/components/RoundsHistory.svelte';
 	import LiveFeed from '$lib/updown-shared/components/LiveFeed.svelte';
 	import AddStrategyModal from '$lib/updown-shared/components/AddStrategyModal.svelte';
+	import StrategyControlPanel from '$lib/updown-shared/components/StrategyControlPanel.svelte';
+	import ConfiguratorDrawer from '$lib/updown-shared/configurator/ConfiguratorDrawer.svelte';
+	import type { StrategyConfigV2 } from '$lib/updown-shared/configurator/types.js';
+	import { EndpointStore } from '$lib/updown-shared/auth/endpoint-store.svelte.js';
+	import {
+		fetchEngineStatus,
+		startInstance,
+		stopInstance,
+		pauseInstance,
+		type StrategyInstance,
+	} from '$lib/updown-shared/auth/engine-client.js';
+	import type { ManagedEndpoint } from '$lib/updown-shared/auth/types.js';
+
+	// --- Exchange rate (USD → user currency) ---
+	let exchangeRate = $state(1);
+
+	$effect(() => {
+		const cur = preferences.currency;
+		fetchExchangeRate(cur).then(r => { exchangeRate = r; });
+	});
 
 	// --- Formatter context (bridges i18n reactive state to pure functions) ---
 
@@ -76,6 +97,7 @@
 			formatDateTime,
 			timezone: preferences.timezone,
 			timeFormat,
+			exchangeRate,
 		};
 	}
 
@@ -98,7 +120,65 @@
 		return { baseUrl: activeStrategy.baseUrl, fetchFn: getFetchFn() };
 	}
 
+	// Hoisted: must be declared before getStoreConfig() which references them eagerly
+	let activeStrategyId = $state('builtin:v1');
+	const INSTANCE_PREFIX = 'instance::';
+	const endpointStore = new EndpointStore();
+
+	function isInstanceId(id: string): boolean {
+		return id.startsWith(INSTANCE_PREFIX);
+	}
+
+	function parseInstanceId(id: string): { epUrl: string; instanceId: string } | null {
+		if (!id.startsWith(INSTANCE_PREFIX)) return null;
+		const rest = id.slice(INSTANCE_PREFIX.length);
+		const sep = rest.indexOf('::');
+		if (sep < 0) return null;
+		return { epUrl: rest.slice(0, sep), instanceId: rest.slice(sep + 2) };
+	}
+
+	function makeInstanceId(epUrl: string, instanceId: string): string {
+		return `${INSTANCE_PREFIX}${epUrl}::${instanceId}`;
+	}
+
+	/** Find the ManagedEndpoint object by URL */
+	function findEndpoint(epUrl: string): ManagedEndpoint | undefined {
+		return endpointStore.endpoints.find((ep) => ep.url === epUrl);
+	}
+
+	/** Create a fetch function that injects auth headers for a managed endpoint */
+	function createEndpointFetchFn(ep: ManagedEndpoint): (url: string, init?: RequestInit) => Promise<Response> {
+		return (url: string, init?: RequestInit) =>
+			fetch(url, {
+				cache: 'no-store',
+				...init,
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${ep.token}`,
+					'X-Client-Id': ep.clientId,
+					...(init?.headers ?? {})
+				}
+			});
+	}
+
 	function getStoreConfig(): DashboardStoreConfig {
+		// Instance-based strategy: route through engine data APIs
+		const parsed = parseInstanceId(activeStrategyId);
+		if (parsed) {
+			const ep = findEndpoint(parsed.epUrl);
+			if (ep) {
+				const fetchFn = createEndpointFetchFn(ep);
+				const baseUrl = `${ep.url}/api/engine/${parsed.instanceId}`;
+				// SSE: EventSource can't send custom headers, pass auth via query params
+				const sseUrl = `${baseUrl}/sse/live?token=${encodeURIComponent(ep.token)}&clientId=${encodeURIComponent(ep.clientId)}`;
+				return {
+					getApiOpts: () => ({ baseUrl, fetchFn }),
+					getSseUrl: () => sseUrl,
+					isCustomStrategy: () => false, // not proxied — direct EventSource with query auth
+				};
+			}
+		}
+		// Regular strategy
 		return {
 			getApiOpts,
 			getSseUrl: () => apiUrl('/sse/live'),
@@ -108,6 +188,144 @@
 
 	const store = new DashboardStore(getStoreConfig());
 
+	// --- Endpoint Management (managed mode) ---
+	const managedEndpoint = $derived(endpointStore.activeEndpoint);
+	/** The endpoint for the currently selected instance (if any) */
+	const selectedInstanceEndpoint = $derived.by(() => {
+		const parsed = parseInstanceId(activeStrategyId);
+		if (!parsed) return null;
+		return findEndpoint(parsed.epUrl) ?? null;
+	});
+	/** Show management panel when an instance-based strategy is active OR when an endpoint is explicitly active */
+	const showManagementEndpoint = $derived(selectedInstanceEndpoint ?? managedEndpoint);
+
+	// Instance action state
+	let instanceActionLoading = $state<string | null>(null);
+	let instanceActionError = $state('');
+
+	// Configurator: when set, main area shows configurator instead of data panels
+	let configuratorEndpoint = $state<ManagedEndpoint | null>(null);
+	let configuratorActive = $derived(configuratorEndpoint !== null);
+
+	async function handleConfiguratorSave(config: StrategyConfigV2, label: string) {
+		if (!configuratorEndpoint) return;
+		const ep = configuratorEndpoint;
+		try {
+			// Map StrategyConfigV2 to InstanceOverrides + createInstance
+			const { createInstance: create } = await import('$lib/updown-shared/auth/engine-client.js');
+			const overrides: Record<string, unknown> = {
+				entryAmount: config.entry.amount,
+				priceMin: 0.01,
+				priceMax: config.entry.maxBuyPrice,
+				hedgingEnabled: config.hedge.enabled,
+				hedgeLimitPrice: config.hedge.limitPrice,
+				hedgeShares: config.hedge.shares,
+				hedgeSellThreshold: config.hedge.sellThreshold,
+			};
+			if (config.entry.method === 'swing_limit' && config.entry.swingTargetPrice != null) {
+				overrides.volatileSwingBuyPrice = config.entry.swingTargetPrice;
+			}
+			for (const rule of config.exit) {
+				if (rule.type === 'take_profit') overrides.volatileSwingTakeProfitPct = rule.pct;
+				if (rule.type === 'stop_loss') overrides.volatileSwingStopLossPrice = rule.price;
+			}
+			// Use first available base strategy
+			const { fetchBaseStrategies } = await import('$lib/updown-shared/auth/engine-client.js');
+			const { strategies } = await fetchBaseStrategies(ep);
+			const baseId = strategies[0]?.id ?? 'v1';
+			await create(ep, { baseStrategyId: baseId, label, overrides });
+			configuratorEndpoint = null;
+			await refreshEndpointInstances();
+			await fetchAllStrategyProfits();
+		} catch (err) {
+			instanceActionError = err instanceof Error ? err.message : 'Failed to create';
+		}
+	}
+
+	/** Get the current instance's status from the cached instance list */
+	const activeInstanceStatus = $derived.by(() => {
+		const parsed = parseInstanceId(activeStrategyId);
+		if (!parsed) return null;
+		const instances = endpointInstances.get(parsed.epUrl);
+		return instances?.find((i) => i.id === parsed.instanceId)?.status ?? null;
+	});
+
+	/** Handle instance lifecycle actions from strategy info panel */
+	async function handleInstanceAction(action: 'start' | 'stop' | 'pause') {
+		const parsed = parseInstanceId(activeStrategyId);
+		if (!parsed) return;
+		const ep = findEndpoint(parsed.epUrl);
+		if (!ep) return;
+
+		instanceActionLoading = action;
+		instanceActionError = '';
+		try {
+			let result: { ok: boolean; error?: string };
+			switch (action) {
+				case 'start': result = await startInstance(ep, parsed.instanceId); break;
+				case 'stop': result = await stopInstance(ep, parsed.instanceId); break;
+				case 'pause': result = await pauseInstance(ep, parsed.instanceId); break;
+			}
+			if (!result.ok) {
+				instanceActionError = result.error ?? 'Action failed';
+			}
+			await refreshEndpointInstances();
+			fetchAllStrategyProfits();
+		} catch (err) {
+			instanceActionError = err instanceof Error ? err.message : 'Action failed';
+		} finally {
+			instanceActionLoading = null;
+		}
+	}
+
+	// Endpoint inline state
+	let epRegisterError = $state('');
+
+	/**
+	 * 解析管理端点链接。
+	 * 格式: {baseUrl}/{token}/{clientId}
+	 * token = 64位hex，clientId = client-开头
+	 */
+	function parseManagedEndpointUrl(input: string): { baseUrl: string; token: string; clientId: string } | null {
+		try {
+			const u = new URL(input);
+			const segments = u.pathname.split('/').filter(Boolean);
+			if (segments.length < 2) return null;
+			const clientId = segments[segments.length - 1]!;
+			const token = segments[segments.length - 2]!;
+			// token: 64 hex chars; clientId: starts with "client-"
+			if (!/^[0-9a-f]{64}$/i.test(token)) return null;
+			if (!clientId.startsWith('client-')) return null;
+			const basePath = segments.slice(0, -2).join('/');
+			const baseUrl = `${u.protocol}//${u.host}${basePath ? '/' + basePath : ''}`;
+			return { baseUrl, token, clientId };
+		} catch {
+			return null;
+		}
+	}
+
+	// --- Instance tracking for live endpoints ---
+	/** Map: endpointUrl → instances */
+	let endpointInstances = new SvelteMap<string, StrategyInstance[]>();
+
+	/** Fetch instances for all endpoints */
+	async function refreshEndpointInstances() {
+		for (const ep of endpointStore.endpoints) {
+			try {
+				const result = await fetchEngineStatus(ep);
+				endpointInstances.set(ep.url, result.instances);
+			} catch {
+				endpointInstances.set(ep.url, []);
+			}
+		}
+	}
+
+	async function handleRegisterPasskeyInline(ep: ManagedEndpoint) {
+		epRegisterError = '';
+		const result = await endpointStore.registerPasskey(ep.url, ep.clientId);
+		if (!result.ok) epRegisterError = result.error;
+	}
+
 	// --- Reactive State ---
 
 	let builtinStrategies = $state<StrategyEndpoint[]>(FALLBACK_STRATEGIES);
@@ -115,7 +333,6 @@
 	let discoveredSiblings = new SvelteMap<string, StrategyEndpoint[]>();
 	let visibleDiscoveredIds = $state<Set<string>>(new Set());
 	let hiddenStrategyIds = $state<Set<string>>(new Set());
-	let activeStrategyId = $state('builtin:v1');
 	// All strategies including hidden (for config panels)
 	const allKnownStrategies = $derived([
 		...builtinStrategies,
@@ -134,6 +351,7 @@
 			builtinStrategies[0] ??
 			FALLBACK_STRATEGIES[0]
 	);
+	const isLiveMode = $derived(isInstanceId(activeStrategyId) || store.strategyInfo?.mode === 'live');
 	// strategyInfo is now in store.strategyInfo
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
@@ -235,7 +453,9 @@
 	async function fetchAllStrategyProfits() {
 		profitRefreshing = true;
 		const profitOpts = { profitRoundOffset, profitHourOffset, profitDayOffset };
-		const results = await Promise.all(
+
+		// Fetch profits for simulation strategies
+		const strategyResults = await Promise.all(
 			allRegisteredStrategies.map(async (s) => {
 				const fetchFn = s.type === 'custom'
 					? strategyFetch
@@ -247,6 +467,23 @@
 				return { id: s.id, profits };
 			})
 		);
+
+		// Fetch profits for live instances
+		const instanceResults: { id: string; profits: StrategyProfitData | null }[] = [];
+		for (const ep of endpointStore.endpoints) {
+			const instances = endpointInstances.get(ep.url) ?? [];
+			const fetchFn = createEndpointFetchFn(ep);
+			const epResults = await Promise.all(
+				instances.map(async (inst) => {
+					const baseUrl = `${ep.url}/api/engine/${inst.id}`;
+					const profits = await fetchStrategyProfitData({ baseUrl, fetchFn }, profitOpts);
+					return { id: makeInstanceId(ep.url, inst.id), profits };
+				})
+			);
+			instanceResults.push(...epResults);
+		}
+
+		const results = [...strategyResults, ...instanceResults];
 		// Update in-place to avoid UI flash (bug fix: was allStrategyProfits.clear())
 		const newIds = new Set(results.map((r) => r.id));
 		for (const key of allStrategyProfits.keys()) {
@@ -291,12 +528,18 @@
 	function onStrategyChange(strategyId: string) {
 		if (strategyId === activeStrategyId) return;
 		activeStrategyId = strategyId;
-		syncUrlParams(strategyId);
+		// Don't sync URL for instance-based strategies (they contain endpoint tokens)
+		if (!isInstanceId(strategyId)) {
+			syncUrlParams(strategyId);
+		}
 		persistState();
 		// Store handles: disconnect SSE, reset data, reconnect, refetch all
 		store.switchStrategy(getStoreConfig());
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
 		store.fetchInitialData(lang);
+		// Set date to today (same as mount behavior) — this won't re-fetch
+		// since filterDate was already reset; it just shows "today" in the picker
+		store.filterDate = { from: todayLocal(), to: todayLocal() };
 	}
 
 	function persistState() {
@@ -310,7 +553,51 @@
 	}
 
 	async function addCustomStrategy() {
-		const url = normalizeStrategyUrl(customUrlInput);
+		const rawInput = customUrlInput.trim();
+
+		// Auto-detect managed endpoint URL: {base}/{token}/{clientId}
+		const managed = parseManagedEndpointUrl(rawInput);
+		if (managed) {
+			customUrlError = '';
+			customUrlValidating = true;
+			try {
+				const result = await endpointStore.addEndpoint(
+					managed.baseUrl, managed.token, managed.clientId,
+					managed.baseUrl
+				);
+				if (!result.ok) {
+					customUrlError = result.error;
+					customUrlValidating = false;
+					return;
+				}
+				endpointStore.setActive(managed.baseUrl.replace(/\/+$/, ''));
+				customUrlInput = '';
+				showAddStrategy = false;
+				customUrlValidating = false;
+				// Fetch instances for the new endpoint
+				refreshEndpointInstances().then(() => {
+					// Auto-select first instance if available
+					const instances = endpointInstances.get(managed.baseUrl.replace(/\/+$/, ''));
+					if (instances?.length) {
+						const first = instances.find((i) => i.status === 'running') ?? instances[0];
+						if (first) onStrategyChange(makeInstanceId(managed.baseUrl.replace(/\/+$/, ''), first.id));
+						fetchAllStrategyProfits();
+					}
+				});
+				// Auto-prompt passkey registration if available
+				if (result.capabilities.passkey.canRegister) {
+					const ep = endpointStore.activeEndpoint;
+					if (ep) handleRegisterPasskeyInline(ep);
+				}
+			} catch (err) {
+				customUrlError = err instanceof Error ? err.message : 'Connection failed';
+				customUrlValidating = false;
+			}
+			return;
+		}
+
+		// Existing simulation strategy flow
+		const url = normalizeStrategyUrl(rawInput);
 		if (!url) {
 			customUrlError = t('btcUpdown.strategy.invalidUrl');
 			return;
@@ -739,6 +1026,11 @@
 					store.fetchInitialData(lang2);
 				});
 
+				// Load instances for any managed endpoints, then refresh profits to include them
+				refreshEndpointInstances().then(() => {
+					if (endpointInstances.size > 0) fetchAllStrategyProfits();
+				});
+
 				// Re-probe siblings for custom servers
 				const customHosts = new Set<string>();
 				for (const s of customStrategies) {
@@ -793,6 +1085,10 @@
 			const interval = setInterval(() => {
 				if (profitRoundOffset === 0 && profitHourOffset === 0 && profitDayOffset === 0) {
 					fetchAllStrategyProfits();
+				}
+				// Also refresh instance data for sidebar display
+				if (endpointStore.endpoints.length > 0) {
+					refreshEndpointInstances();
 				}
 			}, 30_000);
 			return () => clearInterval(interval);
@@ -1096,6 +1392,10 @@
 			<div class="version-selector glass-card" use:fadeInUp={{ delay: 10 }}>
 				<div class="version-header">
 					<span class="version-label">{t('btcUpdown.strategy.title')}</span>
+					<button class="add-strategy-btn-top" onclick={() => (showAddStrategy = true)}>
+						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+						{t('btcUpdown.strategy.addCustom')}
+					</button>
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header">
@@ -1416,30 +1716,120 @@
 						</div>
 					{/if}
 				{/each}
-				<button class="add-strategy-btn" onclick={() => (showAddStrategy = true)}>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg
-					>
-					{t('btcUpdown.strategy.addCustom')}
-				</button>
+				<!-- Managed Endpoints (Live Trading) — shown when any exist -->
+				{#if endpointStore.endpoints.length > 0}
+					<div class="managed-endpoints-section">
+						<div class="version-header">
+							<button class="section-collapse-btn" onclick={() => toggleCollapse('managed')}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('managed')}><polyline points="6 9 12 15 18 9" /></svg>
+							</button>
+							<span class="version-type-label">{t('btcUpdown.live.sectionTitle')}</span>
+						</div>
+						{#if !collapsedSections.has('managed')}
+							{@render columnHeaders()}
+							{#each endpointStore.endpoints as ep (ep.url + ep.clientId)}
+								{@const epKey = `ep:${ep.url}`}
+								{@const instances = endpointInstances.get(ep.url) ?? []}
+								{@const badge = ep.permissions?.funds ? 'Full' : ep.permissions?.trading ? 'Trading' : ep.permissions?.read ? 'Read' : '...'}
+								<div class="ep-group">
+									<div class="ep-group-header">
+										<button class="section-collapse-btn" onclick={() => {
+											toggleCollapse(epKey);
+											// Auto-select first instance when expanding
+											if (!collapsedSections.has(epKey) && instances.length > 0) {
+												const first = instances.find((i) => i.status === 'running') ?? instances[0];
+												if (first) onStrategyChange(makeInstanceId(ep.url, first.id));
+											}
+										}}>
+											<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(epKey)}><polyline points="6 9 12 15 18 9" /></svg>
+										</button>
+										<span class="ep-group-label">{ep.label}</span>
+										<span class="ep-meta">
+											<span class="ep-badge ep-badge-{badge.toLowerCase()}">{badge}</span>
+											{#if ep.credentialId}
+												<span class="ep-passkey" title={t('btcUpdown.live.passkeyRegistered')}>K</span>
+											{:else if ep.permissions?.trading}
+												<button
+													class="ep-passkey-btn"
+													title={t('btcUpdown.live.registerPasskey')}
+													onclick={(e) => { e.stopPropagation(); handleRegisterPasskeyInline(ep); }}
+												>+K</button>
+											{/if}
+										</span>
+										<button
+											class="ep-remove-btn"
+											onclick={(e) => { e.stopPropagation(); endpointStore.removeEndpoint(ep.url, ep.clientId); }}
+											title={t('btcUpdown.live.remove')}
+										>&times;</button>
+									</div>
+									{#if !collapsedSections.has(epKey)}
+										<div class="version-options">
+											{#each instances as inst (inst.id)}
+												{@const instStrategyId = makeInstanceId(ep.url, inst.id)}
+												{@const instProfits = allStrategyProfits.get(instStrategyId)}
+												<div class="version-row">
+													<button
+														class="version-btn"
+														class:active={activeStrategyId === instStrategyId}
+														onclick={() => onStrategyChange(instStrategyId)}
+													>
+														<span class="inst-status-dot inst-status-{inst.status}"></span>
+														<span class="strategy-name">{inst.label}</span>
+														{#if instProfits}
+															{@render profitCells(instProfits)}
+														{:else}
+															<span class="inst-profit" class:positive={inst.stats.profit > 0} class:negative={inst.stats.profit < 0}>
+																{fmtProfit(inst.stats.profit)}
+															</span>
+														{/if}
+													</button>
+												</div>
+											{/each}
+											{#if instances.length === 0}
+												<div class="ep-empty">{t('btcUpdown.instance.empty')}</div>
+											{/if}
+											<button class="sidebar-create-btn" onclick={() => { configuratorEndpoint = ep; }}>
+												+ {t('btcUpdown.instance.create')}
+											</button>
+										</div>
+									{/if}
+								</div>
+							{/each}
+
+							{#if epRegisterError}
+								<div class="ep-error">{epRegisterError}</div>
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</aside>
 
 		<!-- Main content -->
 		<div class="main-content">
+			<!-- Inline Configurator (takes over main area when active) -->
+			{#if configuratorActive && configuratorEndpoint}
+				<div class="configurator-area" use:fadeInUp={{ delay: 0 }}>
+					<ConfiguratorDrawer
+						open={true}
+						onClose={() => { configuratorEndpoint = null; }}
+						onSave={handleConfiguratorSave}
+						{t}
+						lang={locale.value === 'zh' ? 'zh' : 'en'}
+					/>
+				</div>
+			{:else}
+			<!-- Live Endpoint Management (shown when a managed endpoint with trading is active) -->
+			{#if showManagementEndpoint?.permissions?.trading && showManagementEndpoint}
+				<div class="live-management glass-card" use:fadeInUp={{ delay: 15 }}>
+					<StrategyControlPanel endpoint={showManagementEndpoint} {t} onInstanceChange={() => refreshEndpointInstances().then(() => fetchAllStrategyProfits())} onConfiguratorToggle={(open) => { if (open && showManagementEndpoint) configuratorEndpoint = showManagementEndpoint; }} />
+				</div>
+			{/if}
+
 			<!-- Disclaimer -->
 			<div
 				class="disclaimer"
-				class:disclaimer-live={store.strategyInfo?.mode === 'live'}
+				class:disclaimer-live={isLiveMode}
 				use:fadeInUp={{ delay: 30 }}
 			>
 				<svg
@@ -1453,7 +1843,7 @@
 					stroke-linecap="round"
 					stroke-linejoin="round"
 				>
-					{#if store.strategyInfo?.mode === 'live'}
+					{#if isLiveMode}
 						<path
 							d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
 						/>
@@ -1467,7 +1857,7 @@
 				</svg>
 				<span
 					>{t(
-						store.strategyInfo?.mode === 'live'
+						isLiveMode
 							? 'btcUpdown.disclaimer.live'
 							: 'btcUpdown.disclaimer.simulation'
 					)}</span
@@ -1506,6 +1896,32 @@
 							</div>
 						{/each}
 					</div>
+					{#if isInstanceId(activeStrategyId) && selectedInstanceEndpoint}
+						{@const status = activeInstanceStatus}
+						<div class="instance-actions">
+							{#if instanceActionError}
+								<div class="instance-action-error">{instanceActionError}</div>
+							{/if}
+							<div class="instance-action-buttons">
+								{#if status === 'stopped' || status === 'paused'}
+									<button class="btn-instance btn-instance-start" onclick={() => handleInstanceAction('start')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'start' ? '...' : t('btcUpdown.instance.start')}
+									</button>
+								{/if}
+								{#if status === 'running'}
+									<button class="btn-instance btn-instance-pause" onclick={() => handleInstanceAction('pause')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'pause' ? '...' : t('btcUpdown.instance.pause')}
+									</button>
+									<button class="btn-instance btn-instance-stop" onclick={() => handleInstanceAction('stop')} disabled={!!instanceActionLoading}>
+										{instanceActionLoading === 'stop' ? '...' : t('btcUpdown.instance.stop')}
+									</button>
+								{/if}
+								<span class="instance-status-badge" class:status-running={status === 'running'} class:status-paused={status === 'paused'} class:status-stopped={status === 'stopped'}>
+									{status ?? 'unknown'}
+								</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 			<!-- Strategy Runtime -->
@@ -1620,6 +2036,7 @@
 				{/if}
 			</div>
 			<!-- /.main-data -->
+		{/if}
 		</div>
 		<!-- /.main-content -->
 	</div>
@@ -2293,25 +2710,7 @@
 		background: rgba(255, 255, 255, 0.06);
 	}
 
-	/* Add Strategy Button */
-	.add-strategy-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px dashed rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--fg-subtle);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-	.add-strategy-btn:hover {
-		border-color: var(--accent);
-		color: var(--accent);
-	}
+	/* (old .add-strategy-btn removed — replaced by .add-strategy-btn-top) */
 
 	/* Disclaimer variants */
 	.disclaimer-live {
@@ -2401,6 +2800,65 @@
 		color: var(--fg-base);
 		font-family: var(--font-mono, ui-monospace, monospace);
 	}
+
+	/* Instance actions in strategy info card */
+	.instance-actions {
+		margin-top: var(--space-4);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--border-subtle);
+	}
+	.instance-action-error {
+		font-size: var(--text-xs);
+		color: var(--error);
+		margin-bottom: var(--space-2);
+	}
+	.instance-action-buttons {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.btn-instance {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		background: transparent;
+		color: var(--fg-base);
+	}
+	.btn-instance:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.btn-instance:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.btn-instance-start {
+		color: var(--success);
+		border-color: rgba(34, 197, 94, 0.3);
+	}
+	.btn-instance-stop {
+		color: var(--error);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+	.btn-instance-pause {
+		color: var(--warning);
+		border-color: rgba(251, 191, 36, 0.3);
+	}
+	.instance-status-badge {
+		margin-left: auto;
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		padding: 2px var(--space-2);
+		border-radius: var(--radius-full);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.status-running { color: var(--success); background: rgba(34, 197, 94, 0.1); }
+	.status-paused { color: var(--warning); background: rgba(251, 191, 36, 0.1); }
+	.status-stopped { color: var(--fg-subtle); background: rgba(255, 255, 255, 0.05); }
 
 	/* Disclaimer */
 	.disclaimer {
@@ -2686,5 +3144,204 @@
 		.date-filter-label {
 			display: none;
 		}
+	}
+
+	/* Top add strategy button (prominent, next to title) */
+	.add-strategy-btn-top {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-left: auto;
+		padding: 3px 10px;
+		border-radius: var(--radius-full);
+		border: 1px solid var(--accent);
+		background: var(--accent-subtle);
+		color: var(--accent);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.add-strategy-btn-top:hover {
+		background: var(--accent);
+		color: var(--accent-fg);
+	}
+
+	/* Managed endpoints section in sidebar */
+	.managed-endpoints-section {
+		margin-top: var(--space-2);
+		padding-top: var(--space-2);
+		border-top: 1px solid var(--border-subtle);
+	}
+	.ep-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+	.ep-row {
+		display: flex;
+		align-items: center;
+		border-radius: var(--radius-md);
+		transition: background var(--motion-fast) var(--easing);
+	}
+	.ep-row.ep-active {
+		background: rgba(255, 255, 255, 0.06);
+	}
+	.ep-select-btn {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-2);
+		background: none;
+		border: none;
+		color: inherit;
+		cursor: pointer;
+		text-align: left;
+		min-width: 0;
+		font-size: var(--text-xs);
+	}
+	.ep-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--success);
+		flex-shrink: 0;
+	}
+	.ep-label {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: var(--fg-base);
+		font-weight: var(--weight-medium);
+		font-size: var(--text-xs);
+	}
+	.ep-meta {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		flex-shrink: 0;
+		margin-left: auto;
+	}
+	.ep-badge {
+		font-size: 9px;
+		padding: 1px 4px;
+		border-radius: var(--radius-sm);
+		font-weight: var(--weight-semibold);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.ep-badge-read { background: var(--info-muted); color: var(--info); }
+	.ep-badge-trading { background: var(--warning-muted); color: var(--warning); }
+	.ep-badge-full { background: var(--success-muted); color: var(--success); }
+	.ep-passkey {
+		font-size: 9px;
+		font-weight: var(--weight-bold);
+		font-family: var(--font-mono);
+		color: var(--success);
+	}
+	.ep-passkey-btn {
+		font-size: 9px;
+		padding: 1px 3px;
+		border-radius: var(--radius-sm);
+		border: none;
+		background: var(--accent-muted);
+		color: var(--accent);
+		cursor: pointer;
+		font-weight: var(--weight-bold);
+		font-family: var(--font-mono);
+	}
+	.ep-passkey-btn:hover {
+		background: var(--accent);
+		color: var(--accent-fg);
+	}
+	.ep-remove-btn {
+		padding: 2px 4px;
+		background: none;
+		border: none;
+		color: var(--fg-faint);
+		cursor: pointer;
+		font-size: var(--text-sm);
+		line-height: 1;
+		transition: color var(--motion-fast) var(--easing);
+	}
+	.ep-remove-btn:hover { color: var(--error); }
+	.ep-error {
+		font-size: var(--text-xs);
+		color: var(--error);
+		padding: var(--space-1) var(--space-2);
+	}
+	.ep-group {
+		margin-bottom: var(--space-1);
+	}
+	.ep-group-header {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-2);
+		font-size: var(--text-xs);
+	}
+	.ep-group-label {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: var(--fg-base);
+		font-weight: var(--weight-medium);
+		font-size: var(--text-xs);
+	}
+	.ep-empty {
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		padding: var(--space-1) var(--space-4);
+		font-style: italic;
+	}
+	.sidebar-create-btn {
+		width: 100%;
+		padding: var(--space-1) var(--space-4);
+		background: none;
+		border: 1px dashed var(--border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		margin-top: var(--space-1);
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.sidebar-create-btn:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	.configurator-area {
+		padding: var(--space-4) 0;
+	}
+	.inst-status-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		display: inline-block;
+	}
+	.inst-status-running { background: var(--success); }
+	.inst-status-stopped { background: var(--fg-faint); }
+	.inst-status-paused { background: var(--warning); }
+	.inst-status-error { background: var(--error); }
+	.inst-profit {
+		margin-left: auto;
+		font-size: var(--text-xs);
+		font-family: var(--font-mono);
+		font-weight: var(--weight-medium);
+		color: var(--fg-muted);
+		flex-shrink: 0;
+	}
+	.inst-profit.positive { color: var(--success); }
+	.inst-profit.negative { color: var(--error); }
+
+	/* Live management panel in main content */
+	.live-management {
+		padding: var(--space-4);
+		border-radius: var(--radius-lg);
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		margin-bottom: var(--space-4);
 	}
 </style>

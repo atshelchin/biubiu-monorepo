@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 import {GeneratedERC20} from "./GeneratedERC20.sol";
 
 /**
  * @title ERC20Generator
  * @notice Factory for creating customizable ERC20 tokens
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Features bitmap:
  *   bit 0:  mintable      - owner can mint
@@ -23,7 +23,7 @@ import {GeneratedERC20} from "./GeneratedERC20.sol";
  *   bit 10: batch         - batch transfer support
  *   bit 11: callback      - ERC1363 transferAndCall
  */
-contract ERC20Generator is ERC2771Context {
+contract ERC20Generator is BiuBiuPayable {
     // ============ Errors ============
 
     error InvalidConfig();
@@ -58,10 +58,6 @@ contract ERC20Generator is ERC2771Context {
     /// @notice Tokens created by a specific address
     mapping(address => address[]) public tokensByCreator;
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Create Token ============
 
     /**
@@ -86,9 +82,10 @@ contract ERC20Generator is ERC2771Context {
         uint256 maxSupply,
         uint256 maxTxAmount,
         uint256 maxWalletAmount,
-        uint16 burnBps
-    ) external returns (address token) {
-        address sender = _msgSender();
+        uint16 burnBps,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address token) {
+        address sender = msg.sender;
 
         // Validate config
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
@@ -139,11 +136,14 @@ contract ERC20Generator is ERC2771Context {
      * @param totalSupply Initial total supply
      * @return token Address of the newly created token
      */
-    function createSimpleToken(string calldata name, string calldata symbol, uint8 decimals, uint256 totalSupply)
-        external
-        returns (address token)
-    {
-        address sender = _msgSender();
+    function createSimpleToken(
+        string calldata name,
+        string calldata symbol,
+        uint8 decimals,
+        uint256 totalSupply,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address token) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
 

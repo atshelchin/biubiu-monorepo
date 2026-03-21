@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 
 /**
  * @title ERC20Distribution
  * @notice Gas-optimized tool for distributing ERC20 tokens to multiple wallets
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Two distribution approaches:
  *   - Deposit mode: deposit first, then distribute via transfer() (cheaper gas)
@@ -18,7 +18,7 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  *   3. Random: random distribution based on weights
  *   4. RandomRange: random amount within min/max range
  */
-contract ERC20Distribution is ERC2771Context {
+contract ERC20Distribution is BiuBiuPayable {
     // ============ Errors ============
 
     error NoRecipients();
@@ -58,15 +58,11 @@ contract ERC20Distribution is ERC2771Context {
 
     mapping(address => mapping(address => uint256)) public balances;
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Deposit / Withdraw ============
 
     function deposit(address token, uint256 amount) external {
         if (amount == 0) revert ZeroAmount();
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         uint256 balanceBefore = _balanceOf(token, address(this));
         _transferFrom(token, sender, address(this), amount);
@@ -77,7 +73,7 @@ contract ERC20Distribution is ERC2771Context {
     }
 
     function withdraw(address token, uint256 amount) external {
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 bal = balances[sender][token];
 
         if (amount == 0) amount = bal;
@@ -93,15 +89,17 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute tokens equally from deposited balance
      */
-    function distributeEqual(address token, address[] calldata recipients, uint256 totalAmount, Options calldata options)
+    function distributeEqual(address token, address[] calldata recipients, uint256 totalAmount, Options calldata options, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
         returns (Result memory result)
     {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (totalAmount == 0) revert ZeroAmount();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         if (balances[sender][token] < totalAmount) revert InsufficientBalance();
 
         uint256[] memory amounts = _computeEqualAmounts(len, totalAmount);
@@ -112,15 +110,17 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute specified amounts from deposited balance
      */
-    function distributeSpecified(address token, address[] calldata recipients, uint256[] calldata amounts, Options calldata options)
+    function distributeSpecified(address token, address[] calldata recipients, uint256[] calldata amounts, Options calldata options, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
         returns (Result memory result)
     {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 total = _sum(amounts);
         if (balances[sender][token] < total) revert InsufficientBalance();
 
@@ -131,12 +131,12 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute tokens randomly from deposited balance
      */
-    function distributeRandom(address token, address[] calldata recipients, uint256 totalAmount) external {
+    function distributeRandom(address token, address[] calldata recipients, uint256 totalAmount, PayInfo calldata pay) external payable paid(pay) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (totalAmount == 0) revert ZeroAmount();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         if (balances[sender][token] < totalAmount) revert InsufficientBalance();
         balances[sender][token] -= totalAmount;
 
@@ -147,12 +147,12 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute with random amounts within a range from deposited balance
      */
-    function distributeRandomRange(address token, address[] calldata recipients, uint256 minAmount, uint256 maxAmount) external {
+    function distributeRandomRange(address token, address[] calldata recipients, uint256 minAmount, uint256 maxAmount, PayInfo calldata pay) external payable paid(pay) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (minAmount > maxAmount) revert InvalidRange();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 maxRequired = maxAmount * len;
         if (balances[sender][token] < maxRequired) revert InsufficientBalance();
 
@@ -166,8 +166,10 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute tokens equally via direct transferFrom
      */
-    function distributeEqualDirect(address token, address[] calldata recipients, uint256 totalAmount, Options calldata options)
+    function distributeEqualDirect(address token, address[] calldata recipients, uint256 totalAmount, Options calldata options, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
         returns (Result memory result)
     {
         uint256 len = recipients.length;
@@ -175,34 +177,36 @@ contract ERC20Distribution is ERC2771Context {
         if (totalAmount == 0) revert ZeroAmount();
 
         uint256[] memory amounts = _computeEqualAmounts(len, totalAmount);
-        result = _distributeDirect(token, _msgSender(), recipients, amounts, options);
+        result = _distributeDirect(token, msg.sender, recipients, amounts, options);
         _emitResult(token, 1, true, result, len);
     }
 
     /**
      * @notice Distribute specified amounts via direct transferFrom
      */
-    function distributeSpecifiedDirect(address token, address[] calldata recipients, uint256[] calldata amounts, Options calldata options)
+    function distributeSpecifiedDirect(address token, address[] calldata recipients, uint256[] calldata amounts, Options calldata options, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
         returns (Result memory result)
     {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
 
-        result = _distributeDirect(token, _msgSender(), recipients, amounts, options);
+        result = _distributeDirect(token, msg.sender, recipients, amounts, options);
         _emitResult(token, 2, true, result, len);
     }
 
     /**
      * @notice Distribute tokens randomly via direct transferFrom
      */
-    function distributeRandomDirect(address token, address[] calldata recipients, uint256 totalAmount) external {
+    function distributeRandomDirect(address token, address[] calldata recipients, uint256 totalAmount, PayInfo calldata pay) external payable paid(pay) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (totalAmount == 0) revert ZeroAmount();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         _distributeRandomInternal(token, recipients, totalAmount, true, sender);
         emit Distributed(sender, token, 3, true, totalAmount, len);
     }
@@ -210,12 +214,12 @@ contract ERC20Distribution is ERC2771Context {
     /**
      * @notice Distribute with random amounts within a range via direct transferFrom
      */
-    function distributeRandomRangeDirect(address token, address[] calldata recipients, uint256 minAmount, uint256 maxAmount) external {
+    function distributeRandomRangeDirect(address token, address[] calldata recipients, uint256 minAmount, uint256 maxAmount, PayInfo calldata pay) external payable paid(pay) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (minAmount > maxAmount) revert InvalidRange();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 totalSent = _distributeRandomRangeInternal(token, recipients, minAmount, maxAmount, true, sender);
         emit Distributed(sender, token, 4, true, totalSent, len);
     }
@@ -226,7 +230,7 @@ contract ERC20Distribution is ERC2771Context {
      * @notice Test if token is deflationary
      */
     function checkDeflationary(address token, address testRecipient) external returns (bool isDeflationary) {
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 balanceBefore = _balanceOf(token, testRecipient);
 
         if (!_tryTransferFrom(token, sender, testRecipient, 1)) revert TransferFailed();
@@ -392,9 +396,9 @@ contract ERC20Distribution is ERC2771Context {
 
     function _emitResult(address token, uint8 mode, bool direct, Result memory result, uint256 recipientCount) private {
         if (result.failedIndices.length > 0) {
-            emit DistributedPartial(_msgSender(), token, mode, result.totalSent, result.successCount, result.failedIndices.length);
+            emit DistributedPartial(msg.sender, token, mode, result.totalSent, result.successCount, result.failedIndices.length);
         } else {
-            emit Distributed(_msgSender(), token, mode, direct, result.totalSent, recipientCount);
+            emit Distributed(msg.sender, token, mode, direct, result.totalSent, recipientCount);
         }
     }
 

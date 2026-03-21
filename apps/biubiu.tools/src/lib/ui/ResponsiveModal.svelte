@@ -6,10 +6,12 @@
 		open: boolean;
 		onClose: () => void;
 		title?: string;
+		/** z-index 层级偏移，用于子弹框堆叠在父弹框之上（默认 0） */
+		zOffset?: number;
 		children: Snippet;
 	}
 
-	let { open, onClose, title, children }: Props = $props();
+	let { open, onClose, title, zOffset = 0, children }: Props = $props();
 
 	// Close on escape key
 	function handleKeydown(e: KeyboardEvent) {
@@ -37,10 +39,10 @@
 
 {#if open}
 	<!-- Backdrop -->
-	<div class="modal-backdrop" onclick={onClose} role="presentation"></div>
+	<div class="modal-backdrop" onclick={onClose} role="presentation" style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset})` : ''}></div>
 
 	<!-- Modal Panel -->
-	<div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined}>
+	<div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset + 1})` : ''}>
 		<!-- Drag handle for mobile -->
 		<div class="modal-handle"></div>
 

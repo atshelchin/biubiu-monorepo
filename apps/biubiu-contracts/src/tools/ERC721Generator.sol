@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 import {GeneratedERC721} from "./GeneratedERC721.sol";
 
 /**
  * @title ERC721Generator
  * @notice Factory for creating customizable ERC721 NFT collections
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Features bitmap:
  *   bit 0:  publicMint    - anyone can mint (with payment)
@@ -21,7 +21,7 @@ import {GeneratedERC721} from "./GeneratedERC721.sol";
  *   bit 8:  updatableURI  - owner can update individual token URIs
  *   bit 9:  revenueSplit  - auto-split mint revenue to multiple addresses
  */
-contract ERC721Generator is ERC2771Context {
+contract ERC721Generator is BiuBiuPayable {
     // ============ Errors ============
 
     error InvalidConfig();
@@ -76,10 +76,6 @@ contract ERC721Generator is ERC2771Context {
     /// @notice Collections created by a specific address
     mapping(address => address[]) public collectionsByCreator;
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Create Collection ============
 
     /**
@@ -87,8 +83,13 @@ contract ERC721Generator is ERC2771Context {
      * @param config Collection configuration
      * @return collection Address of the newly created collection
      */
-    function createCollection(CollectionConfig calldata config) external returns (address collection) {
-        address sender = _msgSender();
+    function createCollection(CollectionConfig calldata config, PayInfo calldata pay)
+        external
+        payable
+        paid(pay)
+        returns (address collection)
+    {
+        address sender = msg.sender;
 
         // Validate
         if (bytes(config.name).length == 0 || bytes(config.symbol).length == 0) {
@@ -153,9 +154,10 @@ contract ERC721Generator is ERC2771Context {
         string calldata name,
         string calldata symbol,
         uint256 maxSupply,
-        string calldata baseURI
-    ) external returns (address collection) {
-        address sender = _msgSender();
+        string calldata baseURI,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
         if (maxSupply == 0) revert InvalidConfig();
@@ -202,9 +204,10 @@ contract ERC721Generator is ERC2771Context {
         uint256 maxSupply,
         string calldata hiddenURI,
         address royaltyReceiver,
-        uint96 royaltyBps
-    ) external returns (address collection) {
-        address sender = _msgSender();
+        uint96 royaltyBps,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
         if (maxSupply == 0) revert InvalidConfig();
@@ -250,9 +253,10 @@ contract ERC721Generator is ERC2771Context {
         string calldata name,
         string calldata symbol,
         uint256 maxSupply,
-        string calldata baseURI
-    ) external returns (address collection) {
-        address sender = _msgSender();
+        string calldata baseURI,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (address collection) {
+        address sender = msg.sender;
 
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert InvalidConfig();
         if (maxSupply == 0) revert InvalidConfig();

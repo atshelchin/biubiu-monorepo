@@ -38,6 +38,7 @@ function mockCtx(overrides?: Partial<FormatterContext>): FormatterContext {
 		formatDateTime: () => '2026-01-01 12:00',
 		timezone: 'UTC',
 		timeFormat: '24',
+		exchangeRate: 1,
 		...overrides,
 	};
 }

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC2771Context} from "../libraries/ERC2771Context.sol";
+import {BiuBiuPayable} from "../libraries/BiuBiuPayable.sol";
 
 /**
  * @title ERC1155Distribution
  * @notice Gas-optimized tool for distributing ERC1155 tokens to multiple wallets
- * @dev Called via BiuBiuPremium.callTool(), uses ERC2771Context for real sender
+ * @dev Users call directly with ETH for gas-based fee. No proxy needed.
  *
  * Two categories of distribution:
  *   A. Single tokenId (like ERC20 with quantity):
@@ -16,7 +16,7 @@ import {ERC2771Context} from "../libraries/ERC2771Context.sol";
  *
  * User must call setApprovalForAll(this, true) on the ERC1155 contract first.
  */
-contract ERC1155Distribution is ERC2771Context {
+contract ERC1155Distribution is BiuBiuPayable {
     // ============ Errors ============
 
     error NoRecipients();
@@ -49,10 +49,6 @@ contract ERC1155Distribution is ERC2771Context {
     event DistributedPartial(address indexed sender, address indexed nft, uint8 indexed mode, uint256 tokenId, uint256 totalSent, uint256 successCount, uint256 failCount);
     event TransferSkipped(address indexed nft, address indexed recipient, uint256 indexed index, uint256 tokenId, uint256 amount);
 
-    // ============ Constructor ============
-
-    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder) {}
-
     // ============ Single TokenId Distribution ============
 
     /**
@@ -69,13 +65,14 @@ contract ERC1155Distribution is ERC2771Context {
         uint256 tokenId,
         address[] calldata recipients,
         uint256 totalAmount,
-        Options calldata options
-    ) external returns (Result memory result) {
+        Options calldata options,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (Result memory result) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (totalAmount == 0) revert ZeroAmount();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         uint256 amount = totalAmount / len;
         uint256 dust = totalAmount - (amount * len);
 
@@ -115,13 +112,14 @@ contract ERC1155Distribution is ERC2771Context {
         uint256 tokenId,
         address[] calldata recipients,
         uint256[] calldata amounts,
-        Options calldata options
-    ) external returns (Result memory result) {
+        Options calldata options,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (Result memory result) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         uint256[] memory tempFailed = new uint256[](len);
         uint256 failCount;
@@ -156,14 +154,16 @@ contract ERC1155Distribution is ERC2771Context {
      * @param recipients Array of recipient addresses
      * @param totalAmount Total amount to distribute
      */
-    function distributeSingleRandom(address nft, uint256 tokenId, address[] calldata recipients, uint256 totalAmount)
+    function distributeSingleRandom(address nft, uint256 tokenId, address[] calldata recipients, uint256 totalAmount, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
     {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (totalAmount == 0) revert ZeroAmount();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         bytes32 seed = keccak256(abi.encodePacked(block.timestamp, block.prevrandao, sender, totalAmount));
         uint256 remaining = totalAmount;
 
@@ -199,13 +199,14 @@ contract ERC1155Distribution is ERC2771Context {
         uint256 tokenId,
         address[] calldata recipients,
         uint256 minAmount,
-        uint256 maxAmount
-    ) external {
+        uint256 maxAmount,
+        PayInfo calldata pay
+    ) external payable paid(pay) {
         uint256 len = recipients.length;
         if (len == 0) revert NoRecipients();
         if (minAmount > maxAmount) revert InvalidRange();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
         bytes32 seed = keccak256(abi.encodePacked(block.timestamp, block.prevrandao, sender));
         uint256 range = maxAmount - minAmount;
         uint256 totalSent;
@@ -238,13 +239,14 @@ contract ERC1155Distribution is ERC2771Context {
         uint256[] calldata tokenIds,
         uint256[] calldata amounts,
         address[] calldata recipients,
-        Options calldata options
-    ) external returns (Result memory result) {
+        Options calldata options,
+        PayInfo calldata pay
+    ) external payable paid(pay) returns (Result memory result) {
         uint256 len = tokenIds.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length || len != recipients.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         uint256[] memory tempFailed = new uint256[](len);
         uint256 failCount;
@@ -274,14 +276,16 @@ contract ERC1155Distribution is ERC2771Context {
      * @param amounts Array of amounts for each token
      * @param recipient The recipient address
      */
-    function batchTransferToOne(address nft, uint256[] calldata tokenIds, uint256[] calldata amounts, address recipient)
+    function batchTransferToOne(address nft, uint256[] calldata tokenIds, uint256[] calldata amounts, address recipient, PayInfo calldata pay)
         external
+        payable
+        paid(pay)
     {
         uint256 len = tokenIds.length;
         if (len == 0) revert NoRecipients();
         if (len != amounts.length) revert LengthMismatch();
 
-        address sender = _msgSender();
+        address sender = msg.sender;
 
         (bool success,) = nft.call(
             abi.encodeWithSelector(
@@ -316,9 +320,9 @@ contract ERC1155Distribution is ERC2771Context {
 
     function _emitResult(address nft, uint8 mode, uint256 tokenId, Result memory result, uint256 recipientCount) private {
         if (result.failedIndices.length > 0) {
-            emit DistributedPartial(_msgSender(), nft, mode, tokenId, result.totalSent, result.successCount, result.failedIndices.length);
+            emit DistributedPartial(msg.sender, nft, mode, tokenId, result.totalSent, result.successCount, result.failedIndices.length);
         } else {
-            emit Distributed(_msgSender(), nft, mode, tokenId, result.totalSent, recipientCount);
+            emit Distributed(msg.sender, nft, mode, tokenId, result.totalSent, recipientCount);
         }
     }
 

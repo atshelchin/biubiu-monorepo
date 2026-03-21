@@ -28,6 +28,15 @@ const NATIVE_TOKENS: Record<string, { symbol: string; name: string }> = {
 
 const SUPPORTED_NETWORKS = Object.keys(NETWORK_NAMES);
 
+/** 已知合法 ERC-20 symbol（大写）— 无报价也不标记为 spam */
+const KNOWN_SYMBOLS = new Set([
+	'USDT', 'USDC', 'USDC.E', 'DAI', 'BUSD', 'TUSD', 'FRAX', 'LUSD', 'PYUSD', 'USDP', 'GUSD', 'CRVUSD',
+	'WETH', 'WBTC', 'STETH', 'WSTETH', 'RETH', 'CBETH', 'EZETH', 'WEETH',
+	'LINK', 'UNI', 'AAVE', 'MKR', 'SNX', 'CRV', 'LDO', 'RPL', 'ENS', 'GRT', 'COMP', 'SUSHI',
+	'ARB', 'OP', 'MATIC', 'GMX', 'PENDLE', 'RDNT',
+	'SHIB', 'PEPE', 'APE', 'DOGE', 'FLOKI',
+]);
+
 export const GET: RequestHandler = async ({ url }) => {
 	const address = url.searchParams.get('address');
 
@@ -76,6 +85,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			name: string;
 			tokenAddress: string | null;
 			priceUsd: number | null;
+			spam: boolean;
 		}> = [];
 
 		for (const token of data?.data?.tokens ?? []) {
@@ -94,6 +104,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			// 价格（USD）
 			const priceEntry = token.tokenPrices?.[0];
 			const priceUsd = priceEntry?.currency === 'usd' ? parseFloat(priceEntry.value) : null;
+			const validPrice = priceUsd != null && !isNaN(priceUsd);
+
+			// 判断垃圾币：非 native、无报价、不在已知白名单
+			const spam = !isNative && !validPrice && !KNOWN_SYMBOLS.has(symbol.toUpperCase());
 
 			tokens.push({
 				network: token.network,
@@ -104,7 +118,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				logo: token.tokenMetadata?.logo ?? null,
 				name,
 				tokenAddress: isNative ? null : (token.tokenAddress ?? null),
-				priceUsd: priceUsd && !isNaN(priceUsd) ? priceUsd : null
+				priceUsd: validPrice ? priceUsd : null,
+				spam
 			});
 		}
 

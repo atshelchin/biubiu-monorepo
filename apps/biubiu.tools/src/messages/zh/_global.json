@@ -155,6 +155,8 @@
   "auth.wallet.refresh": "刷新",
   "auth.wallet.deposit": "充值",
   "auth.wallet.noBalance": "暂无资产 — 充值即可开始",
+  "auth.wallet.showUnverified": "{count} 个未验证代币",
+  "auth.wallet.hideUnverified": "隐藏未验证代币",
   "auth.wallet.supportedNetworks": "支持的网络",
   "auth.wallet.depositReceived": "充值到账！",
   "auth.wallet.waitingForDeposit": "正在监听入账...",

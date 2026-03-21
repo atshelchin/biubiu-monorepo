@@ -103,7 +103,7 @@ export function buildCallData(
 export function buildInitCode(publicKeyHex: string): Hex {
 	const { x, y } = parseP256PublicKey(publicKeyHex);
 	const saltNonce = calculateSaltNonce(x, y);
-	const setupData = encodeSetupData();
+	const setupData = encodeSetupData(x, y);
 
 	const factoryData = encodeFunctionData({
 		abi: [
@@ -194,16 +194,15 @@ export function calculateSafeOpHash(
 /**
  * 构建 SafeWebAuthnSharedSigner 的合约签名。
  *
- * 动态数据: abi.encode(authenticatorData, clientDataFields, r, s, x, y)
+ * SharedSigner 从 Safe storage 读取 (x, y)，签名里不含公钥。
+ * 动态数据: abi.encode(authenticatorData, clientDataFields, r, s)
  * 外层: Safe 合约签名格式 (r=signerAddr, s=offset, v=0x00)
  */
 export function buildContractSignatureWebAuthn(
 	authenticatorData: Hex,
 	clientDataFields: string,
 	sigR: bigint,
-	sigS: bigint,
-	pubX: bigint,
-	pubY: bigint
+	sigS: bigint
 ): Hex {
 	// r (32 bytes) = signer contract address, left-padded
 	const r = pad(CONTRACTS.safeWebAuthnSharedSigner as Hex, { size: 32 });
@@ -212,17 +211,15 @@ export function buildContractSignatureWebAuthn(
 	// v = 0x00 (contract signature type)
 	const v = '0x00' as Hex;
 
-	// Dynamic signature data: WebAuthn assertion + public key
+	// Dynamic signature data: WebAuthn assertion (不含公钥，从 storage 读取)
 	const dynamicData = encodeAbiParameters(
 		[
 			{ type: 'bytes' },
 			{ type: 'string' },
 			{ type: 'uint256' },
-			{ type: 'uint256' },
-			{ type: 'uint256' },
 			{ type: 'uint256' }
 		],
-		[authenticatorData, clientDataFields, sigR, sigS, pubX, pubY]
+		[authenticatorData, clientDataFields, sigR, sigS]
 	);
 
 	const dataLength = pad(numberToHex(BigInt(hexSize(dynamicData))), { size: 32 });
@@ -245,8 +242,7 @@ export function buildUserOpSignature(
  * 构建 dummy signature（gas 估算用）。
  * 格式正确但签名值假，bundler 不验签只看长度。
  */
-export function buildDummySignature(pubX: bigint, pubY: bigint): Hex {
-	// 37 bytes dummy authenticatorData (rpIdHash 32 + flags 1 + signCount 4)
+export function buildDummySignature(): Hex {
 	const dummyAuthData = pad('0x01', { size: 37, dir: 'right' });
 	const dummyClientDataFields = ',"origin":"https://biubiu.tools","crossOrigin":false';
 
@@ -254,9 +250,7 @@ export function buildDummySignature(pubX: bigint, pubY: bigint): Hex {
 		dummyAuthData,
 		dummyClientDataFields,
 		1n,
-		1n,
-		pubX,
-		pubY
+		1n
 	);
 
 	return buildUserOpSignature(0, 0, contractSig);

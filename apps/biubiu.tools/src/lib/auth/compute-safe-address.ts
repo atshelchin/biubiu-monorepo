@@ -31,9 +31,11 @@ export const CONTRACTS = {
 	safe4337Module: '0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226' as const,
 	safeModuleSetup: '0x2dd68b007B46fBe91B9A7c3EDa5A7a1063cB5b47' as const,
 
-	// SafeWebAuthnSharedSigner
-	// 共享签名器：公钥在签名数据中传递，不存储在合约中
-	safeWebAuthnSharedSigner: '0x94a4F6affBd8975951142c3999aEAB7ecee555c2' as const
+	// SafeWebAuthnSharedSigner — 公钥存在 Safe storage (via delegatecall configure)
+	safeWebAuthnSharedSigner: '0x94a4F6affBd8975951142c3999aEAB7ecee555c2' as const,
+
+	// MultiSend 1.4.1 (same address on all chains)
+	multiSend: '0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526' as const
 } as const;
 
 // Safe Proxy creation code
@@ -60,52 +62,102 @@ export function parseP256PublicKey(publicKeyHex: string): { x: bigint; y: bigint
 }
 
 /**
- * Encode Safe.setup() calldata
- * owners: [SafeWebAuthnSharedSigner]，threshold: 1
+ * 编码 MultiSend 中的单个交易。
+ * 格式: operation (1 byte) + to (20 bytes) + value (32 bytes) + dataLength (32 bytes) + data
  */
-export function encodeSetupData(): Hex {
-	// enableModules([safe4337Module])
+function encodeMultiSendTx(to: Address, data: Hex, operation: number = 0): Hex {
+	const opByte = operation.toString(16).padStart(2, '0');
+	const toBytes = to.slice(2).toLowerCase();
+	const valueBytes = '0'.repeat(64); // value = 0
+	const dataBytes = data === '0x' ? '' : data.slice(2);
+	const dataLength = (dataBytes.length / 2).toString(16).padStart(64, '0');
+	return `0x${opByte}${toBytes}${valueBytes}${dataLength}${dataBytes}` as Hex;
+}
+
+/**
+ * Encode Safe.setup() calldata
+ *
+ * 通过 MultiSend delegatecall 批量执行：
+ * 1. SafeModuleSetup.enableModules([safe4337Module])
+ * 2. SafeWebAuthnSharedSigner.configure({x, y, verifiers})
+ */
+export function encodeSetupData(x: bigint, y: bigint): Hex {
+	// 1. enableModules([safe4337Module])
 	const enableModulesData = encodeFunctionData({
-		abi: [
-			{
-				name: 'enableModules',
-				type: 'function',
-				inputs: [{ name: 'modules', type: 'address[]' }],
-				outputs: [],
-				stateMutability: 'nonpayable'
-			}
-		],
+		abi: [{
+			name: 'enableModules',
+			type: 'function',
+			inputs: [{ name: 'modules', type: 'address[]' }],
+			outputs: [],
+			stateMutability: 'nonpayable'
+		}],
 		functionName: 'enableModules',
 		args: [[CONTRACTS.safe4337Module]]
 	});
 
-	// owners: [SharedSigner], threshold: 1
+	// 2. configure({x, y, verifiers: 0}) — verifiers=0 使用 RIP-7212 P256 预编译
+	const configureData = encodeFunctionData({
+		abi: [{
+			name: 'configure',
+			type: 'function',
+			inputs: [{
+				name: 'signer',
+				type: 'tuple',
+				components: [
+					{ name: 'x', type: 'uint256' },
+					{ name: 'y', type: 'uint256' },
+					{ name: 'verifiers', type: 'uint176' }
+				]
+			}],
+			outputs: [],
+			stateMutability: 'nonpayable'
+		}],
+		functionName: 'configure',
+		args: [{ x, y, verifiers: 0n }]
+	});
+
+	// 用 MultiSend 批量 delegatecall
+	const tx1 = encodeMultiSendTx(CONTRACTS.safeModuleSetup, enableModulesData, 1); // delegatecall
+	const tx2 = encodeMultiSendTx(CONTRACTS.safeWebAuthnSharedSigner, configureData, 1); // delegatecall
+	const packed = concat([tx1, tx2]);
+
+	const multiSendData = encodeFunctionData({
+		abi: [{
+			name: 'multiSend',
+			type: 'function',
+			inputs: [{ name: 'transactions', type: 'bytes' }],
+			outputs: [],
+			stateMutability: 'payable'
+		}],
+		functionName: 'multiSend',
+		args: [packed]
+	});
+
+	// Safe.setup: to=MultiSend, data=multiSend(packed), operation=delegatecall
 	const setupData = encodeFunctionData({
-		abi: [
-			{
-				name: 'setup',
-				type: 'function',
-				inputs: [
-					{ name: '_owners', type: 'address[]' },
-					{ name: '_threshold', type: 'uint256' },
-					{ name: 'to', type: 'address' },
-					{ name: 'data', type: 'bytes' },
-					{ name: 'fallbackHandler', type: 'address' },
-					{ name: 'paymentToken', type: 'address' },
-					{ name: 'payment', type: 'uint256' },
-					{ name: 'paymentReceiver', type: 'address' }
-				],
-				outputs: [],
-				stateMutability: 'nonpayable'
-			}
-		],
+		abi: [{
+			name: 'setup',
+			type: 'function',
+			inputs: [
+				{ name: '_owners', type: 'address[]' },
+				{ name: '_threshold', type: 'uint256' },
+				{ name: 'to', type: 'address' },
+				{ name: 'data', type: 'bytes' },
+				{ name: 'fallbackHandler', type: 'address' },
+				{ name: 'paymentToken', type: 'address' },
+				{ name: 'payment', type: 'uint256' },
+				{ name: 'paymentReceiver', type: 'address' }
+			],
+			outputs: [],
+			stateMutability: 'nonpayable'
+		}],
 		functionName: 'setup',
 		args: [
 			[CONTRACTS.safeWebAuthnSharedSigner],
 			1n,
-			CONTRACTS.safeModuleSetup,
-			enableModulesData,
-			CONTRACTS.safe4337Module,
+			CONTRACTS.multiSend,            // to: MultiSend
+			multiSendData,                   // data: multiSend(packed)
+			CONTRACTS.safe4337Module,         // fallbackHandler
 			'0x0000000000000000000000000000000000000000',
 			0n,
 			'0x0000000000000000000000000000000000000000'
@@ -163,6 +215,6 @@ function calculateProxyAddress(setupData: Hex, nonce: bigint): Address {
 export function computeSafeAddress(publicKeyHex: string): Address {
 	const { x, y } = parseP256PublicKey(publicKeyHex);
 	const saltNonce = calculateSaltNonce(x, y);
-	const setupData = encodeSetupData();
+	const setupData = encodeSetupData(x, y);
 	return calculateProxyAddress(setupData, saltNonce);
 }

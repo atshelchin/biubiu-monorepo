@@ -4,7 +4,6 @@
  * 单次签名流程：dummy signature 估算 gas → 真实签名 → 提交。
  */
 import { type Address, type Hex, numberToHex, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { parseP256PublicKey } from '../compute-safe-address.js';
 import {
 	buildCallData,
 	buildInitCode,
@@ -92,7 +91,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		return { success: false, error: `Unsupported network: ${network}` };
 	}
 
-	const { x: pubX, y: pubY } = parseP256PublicKey(publicKeyHex);
+	// publicKeyHex 用于 buildInitCode（首次部署配置 signer）
 	const amountWei = parseUnits(String(amount), decimals);
 	const isNative = !tokenAddress;
 
@@ -126,7 +125,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 
 		// 3. 用 dummy signature 估算 gas
 		onStatus('estimating');
-		const dummySignature = buildDummySignature(pubX, pubY);
+		const dummySignature = buildDummySignature();
 		const dummyUserOp: UserOperation = {
 			sender: safeAddress,
 			nonce: numberToHex(nonce),
@@ -159,6 +158,12 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		);
 
 		// 5. WebAuthn 签名
+		console.log('[send] safeOpHash:', safeOpHash);
+		console.log('[send] safeAddress:', safeAddress);
+		console.log('[send] nonce:', nonce);
+		console.log('[send] chainId:', chainCfg.chainId);
+		console.log('[send] deployed:', deployed);
+
 		onStatus('signing');
 		const sigResult = await signSafeOpWithPasskey(safeOpHash, credentialId, rpId);
 		if (!sigResult.ok) {
@@ -166,8 +171,14 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		}
 
 		const { authenticatorData, clientDataFields, r, s } = sigResult.result;
-		const contractSig = buildContractSignatureWebAuthn(authenticatorData, clientDataFields, r, s, pubX, pubY);
+		console.log('[send] authenticatorData:', authenticatorData);
+		console.log('[send] clientDataFields:', JSON.stringify(clientDataFields));
+		console.log('[send] sig r:', r.toString());
+		console.log('[send] sig s:', s.toString());
+
+		const contractSig = buildContractSignatureWebAuthn(authenticatorData, clientDataFields, r, s);
 		const signature = buildUserOpSignature(0, 0, contractSig);
+		console.log('[send] signature length:', signature.length);
 
 		const finalUserOp: UserOperation = {
 			sender: safeAddress,

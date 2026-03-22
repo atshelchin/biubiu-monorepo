@@ -119,6 +119,31 @@ export interface HourlyStats {
 	avgProfit: number;
 }
 
+export interface DailyStat {
+	date: string;
+	rounds: number;
+	entered: number;
+	skipped: number;
+	wins: number;
+	losses: number;
+	winRate: number;
+	invested: number;
+	payout: number;
+	profit: number;
+}
+
+export interface WeekdayStats {
+	/** 0 = Monday, 6 = Sunday */
+	day: number;
+	label: string;
+	rounds: number;
+	wins: number;
+	losses: number;
+	winRate: number;
+	profit: number;
+	avgProfit: number;
+}
+
 export interface StrategyProfitData {
 	current:
 		| { status: 'settled'; profit: number; direction: string | null }

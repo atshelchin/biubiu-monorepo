@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { HourlyStats } from '../types.js';
 	import type { FormatterContext, TranslateFn } from '../types.js';
-	import { fmtProfit, todayLocal } from '../formatters.js';
+	import { fmtProfit, fmtPct, todayLocal } from '../formatters.js';
 	import { HOURS_24 } from '../constants.js';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 
@@ -11,10 +11,13 @@
 		selectedHour: number | null;
 		ctx: FormatterContext;
 		t: TranslateFn;
+		titleKey?: string;
+		/** Show rounds/winRate below each hour (for aggregated multi-day mode) */
+		showMeta?: boolean;
 		onSelectHour?: (hour: number | null) => void;
 	}
 
-	let { hourlyData, filterDateFrom, selectedHour, ctx, t, onSelectHour }: Props = $props();
+	let { hourlyData, filterDateFrom, selectedHour, ctx, t, titleKey, showMeta = false, onSelectHour }: Props = $props();
 
 	const maxAbs = $derived(Math.max(...hourlyData.map((h) => Math.abs(h.profit)), 1));
 	const hourlyMap = $derived(new Map(hourlyData.map((h) => [h.hour, h])));
@@ -24,7 +27,7 @@
 </script>
 
 <section class="hourly-chart glass-card" use:fadeInUp={{ delay: 50 }}>
-	<h3 class="section-label">{t('btcUpdown.chart.hourlyProfit')}</h3>
+	<h3 class="section-label">{t(titleKey ?? 'btcUpdown.chart.hourlyProfit')}</h3>
 	{#each [[0, 12, 'AM'], [12, 24, 'PM']] as [start, end, label] (label)}
 		<div class="chart-row">
 			<span class="chart-row-label">{label}</span>
@@ -62,6 +65,9 @@
 							{/if}
 						</div>
 						<span class="chart-hour">{String(hour).padStart(2, '0')}</span>
+						{#if showMeta && h}
+							<span class="chart-meta">{h.rounds}r · {fmtPct(ctx, h.winRate)}</span>
+						{/if}
 					</div>
 				{/each}
 			</div>
@@ -168,6 +174,13 @@
 		color: var(--fg-secondary);
 		font-family: var(--font-mono, ui-monospace, monospace);
 		font-weight: 600;
+	}
+	.chart-meta {
+		font-size: 8px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		color: var(--fg-subtle);
+		white-space: nowrap;
+		opacity: 0.7;
 	}
 	.chart-col-selected {
 		background: rgba(255, 255, 255, 0.08);

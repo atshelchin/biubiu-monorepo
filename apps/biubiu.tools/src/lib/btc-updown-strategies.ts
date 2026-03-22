@@ -50,7 +50,7 @@ export const DEFAULT_VISIBLE_BUILTINS = new Set(['v1', 'v3', 'v7', 'v8', 'v14', 
 // --- Fallback strategies (used when discovery fails) ---
 
 export const FALLBACK_STRATEGIES: StrategyEndpoint[] = [
-	{ id: 'builtin:v1', label: 'v1', baseUrl: `${API_HOST}/api`, type: 'builtin', addedAt: 0 },
+	{ id: 'builtin:v1', label: 'v1', baseUrl: `${API_HOST}/api/v1`, type: 'builtin', addedAt: 0 },
 ];
 
 // --- ID generation ---
@@ -100,7 +100,7 @@ export async function discoverStrategies(
 		const strategies = data.map((s) => ({
 			id: `discovered:${host}:${s.version}`,
 			label: s.version,
-			baseUrl: `${serverOrigin}${s.basePath ?? (s.version === 'v1' ? '/api' : `/api/${s.version}`)}`,
+			baseUrl: `${serverOrigin}${s.basePath ?? `/api/${s.version}`}`,
 			type: 'discovered' as const,
 			addedAt: 0
 		}));

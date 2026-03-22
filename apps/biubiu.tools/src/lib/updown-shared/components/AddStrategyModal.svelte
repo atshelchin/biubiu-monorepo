@@ -88,7 +88,7 @@
 				<input
 					type="url"
 					class="strategy-url-input"
-					placeholder="https://your-server.com/api/v1"
+					placeholder="https://your-server.com"
 					value={urlInput}
 					disabled={validating}
 					oninput={(e) => onUrlChange(e.currentTarget.value)}

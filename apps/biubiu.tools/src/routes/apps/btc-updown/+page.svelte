@@ -36,7 +36,6 @@
 		API_HOST,
 		generateCustomId,
 		normalizeStrategyUrl,
-		validateStrategyUrl,
 		strategyFetch,
 		loadPersistedState,
 		savePersistedState,
@@ -597,51 +596,53 @@
 			return;
 		}
 
-		// Existing simulation strategy flow
-		const url = normalizeStrategyUrl(rawInput);
-		if (!url) {
+		// Endpoint discovery flow: user provides root URL, we discover all strategies
+		let endpointUrl = normalizeStrategyUrl(rawInput);
+		if (!endpointUrl) {
 			customUrlError = t('btcUpdown.strategy.invalidUrl');
 			return;
 		}
 		try {
-			new URL(url);
+			new URL(endpointUrl);
 		} catch {
 			customUrlError = t('btcUpdown.strategy.invalidUrl');
 			return;
 		}
-		// Check duplicate
-		if (allRegisteredStrategies.some((s) => s.baseUrl === url)) {
-			customUrlError = t('btcUpdown.strategy.duplicateUrl');
-			return;
-		}
+		// Strip /api or /api/vN suffix if user pasted a full strategy URL
+		endpointUrl = endpointUrl.replace(/\/api(\/v\d+)?$/, '');
+
 		customUrlError = '';
-		validationSteps = [];
+		validationSteps = [{ step: 'discovery', status: 'checking' }];
 		customUrlValidating = true;
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
-		const result = await validateStrategyUrl(url, lang, (steps) => {
-			validationSteps = steps;
-		});
-		customUrlValidating = false;
-		if (!result.valid) {
-			customUrlError = result.error;
+
+		// Discover strategies from the endpoint
+		const result = await discoverStrategies(endpointUrl, '/api/strategies', lang, strategyFetch);
+		if (!result || result.strategies.length === 0) {
+			validationSteps = [{ step: 'discovery', status: 'fail' }];
+			customUrlError = lang === 'zh' ? '无法发现策略，请检查端点 URL' : 'No strategies found at this endpoint';
+			customUrlValidating = false;
 			return;
 		}
-		const newStrategy: StrategyEndpoint = {
-			id: generateCustomId(),
-			label: result.info.name || url,
-			baseUrl: url,
-			type: 'custom',
-			addedAt: Date.now()
-		};
-		customStrategies = [...customStrategies, newStrategy];
+		validationSteps = [{ step: 'discovery', status: 'ok' }];
+
+		// Add as discovered siblings
+		const host = new URL(endpointUrl).host;
+		discoveredSiblings.set(host, result.strategies);
+		for (let i = 0; i < result.strategies.length; i++) {
+			allStrategyInfos.set(result.strategies[i].id, result.raw[i]);
+			visibleDiscoveredIds.add(result.strategies[i].id);
+		}
+		visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+
 		customUrlInput = '';
 		validationSteps = [];
 		showAddStrategy = false;
+		customUrlValidating = false;
 		persistState();
-		onStrategyChange(newStrategy.id);
+		// Select the first discovered strategy
+		onStrategyChange(result.strategies[0].id);
 		fetchAllStrategies();
-		// Probe for sibling strategies on the same server
-		probeServerSiblings(url);
 	}
 
 	async function probeServerSiblings(strategyUrl: string) {

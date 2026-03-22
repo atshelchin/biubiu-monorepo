@@ -119,13 +119,26 @@ const DEFAULT_STATE: PersistedState = {
 	activeStrategyId: 'builtin:v1'
 };
 
+/** Migrate old /api baseUrl (no version) to /api/v1 */
+function migrateBaseUrl(strategies: StrategyEndpoint[]): StrategyEndpoint[] {
+	return strategies.map((s) => {
+		// /api without /vN suffix → /api/v1
+		if (/\/api\/?$/.test(s.baseUrl)) {
+			return { ...s, baseUrl: s.baseUrl.replace(/\/api\/?$/, '/api/v1') };
+		}
+		return s;
+	});
+}
+
 export function loadPersistedState(): PersistedState {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (!raw) return DEFAULT_STATE;
 		const parsed = JSON.parse(raw);
 		return {
-			customStrategies: Array.isArray(parsed.customStrategies) ? parsed.customStrategies : [],
+			customStrategies: migrateBaseUrl(
+				Array.isArray(parsed.customStrategies) ? parsed.customStrategies : []
+			),
 			visibleDiscoveredIds: Array.isArray(parsed.visibleDiscoveredIds)
 				? parsed.visibleDiscoveredIds
 				: [],

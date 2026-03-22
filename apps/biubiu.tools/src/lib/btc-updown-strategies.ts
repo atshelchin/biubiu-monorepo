@@ -63,6 +63,10 @@ export function generateCustomId(): string {
 
 export function normalizeStrategyUrl(url: string): string {
 	let normalized = url.trim();
+	// Auto-prepend http:// if no protocol specified
+	if (normalized && !/^https?:\/\//i.test(normalized)) {
+		normalized = `http://${normalized}`;
+	}
 	// Remove trailing slashes
 	while (normalized.endsWith('/')) {
 		normalized = normalized.slice(0, -1);
@@ -119,14 +123,21 @@ const DEFAULT_STATE: PersistedState = {
 	activeStrategyId: 'builtin:v1'
 };
 
-/** Migrate old /api baseUrl (no version) to /api/v1 */
-function migrateBaseUrl(strategies: StrategyEndpoint[]): StrategyEndpoint[] {
-	return strategies.map((s) => {
+/** Migrate old /api baseUrl (no version) to /api/v1, then deduplicate by baseUrl */
+function migrateAndDedup(strategies: StrategyEndpoint[]): StrategyEndpoint[] {
+	const migrated = strategies.map((s) => {
 		// /api without /vN suffix → /api/v1
 		if (/\/api\/?$/.test(s.baseUrl)) {
 			return { ...s, baseUrl: s.baseUrl.replace(/\/api\/?$/, '/api/v1') };
 		}
 		return s;
+	});
+	// Deduplicate by baseUrl (keep first occurrence)
+	const seen = new Set<string>();
+	return migrated.filter((s) => {
+		if (seen.has(s.baseUrl)) return false;
+		seen.add(s.baseUrl);
+		return true;
 	});
 }
 
@@ -136,7 +147,7 @@ export function loadPersistedState(): PersistedState {
 		if (!raw) return DEFAULT_STATE;
 		const parsed = JSON.parse(raw);
 		return {
-			customStrategies: migrateBaseUrl(
+			customStrategies: migrateAndDedup(
 				Array.isArray(parsed.customStrategies) ? parsed.customStrategies : []
 			),
 			visibleDiscoveredIds: Array.isArray(parsed.visibleDiscoveredIds)

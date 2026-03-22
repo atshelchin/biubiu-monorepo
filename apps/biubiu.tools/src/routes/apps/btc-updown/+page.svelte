@@ -626,14 +626,18 @@
 		}
 		validationSteps = [{ step: 'discovery', status: 'ok' }];
 
-		// Add as discovered siblings
-		const host = new URL(endpointUrl).host;
-		discoveredSiblings.set(host, result.strategies);
+		// Add discovered strategies as custom strategies so they show in the sidebar
+		const existingIds = new Set(customStrategies.map((s) => s.id));
+		const existingUrls = new Set(customStrategies.map((s) => s.baseUrl));
+		const newCustom = result.strategies
+			.filter((s) => !existingIds.has(s.id) && !existingUrls.has(s.baseUrl))
+			.map((s) => ({ ...s, type: 'custom' as const, addedAt: Date.now() }));
+		if (newCustom.length > 0) {
+			customStrategies = [...customStrategies, ...newCustom];
+		}
 		for (let i = 0; i < result.strategies.length; i++) {
 			allStrategyInfos.set(result.strategies[i].id, result.raw[i]);
-			visibleDiscoveredIds.add(result.strategies[i].id);
 		}
-		visibleDiscoveredIds = new Set(visibleDiscoveredIds);
 
 		customUrlInput = '';
 		validationSteps = [];
@@ -689,7 +693,7 @@
 		// Clean up discovered siblings
 		const siblings = discoveredSiblings.get(host) ?? [];
 		for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
-		visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+		visibleDiscoveredIds = new SvelteSet(visibleDiscoveredIds);
 		discoveredSiblings.delete(host);
 		configPanelSection = null;
 		// Switch active if needed
@@ -718,7 +722,7 @@
 			if (remaining.length === 0) {
 				const siblings = discoveredSiblings.get(host) ?? [];
 				for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
-				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+				visibleDiscoveredIds = new SvelteSet(visibleDiscoveredIds);
 				discoveredSiblings.delete(host);
 			}
 		} catch {

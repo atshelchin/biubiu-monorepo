@@ -16,6 +16,7 @@
 import type {
 	ConnectionStatus,
 	CurrentRoundResponse,
+	DailyStat,
 	HourlyStats,
 	Round,
 	RoundStatusFilter,
@@ -30,6 +31,7 @@ import {
 	fetchCurrentRound as apiFetchCurrentRound,
 	fetchRounds as apiFetchRounds,
 	fetchHourly as apiFetchHourly,
+	fetchDaily as apiFetchDaily,
 	fetchStrategyStart as apiFetchStrategyStart,
 	fetchStrategyInfo as apiFetchStrategyInfo,
 	type ApiFetchOptions
@@ -57,6 +59,7 @@ const FK = {
 	CURRENT_ROUND: 'currentRound',
 	ROUNDS: 'rounds',
 	HOURLY: 'hourly',
+	DAILY: 'daily',
 	STRATEGY_START: 'strategyStart',
 	STRATEGY_INFO: 'strategyInfo'
 } as const;
@@ -70,6 +73,7 @@ export class DashboardStore {
 	rounds = $state<Round[]>([]);
 	roundsTotal = $state(0);
 	hourlyData = $state<HourlyStats[]>([]);
+	dailyData = $state<DailyStat[]>([]);
 	events = $state<SSEEvent[]>([]);
 	connectionStatus = $state<ConnectionStatus>('disconnected');
 	strategyStartTime = $state<string | null>(null);
@@ -97,6 +101,10 @@ export class DashboardStore {
 
 	get isSingleDayFilter(): boolean {
 		return this.filterDate.from !== '' && this.filterDate.from === this.filterDate.to;
+	}
+
+	get isMultiDayFilter(): boolean {
+		return this.filterDate.from !== '' && this.filterDate.from !== this.filterDate.to;
 	}
 
 	// ---- Internal ----
@@ -161,6 +169,7 @@ export class DashboardStore {
 		this.rounds = [];
 		this.roundsTotal = 0;
 		this.hourlyData = [];
+		this.dailyData = [];
 		this.events = [];
 		this.strategyInfo = null;
 		this.strategyStartTime = null;
@@ -243,10 +252,11 @@ export class DashboardStore {
 		this.filterDate = { from, to };
 		this.selectedHour = null;
 		this.roundsPage = 1;
-		// Coordinated: stats + rounds + hourly
+		// Coordinated: stats + rounds + hourly + daily
 		this.fetchStatsInternal();
 		this.fetchRoundsUser();
 		this.fetchHourlyInternal();
+		this.fetchDailyInternal();
 	}
 
 	/** Manual refresh button. */
@@ -373,13 +383,30 @@ export class DashboardStore {
 	}
 
 	private async fetchHourlyInternal(): Promise<void> {
+		if (!this.filterDate.from) {
+			this.hourlyData = [];
+			return;
+		}
 		await this.coordinator.execute(FK.HOURLY, async (signal) => {
 			const result = await apiFetchHourly(
 				this.getOptsWithSignal(signal),
-				this.filterDate,
-				this.isSingleDayFilter
+				this.filterDate
 			);
 			this.hourlyData = result;
+		});
+	}
+
+	private async fetchDailyInternal(): Promise<void> {
+		if (!this.isMultiDayFilter) {
+			this.dailyData = [];
+			return;
+		}
+		await this.coordinator.execute(FK.DAILY, async (signal) => {
+			const result = await apiFetchDaily(
+				this.getOptsWithSignal(signal),
+				this.filterDate
+			);
+			this.dailyData = result;
 		});
 	}
 
@@ -406,5 +433,6 @@ export class DashboardStore {
 		if (keys.has(FK.CURRENT_ROUND)) this.fetchCurrentRoundInternal();
 		if (keys.has(FK.ROUNDS)) this.fetchRoundsInternal();
 		if (keys.has(FK.HOURLY)) this.fetchHourlyInternal();
+		if (keys.has(FK.DAILY)) this.fetchDailyInternal();
 	}
 }

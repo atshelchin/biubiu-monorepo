@@ -63,6 +63,7 @@
 	import { clock } from '$lib/updown-shared/stores/clock.svelte.js';
 	import StatsGrid from '$lib/updown-shared/components/StatsGrid.svelte';
 	import HourlyChart from '$lib/updown-shared/components/HourlyChart.svelte';
+	import WeekdayChart from '$lib/updown-shared/components/WeekdayChart.svelte';
 	import RoundsHistory from '$lib/updown-shared/components/RoundsHistory.svelte';
 	import LiveFeed from '$lib/updown-shared/components/LiveFeed.svelte';
 	import AddStrategyModal from '$lib/updown-shared/components/AddStrategyModal.svelte';
@@ -1942,12 +1943,11 @@
 			<div class="main-data">
 				<!-- Date Filter -->
 				<div class="date-filter glass-card" use:fadeInUp={{ delay: 40 }}>
-					<span class="date-filter-label">{t('btcUpdown.filter.date')}</span>
 					<DatePicker
 						mode="range"
 						bind:value={store.filterDate}
 						onchange={onDateChange}
-						presets={['all', 'today', '7d', '30d']}
+						presets={['today', '7d', '30d', '90d']}
 						navigation
 						max={todayLocal()}
 					/>
@@ -1964,7 +1964,7 @@
 					/>
 				{/if}
 
-				<!-- Hourly Profit Chart (single day only) -->
+				<!-- Hourly Profit Chart (single day) -->
 				{#if store.isSingleDayFilter}
 					<HourlyChart
 						hourlyData={store.hourlyData}
@@ -1972,6 +1972,25 @@
 						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
 						{t}
+						onSelectHour={(hour) => { store.selectHour(hour); }}
+					/>
+				{/if}
+
+				<!-- Multi-day analysis: Weekday + Aggregated Hourly -->
+				{#if store.isMultiDayFilter}
+					<WeekdayChart
+						dailyData={store.dailyData}
+						ctx={getFormatterCtx()}
+						{t}
+					/>
+					<HourlyChart
+						hourlyData={store.hourlyData}
+						filterDateFrom={store.filterDate.from}
+						selectedHour={store.selectedHour}
+						ctx={getFormatterCtx()}
+						{t}
+						titleKey="btcUpdown.chart.hourlyProfitAgg"
+						showMeta
 						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
 				{/if}

@@ -3,6 +3,7 @@
 
 import type {
 	CurrentRoundResponse,
+	DailyStat,
 	HourlyStats,
 	RoundsResponse,
 	Stats,
@@ -23,11 +24,16 @@ export async function fetchStats(
 	selectedHour: number | null
 ): Promise<Stats | null> {
 	try {
-		const range = getDateRange(filterDate, selectedHour);
+		const range = getDateRange(filterDate);
 		const parts: string[] = [];
 		if (range) {
 			parts.push(`from=${encodeURIComponent(range.from)}`);
 			parts.push(`to=${encodeURIComponent(range.to)}`);
+		}
+		if (selectedHour !== null && selectedHour !== undefined) {
+			parts.push(`hour=${selectedHour}`);
+			const tzOffsetMinutes = new Date().getTimezoneOffset() * -1;
+			parts.push(`tz_offset=${tzOffsetMinutes}`);
 		}
 		const qs = parts.length ? '?' + parts.join('&') : '';
 		const res = await opts.fetchFn(`${opts.baseUrl}/stats${qs}`, { signal: opts.signal });
@@ -72,10 +78,15 @@ export async function fetchRounds(
 		if (params.signalAction) qs.set('signal_action', params.signalAction);
 		if (params.result === 'win' || params.result === 'loss') qs.set('result', params.result);
 		if (params.swingExitReason) qs.set('swing_exit_reason', params.swingExitReason);
-		const range = getDateRange(params.filterDate, params.selectedHour);
+		const range = getDateRange(params.filterDate);
 		if (range) {
 			qs.set('from', range.from);
 			qs.set('to', range.to);
+		}
+		if (params.selectedHour !== null && params.selectedHour !== undefined) {
+			qs.set('hour', String(params.selectedHour));
+			const tzOffsetMinutes = new Date().getTimezoneOffset() * -1;
+			qs.set('tz_offset', String(tzOffsetMinutes));
 		}
 		const res = await opts.fetchFn(`${opts.baseUrl}/rounds?${qs}`, { signal: opts.signal });
 		if (res.ok) return await res.json();
@@ -85,12 +96,30 @@ export async function fetchRounds(
 	return null;
 }
 
+export async function fetchDaily(
+	opts: ApiFetchOptions,
+	filterDate: { from: string; to: string }
+): Promise<DailyStat[]> {
+	try {
+		const parts: string[] = [];
+		if (filterDate.from) parts.push(`from=${encodeURIComponent(filterDate.from)}`);
+		if (filterDate.to) parts.push(`to=${encodeURIComponent(filterDate.to)}`);
+		// Pass local timezone offset so backend groups by local date
+		const tzOffsetMinutes = new Date().getTimezoneOffset() * -1; // getTimezoneOffset returns -480 for UTC+8, we want +480
+		parts.push(`tz_offset=${tzOffsetMinutes}`);
+		const qs = '?' + parts.join('&');
+		const res = await opts.fetchFn(`${opts.baseUrl}/stats/daily${qs}`, { signal: opts.signal });
+		if (res.ok) return await res.json();
+	} catch {
+		// non-critical
+	}
+	return [];
+}
+
 export async function fetchHourly(
 	opts: ApiFetchOptions,
-	filterDate: { from: string; to: string },
-	isSingleDay: boolean
+	filterDate: { from: string; to: string }
 ): Promise<HourlyStats[]> {
-	if (!isSingleDay) return [];
 	try {
 		const range = getDateRange(filterDate);
 		const parts: string[] = [];

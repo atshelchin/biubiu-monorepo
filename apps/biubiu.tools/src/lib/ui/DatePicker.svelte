@@ -252,6 +252,10 @@
 			const d = new Date();
 			d.setDate(d.getDate() - 29);
 			result = { from: toDateStr(d), to: today };
+		} else if (key === '90d') {
+			const d = new Date();
+			d.setDate(d.getDate() - 89);
+			result = { from: toDateStr(d), to: today };
 		}
 		// Presets apply immediately (no confirm needed) — they are complete selections
 		value = result;
@@ -271,7 +275,8 @@
 		today: { en: 'Today', zh: '今天' },
 		yesterday: { en: 'Yesterday', zh: '昨天' },
 		'7d': { en: '7 Days', zh: '7天' },
-		'30d': { en: '30 Days', zh: '30天' }
+		'30d': { en: '30 Days', zh: '30天' },
+		'90d': { en: '90 Days', zh: '90天' }
 	};
 
 	function getPresetLabel(key: string): string {

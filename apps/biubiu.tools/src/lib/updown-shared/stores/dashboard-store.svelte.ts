@@ -26,6 +26,7 @@ import type {
 	SSEEvent,
 	Stats
 } from '../types.js';
+import { todayLocal } from '../formatters.js';
 import {
 	fetchStats as apiFetchStats,
 	fetchCurrentRound as apiFetchCurrentRound,
@@ -85,7 +86,7 @@ export class DashboardStore {
 	roundsFilter = $state<RoundStatusFilter>('');
 	signalActionFilter = $state<SignalActionFilter>('');
 	resultFilter = $state<ResultFilter>('');
-	filterDate = $state<{ from: string; to: string }>({ from: '', to: '' });
+	filterDate = $state<{ from: string; to: string }>({ from: todayLocal(), to: todayLocal() });
 	selectedHour = $state<number | null>(null);
 
 	// ---- Loading state ----
@@ -174,7 +175,7 @@ export class DashboardStore {
 		this.strategyInfo = null;
 		this.strategyStartTime = null;
 		this.selectedHour = null;
-		this.filterDate = { from: '', to: '' };
+		this.filterDate = { from: todayLocal(), to: todayLocal() };
 		this.roundsFilter = '';
 		this.signalActionFilter = '';
 		this.resultFilter = '';

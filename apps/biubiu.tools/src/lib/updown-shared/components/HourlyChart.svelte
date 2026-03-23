@@ -12,12 +12,10 @@
 		ctx: FormatterContext;
 		t: TranslateFn;
 		titleKey?: string;
-		/** Show rounds/winRate below each hour (for aggregated multi-day mode) */
-		showMeta?: boolean;
 		onSelectHour?: (hour: number | null) => void;
 	}
 
-	let { hourlyData, filterDateFrom, selectedHour, ctx, t, titleKey, showMeta = false, onSelectHour }: Props = $props();
+	let { hourlyData, filterDateFrom, selectedHour, ctx, t, titleKey, onSelectHour }: Props = $props();
 
 	const maxAbs = $derived(Math.max(...hourlyData.map((h) => Math.abs(h.profit)), 1));
 	const hourlyMap = $derived(new Map(hourlyData.map((h) => [h.hour, h])));
@@ -65,8 +63,8 @@
 							{/if}
 						</div>
 						<span class="chart-hour">{String(hour).padStart(2, '0')}</span>
-						{#if showMeta && h}
-							<span class="chart-meta">{h.rounds}r · {fmtPct(ctx, h.winRate)}</span>
+						{#if h}
+							<span class="chart-meta-tip">{h.rounds}r · {fmtPct(ctx, h.winRate)}</span>
 						{/if}
 					</div>
 				{/each}
@@ -175,12 +173,27 @@
 		font-family: var(--font-mono, ui-monospace, monospace);
 		font-weight: 600;
 	}
-	.chart-meta {
-		font-size: 8px;
+	.chart-meta-tip {
+		position: absolute;
+		bottom: -24px;
+		left: 50%;
+		transform: translateX(-50%);
+		font-size: 9px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		color: var(--fg-subtle);
+		color: var(--fg-base);
+		background: var(--bg-elevated, var(--bg-raised));
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-sm, 4px);
+		padding: 2px 6px;
 		white-space: nowrap;
-		opacity: 0.7;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--motion-fast, 150ms) ease;
+		z-index: 10;
+		box-shadow: var(--shadow-sm);
+	}
+	.chart-col:hover .chart-meta-tip {
+		opacity: 1;
 	}
 	.chart-col-selected {
 		background: rgba(255, 255, 255, 0.08);

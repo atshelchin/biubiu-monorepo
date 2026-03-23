@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Round, Stats, RoundStatusFilter, SignalActionFilter, ResultFilter } from '../types.js';
+	import type { Round, Stats, RoundStatusFilter, ResultFilter } from '../types.js';
 	import type { FormatterContext, TranslateFn } from '../types.js';
 	import {
 		fmtShortTime, fmtLocalDate, fmtTimeWindow, fmtPrice, fmtProfit,
@@ -19,7 +19,6 @@
 		/** True only during user-initiated fetch (filter/page change). Background SSE refreshes stay false. */
 		refreshing: boolean;
 		roundsFilter: RoundStatusFilter;
-		signalActionFilter: SignalActionFilter;
 		resultFilter: ResultFilter;
 		stats: Stats | null;
 		ctx: FormatterContext;
@@ -27,16 +26,15 @@
 		formatCurrency: (value: number) => string;
 		onPageChange: (page: number) => void;
 		onFilterChange: (filter: RoundStatusFilter) => void;
-		onSignalFilterChange: (filter: SignalActionFilter) => void;
 		onResultFilterChange: (filter: ResultFilter) => void;
 		onRefresh: () => void;
 	}
 
 	let {
 		rounds, roundsTotal, roundsPage, roundsPageSize, refreshing,
-		roundsFilter, signalActionFilter, resultFilter,
+		roundsFilter, resultFilter,
 		stats, ctx, t, formatCurrency,
-		onPageChange, onFilterChange, onSignalFilterChange, onResultFilterChange, onRefresh
+		onPageChange, onFilterChange, onResultFilterChange, onRefresh
 	}: Props = $props();
 
 	const totalPages = $derived(Math.max(1, Math.ceil(roundsTotal / roundsPageSize)));
@@ -44,93 +42,41 @@
 
 <div class="filter-bar">
 	<div class="filter-row">
+		<!-- Status -->
 		<div class="filter-group">
-			{#each [{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds ?? null }, { value: 'entered', label: t('btcUpdown.filter.entered'), count: stats ? stats.entered - stats.wins - stats.losses : null }, { value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null }, { value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped ?? null }] as filter (filter.value)}
+			{#each [
+				{ value: '', label: t('btcUpdown.filter.all'), count: stats?.totalRounds },
+				{ value: 'settled', label: t('btcUpdown.filter.settled'), count: stats ? stats.wins + stats.losses : null },
+				{ value: 'skipped', label: t('btcUpdown.filter.skipped'), count: stats?.skipped },
+				{ value: 'entered', label: t('btcUpdown.filter.entered'), count: stats ? stats.entered - stats.wins - stats.losses : null }
+			] as filter (filter.value)}
 				<button
 					class="filter-btn"
-					class:active={roundsFilter === filter.value && !signalActionFilter && !resultFilter}
+					class:active={roundsFilter === filter.value && !resultFilter}
 					onclick={() => onFilterChange(filter.value as RoundStatusFilter)}
 				>
-					{filter.label}{#if filter.count !== null}<span class="filter-count">{filter.count}</span>{/if}
+					{filter.label}{#if filter.count}<span class="filter-count">{filter.count}</span>{/if}
 				</button>
 			{/each}
 		</div>
-		<span class="filter-sep">|</span>
+	</div>
+	<div class="filter-row">
+		<!-- Result -->
 		<div class="filter-group">
-			<button
-				class="filter-btn signal-filter-btn"
-				class:active={signalActionFilter === 'bet'}
-				onclick={() => onSignalFilterChange(signalActionFilter === 'bet' ? '' : 'bet')}
-			>
-				{t('btcUpdown.filter.signalBet')}{#if stats?.signalBet != null}<span class="filter-count">{stats.signalBet}</span>{/if}
-				{#if stats && (stats.signalBetWins || stats.signalBetLosses)}
-					<span class="filter-wl"><span class="wl-w">{stats.signalBetWins}W</span><span class="wl-l">{stats.signalBetLosses}L</span></span>
-				{/if}
-			</button>
-			<button
-				class="filter-btn signal-filter-btn"
-				class:active={signalActionFilter === 'reverse'}
-				onclick={() => onSignalFilterChange(signalActionFilter === 'reverse' ? '' : 'reverse')}
-			>
-				{t('btcUpdown.filter.signalReverse')}{#if stats?.signalReverse != null}<span class="filter-count">{stats.signalReverse}</span>{/if}
-				{#if stats && (stats.signalReverseWins || stats.signalReverseLosses)}
-					<span class="filter-wl"><span class="wl-w">{stats.signalReverseWins}W</span><span class="wl-l">{stats.signalReverseLosses}L</span></span>
-					<span
-						class="filter-delta"
-						class:positive={stats.signalReverseWins - stats.signalReverseLosses > 0}
-						class:negative={stats.signalReverseWins - stats.signalReverseLosses < 0}
-						>{stats.signalReverseWins - stats.signalReverseLosses > 0 ? '+' : ''}{stats.signalReverseWins - stats.signalReverseLosses}</span
-					>
-				{/if}
-			</button>
-			<button
-				class="filter-btn signal-filter-btn"
-				class:active={signalActionFilter === 'skip'}
-				onclick={() => onSignalFilterChange(signalActionFilter === 'skip' ? '' : 'skip')}
-			>
-				{t('btcUpdown.filter.signalSkip')}{#if stats?.signalSkip != null}<span class="filter-count">{stats.signalSkip}</span>{/if}
-				{#if stats && (stats.signalSkipWouldWin || stats.signalSkipWouldLose)}
-					<span class="filter-wl"><span class="wl-w">-{stats.signalSkipWouldWin}W</span><span class="wl-l">-{stats.signalSkipWouldLose}L</span></span>
-					<span
-						class="filter-delta"
-						class:positive={stats.signalSkipWouldLose - stats.signalSkipWouldWin > 0}
-						class:negative={stats.signalSkipWouldLose - stats.signalSkipWouldWin < 0}
-						>{stats.signalSkipWouldLose - stats.signalSkipWouldWin > 0 ? '+' : ''}{stats.signalSkipWouldLose - stats.signalSkipWouldWin}</span
-					>
-				{/if}
-			</button>
-		</div>
-		<span class="filter-sep">|</span>
-		<div class="filter-group">
-			<button
-				class="filter-btn"
-				class:active={resultFilter === 'win'}
-				onclick={() => onResultFilterChange(resultFilter === 'win' ? '' : 'win')}
-			>
-				{t('btcUpdown.filter.win')}{#if stats?.wins != null}<span class="filter-count">{stats.wins}</span>{/if}
-			</button>
-			<button
-				class="filter-btn"
-				class:active={resultFilter === 'loss'}
-				onclick={() => onResultFilterChange(resultFilter === 'loss' ? '' : 'loss')}
-			>
-				{t('btcUpdown.filter.loss')}{#if stats?.losses != null}<span class="filter-count">{stats.losses}</span>{/if}
-			</button>
-			<button
-				class="filter-btn signal-filter-btn"
-				class:active={resultFilter === 'stop_loss'}
-				onclick={() => onResultFilterChange(resultFilter === 'stop_loss' ? '' : 'stop_loss')}
-			>
-				{t('btcUpdown.filter.stopLoss')}{#if stats?.stopLossCount != null}<span class="filter-count">{stats.stopLossCount}</span>{/if}
-				{#if stats && (stats.stopLossCorrect || stats.stopLossWrong)}
-					<span class="filter-wl"><span class="wl-w">{stats.stopLossCorrect}✓</span><span class="wl-l">{stats.stopLossWrong}✗</span></span>
-					<span
-						class="filter-delta"
-						class:positive={stats.stopLossProfit > 0}
-						class:negative={stats.stopLossProfit < 0}
-					>{stats.stopLossProfit > 0 ? '+' : ''}{formatCurrency(stats.stopLossProfit)}</span>
-				{/if}
-			</button>
+			{#each [
+				{ value: 'win', label: t('btcUpdown.filter.win'), count: stats?.wins },
+				{ value: 'loss', label: t('btcUpdown.filter.loss'), count: stats?.losses },
+				{ value: 'take_profit', label: t('btcUpdown.filter.takeProfit'), count: stats?.takeProfitCount },
+				{ value: 'stop_loss', label: t('btcUpdown.filter.stopLoss'), count: stats?.stopLossCount }
+			] as filter (filter.value)}
+				<button
+					class="filter-btn"
+					class:active={resultFilter === filter.value}
+					onclick={() => onResultFilterChange(resultFilter === filter.value ? '' : filter.value as ResultFilter)}
+				>
+					{filter.label}{#if filter.count}<span class="filter-count">{filter.count}</span>{/if}
+				</button>
+			{/each}
 		</div>
 	</div>
 	<button class="refresh-btn" onclick={onRefresh} disabled={refreshing}>
@@ -377,28 +323,6 @@
 		margin-left: 4px;
 		font-size: 10px;
 		opacity: 0.6;
-	}
-	.filter-wl {
-		margin-left: 4px;
-		font-size: 10px;
-	}
-	.wl-w {
-		color: var(--color-profit-positive, #34d399);
-	}
-	.wl-l {
-		color: var(--color-profit-negative, #f87171);
-		margin-left: 2px;
-	}
-	.filter-delta {
-		margin-left: 3px;
-		font-size: 10px;
-		font-weight: var(--weight-semibold);
-	}
-	.filter-delta.positive {
-		color: var(--color-profit-positive, #34d399);
-	}
-	.filter-delta.negative {
-		color: var(--color-profit-negative, #f87171);
 	}
 	.refresh-btn {
 		display: inline-flex;

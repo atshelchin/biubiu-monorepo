@@ -1,4 +1,4 @@
-import type { Space, Instance, MarketStrategy, LeaderboardEntry, User, ActivityItem, StatsSummary } from './types';
+import type { Space, Instance, MarketStrategy, LeaderboardEntry, User, ActivityItem, StatsSummary, SpaceMember, SpaceStats, SpaceSettings } from './types';
 
 export const MOCK_USER: User = {
 	userId: 'user_shelchin',
@@ -70,28 +70,62 @@ export const MOCK_MARKET_STRATEGIES: MarketStrategy[] = [
 		id: 'mkt_003', name: 'CLOB Follow Basic', description: 'Simple CLOB midpoint follower. Enters in direction favored by majority open limit orders.',
 		visibility: 'public', price: 0, riskLevel: 'conservative', tags: ['beginner', 'clob'],
 		author: { id: 'user_mike', name: 'trader_mike' },
-		performance: { totalRounds: 412, winRate: 61.2, profit24h: 41.6, profit30d: 238, profitAll: 892, maxDrawdown: 45 },
+		performance: {
+			hour: { profit: 6.2, rounds: 3, winRate: 66.7 },
+			today: { profit: 41.6, rounds: 18, winRate: 61.1 },
+			ninetyDay: { profit: 892, rounds: 412, winRate: 61.2 },
+			maxDrawdown: 45
+		},
+		config: {
+			$schema: 'BIP-323', id: 'clob-follow-basic', name: 'CLOB Follow Basic',
+			signal: { method: 'clob_imbalance', params: { threshold: 0.6, window: '5m', depthLevels: 5 } },
+			entry: { amount: 5, method: 'market', maxPrice: 0.65, minPrice: 0.35 },
+			risk: { dailyLossLimit: 50, maxConsecutiveLosses: 5 },
+		},
 		followCount: 89, copyCount: 34, createdAt: '2026-01-15T00:00:00Z'
 	},
 	{
 		id: 'mkt_004', name: 'RSI Reversal v3', description: 'Contrarian: goes opposite when RSI indicates overbought/oversold on 5m candles.',
 		visibility: 'public', price: 0, riskLevel: 'balanced', tags: ['reversal', 'rsi'],
 		author: { id: 'user_shelchin', name: 'shelchin' },
-		performance: { totalRounds: 305, winRate: 58.7, profit24h: 52.1, profit30d: 185, profitAll: 445, maxDrawdown: 32 },
+		performance: {
+			hour: { profit: 8.5, rounds: 4, winRate: 75.0 },
+			today: { profit: 52.1, rounds: 22, winRate: 59.1 },
+			ninetyDay: { profit: 445, rounds: 305, winRate: 58.7 },
+			maxDrawdown: 32
+		},
+		config: {
+			$schema: 'BIP-323', id: 'rsi-reversal-v3', name: 'RSI Reversal v3',
+			signal: { method: 'rsi_reversal', params: { period: 14, overbought: 70, oversold: 30, source: 'close' } },
+			filter: { minVolume: 1000, volatilityGate: { enabled: true, minATR: 0.02 } },
+			entry: { amount: 5, method: 'market', maxPerHour: 8 },
+			risk: { dailyLossLimit: 80, maxConsecutiveLosses: 6, stopLoss: { type: 'trailing', percent: 3 } },
+			exit: [{ type: 'take_profit', percent: 5 }, { type: 'stop_loss', percent: 3 }],
+		},
 		followCount: 56, copyCount: 22, createdAt: '2026-02-01T00:00:00Z'
 	},
 	{
 		id: 'mkt_001', name: 'Alpha Signal ML', description: 'ML-based GBDT model trained on 6 months of BTC 5-minute market data.',
 		visibility: 'private', price: 20, riskLevel: 'aggressive', tags: ['ml', 'gbdt'],
 		author: { id: 'user_whale', name: 'quant_whale' },
-		performance: { totalRounds: 1203, winRate: 64.8, profit24h: 127.4, profit30d: 892, profitAll: 3200, maxDrawdown: 120 },
+		performance: {
+			hour: { profit: 18.4, rounds: 6, winRate: 83.3 },
+			today: { profit: 127.4, rounds: 48, winRate: 64.6 },
+			ninetyDay: { profit: 3200, rounds: 1203, winRate: 64.8 },
+			maxDrawdown: 120
+		},
 		followCount: 234, copyCount: 67, createdAt: '2026-01-01T00:00:00Z'
 	},
 	{
 		id: 'mkt_005', name: 'Volatility Gate Pro', description: 'Only enters during high-volatility windows. ATR filtering with trend gates.',
 		visibility: 'private', price: 20, riskLevel: 'balanced', tags: ['volatility', 'gate'],
 		author: { id: 'user_dv', name: 'deep_value' },
-		performance: { totalRounds: 198, winRate: 67.1, profit24h: 94.2, profit30d: 445, profitAll: 1680, maxDrawdown: 88 },
+		performance: {
+			hour: { profit: 12.1, rounds: 5, winRate: 80.0 },
+			today: { profit: 94.2, rounds: 32, winRate: 68.8 },
+			ninetyDay: { profit: 1680, rounds: 198, winRate: 67.1 },
+			maxDrawdown: 88
+		},
 		followCount: 145, copyCount: 41, createdAt: '2026-01-20T00:00:00Z'
 	}
 ];
@@ -113,6 +147,99 @@ export const MOCK_SUMMARY: StatsSummary = {
 	spacesCount: 2
 };
 
+/** Mock space members for Alpha Trading Club */
+export const MOCK_SPACE_MEMBERS: Record<string, SpaceMember[]> = {
+	'official': [
+		{ userId: 'user_shelchin', displayName: 'shelchin', safeAddress: '0x1234...abcd', tier: 'pro', role: 'admin', activeInstances: 2, totalRounds: 305, totalProfit: 445, winRate: 58.7, joinedAt: '2026-01-01T00:00:00Z' },
+		{ userId: 'user_whale', displayName: 'quant_whale', safeAddress: '0x5678...efgh', tier: 'pro', role: 'member', activeInstances: 4, totalRounds: 1203, totalProfit: 3200, winRate: 64.8, joinedAt: '2026-01-02T00:00:00Z' },
+		{ userId: 'user_mike', displayName: 'trader_mike', safeAddress: '0x9abc...ijkl', tier: 'free', role: 'member', activeInstances: 2, totalRounds: 412, totalProfit: 892, winRate: 61.2, joinedAt: '2026-01-10T00:00:00Z' },
+		{ userId: 'user_dv', displayName: 'deep_value', safeAddress: '0xdef0...mnop', tier: 'pro', role: 'member', activeInstances: 3, totalRounds: 198, totalProfit: 1680, winRate: 67.1, joinedAt: '2026-01-15T00:00:00Z' },
+		{ userId: 'user_queen', displayName: 'algo_queen', safeAddress: '0x1111...qrst', tier: 'free', role: 'member', activeInstances: 1, totalRounds: 72, totalProfit: 68.8, winRate: 59.4, joinedAt: '2026-02-01T00:00:00Z' },
+		{ userId: 'user_chad', displayName: 'btc_chad', safeAddress: '0x2222...uvwx', tier: 'free', role: 'member', activeInstances: 1, totalRounds: 68, totalProfit: 28.9, winRate: 55.3, joinedAt: '2026-02-15T00:00:00Z' },
+	],
+	'alpha-club': [
+		{ userId: 'user_shelchin', displayName: 'shelchin', safeAddress: '0x1234...abcd', tier: 'pro', role: 'member', activeInstances: 1, totalRounds: 24, totalProfit: 42.8, winRate: 58.3, joinedAt: '2026-03-01T00:00:00Z' },
+		{ userId: 'user_whale', displayName: 'quant_whale', safeAddress: '0x5678...efgh', tier: 'pro', role: 'admin', activeInstances: 3, totalRounds: 450, totalProfit: 1280, winRate: 63.5, joinedAt: '2026-01-20T00:00:00Z' },
+		{ userId: 'user_dv', displayName: 'deep_value', safeAddress: '0xdef0...mnop', tier: 'pro', role: 'member', activeInstances: 2, totalRounds: 120, totalProfit: 560, winRate: 65.0, joinedAt: '2026-02-10T00:00:00Z' },
+	]
+};
+
+/** Mock space-level stats */
+export const MOCK_SPACE_STATS: Record<string, SpaceStats> = {
+	'official': {
+		totalUsers: 1247, activeInstances: 342, totalStrategies: 86,
+		totalRoundsToday: 4280, todayProfit: 12450, allTimeProfit: 892000,
+		avgWinRate: 58.2, topStrategy: 'Alpha Signal ML'
+	},
+	'alpha-club': {
+		totalUsers: 23, activeInstances: 15, totalStrategies: 12,
+		totalRoundsToday: 186, todayProfit: 820, allTimeProfit: 34500,
+		avgWinRate: 61.4, topStrategy: 'RSI Reversal Pro'
+	}
+};
+
+/** Mock space admin settings */
+export const MOCK_SPACE_SETTINGS: Record<string, SpaceSettings> = {
+	'official': {
+		allowLiveTrading: false, maxFreeInstances: 3, maxMemberInstances: 100, maxProInstances: -1,
+		adminCodes: [
+			{ code: 'ADM-001-XXXX', label: 'Primary Admin', linkedUser: 'shelchin', createdAt: '2026-01-01T00:00:00Z' },
+			{ code: 'ADM-002-XXXX', label: 'Ops Admin', linkedUser: null, createdAt: '2026-01-01T00:00:00Z' },
+		]
+	},
+	'alpha-club': {
+		allowLiveTrading: true, maxFreeInstances: 3, maxMemberInstances: 50, maxProInstances: 200,
+		adminCodes: [
+			{ code: 'ATC-001-XXXX', label: 'Owner', linkedUser: 'quant_whale', createdAt: '2026-01-20T00:00:00Z' },
+		]
+	}
+};
+
 function gen24(): number[] {
 	return Array.from({ length: 24 }, () => (Math.random() - 0.38) * 8);
+}
+
+/**
+ * Simple seeded PRNG for deterministic mock data.
+ * Given same seed, always returns same sequence.
+ */
+function seededRandom(seed: number): () => number {
+	let s = seed;
+	return () => {
+		s = (s * 1664525 + 1013904223) & 0x7fffffff;
+		return s / 0x7fffffff;
+	};
+}
+
+/**
+ * Generate mock PeriodStats for a strategy at a given period offset.
+ * offset=0 returns the strategy's own data, offset<0 generates deterministic past data.
+ */
+export function mockPeriodStats(
+	strategyId: string,
+	period: 'hour' | 'today' | 'ninetyDay',
+	offset: number
+): import('./types').PeriodStats {
+	// offset 0 = current data from MOCK_MARKET_STRATEGIES
+	if (offset === 0) {
+		const s = MOCK_MARKET_STRATEGIES.find(m => m.id === strategyId);
+		if (s) return s.performance[period];
+	}
+
+	// Generate deterministic data based on id + period + offset
+	const hash = [...(strategyId + period + offset)].reduce((a, c) => a + c.charCodeAt(0), 0);
+	const rng = seededRandom(hash);
+
+	const baseRounds = period === 'hour' ? 4 : period === 'today' ? 24 : 300;
+	const baseProfit = period === 'hour' ? 8 : period === 'today' ? 50 : 800;
+
+	const rounds = Math.max(1, Math.round(baseRounds * (0.5 + rng())));
+	const winRate = 40 + rng() * 35; // 40–75%
+	const profit = (rng() - 0.3) * baseProfit * 2; // can be negative
+
+	return {
+		profit: Math.round(profit * 100) / 100,
+		rounds,
+		winRate: Math.round(winRate * 10) / 10
+	};
 }

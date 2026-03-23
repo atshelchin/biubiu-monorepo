@@ -9,7 +9,6 @@
 	import { authStore } from './auth-store.svelte.js';
 	import { fetchAllBalances, formatBalance, tokenValueUsd, totalValueUsd, fetchExchangeRate, type TokenBalance } from './wallet.js';
 	import { subscriptionStore } from '$lib/subscription';
-	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
 
 	interface Props {
 		open: boolean;
@@ -88,7 +87,6 @@
 				</div>
 				<div class="profile-name-row">
 					<span class="profile-name">{user.name}</span>
-					<SubscriptionBadge size="md" />
 				</div>
 				<div class="profile-created">{formatDateTime(new Date(user.createdAt))}</div>
 				<a class="profile-link" href={profileUrl} onclick={onClose}>

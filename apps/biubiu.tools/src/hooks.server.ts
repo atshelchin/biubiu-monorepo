@@ -89,7 +89,20 @@ export const handle: Handle = async ({ event, resolve }) => {
     : pathname;
 
   // Use matchRoute to automatically match namespaces (supports dynamic routes)
-  const namespaces = matchRoute(routePath);
+  let namespaces = matchRoute(routePath);
+
+  // If only _global matched, try parent paths (e.g. /apps/btc-updown-5m/space/xxx → /apps/btc-updown-5m)
+  if (namespaces.length === 1 && namespaces[0] === '_global') {
+    let parentPath = routePath;
+    while (parentPath.lastIndexOf('/') > 0) {
+      parentPath = parentPath.slice(0, parentPath.lastIndexOf('/'));
+      const parentNs = matchRoute(parentPath);
+      if (parentNs.length > 1 || (parentNs.length === 1 && parentNs[0] !== '_global')) {
+        namespaces = parentNs;
+        break;
+      }
+    }
+  }
 
   // Load messages
   await loadAndMergeMessages(locale, namespaces);

@@ -30,42 +30,46 @@ export const activity = $state<{ list: ActivityItem[] }>({ list: MOCK_ACTIVITY }
 /** Summary stats */
 export const summary = $state<{ data: StatsSummary }>({ data: MOCK_SUMMARY });
 
-/** Navigation */
-export type Page = 'landing' | 'hub' | 'space' | 'marketplace' | 'editor' | 'strategy-detail';
-
-export const nav = $state<{
-	page: Page;
-	title: string;
-	spaceId: string | null;
-	strategyId: string | null;
-	history: { page: Page; title: string; spaceId: string | null }[];
-}>({
-	page: 'hub',
-	title: 'BTC Up/Down',
-	spaceId: null,
-	strategyId: null,
-	history: []
-});
-
-export function goTo(page: Page, title: string, opts?: { spaceId?: string; strategyId?: string }) {
-	nav.history.push({ page: nav.page, title: nav.title, spaceId: nav.spaceId });
-	nav.page = page;
-	nav.title = title;
-	nav.spaceId = opts?.spaceId ?? nav.spaceId;
-	nav.strategyId = opts?.strategyId ?? null;
-}
-
-export function goBack() {
-	const prev = nav.history.pop();
-	if (prev) {
-		nav.page = prev.page;
-		nav.title = prev.title;
-		nav.spaceId = prev.spaceId;
-	}
-}
-
 /** Hub tab */
 export const hubTab = $state<{ active: number }>({ active: 0 });
 
+/** Space tab: 0=Overview, 1=Strategies, 2=Members, 3=Admin */
+export const spaceTab = $state<{ active: number }>({ active: 0 });
+
 /** Mode filter: all / sandbox / live */
 export const modeFilter = $state<{ value: 'all' | 'sandbox' | 'live' }>({ value: 'all' });
+
+/** Update instance status */
+export function setInstanceStatus(instanceId: string, status: Instance['status']) {
+	const inst = instances.list.find(i => i.id === instanceId);
+	if (inst) inst.status = status;
+}
+
+/** Create a new instance (mock) */
+export function createInstance(opts: { label: string; strategyId: string; spaceId: string; spaceName: string; mode: 'sandbox' | 'live' }) {
+	const id = 'inst_' + Date.now();
+	instances.list.push({
+		id,
+		strategyId: opts.strategyId,
+		label: opts.label,
+		mode: opts.mode,
+		status: 'stopped',
+		spaceId: opts.spaceId,
+		spaceName: opts.spaceName,
+		stats: { rounds: 0, winRate: 0, profit: 0 },
+		profits: { hour: 0, day: 0, thirtyDay: 0 },
+		createdAt: new Date().toISOString()
+	});
+	return id;
+}
+
+/** Delete an instance */
+export function deleteInstance(instanceId: string) {
+	const idx = instances.list.findIndex(i => i.id === instanceId);
+	if (idx >= 0) instances.list.splice(idx, 1);
+}
+
+/** UI modals (shared between layout and pages) */
+export const showAuth = $state<{ value: boolean }>({ value: false });
+export const showAddSpace = $state<{ value: boolean }>({ value: false });
+export const addSpaceUrl = $state<{ value: string }>({ value: '' });

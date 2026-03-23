@@ -1995,7 +1995,6 @@
 						ctx={getFormatterCtx()}
 						{t}
 						titleKey="btcUpdown.chart.hourlyProfitAgg"
-						showMeta
 						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
 				{/if}
@@ -2034,7 +2033,6 @@
 						roundsPageSize={store.roundsPageSize}
 						refreshing={store.roundsRefreshing}
 						roundsFilter={store.roundsFilter}
-						signalActionFilter={store.signalActionFilter}
 						resultFilter={store.resultFilter}
 						stats={store.stats}
 						ctx={getFormatterCtx()}
@@ -2042,7 +2040,6 @@
 						{formatCurrency}
 						onPageChange={(page) => { store.setPage(page); }}
 						onFilterChange={(f) => store.setFilter(f)}
-						onSignalFilterChange={(f) => store.setSignalFilter(f)}
 						onResultFilterChange={(f) => store.setResultFilter(f)}
 						onRefresh={() => store.refresh()}
 					/>

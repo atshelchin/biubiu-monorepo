@@ -5,7 +5,6 @@
 	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import { authStore } from '$lib/auth';
-	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import { subscriptionStore } from '$lib/subscription';
 	import logo from '$lib/assets/logo.svg';
@@ -56,7 +55,7 @@
 		<!-- Header Actions -->
 		<div class="header-actions">
 			{#if authStore.isLoggedIn}
-				<!-- Desktop: avatar + name + badge -->
+				<!-- Desktop: avatar + name -->
 				<button
 					class="user-btn desktop-only"
 					onclick={() => (showProfile = true)}
@@ -64,7 +63,6 @@
 				>
 					<span class="user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
 					<span class="user-name">{authStore.displayName}</span>
-					<SubscriptionBadge size="sm" />
 				</button>
 				<!-- Mobile: avatar only (tap to open profile) -->
 				<button

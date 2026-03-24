@@ -1,13 +1,10 @@
 <script lang="ts">
 	import { t, localizeHref } from '$lib/i18n';
-	import type { TranslationKey } from '$i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
-	import ResponsiveDrawer from '$lib/ui/ResponsiveDrawer.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import { authStore } from '$lib/auth';
-	import SubscriptionBadge from '$lib/subscription/SubscriptionBadge.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import { subscriptionStore } from '$lib/subscription';
 	import logo from '$lib/assets/logo.svg';
@@ -30,14 +27,7 @@
 		showSubscription = true;
 	}
 
-	// Mobile drawer state
-	let showMobileDrawer = $state(false);
-
-	// Navigation links
-	const navLinks: { key: TranslationKey; href: string; icon: string; external?: boolean }[] = [
-		{ key: 'nav.tools', href: '/apps/balance-radar', icon: 'tools' },
-		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu-monorepo', icon: 'github', external: true }
-	];
+	// Navigation links removed from header — moved to footer
 
 	// 登录后加载订阅状态
 	$effect(() => {
@@ -49,10 +39,6 @@
 		}
 	});
 
-	function openSettings() {
-		showMobileDrawer = false;
-		showSettings = true;
-	}
 </script>
 
 <header class="header">
@@ -63,25 +49,13 @@
 			<span class="logo-accent">Tools</span>
 		</a>
 
-		<!-- Desktop Navigation -->
-		<nav class="nav-desktop">
-			{#each navLinks as link}
-				{#if link.external}
-					<a href={link.href} class="nav-link" target="_blank" rel="noopener noreferrer">
-						{t(link.key)}
-					</a>
-				{:else}
-					<a href={localizeHref(link.href)} class="nav-link">
-						{t(link.key)}
-					</a>
-				{/if}
-			{/each}
-		</nav>
+		<!-- Spacer (nav links moved to footer) -->
+		<div class="nav-spacer"></div>
 
 		<!-- Header Actions -->
 		<div class="header-actions">
-			<!-- Auth Button (Desktop) -->
 			{#if authStore.isLoggedIn}
+				<!-- Desktop: avatar + name -->
 				<button
 					class="user-btn desktop-only"
 					onclick={() => (showProfile = true)}
@@ -89,11 +63,18 @@
 				>
 					<span class="user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
 					<span class="user-name">{authStore.displayName}</span>
-					<SubscriptionBadge size="sm" />
+				</button>
+				<!-- Mobile: avatar only (tap to open profile) -->
+				<button
+					class="avatar-btn mobile-only"
+					onclick={() => (showProfile = true)}
+					aria-label={authStore.displayName}
+				>
+					<span class="user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
 				</button>
 			{:else}
 				<button
-					class="auth-btn desktop-only"
+					class="auth-btn"
 					onclick={() => (showAuth = true)}
 					aria-label={t('auth.login.title')}
 				>
@@ -101,13 +82,13 @@
 						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
 						<circle cx="12" cy="7" r="4"/>
 					</svg>
-					{t('auth.login.title')}
+					<span class="auth-text">{t('auth.login.title')}</span>
 				</button>
 			{/if}
 
-			<!-- Settings Button (Desktop) -->
+			<!-- Settings Button (always visible) -->
 			<button
-				class="settings-btn desktop-only"
+				class="settings-btn"
 				onclick={() => (showSettings = true)}
 				aria-label={t('settings.title')}
 				title={t('settings.title')}
@@ -115,19 +96,6 @@
 				<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="12" cy="12" r="3"/>
 					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-				</svg>
-			</button>
-
-			<!-- Mobile Menu Button -->
-			<button
-				class="menu-btn mobile-only"
-				onclick={() => (showMobileDrawer = true)}
-				aria-label={t('nav.menu')}
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="3" y1="12" x2="21" y2="12"/>
-					<line x1="3" y1="6" x2="21" y2="6"/>
-					<line x1="3" y1="18" x2="21" y2="18"/>
 				</svg>
 			</button>
 		</div>
@@ -148,75 +116,7 @@
 	<SettingsPanel />
 </ResponsiveModal>
 
-<!-- Mobile Drawer -->
-<ResponsiveDrawer open={showMobileDrawer} onClose={() => (showMobileDrawer = false)} title={t('nav.menu')}>
-	<div class="drawer-nav">
-		<!-- Navigation Links -->
-		<nav class="drawer-links">
-			{#each navLinks as link}
-				{#if link.external}
-					<a href={link.href} class="drawer-link" target="_blank" rel="noopener noreferrer" onclick={() => (showMobileDrawer = false)}>
-						<span>{t(link.key)}</span>
-						<svg class="external-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-							<polyline points="15 3 21 3 21 9"/>
-							<line x1="10" y1="14" x2="21" y2="3"/>
-						</svg>
-					</a>
-				{:else}
-					<a href={localizeHref(link.href)} class="drawer-link" onclick={() => (showMobileDrawer = false)}>
-						<span>{t(link.key)}</span>
-					</a>
-				{/if}
-			{/each}
-		</nav>
-
-		<div class="drawer-divider"></div>
-
-		<!-- Auth Button (Mobile) -->
-		{#if authStore.isLoggedIn}
-			<button
-				class="drawer-settings-btn"
-				onclick={() => { showMobileDrawer = false; showProfile = true; }}
-			>
-				<span class="drawer-user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
-				<span>{authStore.displayName}</span>
-				<SubscriptionBadge size="sm" />
-				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="9 18 15 12 9 6"/>
-				</svg>
-			</button>
-		{:else}
-			<button
-				class="drawer-settings-btn"
-				onclick={() => { showMobileDrawer = false; showAuth = true; }}
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-					<circle cx="12" cy="7" r="4"/>
-				</svg>
-				<span>{t('auth.login.title')}</span>
-				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="9 18 15 12 9 6"/>
-				</svg>
-			</button>
-		{/if}
-
-		<div class="drawer-divider"></div>
-
-		<!-- Settings Button -->
-		<button class="drawer-settings-btn" onclick={openSettings}>
-			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<circle cx="12" cy="12" r="3"/>
-				<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-			</svg>
-			<span>{t('settings.title')}</span>
-			<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<polyline points="9 18 15 12 9 6"/>
-			</svg>
-		</button>
-	</div>
-</ResponsiveDrawer>
+<!-- Mobile Drawer removed — auth/settings are directly in header -->
 
 <style>
 	/* Header */
@@ -269,7 +169,10 @@
 		color: var(--accent);
 	}
 
-	/* Desktop Navigation */
+	/* Spacer (replaces removed nav links) */
+	.nav-spacer { flex: 1; }
+
+	/* Desktop Navigation (kept for CSS compat, unused in template) */
 	.nav-desktop {
 		display: flex;
 		align-items: center;
@@ -337,6 +240,16 @@
 		color: var(--fg-base);
 	}
 
+	/* Mobile avatar-only button */
+	.avatar-btn {
+		display: flex;
+		align-items: center;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+	}
+
 	/* Desktop/Mobile visibility */
 	.desktop-only {
 		display: flex;
@@ -352,7 +265,7 @@
 		}
 
 		.desktop-only {
-			display: none;
+			display: none !important;
 		}
 
 		.mobile-only {

@@ -36,7 +36,6 @@
 		API_HOST,
 		generateCustomId,
 		normalizeStrategyUrl,
-		validateStrategyUrl,
 		strategyFetch,
 		loadPersistedState,
 		savePersistedState,
@@ -597,51 +596,57 @@
 			return;
 		}
 
-		// Existing simulation strategy flow
-		const url = normalizeStrategyUrl(rawInput);
-		if (!url) {
+		// Endpoint discovery flow: user provides root URL, we discover all strategies
+		let endpointUrl = normalizeStrategyUrl(rawInput);
+		if (!endpointUrl) {
 			customUrlError = t('btcUpdown.strategy.invalidUrl');
 			return;
 		}
 		try {
-			new URL(url);
+			new URL(endpointUrl);
 		} catch {
 			customUrlError = t('btcUpdown.strategy.invalidUrl');
 			return;
 		}
-		// Check duplicate
-		if (allRegisteredStrategies.some((s) => s.baseUrl === url)) {
-			customUrlError = t('btcUpdown.strategy.duplicateUrl');
-			return;
-		}
+		// Strip /api or /api/vN suffix if user pasted a full strategy URL
+		endpointUrl = endpointUrl.replace(/\/api(\/v\d+)?$/, '');
+
 		customUrlError = '';
-		validationSteps = [];
+		validationSteps = [{ step: 'discovery', status: 'checking' }];
 		customUrlValidating = true;
 		const lang = locale.value === 'zh' ? 'zh' : 'en';
-		const result = await validateStrategyUrl(url, lang, (steps) => {
-			validationSteps = steps;
-		});
-		customUrlValidating = false;
-		if (!result.valid) {
-			customUrlError = result.error;
+
+		// Discover strategies from the endpoint
+		const result = await discoverStrategies(endpointUrl, '/api/strategies', lang, strategyFetch);
+		if (!result || result.strategies.length === 0) {
+			validationSteps = [{ step: 'discovery', status: 'fail' }];
+			customUrlError = lang === 'zh' ? '无法发现策略，请检查端点 URL' : 'No strategies found at this endpoint';
+			customUrlValidating = false;
 			return;
 		}
-		const newStrategy: StrategyEndpoint = {
-			id: generateCustomId(),
-			label: result.info.name || url,
-			baseUrl: url,
-			type: 'custom',
-			addedAt: Date.now()
-		};
-		customStrategies = [...customStrategies, newStrategy];
+		validationSteps = [{ step: 'discovery', status: 'ok' }];
+
+		// Add discovered strategies as custom strategies so they show in the sidebar
+		const existingIds = new Set(customStrategies.map((s) => s.id));
+		const existingUrls = new Set(customStrategies.map((s) => s.baseUrl));
+		const newCustom = result.strategies
+			.filter((s) => !existingIds.has(s.id) && !existingUrls.has(s.baseUrl))
+			.map((s) => ({ ...s, type: 'custom' as const, addedAt: Date.now() }));
+		if (newCustom.length > 0) {
+			customStrategies = [...customStrategies, ...newCustom];
+		}
+		for (let i = 0; i < result.strategies.length; i++) {
+			allStrategyInfos.set(result.strategies[i].id, result.raw[i]);
+		}
+
 		customUrlInput = '';
 		validationSteps = [];
 		showAddStrategy = false;
+		customUrlValidating = false;
 		persistState();
-		onStrategyChange(newStrategy.id);
+		// Select the first discovered strategy
+		onStrategyChange(result.strategies[0].id);
 		fetchAllStrategies();
-		// Probe for sibling strategies on the same server
-		probeServerSiblings(url);
 	}
 
 	async function probeServerSiblings(strategyUrl: string) {
@@ -688,7 +693,7 @@
 		// Clean up discovered siblings
 		const siblings = discoveredSiblings.get(host) ?? [];
 		for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
-		visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+		visibleDiscoveredIds = new SvelteSet(visibleDiscoveredIds);
 		discoveredSiblings.delete(host);
 		configPanelSection = null;
 		// Switch active if needed
@@ -717,7 +722,7 @@
 			if (remaining.length === 0) {
 				const siblings = discoveredSiblings.get(host) ?? [];
 				for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
-				visibleDiscoveredIds = new Set(visibleDiscoveredIds);
+				visibleDiscoveredIds = new SvelteSet(visibleDiscoveredIds);
 				discoveredSiblings.delete(host);
 			}
 		} catch {
@@ -1990,7 +1995,6 @@
 						ctx={getFormatterCtx()}
 						{t}
 						titleKey="btcUpdown.chart.hourlyProfitAgg"
-						showMeta
 						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
 				{/if}
@@ -2029,7 +2033,6 @@
 						roundsPageSize={store.roundsPageSize}
 						refreshing={store.roundsRefreshing}
 						roundsFilter={store.roundsFilter}
-						signalActionFilter={store.signalActionFilter}
 						resultFilter={store.resultFilter}
 						stats={store.stats}
 						ctx={getFormatterCtx()}
@@ -2037,7 +2040,6 @@
 						{formatCurrency}
 						onPageChange={(page) => { store.setPage(page); }}
 						onFilterChange={(f) => store.setFilter(f)}
-						onSignalFilterChange={(f) => store.setSignalFilter(f)}
 						onResultFilterChange={(f) => store.setResultFilter(f)}
 						onRefresh={() => store.refresh()}
 					/>

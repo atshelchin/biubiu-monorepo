@@ -145,6 +145,24 @@ export interface WeekdayStats {
 	avgProfit: number;
 }
 
+export interface WalletInfo {
+	walletAddress: string;
+	safeAddress: string;
+	usdcBalance: number;
+	portfolioValue: number;
+}
+
+export interface PolymarketStats {
+	rounds: number;
+	wins: number;
+	losses: number;
+	winRate: number;
+	totalProfit: number;
+	totalTraded: number;
+	from: string | null;
+	to: string | null;
+}
+
 export interface StrategyProfitData {
 	current:
 		| { status: 'settled'; profit: number; direction: string | null }

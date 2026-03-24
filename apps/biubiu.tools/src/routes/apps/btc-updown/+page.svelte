@@ -1966,6 +1966,8 @@
 						ctx={getFormatterCtx()}
 						{t}
 						onClearHour={() => { store.selectHour(null); }}
+						wallet={isLiveMode ? store.wallet : null}
+						polymarketStats={isLiveMode ? store.polymarketStats : null}
 					/>
 				{/if}
 

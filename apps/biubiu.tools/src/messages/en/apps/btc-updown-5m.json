@@ -147,6 +147,10 @@
   "updown5m.space.admin.claimTitle": "Become Admin",
   "updown5m.space.noStrategies": "No strategies in this space yet",
 
+  "btcUpdown.stats.wallet": "Wallet",
+  "btcUpdown.stats.portfolio": "Portfolio",
+  "btcUpdown.stats.pmStats": "Polymarket",
+  "btcUpdown.stats.traded": "Traded",
   "btcUpdown.stats.winRate": "Win Rate",
   "btcUpdown.stats.totalProfit": "Total Profit",
   "btcUpdown.stats.totalRounds": "Total Rounds",

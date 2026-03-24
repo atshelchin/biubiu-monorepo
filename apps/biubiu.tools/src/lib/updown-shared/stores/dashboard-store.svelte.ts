@@ -24,7 +24,9 @@ import type {
 	ResultFilter,
 	SignalActionFilter,
 	SSEEvent,
-	Stats
+	Stats,
+	WalletInfo,
+	PolymarketStats
 } from '../types.js';
 import { todayLocal } from '../formatters.js';
 import {
@@ -70,6 +72,8 @@ const FK = {
 export class DashboardStore {
 	// ---- Data state ----
 	stats = $state<Stats | null>(null);
+	wallet = $state<WalletInfo | null>(null);
+	polymarketStats = $state<PolymarketStats | null>(null);
 	currentRound = $state<Round | null>(null);
 	rounds = $state<Round[]>([]);
 	roundsTotal = $state(0);
@@ -166,6 +170,8 @@ export class DashboardStore {
 
 		// Reset data
 		this.stats = null;
+		this.wallet = null;
+		this.polymarketStats = null;
 		this.currentRound = null;
 		this.rounds = [];
 		this.roundsTotal = 0;
@@ -340,7 +346,11 @@ export class DashboardStore {
 				this.filterDate,
 				this.selectedHour
 			);
-			if (result) this.stats = result;
+			if (result) {
+				this.stats = result.stats;
+				this.wallet = result.wallet ?? null;
+				this.polymarketStats = result.polymarketStats ?? null;
+			}
 		});
 	}
 

@@ -36,9 +36,9 @@
 	{#if wallet}
 		<div class="stat-card glass-card wallet-card">
 			<span class="stat-label">{t('btcUpdown.stats.wallet')}</span>
-			<span class="stat-value highlight">{fmtProfit(ctx, wallet.usdcBalance)}</span>
+			<span class="stat-value highlight">{ctx.formatCurrency(wallet.usdcBalance * (ctx.exchangeRate ?? 1))}</span>
 			<span class="stat-sub stat-sub-rows">
-				<span>{t('btcUpdown.stats.portfolio')}: {fmtProfit(ctx, wallet.portfolioValue)}</span>
+				<span>{t('btcUpdown.stats.portfolio')}: {ctx.formatCurrency(wallet.portfolioValue * (ctx.exchangeRate ?? 1))}</span>
 				<a class="wallet-addr" href="https://polymarket.com/profile/{wallet.safeAddress}" target="_blank" rel="noopener">
 					{shortAddr(wallet.safeAddress)} ↗
 				</a>
@@ -53,7 +53,7 @@
 			</span>
 			<span class="stat-sub stat-sub-rows">
 				<span>{fmtPct(ctx, polymarketStats.winRate)} · {polymarketStats.wins}W/{polymarketStats.losses}L</span>
-				<span>{polymarketStats.rounds}r · {t('btcUpdown.stats.traded')}: {fmtProfit(ctx, polymarketStats.totalTraded)}</span>
+				<span>{polymarketStats.rounds}r · {t('btcUpdown.stats.traded')}: {ctx.formatCurrency(polymarketStats.totalTraded * (ctx.exchangeRate ?? 1))}</span>
 			</span>
 		</div>
 	{/if}

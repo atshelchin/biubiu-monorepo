@@ -7,8 +7,16 @@ import type {
 	HourlyStats,
 	RoundsResponse,
 	Stats,
+	WalletInfo,
+	PolymarketStats,
 	StrategyProfitData
 } from './types.js';
+
+export interface StatsResponse {
+	stats: Stats;
+	wallet?: WalletInfo;
+	polymarketStats?: PolymarketStats;
+}
 import { getDateRange, toUTCString, todayLocal } from './formatters.js';
 import type { StrategyInfo } from '$lib/btc-updown-strategies';
 
@@ -22,7 +30,7 @@ export async function fetchStats(
 	opts: ApiFetchOptions,
 	filterDate: { from: string; to: string },
 	selectedHour: number | null
-): Promise<Stats | null> {
+): Promise<StatsResponse | null> {
 	try {
 		const range = getDateRange(filterDate);
 		const parts: string[] = [];
@@ -37,7 +45,15 @@ export async function fetchStats(
 		}
 		const qs = parts.length ? '?' + parts.join('&') : '';
 		const res = await opts.fetchFn(`${opts.baseUrl}/stats${qs}`, { signal: opts.signal });
-		if (res.ok) return await res.json();
+		if (res.ok) {
+			const data = await res.json();
+			const { wallet, polymarketStats, ...statsFields } = data;
+			return {
+				stats: statsFields as Stats,
+				wallet: wallet ?? undefined,
+				polymarketStats: polymarketStats ?? undefined,
+			};
+		}
 	} catch {
 		// non-critical
 	}

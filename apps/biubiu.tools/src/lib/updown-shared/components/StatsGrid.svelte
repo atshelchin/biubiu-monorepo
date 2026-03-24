@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Stats } from '../types.js';
+	import type { Stats, WalletInfo, PolymarketStats } from '../types.js';
 	import type { FormatterContext, TranslateFn } from '../types.js';
 	import { fmtProfit, fmtPct } from '../formatters.js';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
@@ -10,9 +10,18 @@
 		ctx: FormatterContext;
 		t: TranslateFn;
 		onClearHour?: () => void;
+		wallet?: WalletInfo | null;
+		polymarketStats?: PolymarketStats | null;
 	}
 
-	let { stats, selectedHour, ctx, t, onClearHour }: Props = $props();
+	let { stats, selectedHour, ctx, t, onClearHour, wallet, polymarketStats }: Props = $props();
+
+	const hasLiveCards = $derived(!!wallet || !!polymarketStats);
+
+	function shortAddr(addr: string): string {
+		if (addr.length <= 10) return addr;
+		return addr.slice(0, 6) + '...' + addr.slice(-4);
+	}
 </script>
 
 {#if selectedHour !== null}
@@ -23,7 +32,31 @@
 		<button class="stats-hour-clear" onclick={() => onClearHour?.()}>✕</button>
 	</div>
 {/if}
-<section class="stats-grid" use:fadeInUp={{ delay: 45 }}>
+<section class="stats-grid" class:stats-grid-live={hasLiveCards} use:fadeInUp={{ delay: 45 }}>
+	{#if wallet}
+		<div class="stat-card glass-card wallet-card">
+			<span class="stat-label">{t('btcUpdown.stats.wallet')}</span>
+			<span class="stat-value highlight">{ctx.formatCurrency(wallet.usdcBalance * (ctx.exchangeRate ?? 1))}</span>
+			<span class="stat-sub stat-sub-rows">
+				<span>{t('btcUpdown.stats.portfolio')}: {ctx.formatCurrency(wallet.portfolioValue * (ctx.exchangeRate ?? 1))}</span>
+				<a class="wallet-addr" href="https://polymarket.com/profile/{wallet.safeAddress}" target="_blank" rel="noopener">
+					{shortAddr(wallet.safeAddress)} ↗
+				</a>
+			</span>
+		</div>
+	{/if}
+	{#if polymarketStats}
+		<div class="stat-card glass-card pm-card">
+			<span class="stat-label">{t('btcUpdown.stats.pmStats')}</span>
+			<span class="stat-value" class:positive={polymarketStats.totalProfit >= 0} class:negative={polymarketStats.totalProfit < 0}>
+				{fmtProfit(ctx, polymarketStats.totalProfit)}
+			</span>
+			<span class="stat-sub stat-sub-rows">
+				<span>{fmtPct(ctx, polymarketStats.winRate)} · {polymarketStats.wins}W/{polymarketStats.losses}L</span>
+				<span>{polymarketStats.rounds}r · {t('btcUpdown.stats.traded')}: {ctx.formatCurrency(polymarketStats.totalTraded * (ctx.exchangeRate ?? 1))}</span>
+			</span>
+		</div>
+	{/if}
 	<div class="stat-card glass-card">
 		<span class="stat-label">{t('btcUpdown.stats.winRate')}</span>
 		<span class="stat-value highlight">{fmtPct(ctx, stats.winRate)}</span>
@@ -120,6 +153,9 @@
 		gap: var(--space-3);
 		margin-bottom: var(--space-2);
 	}
+	.stats-grid-live {
+		grid-template-columns: repeat(3, 1fr);
+	}
 	.stat-card {
 		padding: var(--space-4);
 		border-radius: var(--radius-lg);
@@ -174,8 +210,20 @@
 	:global([data-theme='light']) .negative {
 		color: #dc2626;
 	}
+	/* Wallet card */
+	.wallet-addr {
+		color: var(--accent);
+		text-decoration: none;
+		transition: opacity var(--motion-fast) var(--easing);
+	}
+	.wallet-addr:hover {
+		opacity: 0.7;
+	}
 	@media (max-width: 768px) {
 		.stats-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.stats-grid-live {
 			grid-template-columns: repeat(2, 1fr);
 		}
 		.stat-value {

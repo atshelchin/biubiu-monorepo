@@ -50,7 +50,7 @@ export const DEFAULT_VISIBLE_BUILTINS = new Set(['v1', 'v3', 'v7', 'v8', 'v14', 
 // --- Fallback strategies (used when discovery fails) ---
 
 export const FALLBACK_STRATEGIES: StrategyEndpoint[] = [
-	{ id: 'builtin:v1', label: 'v1', baseUrl: `${API_HOST}/api`, type: 'builtin', addedAt: 0 },
+	{ id: 'builtin:v1', label: 'v1', baseUrl: `${API_HOST}/api/v1`, type: 'builtin', addedAt: 0 },
 ];
 
 // --- ID generation ---
@@ -63,6 +63,10 @@ export function generateCustomId(): string {
 
 export function normalizeStrategyUrl(url: string): string {
 	let normalized = url.trim();
+	// Auto-prepend http:// if no protocol specified
+	if (normalized && !/^https?:\/\//i.test(normalized)) {
+		normalized = `http://${normalized}`;
+	}
 	// Remove trailing slashes
 	while (normalized.endsWith('/')) {
 		normalized = normalized.slice(0, -1);
@@ -100,7 +104,7 @@ export async function discoverStrategies(
 		const strategies = data.map((s) => ({
 			id: `discovered:${host}:${s.version}`,
 			label: s.version,
-			baseUrl: `${serverOrigin}${s.basePath ?? (s.version === 'v1' ? '/api' : `/api/${s.version}`)}`,
+			baseUrl: `${serverOrigin}${s.basePath ?? `/api/${s.version}`}`,
 			type: 'discovered' as const,
 			addedAt: 0
 		}));
@@ -119,13 +123,33 @@ const DEFAULT_STATE: PersistedState = {
 	activeStrategyId: 'builtin:v1'
 };
 
+/** Migrate old /api baseUrl (no version) to /api/v1, then deduplicate by baseUrl */
+function migrateAndDedup(strategies: StrategyEndpoint[]): StrategyEndpoint[] {
+	const migrated = strategies.map((s) => {
+		// /api without /vN suffix → /api/v1
+		if (/\/api\/?$/.test(s.baseUrl)) {
+			return { ...s, baseUrl: s.baseUrl.replace(/\/api\/?$/, '/api/v1') };
+		}
+		return s;
+	});
+	// Deduplicate by baseUrl (keep first occurrence)
+	const seen = new Set<string>();
+	return migrated.filter((s) => {
+		if (seen.has(s.baseUrl)) return false;
+		seen.add(s.baseUrl);
+		return true;
+	});
+}
+
 export function loadPersistedState(): PersistedState {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (!raw) return DEFAULT_STATE;
 		const parsed = JSON.parse(raw);
 		return {
-			customStrategies: Array.isArray(parsed.customStrategies) ? parsed.customStrategies : [],
+			customStrategies: migrateAndDedup(
+				Array.isArray(parsed.customStrategies) ? parsed.customStrategies : []
+			),
 			visibleDiscoveredIds: Array.isArray(parsed.visibleDiscoveredIds)
 				? parsed.visibleDiscoveredIds
 				: [],

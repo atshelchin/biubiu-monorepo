@@ -54,7 +54,7 @@
 	/** 从 index server 查询 profile */
 	async function fetchProfile(credentialId: string): Promise<ProfileData | null> {
 		try {
-			const params = new URLSearchParams({ rpId: 'biubiu.tools', credentialId });
+			const params = new URLSearchParams({ rpId: window.location.hostname, credentialId });
 			const res = await fetch(`${INDEX_BASE}/api/query?${params}`);
 			if (!res.ok) return null;
 			const data = await res.json();

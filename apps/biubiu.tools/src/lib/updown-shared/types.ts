@@ -7,7 +7,7 @@ export type { TranslateFn } from './labels.js';
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 export type RoundStatusFilter = '' | 'entered' | 'settled' | 'skipped';
 export type SignalActionFilter = '' | 'bet' | 'reverse' | 'skip';
-export type ResultFilter = '' | 'win' | 'loss' | 'stop_loss';
+export type ResultFilter = '' | 'win' | 'loss' | 'stop_loss' | 'take_profit';
 
 export interface SSEEvent {
 	id: string;
@@ -49,6 +49,7 @@ export interface Stats {
 	stopLossCorrect: number;
 	stopLossWrong: number;
 	stopLossProfit: number;
+	takeProfitCount: number;
 }
 
 export interface RoundHedge {

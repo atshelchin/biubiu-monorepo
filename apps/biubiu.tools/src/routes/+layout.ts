@@ -18,7 +18,22 @@ const messageModules = import.meta.glob('../messages/**/*.json', { eager: false 
 
 // Load messages for a specific route and locale
 async function loadMessagesForRoute(routePath: string, locale: string) {
-  const namespaces = matchRoute(routePath);
+  let namespaces = matchRoute(routePath);
+
+  // If only _global matched, try progressively shorter parent paths.
+  // This ensures /apps/btc-updown-5m/space/xxx loads apps/btc-updown-5m messages.
+  if (namespaces.length === 1 && namespaces[0] === '_global') {
+    let parentPath = routePath;
+    while (parentPath.lastIndexOf('/') > 0) {
+      parentPath = parentPath.slice(0, parentPath.lastIndexOf('/'));
+      const parentNs = matchRoute(parentPath);
+      if (parentNs.length > 1 || (parentNs.length === 1 && parentNs[0] !== '_global')) {
+        namespaces = parentNs;
+        break;
+      }
+    }
+  }
+
   const messages: Record<string, string> = {};
 
   for (const ns of namespaces) {

@@ -88,7 +88,7 @@
 					</div>
 					<span class="chart-day">{t(`btcUpdown.chart.weekday.${WEEKDAY_KEYS[i]}`)}</span>
 					{#if w.rounds > 0}
-						<span class="chart-meta">
+						<span class="chart-meta-tip">
 							{w.dayCount}d · {w.rounds}r · {fmtPct(ctx, winRate)}
 						</span>
 					{/if}
@@ -130,6 +130,7 @@
 		gap: 2px;
 		padding-top: 28px;
 		position: relative;
+		cursor: pointer;
 	}
 	.chart-col-weekend {
 		border-left: 1px solid rgba(255, 255, 255, 0.06);
@@ -142,11 +143,12 @@
 		position: absolute;
 		top: 2px;
 		left: 50%;
-		font-size: 11px;
+		font-size: 10px;
 		font-family: var(--font-mono, ui-monospace, monospace);
 		font-weight: 700;
 		white-space: nowrap;
-		transform: translateX(-50%);
+		transform: translateX(-50%) rotate(-40deg);
+		transform-origin: center center;
 	}
 	.chart-value.positive {
 		color: #22c55e;
@@ -186,11 +188,27 @@
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
 	}
-	.chart-meta {
+	.chart-meta-tip {
+		position: absolute;
+		bottom: -24px;
+		left: 50%;
+		transform: translateX(-50%);
 		font-size: 9px;
 		font-family: var(--font-mono, ui-monospace, monospace);
-		color: var(--fg-subtle);
+		color: var(--fg-base);
+		background: var(--bg-elevated, var(--bg-raised));
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-sm);
+		padding: 2px 6px;
 		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--motion-fast, 150ms) ease;
+		z-index: 10;
+		box-shadow: var(--shadow-sm);
+	}
+	.chart-col:hover .chart-meta-tip {
+		opacity: 1;
 	}
 	.chart-empty {
 		padding: var(--space-8) 0;

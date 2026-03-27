@@ -2521,13 +2521,19 @@
 		display: flex;
 		align-items: center;
 		gap: 2px;
+		/* Reserve space for hide button so profits always align, even on active row */
+		padding-right: 24px;
+		position: relative;
 	}
 	.version-row .version-btn {
 		flex: 1;
 		min-width: 0;
 	}
 	.row-hide-btn {
-		flex-shrink: 0;
+		position: absolute;
+		right: 0;
+		top: 50%;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;

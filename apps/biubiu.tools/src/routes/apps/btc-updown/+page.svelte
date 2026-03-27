@@ -499,6 +499,12 @@
 		for (const r of results) allStrategyProfits.set(r.id, r.profits);
 		lastProfitRefreshTime = Date.now();
 		profitRefreshing = false;
+
+		// Re-probe custom endpoints for newly added strategies
+		for (const [, strategies] of customStrategiesByHost) {
+			const sample = strategies[0];
+			if (sample) probeServerSiblings(sample.baseUrl);
+		}
 	}
 
 	/** Sync URL query params to reflect the active strategy */
@@ -1519,13 +1525,6 @@
 							<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 						</button>
 						{@render refreshIndicator()}
-						<button
-							class="profit-refresh-btn"
-							onclick={() => { const sample = strategies[0]; if (sample) probeServerSiblings(sample.baseUrl); }}
-							title={locale.value === 'zh' ? '刷新策略列表' : 'Refresh strategies'}
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
-						</button>
 						<span class="config-count" class:has-hidden={hiddenHostStrategies.length > 0}
 							>{visibleHostStrategies.length}/{allHostStrategies.length}</span
 						>
@@ -1960,7 +1959,7 @@
 		right: 0;
 		z-index: 100;
 		max-height: 80vh;
-		background: var(--bg-raised);
+		background: var(--bg-base);
 		border-top-left-radius: var(--radius-xl);
 		border-top-right-radius: var(--radius-xl);
 		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
@@ -1968,6 +1967,22 @@
 		overscroll-behavior: contain;
 		padding: 0 var(--space-4) var(--space-6);
 		animation: drawer-slide-up 0.3s var(--easing-smooth);
+	}
+	/* Remove glass-card border/shadow inside drawer — the drawer itself is the container */
+	.sidebar.mobile-drawer-open .version-selector {
+		background: none;
+		border: none;
+		box-shadow: none;
+		backdrop-filter: none;
+		padding: 0;
+		margin-bottom: 0;
+	}
+	/* Cleaner row borders inside drawer */
+	.sidebar.mobile-drawer-open .version-btn {
+		border-color: var(--border-subtle);
+	}
+	.sidebar.mobile-drawer-open .profit-column-labels {
+		background: var(--bg-sunken);
 	}
 	@keyframes drawer-slide-up {
 		from { transform: translateY(100%); }

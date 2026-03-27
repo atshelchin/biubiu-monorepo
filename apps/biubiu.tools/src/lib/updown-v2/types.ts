@@ -44,49 +44,6 @@ export interface Instance {
 	startedAt?: string;
 }
 
-/** Period stats for a time window */
-export interface PeriodStats {
-	profit: number;
-	rounds: number;
-	winRate: number;
-}
-
-/** Marketplace Strategy */
-export interface MarketStrategy {
-	id: string;
-	name: string;
-	description: string;
-	visibility: 'public' | 'private';
-	price: number;
-	riskLevel: 'conservative' | 'balanced' | 'aggressive';
-	tags: string[];
-	author: { id: string; name: string };
-	performance: {
-		hour: PeriodStats;
-		today: PeriodStats;
-		ninetyDay: PeriodStats;
-		maxDrawdown: number;
-	};
-	config?: Strategy;
-	followCount: number;
-	copyCount: number;
-	createdAt: string;
-}
-
-/** Leaderboard entry */
-export interface LeaderboardEntry {
-	rank: number;
-	id: string;
-	name: string;
-	creator: string;
-	winRate: number;
-	profit: string;
-	rounds: number;
-	sparkline: number[];
-	space: string;
-	visibility: 'public' | 'private';
-}
-
 /** User */
 export interface User {
 	userId: string;
@@ -97,15 +54,6 @@ export interface User {
 
 /** Auth state */
 export type AuthState = { loggedIn: false } | { loggedIn: true; user: User };
-
-/** Activity feed item */
-export interface ActivityItem {
-	time: string;
-	instance: string;
-	message: string;
-	type: 'win' | 'loss' | 'entry' | 'pause' | 'info';
-	space: string;
-}
 
 /** Stats summary */
 export interface StatsSummary {
@@ -129,7 +77,6 @@ export interface SpaceMember {
 	totalProfit: number;
 	winRate: number;
 	joinedAt: string;
-	isFollowing?: boolean;
 }
 
 /** Space stats (aggregate for the whole space) */

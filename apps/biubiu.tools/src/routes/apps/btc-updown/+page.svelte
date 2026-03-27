@@ -283,8 +283,8 @@
 
 	/**
 	 * 解析管理端点链接。
-	 * 格式: {baseUrl}/{token}/{clientId}
-	 * token = 64位hex，clientId = client-开头
+	 * 格式：{baseUrl}/{token}/{clientId}
+	 * token = 64 位 hex，clientId = client-开头
 	 */
 	function parseManagedEndpointUrl(input: string): { baseUrl: string; token: string; clientId: string } | null {
 		try {
@@ -403,6 +403,8 @@
 				}
 			}
 		} else {
+			// Top-level sections: don't allow collapsing if it's the only one open
+			if (isTopLevel) return;
 			collapsedSections.add(key);
 		}
 		persistState();
@@ -499,6 +501,12 @@
 		for (const r of results) allStrategyProfits.set(r.id, r.profits);
 		lastProfitRefreshTime = Date.now();
 		profitRefreshing = false;
+
+		// Re-probe custom endpoints for newly added strategies
+		for (const [, strategies] of customStrategiesByHost) {
+			const sample = strategies[0];
+			if (sample) probeServerSiblings(sample.baseUrl);
+		}
 	}
 
 	/** Sync URL query params to reflect the active strategy */
@@ -1519,13 +1527,6 @@
 							<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
 						</button>
 						{@render refreshIndicator()}
-						<button
-							class="profit-refresh-btn"
-							onclick={() => { const sample = strategies[0]; if (sample) probeServerSiblings(sample.baseUrl); }}
-							title={locale.value === 'zh' ? '刷新策略列表' : 'Refresh strategies'}
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
-						</button>
 						<span class="config-count" class:has-hidden={hiddenHostStrategies.length > 0}
 							>{visibleHostStrategies.length}/{allHostStrategies.length}</span
 						>
@@ -1960,7 +1961,7 @@
 		right: 0;
 		z-index: 100;
 		max-height: 80vh;
-		background: var(--bg-raised);
+		background: var(--bg-base);
 		border-top-left-radius: var(--radius-xl);
 		border-top-right-radius: var(--radius-xl);
 		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
@@ -1968,6 +1969,15 @@
 		overscroll-behavior: contain;
 		padding: 0 var(--space-4) var(--space-6);
 		animation: drawer-slide-up 0.3s var(--easing-smooth);
+	}
+	/* Remove glass-card border/shadow inside drawer — the drawer itself is the container */
+	.sidebar.mobile-drawer-open .version-selector {
+		background: none;
+		border: none;
+		box-shadow: none;
+		backdrop-filter: none;
+		/* padding: 0; */
+		margin-bottom: 0;
 	}
 	@keyframes drawer-slide-up {
 		from { transform: translateY(100%); }
@@ -2216,6 +2226,7 @@
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);
 		margin-bottom: var(--space-4);
+
 	}
 	.version-header {
 		display: flex;
@@ -2260,9 +2271,9 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-1) var(--space-3);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: var(--radius-2);
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
 		background: transparent;
 		color: var(--fg-subtle);
 		font-size: var(--text-xs);
@@ -2274,13 +2285,15 @@
 		text-align: left;
 	}
 	.version-btn:hover {
-		border-color: rgba(255, 255, 255, 0.15);
+		border-color: var(--border-base);
 		color: var(--fg-muted);
 	}
 	.version-btn.active {
-		background: rgba(255, 255, 255, 0.08);
-		border-color: rgba(255, 255, 255, 0.15);
+		background: rgba(255, 255, 255, 0.06);
+		border-color: var(--accent);
 		color: var(--fg-base);
+		font-weight: var(--weight-semibold);
+		box-shadow: inset 3px 0 0 var(--accent);
 	}
 
 	/* Strategy name + profits layout */
@@ -2294,10 +2307,11 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-1) calc(var(--space-3) + 1px); /* match version-btn padding + border */
+		padding: var(--space-1) calc(var(--space-3) + 1px);
+		padding-right: calc(var(--space-3) + 1px + 24px); /* +24px to account for row-hide-btn */
 		margin-bottom: 2px;
 		background: var(--bg-sunken, rgba(255, 255, 255, 0.03));
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-md);
 	}
 	.profit-col-labels-right {
 		margin-left: auto;
@@ -2323,8 +2337,8 @@
 		align-items: center;
 		justify-content: center;
 		width: 100%;
-		min-height: 28px;
-		padding: 4px 0;
+		min-height: 20px;
+		padding: 2px 0;
 		background: none;
 		border: none;
 		color: var(--fg-subtle);
@@ -2336,11 +2350,10 @@
 		border-radius: var(--radius-sm);
 	}
 	.col-nav-btn-v:active:not(:disabled) {
-		background: rgba(255, 255, 255, 0.08);
+		background: rgba(255, 255, 255, 0.06);
 	}
 	.col-nav-btn-v:hover:not(:disabled) {
 		opacity: 0.8;
-		background: rgba(255, 255, 255, 0.04);
 	}
 	.col-nav-btn-v:disabled {
 		opacity: 0.1;
@@ -2395,6 +2408,10 @@
 		font-variant-numeric: tabular-nums;
 		opacity: 0.85;
 		flex-shrink: 0;
+	}
+	.version-btn.active .strategy-profits {
+		opacity: 1;
+		font-size: calc(11px * var(--text-scale, 1));
 	}
 	.profit-cell {
 		display: flex;
@@ -2504,13 +2521,19 @@
 		display: flex;
 		align-items: center;
 		gap: 2px;
+		/* Reserve space for hide button so profits always align, even on active row */
+		padding-right: 24px;
+		position: relative;
 	}
 	.version-row .version-btn {
 		flex: 1;
 		min-width: 0;
 	}
 	.row-hide-btn {
-		flex-shrink: 0;
+		position: absolute;
+		right: 0;
+		top: 50%;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -2994,15 +3017,12 @@
 	:global([data-theme='light']) .disclaimer svg {
 		color: #d97706;
 	}
-	:global([data-theme='light']) .version-btn {
-		border-color: rgba(0, 0, 0, 0.08);
-	}
 	:global([data-theme='light']) .version-btn:hover {
-		border-color: rgba(0, 0, 0, 0.15);
+		background: rgba(0, 0, 0, 0.04);
 	}
 	:global([data-theme='light']) .version-btn.active {
 		background: rgba(0, 0, 0, 0.04);
-		border-color: rgba(0, 0, 0, 0.15);
+		border-color: var(--accent);
 	}
 	:global([data-theme='light']) .profit-val.positive {
 		color: #059669;

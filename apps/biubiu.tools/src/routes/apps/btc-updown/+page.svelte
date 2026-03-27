@@ -403,6 +403,8 @@
 				}
 			}
 		} else {
+			// Top-level sections: don't allow collapsing if it's the only one open
+			if (isTopLevel) return;
 			collapsedSections.add(key);
 		}
 		persistState();

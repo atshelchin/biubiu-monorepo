@@ -400,22 +400,8 @@
 
 	let timeFormat = $state<TimeFormat>('24');
 
-	// Sticky strategy title (shown when strategy-info card scrolls out of view)
-	let showStickyTitle = $state(false);
-	function observeVisibility(node: HTMLElement) {
-		const observer = new IntersectionObserver(
-			([entry]) => {
-				showStickyTitle = !entry.isIntersecting;
-			},
-			{ threshold: 0 }
-		);
-		observer.observe(node);
-		return {
-			destroy() {
-				observer.disconnect();
-			}
-		};
-	}
+	// Mobile strategy drawer
+	let mobileDrawerOpen = $state(false);
 
 	// History / Live tab toggle
 	let historyTab = $state<'rounds' | 'live'>('rounds');
@@ -528,6 +514,7 @@
 	function onStrategyChange(strategyId: string) {
 		if (strategyId === activeStrategyId) return;
 		activeStrategyId = strategyId;
+		mobileDrawerOpen = false;
 		// Don't sync URL for instance-based strategies (they contain endpoint tokens)
 		if (!isInstanceId(strategyId)) {
 			syncUrlParams(strategyId);
@@ -1234,9 +1221,36 @@
 		<p class="page-description">{t('btcUpdown.description')}</p>
 	</section>
 
+	<!-- Mobile floating button to open strategy drawer -->
+	{#if !mobileDrawerOpen}
+	<button
+		class="mobile-drawer-fab"
+		onclick={() => { mobileDrawerOpen = true; }}
+	>
+		<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+		<span class="mobile-fab-label">{store.strategyInfo?.name ?? activeStrategy.label}</span>
+	</button>
+	{/if}
+
+	<!-- Mobile drawer backdrop -->
+	{#if mobileDrawerOpen}
+		<div
+			class="mobile-drawer-backdrop"
+			onclick={() => { mobileDrawerOpen = false; }}
+			onkeydown={(e) => { if (e.key === 'Escape') mobileDrawerOpen = false; }}
+			role="button"
+			tabindex={-1}
+			transition:fly={{ duration: 200, opacity: 0 }}
+		></div>
+	{/if}
+
 	<div class="page-layout">
 		<!-- Sidebar (strategy panel) -->
-		<aside class="sidebar">
+		<aside class="sidebar" class:mobile-drawer-open={mobileDrawerOpen}>
+			<!-- Mobile drawer handle -->
+			<div class="mobile-drawer-handle" onclick={() => { mobileDrawerOpen = false; }}>
+				<div class="drawer-handle-bar"></div>
+			</div>
 			{#snippet profitCells(profits: StrategyProfitData)}
 				<span class="strategy-profits">
 					<span class="profit-cell">
@@ -1870,24 +1884,9 @@
 				>
 			</div>
 
-			<!-- Sticky strategy title (shown when strategy-info card scrolls away) -->
-			{#if store.strategyInfo && showStickyTitle}
-				<div class="sticky-strategy-title" transition:fly={{ y: -20, duration: 200 }}>
-					<svg
-						class="sticky-strategy-icon"
-						viewBox="0 0 16 16"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<path d="M8 1L14.5 5v6L8 15 1.5 11V5L8 1z" stroke="currentColor" stroke-width="1.2" />
-						<circle cx="8" cy="8" r="2" fill="currentColor" />
-					</svg>
-					<span class="sticky-strategy-name">{store.strategyInfo.name}</span>
-				</div>
-			{/if}
 			<!-- Strategy Info Card -->
 			{#if store.strategyInfo}
-				<div class="strategy-info glass-card" use:observeVisibility use:fadeInUp={{ delay: 15 }}>
+				<div class="strategy-info glass-card" use:fadeInUp={{ delay: 15 }}>
 					<h3 class="strategy-info-name">{store.strategyInfo.name}</h3>
 					{#if store.strategyInfo.description?.length}
 						<div class="strategy-description">
@@ -2096,7 +2095,48 @@
 		gap: var(--space-4);
 	}
 	.sidebar {
-		display: contents;
+		display: none;
+	}
+	.sidebar.mobile-drawer-open {
+		display: flex;
+		flex-direction: column;
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+		max-height: 80vh;
+		background: var(--bg-raised);
+		border-top-left-radius: var(--radius-xl);
+		border-top-right-radius: var(--radius-xl);
+		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 0 var(--space-4) var(--space-6);
+		animation: drawer-slide-up 0.3s var(--easing-smooth);
+	}
+	@keyframes drawer-slide-up {
+		from { transform: translateY(100%); }
+		to { transform: translateY(0); }
+	}
+	.mobile-drawer-backdrop {
+		display: none;
+	}
+	.mobile-drawer-fab {
+		display: flex;
+	}
+	.mobile-drawer-handle {
+		display: flex;
+	}
+	@media (max-width: 1279px) {
+		.mobile-drawer-backdrop {
+			display: block;
+			position: fixed;
+			inset: 0;
+			z-index: 99;
+			background: rgba(0, 0, 0, 0.4);
+			backdrop-filter: blur(2px);
+		}
 	}
 	.main-content {
 		display: contents;
@@ -2146,6 +2186,66 @@
 		.sidebar .version-selector {
 			margin-bottom: 0;
 		}
+		.mobile-drawer-fab {
+			display: none !important;
+		}
+		.mobile-drawer-backdrop {
+			display: none !important;
+		}
+		.mobile-drawer-handle {
+			display: none !important;
+		}
+	}
+
+	/* Mobile drawer FAB */
+	.mobile-drawer-fab {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		position: fixed;
+		bottom: var(--space-6);
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 50;
+		padding: var(--space-3) var(--space-5);
+		background: var(--bg-raised);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-full);
+		box-shadow: var(--shadow-lg);
+		color: var(--fg-base);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition: transform var(--motion-fast) var(--easing), box-shadow var(--motion-fast) var(--easing);
+		max-width: calc(100vw - var(--space-12));
+		backdrop-filter: blur(12px) saturate(180%);
+	}
+	.mobile-drawer-fab:active {
+		transform: translateX(-50%) scale(0.97);
+		box-shadow: var(--shadow-sm);
+	}
+	.mobile-fab-label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Mobile drawer handle */
+	.mobile-drawer-handle {
+		display: none;
+		justify-content: center;
+		padding: var(--space-3) 0 var(--space-2);
+		cursor: grab;
+		position: sticky;
+		top: 0;
+		background: var(--bg-raised);
+		z-index: 1;
+	}
+	.drawer-handle-bar {
+		width: 36px;
+		height: 4px;
+		border-radius: var(--radius-full);
+		background: var(--fg-faint);
 	}
 
 	/* Header */
@@ -2755,37 +2855,6 @@
 		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
 		margin: 0 0 var(--space-2);
-	}
-	.sticky-strategy-title {
-		position: sticky;
-		top: 143px;
-		z-index: 10;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		background: var(--bg-base);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		padding: var(--space-2) var(--space-3);
-		backdrop-filter: blur(16px);
-		border-radius: var(--radius-md);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		margin: calc(-1 * var(--space-4)) 0 0;
-	}
-	:global([data-theme='light']) .sticky-strategy-title {
-		border-color: rgba(0, 0, 0, 0.08);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-	}
-	.sticky-strategy-icon {
-		width: 14px;
-		height: 14px;
-		color: var(--accent);
-		flex-shrink: 0;
-	}
-	.sticky-strategy-name {
-		font-size: var(--text-xs);
-		font-weight: var(--weight-semibold);
-		color: var(--fg-base);
-		letter-spacing: 0.01em;
 	}
 	.strategy-description {
 		margin-bottom: var(--space-3);

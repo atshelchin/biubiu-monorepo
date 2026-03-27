@@ -381,9 +381,30 @@
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	let collapsedSections = new SvelteSet<string>();
 
+	/** Top-level section keys (builtin, custom hosts, managed endpoints) for accordion behavior */
+	const topLevelSectionKeys = $derived(() => {
+		const keys = ['builtin'];
+		for (const [host] of customStrategiesByHost) keys.push(host);
+		if (endpointStore.endpoints.length > 0) {
+			keys.push('managed');
+			for (const ep of endpointStore.endpoints) keys.push(`ep:${ep.url}`);
+		}
+		return keys;
+	});
+
 	function toggleCollapse(key: string) {
-		if (collapsedSections.has(key)) collapsedSections.delete(key);
-		else collapsedSections.add(key);
+		const isTopLevel = topLevelSectionKeys().includes(key);
+		if (collapsedSections.has(key)) {
+			collapsedSections.delete(key);
+			// Accordion: collapse other top-level sections when expanding one
+			if (isTopLevel) {
+				for (const k of topLevelSectionKeys()) {
+					if (k !== key) collapsedSections.add(k);
+				}
+			}
+		} else {
+			collapsedSections.add(key);
+		}
 		persistState();
 	}
 	const hiddenBuiltinCount = $derived(

@@ -2272,26 +2272,28 @@
 		align-items: center;
 		gap: var(--space-2);
 		padding: var(--space-2) var(--space-3);
-		border: none;
+		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 		background: transparent;
 		color: var(--fg-subtle);
 		font-size: var(--text-xs);
 		font-weight: var(--weight-medium);
 		cursor: pointer;
-		transition: background var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
+		transition: all var(--motion-fast) var(--easing);
 		white-space: nowrap;
 		width: 100%;
 		text-align: left;
 	}
 	.version-btn:hover {
-		background: rgba(255, 255, 255, 0.05);
+		border-color: var(--border-base);
 		color: var(--fg-muted);
 	}
 	.version-btn.active {
-		background: rgba(255, 255, 255, 0.08);
+		background: rgba(255, 255, 255, 0.06);
+		border-color: var(--accent);
 		color: var(--fg-base);
 		font-weight: var(--weight-semibold);
+		box-shadow: inset 3px 0 0 var(--accent);
 	}
 
 	/* Strategy name + profits layout */
@@ -2305,8 +2307,11 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: 0 calc(var(--space-3) + 1px); /* match version-btn padding + border */
+		padding: var(--space-1) calc(var(--space-3) + 1px);
+		padding-right: calc(var(--space-3) + 1px + 24px); /* +24px to account for row-hide-btn */
 		margin-bottom: 2px;
+		background: var(--bg-sunken, rgba(255, 255, 255, 0.03));
+		border-radius: var(--radius-md);
 	}
 	.profit-col-labels-right {
 		margin-left: auto;
@@ -2403,6 +2408,10 @@
 		font-variant-numeric: tabular-nums;
 		opacity: 0.85;
 		flex-shrink: 0;
+	}
+	.version-btn.active .strategy-profits {
+		opacity: 1;
+		font-size: calc(11px * var(--text-scale, 1));
 	}
 	.profit-cell {
 		display: flex;
@@ -3006,7 +3015,8 @@
 		background: rgba(0, 0, 0, 0.04);
 	}
 	:global([data-theme='light']) .version-btn.active {
-		background: rgba(0, 0, 0, 0.06);
+		background: rgba(0, 0, 0, 0.04);
+		border-color: var(--accent);
 	}
 	:global([data-theme='light']) .profit-val.positive {
 		color: #059669;

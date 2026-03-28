@@ -50,13 +50,3 @@ export function shortDateHour(d: Date): string {
 	return new Intl.DateTimeFormat(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: timezone }).format(d);
 }
 
-/** Generate sparkline HTML from data array */
-export function sparklineHtml(data: number[]): string {
-	const max = Math.max(...data.map(Math.abs), 0.01);
-	return data.map(v => {
-		const h = Math.max(Math.abs(v) / max * 100, 4);
-		const color = v >= 0 ? 'var(--success, #34d399)' : 'var(--error, #f87171)';
-		const opacity = 0.35 + Math.abs(v) / max * 0.65;
-		return `<div style="flex:1;height:${h}%;background:${color};opacity:${opacity};border-radius:1px 1px 0 0;min-width:2px"></div>`;
-	}).join('');
-}

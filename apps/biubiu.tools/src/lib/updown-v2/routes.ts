@@ -10,8 +10,6 @@ export const routes = {
 	hub: () => localizeHref(BASE),
 	space: (spaceId: string) => localizeHref(`${BASE}/space/${spaceId}`),
 	instance: (spaceId: string, instanceId: string) => localizeHref(`${BASE}/space/${spaceId}/instance/${instanceId}`),
-	strategy: (spaceId: string, strategyId: string) => localizeHref(`${BASE}/space/${spaceId}/strategy/${strategyId}`),
 	member: (spaceId: string, userId: string) => localizeHref(`${BASE}/space/${spaceId}/member/${userId}`),
-	marketplace: () => localizeHref(`${BASE}/marketplace`),
 	editor: () => localizeHref(`${BASE}/editor`),
 };

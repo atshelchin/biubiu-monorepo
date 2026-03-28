@@ -381,30 +381,10 @@
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	let collapsedSections = new SvelteSet<string>();
 
-	/** Top-level section keys (builtin, custom hosts, managed endpoints) for accordion behavior */
-	const topLevelSectionKeys = $derived(() => {
-		const keys = ['builtin'];
-		for (const [host] of customStrategiesByHost) keys.push(host);
-		if (endpointStore.endpoints.length > 0) {
-			keys.push('managed');
-			for (const ep of endpointStore.endpoints) keys.push(`ep:${ep.url}`);
-		}
-		return keys;
-	});
-
 	function toggleCollapse(key: string) {
-		const isTopLevel = topLevelSectionKeys().includes(key);
 		if (collapsedSections.has(key)) {
 			collapsedSections.delete(key);
-			// Accordion: collapse other top-level sections when expanding one
-			if (isTopLevel) {
-				for (const k of topLevelSectionKeys()) {
-					if (k !== key) collapsedSections.add(k);
-				}
-			}
 		} else {
-			// Top-level sections: don't allow collapsing if it's the only one open
-			if (isTopLevel) return;
 			collapsedSections.add(key);
 		}
 		persistState();
@@ -1428,8 +1408,8 @@
 					</button>
 				</div>
 				<!-- Built-in strategies -->
-				<div class="version-header">
-					<button class="section-collapse-btn" onclick={() => toggleCollapse('builtin')}>
+				<div class="version-header" role="button" tabindex="0" onclick={() => toggleCollapse('builtin')} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse('builtin'); }}>
+					<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="12"
@@ -1514,8 +1494,8 @@
 					{@const isHostHidden = (s: StrategyEndpoint) => s.type === 'discovered' ? !visibleDiscoveredIds.has(s.id) : hiddenStrategyIds.has(s.id)}
 					{@const visibleHostStrategies = allHostStrategies.filter((s) => !isHostHidden(s))}
 					{@const hiddenHostStrategies = allHostStrategies.filter((s) => isHostHidden(s))}
-					<div class="version-header custom-header">
-						<button class="section-collapse-btn" onclick={() => toggleCollapse(host)}>
+					<div class="version-header custom-header" role="button" tabindex="0" onclick={() => toggleCollapse(host)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse(host); }}>
+						<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
 							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(host)}><polyline points="6 9 12 15 18 9" /></svg>
 						</button>
 						<span class="version-type-label host-label" title={host}>{host}</span>
@@ -1594,8 +1574,8 @@
 				<!-- Managed Endpoints (Live Trading) — shown when any exist -->
 				{#if endpointStore.endpoints.length > 0}
 					<div class="managed-endpoints-section">
-						<div class="version-header">
-							<button class="section-collapse-btn" onclick={() => toggleCollapse('managed')}>
+						<div class="version-header" role="button" tabindex="0" onclick={() => toggleCollapse('managed')} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse('managed'); }}>
+							<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('managed')}><polyline points="6 9 12 15 18 9" /></svg>
 							</button>
 							<span class="version-type-label">{t('btcUpdown.live.sectionTitle')}</span>
@@ -1607,15 +1587,14 @@
 								{@const instances = endpointInstances.get(ep.url) ?? []}
 								{@const badge = ep.permissions?.funds ? 'Full' : ep.permissions?.trading ? 'Trading' : ep.permissions?.read ? 'Read' : '...'}
 								<div class="ep-group">
-									<div class="ep-group-header">
-										<button class="section-collapse-btn" onclick={() => {
-											toggleCollapse(epKey);
-											// Auto-select first instance when expanding
-											if (!collapsedSections.has(epKey) && instances.length > 0) {
-												const first = instances.find((i) => i.status === 'running') ?? instances[0];
-												if (first) onStrategyChange(makeInstanceId(ep.url, first.id));
-											}
-										}}>
+									<div class="ep-group-header" role="button" tabindex="0" onclick={() => {
+										toggleCollapse(epKey);
+										if (!collapsedSections.has(epKey) && instances.length > 0) {
+											const first = instances.find((i) => i.status === 'running') ?? instances[0];
+											if (first) onStrategyChange(makeInstanceId(ep.url, first.id));
+										}
+									}} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse(epKey); }}>
+										<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
 											<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(epKey)}><polyline points="6 9 12 15 18 9" /></svg>
 										</button>
 										<span class="ep-group-label">{ep.label}</span>
@@ -2232,6 +2211,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+		cursor: pointer;
 	}
 	.version-label {
 		font-size: var(--text-xs);
@@ -2266,6 +2246,8 @@
 		display: flex;
 		gap: var(--space-1);
 		flex-direction: column;
+		max-height: 280px;
+		overflow-y: auto;
 	}
 	.version-btn {
 		display: flex;
@@ -3266,6 +3248,7 @@
 		gap: var(--space-2);
 		padding: var(--space-1) var(--space-2);
 		font-size: var(--text-xs);
+		cursor: pointer;
 	}
 	.ep-group-label {
 		white-space: nowrap;

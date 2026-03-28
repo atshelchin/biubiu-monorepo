@@ -9,6 +9,7 @@
 		formatDateTime
 	} from '$lib/i18n';
 	import { fetchExchangeRate } from '$lib/auth/wallet.js';
+	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import {
 		loadSettings,
 		applyTheme,
@@ -446,9 +447,11 @@
 		}
 	});
 
-	// 检测参数修改
+	// 检测参数修改（含 schedule 网格）
+	let origScheduleJson = $state(JSON.stringify(scheduleGrid));
+	const scheduleDirty = $derived(JSON.stringify(scheduleGrid) !== origScheduleJson);
 	$effect(() => {
-		paramsDirty = editEntryAmount !== origEntryAmount || editMaxBuyPrice !== origMaxBuyPrice || JSON.stringify(editEntryWindows) !== origEntryWindowsJson;
+		paramsDirty = editEntryAmount !== origEntryAmount || editMaxBuyPrice !== origMaxBuyPrice || JSON.stringify(editEntryWindows) !== origEntryWindowsJson || scheduleDirty;
 		if (paramsDirty) controlSuccess = '';
 	});
 
@@ -462,16 +465,24 @@
 		if (!chalRes.ok) { controlError = 'Failed to get challenge'; return null; }
 		const { challenge } = await chalRes.json() as { challenge: string };
 
-		const { toBase64url } = await import('$lib/auth/crypto-utils.js');
+		const { toBase64url, fromBase64url } = await import('$lib/auth/crypto-utils.js');
 		const rpId = window.location.hostname === 'localhost' ? 'localhost' : 'biubiu.tools';
-		const assertion = await navigator.credentials.get({
-			publicKey: {
-				challenge: new TextEncoder().encode(challenge),
-				rpId,
-				userVerification: 'required',
-				timeout: 60_000
-			}
-		}) as PublicKeyCredential | null;
+		const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+			challenge: new TextEncoder().encode(challenge),
+			rpId,
+			userVerification: 'required',
+			timeout: 60_000
+		};
+		// 用已登录用户的 credentialId 限定签名，避免弹出多选
+		const userCredId = authStore.user?.credentialId;
+		const epCredId = endpointStore.endpoints.find((e) => root.startsWith(e.url))?.credentialId;
+		const credId = userCredId ?? epCredId;
+		if (credId) {
+			publicKeyOptions.allowCredentials = [
+				{ id: fromBase64url(credId), type: 'public-key' }
+			];
+		}
+		const assertion = await navigator.credentials.get({ publicKey: publicKeyOptions }) as PublicKeyCredential | null;
 
 		if (!assertion) { controlError = 'Signing cancelled'; return null; }
 		const resp = assertion.response as AuthenticatorAssertionResponse;
@@ -533,6 +544,10 @@
 				remainingSecondsStart: w.start,
 				remainingSecondsEnd: w.end,
 			}));
+			// 运行时段网格
+			if (scheduleDirty) {
+				overrides._schedule = { grid: scheduleGrid, tz: localTz };
+			}
 
 			const res = await engineFetch(`${parsed.root}/api/engine/${parsed.strategyId}/config`, {
 				method: 'PUT',
@@ -546,6 +561,7 @@
 				origEntryAmount = editEntryAmount;
 				origMaxBuyPrice = editMaxBuyPrice;
 				origEntryWindowsJson = JSON.stringify(editEntryWindows);
+				origScheduleJson = JSON.stringify(scheduleGrid);
 				paramsDirty = false;
 				setTimeout(() => { controlSuccess = ''; }, 3000);
 			} else {
@@ -666,7 +682,7 @@
 	let profitHourOffset = $state(0);
 	let profitDayOffset = $state(0);
 	// Sidebar sort state
-	let profitSortColumn = $state<'name' | 'hour' | 'day' | 'all' | null>(null);
+	let profitSortColumn = $state<'name' | 'day' | 'all' | null>(null);
 	let profitSortDir = $state<'asc' | 'desc'>('desc');
 	let collapsedSections = new SvelteSet<string>();
 
@@ -1535,17 +1551,6 @@
 					<span class="profit-cell">
 						<span
 							class="profit-val"
-							class:positive={profits.hour.profit >= 0}
-							class:negative={profits.hour.profit < 0}
-							>{profits.hour.profit >= 0 ? '+' : ''}{Math.round(profits.hour.profit)}</span
-						>
-						<span class="profit-meta"
-							>{profits.hour.rounds}r {Math.round(profits.hour.winRate * 100)}%</span
-						>
-					</span>
-					<span class="profit-cell">
-						<span
-							class="profit-val"
 							class:positive={profits.day.profit >= 0}
 							class:negative={profits.day.profit < 0}
 							>{profits.day.profit >= 0 ? '+' : ''}{Math.round(profits.day.profit)}</span
@@ -1591,13 +1596,11 @@
 						{/if}
 					</span>
 					<span class="profit-col-labels-right">
-						{#each ['hour', 'day', 'all'] as col (col)}
+						{#each ['day', 'all'] as col (col)}
 							{@const offset =
 								col === 'round'
 									? profitRoundOffset
-									: col === 'hour'
-										? profitHourOffset
-										: col === 'day' ? profitDayOffset : 0}
+									: col === 'day' ? profitDayOffset : 0}
 							{@const colKey = col as 'round' | 'hour' | 'day' | 'all'}
 							<div class="profit-col-nav">
 								{#if col !== 'all'}
@@ -1622,7 +1625,7 @@
 										if (profitSortColumn === col) {
 											profitSortDir = profitSortDir === 'desc' ? 'asc' : 'desc';
 										} else {
-											profitSortColumn = col as 'hour' | 'day' | 'all';
+											profitSortColumn = col as 'day' | 'all';
 											profitSortDir = 'desc';
 										}
 									}}
@@ -2121,11 +2124,6 @@
 							<button class="ew-add" onclick={addEntryWindow}>+ {t('btcUpdown.control.addWindow')}</button>
 						{/if}
 
-						{#if paramsDirty}
-							<button class="btn-ctrl btn-ctrl-save" onclick={handleSaveParams} disabled={controlLoading}>
-								{controlLoading ? '...' : t('btcUpdown.control.saveParams')}
-							</button>
-						{/if}
 					</div>
 
 					<!-- 调度：7×24 热力图网格 -->
@@ -2141,14 +2139,14 @@
 						</div>
 						<div class="sched-tz">{localTz}</div>
 
-						<div class="sched-grid" style="--cols: {DAY_COLS}; --rows: {HOUR_ROWS};">
-							<div class="sched-corner"></div>
+						<div class="sched-grid-no-hours">
+							<!-- Day headers -->
 							{#each (locale.value === 'zh' ? DAY_NAMES_ZH : DAY_NAMES_EN) as dayName, d}
 								<button class="sched-day-hdr" onclick={() => toggleDayColumn(d)}>{dayName}</button>
 							{/each}
 
+							<!-- 24h × 7d cells -->
 							{#each Array.from({ length: HOUR_ROWS }) as _, h}
-								<div class="sched-hour-label">{String(h).padStart(2, '0')}</div>
 								{#each Array.from({ length: DAY_COLS }) as _, d}
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
@@ -2156,11 +2154,19 @@
 										class:cell-on={scheduleGrid[scheduleIdx(d, h)]}
 										onpointerdown={(e) => onCellDown(d, h, e)}
 										onpointerenter={() => onCellEnter(d, h)}
+										title="{(locale.value === 'zh' ? DAY_NAMES_ZH : DAY_NAMES_EN)[d]} {String(h).padStart(2, '0')}:00"
 									></div>
 								{/each}
 							{/each}
 						</div>
 					</div>
+
+					<!-- 保存按钮（参数或调度有变化时显示） -->
+					{#if paramsDirty}
+						<button class="btn-ctrl btn-ctrl-save" onclick={handleSaveParams} disabled={controlLoading}>
+							{controlLoading ? '...' : t('btcUpdown.control.saveParams')}
+						</button>
+					{/if}
 					{/if}
 				</div>
 			{/if}
@@ -3523,41 +3529,30 @@
 		margin-bottom: var(--space-1);
 		font-family: var(--font-mono);
 	}
-	.sched-grid {
+	.sched-grid-no-hours {
 		display: grid;
-		grid-template-columns: 28px repeat(var(--cols), 1fr);
-		grid-template-rows: auto repeat(var(--rows), 1fr);
-		gap: 1px;
+		grid-template-columns: repeat(7, 1fr);
+		gap: 2px;
 	}
-	.sched-corner { /* top-left empty */ }
 	.sched-day-hdr {
-		font-size: 10px;
+		font-size: 11px;
 		font-weight: var(--weight-semibold);
 		color: var(--fg-muted);
 		text-align: center;
-		padding: 4px 0;
+		padding: 6px 0;
 		background: none;
 		border: none;
 		cursor: pointer;
 	}
 	.sched-day-hdr:hover { color: var(--fg-base); }
-	.sched-hour-label {
-		font-size: 9px;
-		color: var(--fg-subtle);
-		font-family: var(--font-mono);
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		padding-right: 4px;
-		line-height: 1;
-	}
 	.sched-cell {
-		height: 14px;
-		border-radius: 2px;
+		height: 20px;
+		border-radius: 3px;
 		background: var(--bg-sunken);
 		border: 1px solid transparent;
 		cursor: pointer;
 		transition: background 0.08s;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.sched-cell:hover {
 		border-color: var(--fg-subtle);
@@ -3566,9 +3561,8 @@
 		background: var(--success, #34d399);
 	}
 	@media (max-width: 480px) {
-		.sched-grid { gap: 0; }
-		.sched-cell { height: 10px; border-radius: 1px; }
-		.sched-hour-label { font-size: 8px; }
+		.sched-grid-no-hours { gap: 1px; }
+		.sched-cell { height: 16px; border-radius: 2px; }
 	}
 
 	.strategy-info {

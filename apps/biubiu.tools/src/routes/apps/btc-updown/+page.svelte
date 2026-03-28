@@ -1409,7 +1409,7 @@
 				</div>
 				<!-- Built-in strategies -->
 				<div class="version-header" role="button" tabindex="0" onclick={() => toggleCollapse('builtin')} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse('builtin'); }}>
-					<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
+					<button class="section-collapse-btn">
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="12"
@@ -1495,7 +1495,7 @@
 					{@const visibleHostStrategies = allHostStrategies.filter((s) => !isHostHidden(s))}
 					{@const hiddenHostStrategies = allHostStrategies.filter((s) => isHostHidden(s))}
 					<div class="version-header custom-header" role="button" tabindex="0" onclick={() => toggleCollapse(host)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse(host); }}>
-						<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
+						<button class="section-collapse-btn">
 							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(host)}><polyline points="6 9 12 15 18 9" /></svg>
 						</button>
 						<span class="version-type-label host-label" title={host}>{host}</span>
@@ -1575,7 +1575,7 @@
 				{#if endpointStore.endpoints.length > 0}
 					<div class="managed-endpoints-section">
 						<div class="version-header" role="button" tabindex="0" onclick={() => toggleCollapse('managed')} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse('managed'); }}>
-							<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
+							<button class="section-collapse-btn">
 								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('managed')}><polyline points="6 9 12 15 18 9" /></svg>
 							</button>
 							<span class="version-type-label">{t('btcUpdown.live.sectionTitle')}</span>
@@ -1594,7 +1594,7 @@
 											if (first) onStrategyChange(makeInstanceId(ep.url, first.id));
 										}
 									}} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleCollapse(epKey); }}>
-										<button class="section-collapse-btn" onclick={(e) => e.stopPropagation()}>
+										<button class="section-collapse-btn">
 											<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(epKey)}><polyline points="6 9 12 15 18 9" /></svg>
 										</button>
 										<span class="ep-group-label">{ep.label}</span>

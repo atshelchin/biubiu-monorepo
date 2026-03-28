@@ -167,6 +167,7 @@
   "btcUpdown.disclaimer.live": "此策略正在使用真实资金运行，所有盈亏均为实际交易。请理性投资。",
   "btcUpdown.filter.win": "赢",
   "btcUpdown.filter.loss": "输",
+  "btcUpdown.filter.takeProfit": "止盈",
   "btcUpdown.filter.stopLoss": "提前退出",
   "btcUpdown.disclaimer": "本工具仅为模拟展示，不涉及真实资金。请理性投资，远离赌博。",
 

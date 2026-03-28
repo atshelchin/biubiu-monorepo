@@ -228,5 +228,20 @@
   "btcUpdown.configurator.hedgeSellThreshold": "Hedge Sell Threshold",
   "btcUpdown.configurator.dailyLossLimit": "Daily Loss Limit (USD)",
   "btcUpdown.configurator.cooldownLosses": "Cooldown After Losses",
-  "btcUpdown.configurator.cooldownMinutes": "Cooldown Duration (min)"
+  "btcUpdown.configurator.cooldownMinutes": "Cooldown Duration (min)",
+  "btcUpdown.control.title": "Strategy Control",
+  "btcUpdown.control.running": "Running",
+  "btcUpdown.control.paused": "Paused",
+  "btcUpdown.control.pauseBtn": "Pause",
+  "btcUpdown.control.resumeBtn": "Resume",
+  "btcUpdown.control.entryAmount": "Entry Amount",
+  "btcUpdown.control.maxBuyPrice": "Max Buy Price",
+  "btcUpdown.control.saveParams": "Save Params",
+  "btcUpdown.control.saved": "Saved",
+  "btcUpdown.control.schedule": "Schedule",
+  "btcUpdown.control.hours": "Hours",
+  "btcUpdown.control.entryWindow": "Entry Window (remaining sec)",
+  "btcUpdown.control.addWindow": "Add Window",
+  "btcUpdown.control.selectAll": "All",
+  "btcUpdown.control.clearAll": "Clear"
 }

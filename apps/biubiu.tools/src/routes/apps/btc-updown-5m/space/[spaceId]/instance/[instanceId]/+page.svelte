@@ -13,6 +13,8 @@
 	import WeekdayChart from '$lib/updown-shared/components/WeekdayChart.svelte';
 	import RoundsHistory from '$lib/updown-shared/components/RoundsHistory.svelte';
 	import type { RoundStatusFilter, ResultFilter } from '$lib/updown-shared/types';
+	import { signControlAction } from '$lib/updown-shared/sign-control';
+	import { controlStrategy } from '$lib/updown-shared/api';
 
 	// ── Route params ──
 	const spaceId = $derived(page.params.spaceId ?? '');
@@ -73,14 +75,38 @@
 		activeInst.startedAt = undefined;
 	}
 
-	function handlePause() {
-		if (!activeInst) return;
-		setInstanceStatus(activeInst.id, 'paused');
+	let controlBusy = $state(false);
+
+	async function handlePause() {
+		if (!activeInst || controlBusy) return;
+		controlBusy = true;
+		try {
+			const signed = await signControlAction('pause', activeInst.strategyId);
+			if (!signed) return;
+			const endpointUrl = space?.endpointUrl;
+			if (!endpointUrl) { setInstanceStatus(activeInst.id, 'paused'); return; }
+			const result = await controlStrategy(
+				{ baseUrl: `${endpointUrl}/api/${activeInst.strategyId}`, fetchFn: fetch },
+				{ action: 'pause', ...signed }
+			);
+			if (result.ok) setInstanceStatus(activeInst.id, 'paused');
+		} finally { controlBusy = false; }
 	}
 
-	function handleResume() {
-		if (!activeInst) return;
-		setInstanceStatus(activeInst.id, 'running');
+	async function handleResume() {
+		if (!activeInst || controlBusy) return;
+		controlBusy = true;
+		try {
+			const signed = await signControlAction('resume', activeInst.strategyId);
+			if (!signed) return;
+			const endpointUrl = space?.endpointUrl;
+			if (!endpointUrl) { setInstanceStatus(activeInst.id, 'running'); return; }
+			const result = await controlStrategy(
+				{ baseUrl: `${endpointUrl}/api/${activeInst.strategyId}`, fetchFn: fetch },
+				{ action: 'resume', ...signed }
+			);
+			if (result.ok) setInstanceStatus(activeInst.id, 'running');
+		} finally { controlBusy = false; }
 	}
 
 	function handleDelete() {

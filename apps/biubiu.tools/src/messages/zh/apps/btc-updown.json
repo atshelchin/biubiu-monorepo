@@ -228,5 +228,20 @@
   "btcUpdown.configurator.hedgeSellThreshold": "对冲卖出阈值",
   "btcUpdown.configurator.dailyLossLimit": "每日亏损上限（USD）",
   "btcUpdown.configurator.cooldownLosses": "连续亏损后冷却",
-  "btcUpdown.configurator.cooldownMinutes": "冷却时间（分钟）"
+  "btcUpdown.configurator.cooldownMinutes": "冷却时间（分钟）",
+  "btcUpdown.control.title": "策略控制",
+  "btcUpdown.control.running": "运行中",
+  "btcUpdown.control.paused": "已暂停",
+  "btcUpdown.control.pauseBtn": "暂停",
+  "btcUpdown.control.resumeBtn": "启动",
+  "btcUpdown.control.entryAmount": "入场金额",
+  "btcUpdown.control.maxBuyPrice": "最高买入价",
+  "btcUpdown.control.saveParams": "保存参数",
+  "btcUpdown.control.saved": "已保存",
+  "btcUpdown.control.schedule": "运行时段",
+  "btcUpdown.control.hours": "时段",
+  "btcUpdown.control.entryWindow": "入场窗口（剩余秒数）",
+  "btcUpdown.control.addWindow": "添加窗口",
+  "btcUpdown.control.selectAll": "全选",
+  "btcUpdown.control.clearAll": "清空"
 }

@@ -2057,7 +2057,7 @@
 			{/if}
 
 			<!-- Strategy Control Panel (collapsible, for live mode) -->
-			{#if isLiveMode && !isInstanceId(activeStrategyId) && parseEngineUrl(activeStrategy.baseUrl) && ['v61','v62','v63','v64'].includes(parseEngineUrl(activeStrategy.baseUrl)?.strategyId ?? '')}
+			{#if isLiveMode && !isInstanceId(activeStrategyId) && parseEngineUrl(activeStrategy.baseUrl) && ['v48','v50','v61','v62','v63','v64'].includes(parseEngineUrl(activeStrategy.baseUrl)?.strategyId ?? '')}
 				<div class="strategy-control glass-card" use:fadeInUp={{ delay: 20 }}>
 					<!-- Header: 标题 + 状态 toggle + 展开按钮 -->
 					<div class="control-header">

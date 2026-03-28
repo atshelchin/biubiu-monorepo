@@ -352,6 +352,248 @@
 			FALLBACK_STRATEGIES[0]
 	);
 	const isLiveMode = $derived(isInstanceId(activeStrategyId) || store.strategyInfo?.mode === 'live');
+
+	// ─── Strategy Control (pause/resume/params/schedule for live strategies) ───
+	let controlExpanded = $state(false);
+	let controlStatus = $state<'running' | 'paused' | 'unknown'>('unknown');
+	let controlLoading = $state(false);
+	let controlError = $state('');
+	let controlSuccess = $state('');
+	let editEntryAmount = $state<number | null>(null);
+	let editMaxBuyPrice = $state<number | null>(null);
+	let paramsDirty = $state(false);
+	let origEntryAmount = $state<number | null>(null);
+	let origMaxBuyPrice = $state<number | null>(null);
+	// 入场窗口（多个，基于剩余秒数范围）
+	interface EntryWindowEdit { start: number; end: number; }
+	let editEntryWindows = $state<EntryWindowEdit[]>([{ start: 300, end: 240 }]);
+	let origEntryWindowsJson = $state('');
+	// 时区
+	const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	// 调度：7×24 网格（每格 = 1 小时），可拖拽多选
+	const DAY_COLS = 7;
+	const HOUR_ROWS = 24;
+	const DAY_NAMES_ZH = ['一', '二', '三', '四', '五', '六', '日'];
+	const DAY_NAMES_EN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+	// 168 个 boolean（7天 × 24小时），全选初始
+	let scheduleGrid = $state<boolean[]>(new Array(DAY_COLS * HOUR_ROWS).fill(true));
+	let isDragging = $state(false);
+	let dragValue = $state(true); // 拖拽时设置为 true 还是 false
+	let dragStartCell = $state(-1);
+
+	/** 从 baseUrl 提取引擎根 URL 和策略 ID */
+	function parseEngineUrl(baseUrl: string): { root: string; strategyId: string } | null {
+		const m = baseUrl.match(/^(https?:\/\/[^/]+)\/api\/(v\d+)$/);
+		if (!m) return null;
+		return { root: m[1]!, strategyId: m[2]! };
+	}
+
+	/** CORS-safe fetch for engine API (strategyFetch only supports GET) */
+	async function engineFetch(url: string, init?: RequestInit): Promise<Response> {
+		try {
+			return await fetch(url, init);
+		} catch {
+			// CORS fallback via proxy
+			if (!init?.method || init.method === 'GET') {
+				return fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
+			}
+			// POST/PUT via proxy
+			return fetch(`/api/proxy?url=${encodeURIComponent(url)}`, init);
+		}
+	}
+
+	async function fetchControlStatus() {
+		const parsed = parseEngineUrl(activeStrategy.baseUrl);
+		if (!parsed) return;
+		try {
+			const res = await engineFetch(`${parsed.root}/api/engine/status`);
+			if (!res.ok) return;
+			const data = await res.json() as { instances: Array<{ id: string; status: string; overrides: Record<string, unknown> }> };
+			const inst = data.instances.find((i: { id: string }) => i.id === parsed.strategyId);
+			if (inst) {
+				controlStatus = inst.status === 'paused' ? 'paused' : 'running';
+				const amt = (inst.overrides.entryAmount as number) ?? 5;
+				const price = (inst.overrides.fixedDirectionMaxBuyPrice as number)
+					?? (inst.overrides.prevCandleMaxBuyPrice as number)
+					?? (inst.overrides.priceMax as number)
+					?? 0.45;
+				editEntryAmount = amt;
+				editMaxBuyPrice = price;
+				origEntryAmount = amt;
+				origMaxBuyPrice = price;
+				// 入场窗口
+				const ew = inst.overrides.entryWindows as Array<{ remainingSecondsStart: number; remainingSecondsEnd: number }> | undefined;
+				if (ew?.length) {
+					editEntryWindows = ew.map(w => ({ start: w.remainingSecondsStart, end: w.remainingSecondsEnd }));
+				}
+				origEntryWindowsJson = JSON.stringify(editEntryWindows);
+				paramsDirty = false;
+			}
+		} catch { /* non-critical */ }
+	}
+
+	// 策略切换时重新获取控制状态
+	let lastFetchedStrategyId = '';
+	$effect(() => {
+		const sid = activeStrategyId;
+		if (isLiveMode && !isInstanceId(sid) && sid !== lastFetchedStrategyId) {
+			lastFetchedStrategyId = sid;
+			controlStatus = 'unknown';
+			controlError = '';
+			controlSuccess = '';
+			paramsDirty = false;
+			fetchControlStatus();
+		}
+	});
+
+	// 检测参数修改
+	$effect(() => {
+		paramsDirty = editEntryAmount !== origEntryAmount || editMaxBuyPrice !== origMaxBuyPrice || JSON.stringify(editEntryWindows) !== origEntryWindowsJson;
+		if (paramsDirty) controlSuccess = '';
+	});
+
+	/** 获取 challenge + WebAuthn 签名 → 返回签名对象 */
+	async function getSignedAuth(root: string): Promise<{ signature: Record<string, string> } | null> {
+		const chalRes = await engineFetch(`${root}/api/auth/challenge`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: '{}',
+		});
+		if (!chalRes.ok) { controlError = 'Failed to get challenge'; return null; }
+		const { challenge } = await chalRes.json() as { challenge: string };
+
+		const { toBase64url } = await import('$lib/auth/crypto-utils.js');
+		const rpId = window.location.hostname === 'localhost' ? 'localhost' : 'biubiu.tools';
+		const assertion = await navigator.credentials.get({
+			publicKey: {
+				challenge: new TextEncoder().encode(challenge),
+				rpId,
+				userVerification: 'required',
+				timeout: 60_000
+			}
+		}) as PublicKeyCredential | null;
+
+		if (!assertion) { controlError = 'Signing cancelled'; return null; }
+		const resp = assertion.response as AuthenticatorAssertionResponse;
+		return {
+			signature: {
+				credentialId: toBase64url(assertion.rawId),
+				authenticatorData: toBase64url(resp.authenticatorData),
+				clientDataJSON: toBase64url(resp.clientDataJSON),
+				signature: toBase64url(resp.signature),
+			}
+		};
+	}
+
+	async function handleControlAction(action: 'pause' | 'start') {
+		const parsed = parseEngineUrl(activeStrategy.baseUrl);
+		if (!parsed) return;
+		controlLoading = true;
+		controlError = '';
+		try {
+			const auth = await getSignedAuth(parsed.root);
+			if (!auth) return;
+
+			const res = await engineFetch(`${parsed.root}/api/engine/${parsed.strategyId}/${action}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ payload: {}, ...auth }),
+			});
+			const result = await res.json() as { ok: boolean; error?: string };
+			if (result.ok) {
+				controlStatus = action === 'pause' ? 'paused' : 'running';
+			} else {
+				controlError = result.error ?? 'Action failed';
+			}
+		} catch (err) {
+			controlError = err instanceof Error ? err.message : 'Error';
+		} finally {
+			controlLoading = false;
+		}
+	}
+
+	async function handleSaveParams() {
+		const parsed = parseEngineUrl(activeStrategy.baseUrl);
+		if (!parsed) return;
+		controlLoading = true;
+		controlError = '';
+		try {
+			const auth = await getSignedAuth(parsed.root);
+			if (!auth) return;
+
+			const overrides: Record<string, unknown> = {};
+			if (editEntryAmount !== null) overrides.entryAmount = editEntryAmount;
+			if (editMaxBuyPrice !== null) {
+				overrides.fixedDirectionMaxBuyPrice = editMaxBuyPrice;
+				overrides.prevCandleMaxBuyPrice = editMaxBuyPrice;
+			}
+			// 入场窗口
+			overrides.entryWindows = editEntryWindows.map((w, i) => ({
+				windowNumber: i + 1,
+				remainingSecondsStart: w.start,
+				remainingSecondsEnd: w.end,
+			}));
+
+			const res = await engineFetch(`${parsed.root}/api/engine/${parsed.strategyId}/config`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ payload: { overrides }, ...auth }),
+			});
+			const result = await res.json() as { ok: boolean; error?: string };
+			if (result.ok) {
+				controlError = '';
+				controlSuccess = t('btcUpdown.control.saved');
+				origEntryAmount = editEntryAmount;
+				origMaxBuyPrice = editMaxBuyPrice;
+				origEntryWindowsJson = JSON.stringify(editEntryWindows);
+				paramsDirty = false;
+				setTimeout(() => { controlSuccess = ''; }, 3000);
+			} else {
+				controlError = result.error ?? 'Save failed';
+			}
+		} catch (err) {
+			controlError = err instanceof Error ? err.message : 'Error';
+		} finally {
+			controlLoading = false;
+		}
+	}
+
+	function addEntryWindow() { editEntryWindows = [...editEntryWindows, { start: 160, end: 130 }]; }
+	function removeEntryWindow(i: number) { editEntryWindows = editEntryWindows.filter((_, idx) => idx !== i); }
+
+	function scheduleIdx(day: number, hour: number): number { return day * HOUR_ROWS + hour; }
+
+	function onCellDown(day: number, hour: number, e: PointerEvent) {
+		e.preventDefault();
+		(e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+		isDragging = true;
+		const idx = scheduleIdx(day, hour);
+		dragValue = !scheduleGrid[idx]; // toggle: if was on → paint off, vice versa
+		dragStartCell = idx;
+		scheduleGrid[idx] = dragValue;
+	}
+
+	function onCellEnter(day: number, hour: number) {
+		if (!isDragging) return;
+		scheduleGrid[scheduleIdx(day, hour)] = dragValue;
+	}
+
+	function onDragEnd() {
+		isDragging = false;
+	}
+
+	function selectAllSchedule() { scheduleGrid = new Array(DAY_COLS * HOUR_ROWS).fill(true); }
+	function clearAllSchedule() { scheduleGrid = new Array(DAY_COLS * HOUR_ROWS).fill(false); }
+
+	function toggleDayColumn(day: number) {
+		const allOn = Array.from({ length: HOUR_ROWS }, (_, h) => scheduleGrid[scheduleIdx(day, h)]).every(Boolean);
+		for (let h = 0; h < HOUR_ROWS; h++) scheduleGrid[scheduleIdx(day, h)] = !allOn;
+	}
+
+	// 统计选中格子数
+	const selectedCells = $derived(scheduleGrid.filter(Boolean).length);
+	const totalCells = DAY_COLS * HOUR_ROWS;
+
 	// strategyInfo is now in store.strategyInfo
 	let allStrategyInfos = new SvelteMap<string, StrategyInfo | null>();
 	let allStrategyProfits = new SvelteMap<string, StrategyProfitData | null>();
@@ -1763,6 +2005,119 @@
 					{/if}
 				</div>
 			{/if}
+
+			<!-- Strategy Control Panel (collapsible, for live mode) -->
+			{#if isLiveMode && !isInstanceId(activeStrategyId) && parseEngineUrl(activeStrategy.baseUrl) && ['v61','v62','v63','v64'].includes(parseEngineUrl(activeStrategy.baseUrl)?.strategyId ?? '')}
+				<div class="strategy-control glass-card" use:fadeInUp={{ delay: 20 }}>
+					<!-- Header: 标题 + 状态 toggle + 展开按钮 -->
+					<div class="control-header">
+						<button class="control-expand-btn" onclick={() => controlExpanded = !controlExpanded}>
+							<span class="expand-arrow" class:expanded={controlExpanded}>&#9654;</span>
+							<h3 class="control-title">{t('btcUpdown.control.title')}</h3>
+						</button>
+						<button
+							class="control-toggle"
+							class:toggle-on={controlStatus === 'running'}
+							class:toggle-off={controlStatus === 'paused'}
+							onclick={() => handleControlAction(controlStatus === 'running' ? 'pause' : 'start')}
+							disabled={controlLoading || controlStatus === 'unknown'}
+						>
+							<span class="toggle-track">
+								<span class="toggle-thumb"></span>
+							</span>
+							<span class="toggle-label">
+								{controlStatus === 'running' ? t('btcUpdown.control.running') : controlStatus === 'paused' ? t('btcUpdown.control.paused') : '...'}
+							</span>
+						</button>
+					</div>
+
+					{#if controlError}
+						<div class="control-error">{controlError}</div>
+					{/if}
+					{#if controlSuccess}
+						<div class="control-success">{controlSuccess}</div>
+					{/if}
+
+					{#if controlExpanded}
+					<!-- 参数 -->
+					<div class="control-params">
+						<div class="param-row">
+							<label class="param-label">{t('btcUpdown.control.entryAmount')}</label>
+							<div class="param-input-group">
+								<span class="param-prefix">$</span>
+								<input type="number" class="param-input" class:param-dirty={editEntryAmount !== origEntryAmount} bind:value={editEntryAmount} min="1" step="1" />
+							</div>
+						</div>
+						<div class="param-row">
+							<label class="param-label">{t('btcUpdown.control.maxBuyPrice')}</label>
+							<div class="param-input-group">
+								<span class="param-prefix">$</span>
+								<input type="number" class="param-input" class:param-dirty={editMaxBuyPrice !== origMaxBuyPrice} bind:value={editMaxBuyPrice} min="0.01" max="0.99" step="0.01" />
+							</div>
+						</div>
+
+						<!-- 入场窗口（多个，基于剩余秒数范围） -->
+						<div class="param-section-label">{t('btcUpdown.control.entryWindow')}</div>
+						{#each editEntryWindows as win, i}
+							<div class="entry-window-row">
+								<span class="ew-label">W{i + 1}</span>
+								<input type="number" class="param-input ew-input" bind:value={win.start} min="0" max="300" step="10" />
+								<span class="ew-sep">–</span>
+								<input type="number" class="param-input ew-input" bind:value={win.end} min="0" max="300" step="10" />
+								<span class="ew-unit">s</span>
+								{#if editEntryWindows.length > 1}
+									<button class="ew-remove" onclick={() => removeEntryWindow(i)}>×</button>
+								{/if}
+							</div>
+						{/each}
+						{#if editEntryWindows.length < 3}
+							<button class="ew-add" onclick={addEntryWindow}>+ {t('btcUpdown.control.addWindow')}</button>
+						{/if}
+
+						{#if paramsDirty}
+							<button class="btn-ctrl btn-ctrl-save" onclick={handleSaveParams} disabled={controlLoading}>
+								{controlLoading ? '...' : t('btcUpdown.control.saveParams')}
+							</button>
+						{/if}
+					</div>
+
+					<!-- 调度：7×24 热力图网格 -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="control-schedule" onpointerup={onDragEnd} onpointerleave={onDragEnd}>
+						<div class="schedule-header">
+							<div class="schedule-title">{t('btcUpdown.control.schedule')}</div>
+							<div class="schedule-actions">
+								<button class="sched-btn" onclick={selectAllSchedule}>{t('btcUpdown.control.selectAll')}</button>
+								<button class="sched-btn" onclick={clearAllSchedule}>{t('btcUpdown.control.clearAll')}</button>
+								<span class="sched-count">{selectedCells}/{totalCells}</span>
+							</div>
+						</div>
+						<div class="sched-tz">{localTz}</div>
+
+						<div class="sched-grid" style="--cols: {DAY_COLS}; --rows: {HOUR_ROWS};">
+							<div class="sched-corner"></div>
+							{#each (locale.value === 'zh' ? DAY_NAMES_ZH : DAY_NAMES_EN) as dayName, d}
+								<button class="sched-day-hdr" onclick={() => toggleDayColumn(d)}>{dayName}</button>
+							{/each}
+
+							{#each Array.from({ length: HOUR_ROWS }) as _, h}
+								<div class="sched-hour-label">{String(h).padStart(2, '0')}</div>
+								{#each Array.from({ length: DAY_COLS }) as _, d}
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<div
+										class="sched-cell"
+										class:cell-on={scheduleGrid[scheduleIdx(d, h)]}
+										onpointerdown={(e) => onCellDown(d, h, e)}
+										onpointerenter={() => onCellEnter(d, h)}
+									></div>
+								{/each}
+							{/each}
+						</div>
+					</div>
+					{/if}
+				</div>
+			{/if}
+
 			<!-- Strategy Runtime -->
 			{#if store.strategyStartTime}
 				<div class="strategy-runtime glass-card" use:fadeInUp={{ delay: 60 }}>
@@ -2724,6 +3079,297 @@
 	}
 
 	/* Strategy Info */
+	/* Strategy Control Panel */
+	.strategy-control {
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-2);
+	}
+	.control-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: var(--space-3);
+	}
+	.control-expand-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+	}
+	.expand-arrow {
+		font-size: 10px;
+		color: var(--fg-subtle);
+		transition: transform 0.2s;
+		display: inline-block;
+	}
+	.expand-arrow.expanded { transform: rotate(90deg); }
+	.control-title {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+		margin: 0;
+	}
+	/* Toggle switch */
+	.control-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+	}
+	.control-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+	.toggle-track {
+		position: relative;
+		width: 40px;
+		height: 22px;
+		border-radius: 11px;
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-base);
+		transition: background 0.2s, border-color 0.2s;
+	}
+	.toggle-on .toggle-track {
+		background: var(--success, #34d399);
+		border-color: var(--success, #34d399);
+	}
+	.toggle-off .toggle-track {
+		background: var(--warning, #fbbf24);
+		border-color: var(--warning, #fbbf24);
+	}
+	.toggle-thumb {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: white;
+		transition: transform 0.2s;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	}
+	.toggle-on .toggle-thumb { transform: translateX(18px); }
+	.toggle-label {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.toggle-on .toggle-label { color: var(--success); }
+	.toggle-off .toggle-label { color: var(--warning); }
+
+	.control-error {
+		font-size: var(--text-xs);
+		color: var(--error);
+		padding: var(--space-1) var(--space-2);
+		margin-bottom: var(--space-2);
+		border-radius: var(--radius-sm);
+		background: rgba(248, 113, 113, 0.1);
+	}
+	.control-success {
+		font-size: var(--text-xs);
+		color: var(--success);
+		padding: var(--space-1) var(--space-2);
+		margin-bottom: var(--space-2);
+		border-radius: var(--radius-sm);
+		background: rgba(52, 211, 153, 0.1);
+		animation: fadeInSuccess 0.3s ease;
+	}
+	@keyframes fadeInSuccess { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+	.btn-ctrl {
+		font-size: var(--text-xs);
+		padding: var(--space-1) var(--space-4);
+		border-radius: var(--radius-md);
+		border: 1px solid;
+		background: transparent;
+		cursor: pointer;
+		font-weight: var(--weight-medium);
+		transition: all 0.15s ease;
+	}
+	.btn-ctrl:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn-ctrl-save { border-color: var(--accent); color: var(--accent); width: 100%; margin-top: var(--space-2); }
+	.btn-ctrl-save:hover:not(:disabled) { background: var(--accent); color: var(--accent-fg, #fff); }
+	.control-params {
+		border-top: 1px solid var(--border-subtle);
+		padding-top: var(--space-3);
+	}
+	.param-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: var(--space-2);
+	}
+	.param-label {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+	}
+	.param-input-group {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.param-prefix {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+	.param-input {
+		width: 80px;
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-base);
+		background: var(--bg-sunken);
+		color: var(--fg-base);
+		font-size: var(--text-xs);
+		font-family: var(--font-mono);
+		text-align: right;
+		outline: none;
+	}
+	.param-input:focus { border-color: var(--accent); }
+	.param-suffix, .ew-unit, .ew-sep {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+	.param-dirty { border-color: var(--warning) !important; background: rgba(251, 191, 36, 0.05); }
+	.param-section-label {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		margin-top: var(--space-2);
+		margin-bottom: var(--space-1);
+	}
+	.entry-window-row {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		margin-bottom: 4px;
+	}
+	.ew-label {
+		font-size: 10px;
+		color: var(--fg-subtle);
+		font-family: var(--font-mono);
+		min-width: 20px;
+	}
+	.ew-input { width: 55px; }
+	.ew-remove {
+		background: none;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		font-size: 14px;
+		padding: 0 4px;
+		line-height: 1;
+	}
+	.ew-remove:hover { color: var(--error); }
+	.ew-add {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		background: none;
+		border: 1px dashed var(--border-base);
+		border-radius: var(--radius-sm);
+		padding: 2px 8px;
+		cursor: pointer;
+		margin-top: 2px;
+	}
+	.ew-add:hover { color: var(--accent); border-color: var(--accent); }
+	/* Schedule Grid */
+	.control-schedule {
+		border-top: 1px solid var(--border-subtle);
+		padding-top: var(--space-3);
+		margin-top: var(--space-3);
+		touch-action: none;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+	.schedule-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: var(--space-2);
+	}
+	.schedule-title {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	.schedule-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+	.sched-btn {
+		font-size: 10px;
+		padding: 2px 6px;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--border-base);
+		background: transparent;
+		color: var(--fg-subtle);
+		cursor: pointer;
+	}
+	.sched-btn:hover { color: var(--fg-base); border-color: var(--border-strong); }
+	.sched-count {
+		font-size: 10px;
+		color: var(--fg-subtle);
+		font-family: var(--font-mono);
+	}
+	.sched-tz {
+		font-size: 10px;
+		color: var(--fg-subtle);
+		margin-bottom: var(--space-1);
+		font-family: var(--font-mono);
+	}
+	.sched-grid {
+		display: grid;
+		grid-template-columns: 28px repeat(var(--cols), 1fr);
+		grid-template-rows: auto repeat(var(--rows), 1fr);
+		gap: 1px;
+	}
+	.sched-corner { /* top-left empty */ }
+	.sched-day-hdr {
+		font-size: 10px;
+		font-weight: var(--weight-semibold);
+		color: var(--fg-muted);
+		text-align: center;
+		padding: 4px 0;
+		background: none;
+		border: none;
+		cursor: pointer;
+	}
+	.sched-day-hdr:hover { color: var(--fg-base); }
+	.sched-hour-label {
+		font-size: 9px;
+		color: var(--fg-subtle);
+		font-family: var(--font-mono);
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		padding-right: 4px;
+		line-height: 1;
+	}
+	.sched-cell {
+		height: 14px;
+		border-radius: 2px;
+		background: var(--bg-sunken);
+		border: 1px solid transparent;
+		cursor: pointer;
+		transition: background 0.08s;
+	}
+	.sched-cell:hover {
+		border-color: var(--fg-subtle);
+	}
+	.cell-on {
+		background: var(--success, #34d399);
+	}
+	@media (max-width: 480px) {
+		.sched-grid { gap: 0; }
+		.sched-cell { height: 10px; border-radius: 1px; }
+		.sched-hour-label { font-size: 8px; }
+	}
+
 	.strategy-info {
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);

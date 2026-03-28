@@ -192,6 +192,40 @@ export async function fetchStrategyInfo(
 	return null;
 }
 
+// --- Strategy Control (pause/resume with WebAuthn signature) ---
+
+export interface ControlPayload {
+	action: 'pause' | 'resume' | 'set_params';
+	params?: Record<string, unknown>;
+	message: string;
+	signature: string;
+	authenticatorData: string;
+	clientDataJSON: string;
+}
+
+export interface ControlResult {
+	ok: boolean;
+	status?: string;
+	error?: string;
+}
+
+export async function controlStrategy(
+	opts: ApiFetchOptions,
+	payload: ControlPayload
+): Promise<ControlResult> {
+	try {
+		const res = await opts.fetchFn(`${opts.baseUrl}/control`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal: opts.signal
+		});
+		return await res.json();
+	} catch {
+		return { ok: false, error: 'Network error' };
+	}
+}
+
 // --- Profit helpers ---
 
 export function parseCurrentRound(

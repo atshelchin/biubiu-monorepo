@@ -243,5 +243,13 @@
   "btcUpdown.control.entryWindow": "入场窗口（剩余秒数）",
   "btcUpdown.control.addWindow": "添加窗口",
   "btcUpdown.control.selectAll": "全选",
-  "btcUpdown.control.clearAll": "清空"
+  "btcUpdown.control.clearAll": "清空",
+  "btcUpdown.v70.title": "批量买入",
+  "btcUpdown.v70.rounds": "买入轮数",
+  "btcUpdown.v70.amount": "每轮金额",
+  "btcUpdown.v70.maxPrice": "最高买入价",
+  "btcUpdown.v70.buyBtn": "买入 {dir} × {rounds} 轮（${total}）",
+  "btcUpdown.v70.buying": "下单中",
+  "btcUpdown.v70.filled": "成交",
+  "btcUpdown.v70.spent": "花费"
 }

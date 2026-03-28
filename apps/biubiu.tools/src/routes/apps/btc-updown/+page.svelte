@@ -561,6 +561,53 @@
 	function addEntryWindow() { editEntryWindows = [...editEntryWindows, { start: 160, end: 130 }]; }
 	function removeEntryWindow(i: number) { editEntryWindows = editEntryWindows.filter((_, idx) => idx !== i); }
 
+	// ─── V70 批量买入 ───
+	let v70Direction = $state<'Up' | 'Down'>('Up');
+	let v70Rounds = $state(12);
+	let v70Amount = $state(5);
+	let v70MaxPrice = $state(0.51);
+	let v70Loading = $state(false);
+	let v70Error = $state('');
+	let v70Results = $state<Array<{ slug: string; success: boolean; shares?: number; cost?: number; error?: string }> | null>(null);
+
+	function isV70Url(): boolean {
+		return parseEngineUrl(activeStrategy.baseUrl)?.strategyId === 'v70';
+	}
+
+	async function handleV70Buy() {
+		const parsed = parseEngineUrl(activeStrategy.baseUrl);
+		if (!parsed) return;
+		v70Loading = true;
+		v70Error = '';
+		v70Results = null;
+		try {
+			const auth = await getSignedAuth(parsed.root);
+			if (!auth) { v70Loading = false; return; }
+
+			const res = await engineFetch(`${parsed.root}/api/engine/batch-buy`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					payload: { direction: v70Direction, rounds: v70Rounds, amount: v70Amount, maxPrice: v70MaxPrice },
+					...auth,
+				}),
+			});
+			const result = await res.json() as { ok: boolean; results?: typeof v70Results; error?: string };
+			if (result.ok && result.results) {
+				v70Results = result.results;
+				const filled = result.results.filter(r => r.success).length;
+				const totalCost = result.results.reduce((s, r) => s + (r.cost ?? 0), 0);
+				v70Error = '';
+			} else {
+				v70Error = result.error ?? 'Failed';
+			}
+		} catch (err) {
+			v70Error = err instanceof Error ? err.message : 'Error';
+		} finally {
+			v70Loading = false;
+		}
+	}
+
 	function scheduleIdx(day: number, hour: number): number { return day * HOUR_ROWS + hour; }
 
 	function onCellDown(day: number, hour: number, e: PointerEvent) {
@@ -2118,6 +2165,86 @@
 				</div>
 			{/if}
 
+			<!-- V70 批量买入面板 -->
+			{#if isLiveMode && !isInstanceId(activeStrategyId) && isV70Url()}
+				<div class="strategy-control glass-card" use:fadeInUp={{ delay: 20 }}>
+					<div class="control-header">
+						<h3 class="control-title">V70 {t('btcUpdown.v70.title')}</h3>
+					</div>
+
+					<!-- 方向选择 -->
+					<div class="v70-direction">
+						<button class="v70-dir-btn" class:v70-dir-active={v70Direction === 'Up'} class:v70-up={v70Direction === 'Up'} onclick={() => v70Direction = 'Up'}>
+							UP
+						</button>
+						<button class="v70-dir-btn" class:v70-dir-active={v70Direction === 'Down'} class:v70-down={v70Direction === 'Down'} onclick={() => v70Direction = 'Down'}>
+							DOWN
+						</button>
+					</div>
+
+					<!-- 参数 -->
+					<div class="control-params">
+						<div class="param-row">
+							<label class="param-label">{t('btcUpdown.v70.rounds')}</label>
+							<input type="number" class="param-input" bind:value={v70Rounds} min="1" max="24" step="1" />
+						</div>
+						<div class="param-row">
+							<label class="param-label">{t('btcUpdown.v70.amount')}</label>
+							<div class="param-input-group">
+								<span class="param-prefix">$</span>
+								<input type="number" class="param-input" bind:value={v70Amount} min="1" step="1" />
+							</div>
+						</div>
+						<div class="param-row">
+							<label class="param-label">{t('btcUpdown.v70.maxPrice')}</label>
+							<div class="param-input-group">
+								<span class="param-prefix">$</span>
+								<input type="number" class="param-input" bind:value={v70MaxPrice} min="0.01" max="0.99" step="0.01" />
+							</div>
+						</div>
+					</div>
+
+					<!-- 买入按钮 -->
+					<button
+						class="v70-buy-btn"
+						class:v70-buy-up={v70Direction === 'Up'}
+						class:v70-buy-down={v70Direction === 'Down'}
+						onclick={handleV70Buy}
+						disabled={v70Loading}
+					>
+						{#if v70Loading}
+							{t('btcUpdown.v70.buying')}...
+						{:else}
+							{t('btcUpdown.v70.buyBtn', { dir: v70Direction, rounds: v70Rounds, total: (v70Rounds * v70Amount).toFixed(0) })}
+						{/if}
+					</button>
+
+					{#if v70Error}
+						<div class="control-error">{v70Error}</div>
+					{/if}
+
+					<!-- 结果 -->
+					{#if v70Results}
+						<div class="v70-results">
+							<div class="v70-results-summary">
+								{v70Results.filter(r => r.success).length}/{v70Results.length} {t('btcUpdown.v70.filled')}
+								· ${v70Results.reduce((s, r) => s + (r.cost ?? 0), 0).toFixed(2)} {t('btcUpdown.v70.spent')}
+							</div>
+							{#each v70Results as r}
+								<div class="v70-result-row" class:v70-result-ok={r.success} class:v70-result-fail={!r.success}>
+									<span class="v70-result-slug">{r.slug.replace('btc-updown-5m-', '')}</span>
+									{#if r.success}
+										<span class="v70-result-fill">{r.shares?.toFixed(1)} @ ${(r.cost! / r.shares!).toFixed(3)}</span>
+									{:else}
+										<span class="v70-result-err">{r.error}</span>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
 			<!-- Strategy Runtime -->
 			{#if store.strategyStartTime}
 				<div class="strategy-runtime glass-card" use:fadeInUp={{ delay: 60 }}>
@@ -2294,7 +2421,7 @@
 		left: 0;
 		right: 0;
 		z-index: 100;
-		max-height: 80vh;
+		max-height: 70vh;
 		background: var(--bg-base);
 		border-top-left-radius: var(--radius-xl);
 		border-top-right-radius: var(--radius-xl);
@@ -2383,6 +2510,10 @@
 		}
 		.sidebar .version-selector {
 			margin-bottom: 0;
+		}
+		.sidebar .version-options {
+			max-height: 280px;
+			overflow-y: auto;
 		}
 		.mobile-drawer-fab {
 			display: none !important;
@@ -2601,8 +2732,6 @@
 		display: flex;
 		gap: var(--space-1);
 		flex-direction: column;
-		max-height: 280px;
-		overflow-y: auto;
 	}
 	.version-btn {
 		display: flex;
@@ -3234,6 +3363,82 @@
 		color: var(--fg-subtle);
 	}
 	.param-dirty { border-color: var(--warning) !important; background: rgba(251, 191, 36, 0.05); }
+
+	/* V70 Batch Buy */
+	.v70-direction {
+		display: flex;
+		gap: 4px;
+		margin-bottom: var(--space-3);
+	}
+	.v70-dir-btn {
+		flex: 1;
+		padding: var(--space-2);
+		border-radius: var(--radius-md);
+		border: 2px solid var(--border-base);
+		background: var(--bg-sunken);
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: all 0.15s ease;
+		letter-spacing: 0.1em;
+	}
+	.v70-dir-active.v70-up {
+		border-color: var(--success);
+		background: rgba(52, 211, 153, 0.1);
+		color: var(--success);
+	}
+	.v70-dir-active.v70-down {
+		border-color: var(--error);
+		background: rgba(248, 113, 113, 0.1);
+		color: var(--error);
+	}
+	.v70-buy-btn {
+		width: 100%;
+		padding: var(--space-3);
+		border-radius: var(--radius-md);
+		border: none;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-bold);
+		cursor: pointer;
+		transition: all 0.15s ease;
+		margin-top: var(--space-2);
+		letter-spacing: 0.02em;
+	}
+	.v70-buy-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+	.v70-buy-up {
+		background: var(--success);
+		color: white;
+	}
+	.v70-buy-up:hover:not(:disabled) { filter: brightness(1.1); }
+	.v70-buy-down {
+		background: var(--error);
+		color: white;
+	}
+	.v70-buy-down:hover:not(:disabled) { filter: brightness(1.1); }
+	.v70-results {
+		margin-top: var(--space-3);
+		border-top: 1px solid var(--border-subtle);
+		padding-top: var(--space-2);
+	}
+	.v70-results-summary {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+		margin-bottom: var(--space-2);
+	}
+	.v70-result-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 2px 0;
+		font-size: 11px;
+		font-family: var(--font-mono);
+	}
+	.v70-result-ok { color: var(--success); }
+	.v70-result-fail { color: var(--fg-subtle); }
+	.v70-result-slug { color: var(--fg-muted); }
+	.v70-result-err { color: var(--error); font-size: 10px; }
 	.param-section-label {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);

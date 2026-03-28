@@ -243,5 +243,13 @@
   "btcUpdown.control.entryWindow": "Entry Window (remaining sec)",
   "btcUpdown.control.addWindow": "Add Window",
   "btcUpdown.control.selectAll": "All",
-  "btcUpdown.control.clearAll": "Clear"
+  "btcUpdown.control.clearAll": "Clear",
+  "btcUpdown.v70.title": "Batch Buy",
+  "btcUpdown.v70.rounds": "Rounds",
+  "btcUpdown.v70.amount": "Per Round",
+  "btcUpdown.v70.maxPrice": "Max Price",
+  "btcUpdown.v70.buyBtn": "Buy {dir} × {rounds} rounds (${total})",
+  "btcUpdown.v70.buying": "Buying",
+  "btcUpdown.v70.filled": "filled",
+  "btcUpdown.v70.spent": "spent"
 }

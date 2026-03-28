@@ -168,7 +168,7 @@
   "btcUpdown.filter.win": "Win",
   "btcUpdown.filter.loss": "Loss",
   "btcUpdown.filter.takeProfit": "Take Profit",
-  "btcUpdown.filter.stopLoss": "Early Exit",
+  "btcUpdown.filter.stopLoss": "Stop Loss",
   "btcUpdown.disclaimer": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling.",
 
   "btcUpdown.live.sectionTitle": "Live",

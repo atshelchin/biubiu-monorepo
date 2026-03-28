@@ -372,7 +372,7 @@ export class DashboardStore {
 					this.resultFilter === 'win' || this.resultFilter === 'loss'
 						? this.resultFilter
 						: undefined,
-				swingExitReason: this.resultFilter === 'stop_loss' ? 'stop_loss' : undefined,
+				swingExitReason: this.resultFilter === 'stop_loss' || this.resultFilter === 'take_profit' ? this.resultFilter : undefined,
 				filterDate: this.filterDate,
 				selectedHour: this.selectedHour
 			});

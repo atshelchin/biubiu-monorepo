@@ -4,8 +4,8 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { authStore } from '$lib/auth';
 	import { routes } from '$lib/updown-v2/routes';
-	import { profitClass, fmt, fmtShort, fmtPct, statusDot, sparklineHtml } from '$lib/updown-v2/utils';
-	import { instances, leaderboard, activity, hubTab, modeFilter, spaces, showAuth, showAddSpace } from '$lib/updown-v2/store.svelte';
+	import { profitClass, fmt, fmtShort, fmtPct, statusDot } from '$lib/updown-v2/utils';
+	import { instances, spaces, modeFilter, showAuth, showAddSpace } from '$lib/updown-v2/store.svelte';
 	import DataTable from '$lib/updown-v2/components/DataTable.svelte';
 	import type { Column, FilterOption } from '$lib/updown-v2/components/data-table';
 	import type { Instance } from '$lib/updown-v2/types';
@@ -79,113 +79,36 @@
 		<button class="btn-accent" onclick={() => (showAuth.value = true)}>{t('auth.login.button')}</button>
 	</div>
 
-	<div class="section-row" use:fadeInUp={{ delay: 80 }}><h2 class="section-title">{t('updown5m.trending')}</h2></div>
-	<div class="card-grid-3" use:fadeInUp={{ delay: 100 }}>
-		{#each leaderboard.list as s (s.id)}
-			<div class="card trending-card">
-				<div class="card-top"><span class="rank-tag">#{s.rank}</span><span class="vis-badge" class:vis-public={s.visibility === 'public'} class:vis-private={s.visibility === 'private'}>{s.visibility}</span></div>
-				<div class="card-name">{s.name}</div>
-				<div class="card-meta">{s.creator} &middot; {s.space}</div>
-				<div class="sparkline">{@html sparklineHtml(s.sparkline)}</div>
-				<div class="card-metrics"><span class="metric"><span class="metric-label">24h</span><span class="metric-value positive">{s.profit}</span></span><span class="metric"><span class="metric-label">WR</span><span class="metric-value">{s.winRate}%</span></span><span class="metric"><span class="metric-label">Rounds</span><span class="metric-value">{s.rounds}</span></span></div>
-			</div>
-		{/each}
-	</div>
-
-	<div class="signin-cta" use:fadeInUp={{ delay: 150 }}>
+	<div class="signin-cta" use:fadeInUp={{ delay: 100 }}>
 		<p>{t('updown5m.promptCta')}</p>
 		<button class="btn-accent" onclick={() => (showAuth.value = true)}>{t('updown5m.getStarted')}</button>
 	</div>
 
 {:else}
-	<!-- ── Logged in ── -->
-	<div class="tab-bar" use:fadeInUp={{ delay: 50 }}>
-		<button class="tab" class:active={hubTab.active === 0} onclick={() => hubTab.active = 0}>{t('updown5m.tab.overview')}</button>
-		<button class="tab" class:active={hubTab.active === 1} onclick={() => hubTab.active = 1}>{t('updown5m.tab.instances')}</button>
-		<button class="tab" class:active={hubTab.active === 2} onclick={() => hubTab.active = 2}>{t('updown5m.tab.spaces')}</button>
+	<!-- ── Logged in: stats + instances ── -->
+	<div class="mode-filter" use:fadeInUp={{ delay: 50 }}>
+		<button class="mode-pill" class:active={modeFilter.value === 'all'} onclick={() => modeFilter.value = 'all'}>All</button>
+		<button class="mode-pill" class:active={modeFilter.value === 'sandbox'} onclick={() => modeFilter.value = 'sandbox'}>Sandbox</button>
+		<button class="mode-pill" class:active={modeFilter.value === 'live'} onclick={() => modeFilter.value = 'live'}>Live</button>
 	</div>
 
-	<div class="tab-content" use:fadeInUp={{ delay: 100 }}>
-		{#if hubTab.active === 0}
-			<!-- Overview -->
-			<div class="mode-filter">
-				<button class="mode-pill" class:active={modeFilter.value === 'all'} onclick={() => modeFilter.value = 'all'}>All</button>
-				<button class="mode-pill" class:active={modeFilter.value === 'sandbox'} onclick={() => modeFilter.value = 'sandbox'}>Sandbox</button>
-				<button class="mode-pill" class:active={modeFilter.value === 'live'} onclick={() => modeFilter.value = 'live'}>Live</button>
+	<!-- Stats -->
+	<div class="stats-grid-4" use:fadeInUp={{ delay: 80 }}>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.todayProfit')}</div><div class="stat-value {profitClass(modeTodayProfit)}">{fmt(modeTodayProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.active')}</div><div class="stat-value">{modeActiveCount}</div><div class="stat-sub">{t('updown5m.stat.instancesRunning')}</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.avgWinRate')}</div><div class="stat-value">{fmtPct(modeWinRate)}</div><div class="stat-sub">{modeRoundsToday} rounds</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.30dProfit')}</div><div class="stat-value {profitClass(mode30dProfit)}">{fmtShort(mode30dProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
+	</div>
+
+	<!-- Instances table -->
+	<div use:fadeInUp={{ delay: 100 }}>
+		{#if filteredInstances.length === 0}
+			<div class="onboarding-card">
+				<p class="onboarding-title">{t('updown5m.empty.title')}</p>
+				<p class="onboarding-desc">{t('updown5m.empty.desc')}</p>
+				<a class="btn-accent" href={routes.editor()}>{t('updown5m.empty.create')}</a>
 			</div>
-
-			<!-- Stats -->
-			<div class="stats-grid-4">
-				<div class="stat-card"><div class="stat-label">{t('updown5m.stat.todayProfit')}</div><div class="stat-value {profitClass(modeTodayProfit)}">{fmt(modeTodayProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
-				<div class="stat-card"><div class="stat-label">{t('updown5m.stat.active')}</div><div class="stat-value">{modeActiveCount}</div><div class="stat-sub">{t('updown5m.stat.instancesRunning')}</div></div>
-				<div class="stat-card"><div class="stat-label">{t('updown5m.stat.avgWinRate')}</div><div class="stat-value">{fmtPct(modeWinRate)}</div><div class="stat-sub">{modeRoundsToday} rounds</div></div>
-				<div class="stat-card"><div class="stat-label">{t('updown5m.stat.30dProfit')}</div><div class="stat-value {profitClass(mode30dProfit)}">{fmtShort(mode30dProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
-			</div>
-
-			<!-- Your Best Today -->
-			<div class="section-row"><h2 class="section-title">{t('updown5m.yourBest')}</h2></div>
-			{#if filteredInstances.length === 0}
-				<div class="onboarding-card">
-					<p class="onboarding-title">{t('updown5m.empty.title')}</p>
-					<p class="onboarding-desc">{t('updown5m.empty.desc')}</p>
-					<div class="onboarding-steps">
-						<div class="onboarding-step"><span class="step-num">1</span><span>Join a space — <button class="link-btn inline" onclick={() => { hubTab.active = 2; }}>browse spaces</button></span></div>
-						<div class="onboarding-step"><span class="step-num">2</span><span>Create or copy a strategy — <a class="link-btn inline" href={routes.space('official')}>marketplace</a></span></div>
-						<div class="onboarding-step"><span class="step-num">3</span><span>Run it in sandbox to test</span></div>
-					</div>
-					<a class="btn-accent" href={routes.editor()}>{t('updown5m.empty.create')}</a>
-				</div>
-			{:else}
-				<div class="card-grid-2">
-					{#each filteredInstances.filter(i => i.stats.profit > 0).sort((a, b) => b.stats.profit - a.stats.profit).slice(0, 2) as inst (inst.id)}
-						<a class="card interactive" href={routes.instance(inst.spaceId, inst.id)}>
-							<div class="card-name">{inst.label}</div>
-							<div class="card-meta">{inst.spaceName} &middot; <span class="mode-badge" class:mode-live={inst.mode === 'live'}>{inst.mode === 'live' ? 'LIVE' : 'SANDBOX'}</span></div>
-							<div class="card-metrics"><span class="metric"><span class="metric-label">Today</span><span class="metric-value positive">{fmt(inst.profits.day)}</span></span><span class="metric"><span class="metric-label">WR</span><span class="metric-value">{fmtPct(inst.stats.winRate)}</span></span></div>
-						</a>
-					{/each}
-				</div>
-
-				<!-- Recent Activity -->
-				<div class="section-row"><h2 class="section-title">{t('updown5m.recentActivity')}</h2></div>
-				<div class="feed-list">
-					{#each activity.list as a (a.time + a.instance)}
-						{@const inst = instances.list.find(i => i.label === a.instance)}
-						<a class="feed-item" href={inst ? routes.instance(inst.spaceId, inst.id) : '#'}>
-							<div class="feed-dot" class:feed-win={a.type === 'win'} class:feed-loss={a.type === 'loss'} class:feed-info={a.type === 'entry' || a.type === 'info'} class:feed-pause={a.type === 'pause'}></div>
-							<div class="feed-body">
-								<div class="feed-top">
-									<span class="feed-name">{a.instance}</span>
-									<span class="feed-time">{a.time}</span>
-								</div>
-								<div class="feed-msg" class:positive={a.type === 'win'} class:negative={a.type === 'loss'}>{a.message}</div>
-							</div>
-						</a>
-					{/each}
-				</div>
-			{/if}
-
-			<!-- Trending (at bottom) -->
-			<div class="section-row"><h2 class="section-title">{t('updown5m.trending')}</h2><a class="link-btn" href={routes.space('official')}>{t('updown5m.seeAll')}</a></div>
-			<div class="card-grid-3">
-				{#each leaderboard.list.slice(0, 6) as s (s.id)}
-					<a class="card interactive trending-card" href={routes.strategy('official', s.id)}>
-						<div class="card-top"><span class="rank-tag">#{s.rank}</span><span class="vis-badge" class:vis-public={s.visibility === 'public'} class:vis-private={s.visibility === 'private'}>{s.visibility}</span></div>
-						<div class="card-name">{s.name}</div>
-						<div class="card-meta">{s.creator} &middot; {s.space}</div>
-						<div class="sparkline">{@html sparklineHtml(s.sparkline)}</div>
-						<div class="card-metrics"><span class="metric"><span class="metric-label">24h</span><span class="metric-value positive">{s.profit}</span></span><span class="metric"><span class="metric-label">WR</span><span class="metric-value">{s.winRate}%</span></span><span class="metric"><span class="metric-label">Rounds</span><span class="metric-value">{s.rounds}</span></span></div>
-					</a>
-				{/each}
-			</div>
-
-		{:else if hubTab.active === 1}
-			<!-- My Instances -->
-			<div class="mode-filter">
-				<button class="mode-pill" class:active={modeFilter.value === 'all'} onclick={() => modeFilter.value = 'all'}>All</button>
-				<button class="mode-pill" class:active={modeFilter.value === 'sandbox'} onclick={() => modeFilter.value = 'sandbox'}>Sandbox</button>
-				<button class="mode-pill" class:active={modeFilter.value === 'live'} onclick={() => modeFilter.value = 'live'}>Live</button>
-			</div>
+		{:else}
 			<DataTable
 				data={filteredInstances}
 				columns={instanceColumns}
@@ -218,25 +141,25 @@
 					{/if}
 				{/snippet}
 			</DataTable>
-
-		{:else}
-			<!-- Spaces -->
-			<div class="card-grid-3">
-				{#each spaces.list as space (space.id)}
-					<a class="card interactive space-card" href={routes.space(space.id)}>
-						<div class="space-status" class:online={space.online}></div>
-						<span class="space-badge" class:badge-official={space.isOfficial}>{space.isOfficial ? 'Official' : 'Private'}</span>
-						<div class="card-name">{space.name}</div>
-						<div class="space-url">{space.endpointUrl}</div>
-						<div class="card-metrics">
-							<span class="metric"><span class="metric-value">{space.stats.totalUsers}</span> <span class="metric-label">users</span></span>
-							<span class="metric"><span class="metric-value">{space.stats.totalStrategies}</span> <span class="metric-label">strategies</span></span>
-							<span class="metric" class:positive={space.allowLiveTrading}>{space.allowLiveTrading ? 'Live' : 'Sandbox'}</span>
-						</div>
-					</a>
-				{/each}
-				<button class="card add-card" onclick={() => (showAddSpace.value = true)}><span class="add-icon">+</span><span>{t('updown5m.addSpace')}</span></button>
-			</div>
 		{/if}
+	</div>
+
+	<!-- Spaces -->
+	<div class="section-row" use:fadeInUp={{ delay: 120 }}><h2 class="section-title">{t('updown5m.tab.spaces')}</h2></div>
+	<div class="card-grid-3" use:fadeInUp={{ delay: 140 }}>
+		{#each spaces.list as space (space.id)}
+			<a class="card interactive space-card" href={routes.space(space.id)}>
+				<div class="space-status" class:online={space.online}></div>
+				<span class="space-badge" class:badge-official={space.isOfficial}>{space.isOfficial ? 'Official' : 'Private'}</span>
+				<div class="card-name">{space.name}</div>
+				<div class="space-url">{space.endpointUrl}</div>
+				<div class="card-metrics">
+					<span class="metric"><span class="metric-value">{space.stats.totalUsers}</span> <span class="metric-label">users</span></span>
+					<span class="metric"><span class="metric-value">{space.stats.totalStrategies}</span> <span class="metric-label">strategies</span></span>
+					<span class="metric" class:positive={space.allowLiveTrading}>{space.allowLiveTrading ? 'Live' : 'Sandbox'}</span>
+				</div>
+			</a>
+		{/each}
+		<button class="card add-card" onclick={() => (showAddSpace.value = true)}><span class="add-icon">+</span><span>{t('updown5m.addSpace')}</span></button>
 	</div>
 {/if}

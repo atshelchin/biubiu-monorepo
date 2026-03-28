@@ -1,5 +1,5 @@
-import type { AuthState, Space, Instance, LeaderboardEntry, MarketStrategy, ActivityItem, StatsSummary } from './types';
-import { MOCK_USER, MOCK_SPACES, MOCK_INSTANCES, MOCK_LEADERBOARD, MOCK_MARKET_STRATEGIES, MOCK_ACTIVITY, MOCK_SUMMARY } from './mock';
+import type { AuthState, Space, Instance, StatsSummary } from './types';
+import { MOCK_USER, MOCK_SPACES, MOCK_INSTANCES, MOCK_SUMMARY } from './mock';
 
 /** Auth state */
 export const auth = $state<{ value: AuthState }>({ value: { loggedIn: false } });
@@ -18,22 +18,10 @@ export const spaces = $state<{ list: Space[] }>({ list: MOCK_SPACES });
 /** Instances (across all spaces) */
 export const instances = $state<{ list: Instance[] }>({ list: MOCK_INSTANCES });
 
-/** Leaderboard */
-export const leaderboard = $state<{ list: LeaderboardEntry[] }>({ list: MOCK_LEADERBOARD });
-
-/** Market strategies */
-export const market = $state<{ list: MarketStrategy[] }>({ list: MOCK_MARKET_STRATEGIES });
-
-/** Activity feed */
-export const activity = $state<{ list: ActivityItem[] }>({ list: MOCK_ACTIVITY });
-
 /** Summary stats */
 export const summary = $state<{ data: StatsSummary }>({ data: MOCK_SUMMARY });
 
-/** Hub tab */
-export const hubTab = $state<{ active: number }>({ active: 0 });
-
-/** Space tab: 0=Overview, 1=Strategies, 2=Members, 3=Admin */
+/** Space tab: 0=Overview, 1=Members, 2=Admin */
 export const spaceTab = $state<{ active: number }>({ active: 0 });
 
 /** Mode filter: all / sandbox / live */

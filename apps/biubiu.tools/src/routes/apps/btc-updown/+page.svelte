@@ -2511,10 +2511,6 @@
 		.sidebar .version-selector {
 			margin-bottom: 0;
 		}
-		.sidebar .version-options {
-			max-height: 280px;
-			overflow-y: auto;
-		}
 		.mobile-drawer-fab {
 			display: none !important;
 		}

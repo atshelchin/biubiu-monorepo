@@ -184,6 +184,93 @@
 							{/if}
 						{/if}
 
+						<!-- V80 dual-sweep details -->
+						{#if round.signal_action === 'v80_dual_sweep' && round.signal_rules}
+							{@const v80 = (() => { try { return JSON.parse(round.signal_rules); } catch { return null; } })()}
+							{#if v80}
+								{@const totalCost = (v80.mainSpent ?? 0) + (v80.hedgeSpent ?? 0)}
+								{@const mainProfit = (v80.mainShares ?? 0) - totalCost}
+								{@const hedgeProfit = (v80.hedgeShares ?? 0) - totalCost}
+								<div class="pnl-divider"></div>
+								<div class="v80-details">
+									<div class="round-row">
+										<span class="round-label">{locale.value === 'zh' ? '主仓' : 'Main'}</span>
+										<span class="round-value mono">
+											<span class="direction-tag direction-{v80.mainDirection?.toLowerCase()}">{v80.mainDirection}</span>
+											{v80.mainShares?.toFixed(1)} sh @ ${v80.mainAvgPrice?.toFixed(3)} = ${v80.mainSpent?.toFixed(2)}
+										</span>
+									</div>
+									<div class="round-row">
+										<span class="round-label">{locale.value === 'zh' ? '对冲' : 'Hedge'}</span>
+										<span class="round-value mono">
+											<span class="direction-tag direction-{v80.hedgeDirection?.toLowerCase()}">{v80.hedgeDirection}</span>
+											{v80.hedgeShares?.toFixed(1)} sh @ ${v80.hedgeAvgPrice?.toFixed(3)} = ${v80.hedgeSpent?.toFixed(2)}
+										</span>
+									</div>
+									<div class="round-row">
+										<span class="round-label">{locale.value === 'zh' ? '盈亏预估' : 'P&L Estimate'}</span>
+										<span class="round-value">
+											{#if mainProfit > 0 && hedgeProfit > 0}
+												<span class="arb-badge arb-yes">{locale.value === 'zh' ? '涨跌都赚' : 'Win either way'}</span>
+											{:else if mainProfit > 0}
+												<span class="arb-badge arb-main">{locale.value === 'zh' ? '主仓赢才赚' : 'Profit if main wins'}</span>
+											{:else if hedgeProfit > 0}
+												<span class="arb-badge arb-hedge">{locale.value === 'zh' ? '反向赢才赚' : 'Profit if hedge wins'}</span>
+											{:else}
+												<span class="arb-badge arb-no">{locale.value === 'zh' ? '两边都亏' : 'Loss either way'}</span>
+											{/if}
+											<span class="mono" style="margin-left:4px">{v80.buyCount} {locale.value === 'zh' ? '笔' : 'buys'}</span>
+										</span>
+									</div>
+									<div class="round-row">
+										<span class="round-label">{v80.mainDirection} {locale.value === 'zh' ? '赢' : 'wins'}</span>
+										<span class="round-value mono" class:positive={mainProfit >= 0} class:negative={mainProfit < 0}>
+											{mainProfit >= 0 ? '+' : ''}{mainProfit.toFixed(2)}
+										</span>
+									</div>
+									<div class="round-row">
+										<span class="round-label">{v80.hedgeDirection} {locale.value === 'zh' ? '赢' : 'wins'}</span>
+										<span class="round-value mono" class:positive={hedgeProfit >= 0} class:negative={hedgeProfit < 0}>
+											{hedgeProfit >= 0 ? '+' : ''}{hedgeProfit.toFixed(2)}
+										</span>
+									</div>
+									<!-- Decision log (每个动作) -->
+									{#if v80.decisionLog?.length > 0}
+										<details class="pnl-details v80-log-details">
+											<summary class="pnl-summary">
+												<span class="pnl-total-label">{locale.value === 'zh' ? '操作日志' : 'Action Log'} ({v80.decisionLog.length})</span>
+												<svg class="pnl-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+											</summary>
+											<div class="v80-log-list">
+												{#each v80.decisionLog as log}
+													<div class="v80-log-item v80-log-{log.action?.startsWith('buy_filled') ? 'fill' : log.action?.startsWith('skip') || log.action?.startsWith('buy_no') ? 'skip' : 'info'}">
+														<span class="v80-log-phase">[{log.phase}]</span>
+														{#if log.remaining !== undefined}<span class="v80-log-remaining">{log.remaining}s</span>{/if}
+														{#if log.action === 'buy_filled'}
+															<span class="direction-tag direction-{log.direction?.toLowerCase()}">{log.direction}</span>
+															<span class="mono">{log.shares?.toFixed(1)}sh @${log.price?.toFixed(3)} ${log.cost?.toFixed(2)}</span>
+														{:else if log.action === 'buy_no_fill'}
+															<span class="v80-log-skip">{locale.value === 'zh' ? '无成交' : 'No fill'} {log.direction} (max ${log.maxPrice})</span>
+														{:else if log.action === 'skip_price_too_high'}
+															<span class="v80-log-skip">{locale.value === 'zh' ? '价格过高' : 'Price too high'} ${log.mainAsk?.toFixed(2)} > ${log.maxPrice}</span>
+														{:else if log.action === 'direction_chosen'}
+															<span class="v80-log-info">{locale.value === 'zh' ? '方向' : 'Direction'}: <span class="direction-tag direction-{log.direction?.toLowerCase()}">{log.direction}</span></span>
+														{:else if log.action === 'direction_changed'}
+															<span class="v80-log-warn">{locale.value === 'zh' ? '方向变化' : 'Direction changed'}: {log.from} → {log.to}</span>
+														{:else if log.action === 'hedge_done'}
+															<span class="v80-log-info">{locale.value === 'zh' ? '对冲完成' : 'Hedge done'}: {log.hedgeShares?.toFixed(1)}sh ${log.hedgeSpent?.toFixed(2)}</span>
+														{:else}
+															<span class="v80-log-info">{log.action} {log.reason ?? ''}</span>
+														{/if}
+													</div>
+												{/each}
+											</div>
+										</details>
+									{/if}
+								</div>
+							{/if}
+						{/if}
+
 						<!-- P&L Breakdown for settled rounds -->
 						{#if round.status === 'settled'}
 							<div class="pnl-divider"></div>
@@ -692,4 +779,50 @@
 	:global([data-theme='light'] .badge-skip) { background: rgba(0, 0, 0, 0.04); }
 	:global([data-theme='light']) .exit-correct { background: rgba(16, 185, 129, 0.1); color: #059669; }
 	:global([data-theme='light']) .exit-wrong { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+
+	/* V80 dual-sweep */
+	.v80-details {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding-top: 4px;
+	}
+	.arb-badge {
+		font-size: var(--text-xs);
+		padding: 1px 6px;
+		border-radius: 4px;
+		font-weight: var(--weight-medium);
+	}
+	.arb-yes { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+	.arb-main { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+	.arb-hedge { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+	.arb-no { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+	.v80-log-details { margin-top: 4px; }
+	.v80-log-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: 4px 0;
+		max-height: 300px;
+		overflow-y: auto;
+	}
+	.v80-log-item {
+		font-size: 11px;
+		font-family: var(--font-mono, ui-monospace, monospace);
+		padding: 2px 4px;
+		border-radius: 3px;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		flex-wrap: wrap;
+	}
+	.v80-log-fill { background: rgba(52, 211, 153, 0.08); }
+	.v80-log-skip { color: var(--fg-subtle); }
+	.v80-log-info { color: var(--fg-muted); }
+	.v80-log-phase {
+		color: var(--fg-subtle);
+		min-width: 56px;
+	}
+	.v80-log-warn { color: #fbbf24; }
+	.v80-log-remaining { color: var(--fg-subtle); font-size: 10px; min-width: 28px; opacity: 0.6; }
 </style>

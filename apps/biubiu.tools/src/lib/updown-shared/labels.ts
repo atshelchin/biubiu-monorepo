@@ -26,6 +26,12 @@ export function getEventTypeLabel(t: TranslateFn, type: string): string {
 			return t('btcUpdown.event.hedgeExpired');
 		case 'round_skip':
 			return t('btcUpdown.event.roundSkip');
+		case 'v80_waiting':
+			return t('btcUpdown.event.v80Waiting');
+		case 'v80_buy':
+			return t('btcUpdown.event.v80Buy');
+		case 'v80_probe_done':
+			return t('btcUpdown.event.v80ProbeDone');
 		default:
 			return type;
 	}
@@ -47,6 +53,12 @@ export function getEventColorClass(type: string): string {
 			return 'event-amber';
 		case 'round_skip':
 			return 'event-gray';
+		case 'v80_waiting':
+			return 'event-blue';
+		case 'v80_buy':
+			return 'event-green';
+		case 'v80_probe_done':
+			return 'event-amber';
 		default:
 			return 'event-gray';
 	}
@@ -106,6 +118,12 @@ export function getSkipReasonLabel(t: TranslateFn, reason: string): string {
 			return t('btcUpdown.skip.windowExpired');
 		case 'daemon_restarted':
 			return t('btcUpdown.skip.daemonRestarted');
+		case 'v80_no_direction':
+			return t('btcUpdown.skip.v80NoDirection');
+		case 'v80_no_probe_fill':
+			return t('btcUpdown.skip.v80NoProbeFill');
+		case 'v80_insufficient_fills':
+			return t('btcUpdown.skip.v80InsufficientFills');
 		default:
 			return reason;
 	}

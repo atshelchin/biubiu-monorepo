@@ -21,7 +21,11 @@ export const FEED_EVENTS = new Set([
 	'hedge_placed',
 	'hedge_filled',
 	'hedge_sold',
-	'hedge_expired'
+	'hedge_expired',
+	// V80 dual-sweep events
+	'v80_waiting',
+	'v80_buy',
+	'v80_probe_done'
 ]);
 
 /** All SSE event types to listen for */
@@ -39,5 +43,9 @@ export const SSE_EVENT_TYPES = [
 	'settlement',
 	'exit_trigger',
 	'round_skip',
-	'heartbeat'
+	'heartbeat',
+	// V80 dual-sweep events
+	'v80_waiting',
+	'v80_buy',
+	'v80_probe_done'
 ] as const;

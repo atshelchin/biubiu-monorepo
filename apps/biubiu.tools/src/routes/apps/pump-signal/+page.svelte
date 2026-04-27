@@ -197,10 +197,8 @@
 		return value.toFixed(0);
 	}
 
-	const BINANCE_REF = 'GRO_28502_YH8J7';
-
 	function getBinanceTradeUrl(symbol: string): string {
-		return `https://www.binance.com/en/trade/${symbol.replace('USDT', '_USDT')}?ref=${BINANCE_REF}`;
+		return `https://www.binance.com/en/trade/${symbol.replace('USDT', '_USDT')}`;
 	}
 </script>
 

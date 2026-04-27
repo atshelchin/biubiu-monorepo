@@ -10,6 +10,7 @@
 
 	interface Props {
 		currentRound: Round | null;
+		priceToBeat: number | null;
 		events: SSEEvent[];
 		connectionStatus: ConnectionStatus;
 		ctx: FormatterContext;
@@ -21,6 +22,7 @@
 
 	let {
 		currentRound,
+		priceToBeat,
 		events,
 		connectionStatus,
 		ctx,
@@ -109,7 +111,13 @@
 		{:else}
 			<p class="current-round-waiting">{t('btcUpdown.live.noActiveRoundDesc')}</p>
 		{/if}
-		<div class="round-row" style="margin-top: var(--space-2);">
+		{#if priceToBeat !== null}
+			<div class="round-row" style="margin-top: var(--space-2);">
+				<span class="round-label">Price to Beat</span>
+				<span class="round-value mono">${formatNumber(priceToBeat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+			</div>
+		{/if}
+		<div class="round-row" style="margin-top: {priceToBeat !== null ? '0' : 'var(--space-2)'};">
 			<span class="round-label">{t('btcUpdown.round.countdown')}</span>
 			<span class="round-value mono countdown-value"
 				>{formatCountdown(currentRound.end_time, clock.now)}</span

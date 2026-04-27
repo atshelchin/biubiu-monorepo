@@ -254,43 +254,6 @@
 				</div>
 			</a>
 
-			<a href={localizeHref('/apps/pump-signal')} class="tool-card glass-card">
-				<div class="tool-content">
-					<h3 class="tool-name">{t('featured.pumpSignal.name')}</h3>
-					<p class="tool-description">{t('featured.pumpSignal.description')}</p>
-					<div class="tool-tags">
-						<span class="tool-tag">{t('featured.pumpSignal.feature1')}</span>
-						<span class="tool-tag">{t('featured.pumpSignal.feature2')}</span>
-						<span class="tool-tag">{t('featured.pumpSignal.feature3')}</span>
-					</div>
-				</div>
-				<div class="tool-cta">
-					<span class="tool-cta-text">{t('featured.pumpSignal.cta')}</span>
-					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="5" y1="12" x2="19" y2="12"/>
-						<polyline points="12 5 19 12 12 19"/>
-					</svg>
-				</div>
-			</a>
-
-			<a href={localizeHref('/apps/btc-updown')} class="tool-card glass-card">
-				<div class="tool-content">
-					<h3 class="tool-name">{t('featured.btcUpdown.name')}</h3>
-					<p class="tool-description">{t('featured.btcUpdown.description')}</p>
-					<div class="tool-tags">
-						<span class="tool-tag">{t('featured.btcUpdown.feature1')}</span>
-						<span class="tool-tag">{t('featured.btcUpdown.feature2')}</span>
-						<span class="tool-tag">{t('featured.btcUpdown.feature3')}</span>
-					</div>
-				</div>
-				<div class="tool-cta">
-					<span class="tool-cta-text">{t('featured.btcUpdown.cta')}</span>
-					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="5" y1="12" x2="19" y2="12"/>
-						<polyline points="12 5 19 12 12 19"/>
-					</svg>
-				</div>
-			</a>
 		</section>
 
 		<!-- Coming Soon Section -->

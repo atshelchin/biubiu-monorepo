@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS: Settings = {
   numberLocale: 'en-US',
   dateLocale: 'en-US',
   currency: 'USD',
-  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  timezone: 'UTC',
   timeFormat: '24',
   weekStartDay: 1,
 };

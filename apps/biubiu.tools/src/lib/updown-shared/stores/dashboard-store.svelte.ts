@@ -67,6 +67,11 @@ const FK = {
 	STRATEGY_INFO: 'strategyInfo'
 } as const;
 
+/** Convert epoch ms to ISO string without triggering Svelte's mutable Date lint. */
+function msToISO(ms: number): string {
+	return new (globalThis as { Date: DateConstructor }).Date(ms).toISOString();
+}
+
 // --- Store ---
 
 export class DashboardStore {
@@ -75,6 +80,7 @@ export class DashboardStore {
 	wallet = $state<WalletInfo | null>(null);
 	polymarketStats = $state<PolymarketStats | null>(null);
 	currentRound = $state<Round | null>(null);
+	priceToBeat = $state<number | null>(null);
 	rounds = $state<Round[]>([]);
 	roundsTotal = $state(0);
 	hourlyData = $state<HourlyStats[]>([]);
@@ -119,6 +125,7 @@ export class DashboardStore {
 	private sseEventCounter = 0;
 	private lastRoundRefetchTime = 0;
 	private fallbackTimer: ReturnType<typeof setInterval> | null = null;
+	private lastPtbWindowTs = 0;
 
 	constructor(config: DashboardStoreConfig) {
 		this.config = config;
@@ -146,10 +153,17 @@ export class DashboardStore {
 	/** Start SSE connection and periodic fallback timer. */
 	connect(): void {
 		this.sseManager.connect();
+		this.fetchPriceToBeat();
 
 		// Fallback: re-fetch currentRound every 15s in case SSE events are missed
+		// Also refresh rounds on page 1 (latest data) when SSE is not connected
+		// Also refresh price-to-beat each window (cached by windowTs, cheap no-op if same window)
 		this.fallbackTimer = setInterval(() => {
 			this.fetchCurrentRoundInternal();
+			this.fetchPriceToBeat();
+			if (this.connectionStatus !== 'connected' && this.roundsPage === 1) {
+				this.fetchRoundsInternal();
+			}
 		}, 15_000);
 	}
 
@@ -330,6 +344,7 @@ export class DashboardStore {
 			this.coordinator.scheduleRefresh([FK.STATS, FK.CURRENT_ROUND, FK.ROUNDS]);
 		} else if (eventType === 'round_start' || eventType === 'entry') {
 			this.coordinator.scheduleRefresh([FK.CURRENT_ROUND]);
+			if (eventType === 'round_start') this.fetchPriceToBeat();
 		}
 	}
 
@@ -433,6 +448,24 @@ export class DashboardStore {
 			const result = await apiFetchStrategyInfo(this.getOptsWithSignal(signal), lang);
 			if (result) this.strategyInfo = result;
 		});
+	}
+
+	/** Fetch price-to-beat from Polymarket for the current 5-min window. */
+	async fetchPriceToBeat(): Promise<void> {
+		const windowTs = Math.floor(Date.now() / 1000 / 300) * 300;
+		if (windowTs === this.lastPtbWindowTs && this.priceToBeat !== null) return;
+		try {
+			const start = msToISO(windowTs * 1000);
+			const end = msToISO((windowTs + 300) * 1000);
+			const url = `https://polymarket.com/api/crypto/crypto-price?symbol=BTC&eventStartTime=${encodeURIComponent(start)}&variant=fiveminute&endDate=${encodeURIComponent(end)}`;
+			const res = await fetch(url);
+			if (!res.ok) return;
+			const data = await res.json() as { openPrice?: number };
+			if (data.openPrice) {
+				this.priceToBeat = data.openPrice;
+				this.lastPtbWindowTs = windowTs;
+			}
+		} catch { /* non-critical */ }
 	}
 
 	/**

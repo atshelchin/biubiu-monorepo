@@ -117,10 +117,10 @@ describe('getSwingExitLabel', () => {
 		expect(getSwingExitLabel('en', 'manual')).toBe('Manual Exit');
 	});
 
-	it('returns Chinese labels for zh locale', () => {
-		expect(getSwingExitLabel('zh', 'stop_loss')).toBe('止损');
-		expect(getSwingExitLabel('zh', 'take_profit')).toBe('止盈');
-		expect(getSwingExitLabel('zh', 'checkpoint_mismatch')).toBe('信号反转');
+	it('returns English labels regardless of locale', () => {
+		expect(getSwingExitLabel('zh', 'stop_loss')).toBe('Stop Loss');
+		expect(getSwingExitLabel('zh', 'take_profit')).toBe('Take Profit');
+		expect(getSwingExitLabel('zh', 'checkpoint_mismatch')).toBe('Signal Reversed');
 	});
 
 	it('returns raw reason for unknown', () => {

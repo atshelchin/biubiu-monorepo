@@ -374,7 +374,6 @@
 	// 调度：7×24 网格（每格 = 1 小时），可拖拽多选
 	const DAY_COLS = 7;
 	const HOUR_ROWS = 24;
-	const DAY_NAMES_ZH = ['一', '二', '三', '四', '五', '六', '日'];
 	const DAY_NAMES_EN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 	// 168 个 boolean（7天 × 24小时），全选初始
 	let scheduleGrid = $state<boolean[]>(new Array(DAY_COLS * HOUR_ROWS).fill(true));
@@ -727,7 +726,7 @@
 	// --- SSE, data fetching, and filter coordination are now in DashboardStore ---
 
 	async function fetchAllStrategies() {
-		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const lang = 'en';
 		const results = await Promise.all(
 			allKnownStrategies.map(async (s) => {
 				try {
@@ -836,7 +835,7 @@
 		persistState();
 		// Store handles: disconnect SSE, reset data, reconnect, refetch all
 		store.switchStrategy(getStoreConfig());
-		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const lang = 'en';
 		store.fetchInitialData(lang);
 		// Set date to today (same as mount behavior) — this won't re-fetch
 		// since filterDate was already reset; it just shows "today" in the picker
@@ -915,13 +914,13 @@
 		customUrlError = '';
 		validationSteps = [{ step: 'discovery', status: 'checking' }];
 		customUrlValidating = true;
-		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const lang = 'en';
 
 		// Discover strategies from the endpoint
 		const result = await discoverStrategies(endpointUrl, '/api/strategies', lang, strategyFetch);
 		if (!result || result.strategies.length === 0) {
 			validationSteps = [{ step: 'discovery', status: 'fail' }];
-			customUrlError = lang === 'zh' ? '无法发现策略，请检查端点 URL' : 'No strategies found at this endpoint';
+			customUrlError = 'No strategies found at this endpoint';
 			customUrlValidating = false;
 			return;
 		}
@@ -953,7 +952,7 @@
 	async function probeServerSiblings(strategyUrl: string) {
 		const disc = getDiscoveryUrl(strategyUrl);
 		if (!disc) return;
-		const lang = locale.value === 'zh' ? 'zh' : 'en';
+		const lang = 'en';
 		const result = await discoverStrategies(disc.origin, disc.path, lang, strategyFetch);
 		if (!result) return;
 		const host = new URL(strategyUrl).host;
@@ -1242,7 +1241,7 @@
 							customStrategies = [...customStrategies, newStrategy];
 							activeStrategyId = newStrategy.id;
 							// Fetch name and probe siblings in background
-							const lang = locale.value === 'zh' ? 'zh' : 'en';
+							const lang = 'en';
 							strategyFetch(`${normalized}/strategy?lang=${lang}`)
 								.then(async (res) => {
 									if (res.ok) {
@@ -1266,7 +1265,7 @@
 				store.filterDate = { from: todayLocal(), to: todayLocal() };
 
 				// Discover default server strategies (replaces hardcoded list)
-				const lang = locale.value === 'zh' ? 'zh' : 'en';
+				const lang = 'en';
 				discoverStrategies(API_HOST, '/api/strategies', lang).then((result) => {
 					if (result) {
 						builtinStrategies = result.strategies.map((s) => ({
@@ -1310,7 +1309,7 @@
 					fetchAllStrategyProfits();
 					// Start data fetching via store (SSE, rounds, stats, hourly, etc.)
 					store.connect();
-					const lang2 = locale.value === 'zh' ? 'zh' : 'en';
+					const lang2 = 'en';
 					store.fetchInitialData(lang2);
 				});
 
@@ -1347,7 +1346,7 @@
 		if (!browser) return;
 		void locale.value; // track locale reactively
 		untrack(() => {
-			const lang = locale.value === 'zh' ? 'zh' : 'en';
+			const lang = 'en';
 			store.fetchStrategyInfo(lang);
 			fetchAllStrategies();
 			fetchAllStrategyProfits();
@@ -1588,9 +1587,9 @@
 						}}
 						role="button"
 						tabindex={0}
-						title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
+						title="Click to sort"
 					>
-						{locale.value === 'zh' ? '策略' : 'Name'}
+						Name
 						{#if profitSortColumn === 'name'}
 							<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
 						{/if}
@@ -1631,7 +1630,7 @@
 									}}
 									role="button"
 									tabindex={0}
-									title={locale.value === 'zh' ? '点击排序' : 'Click to sort'}
+									title="Click to sort"
 								>
 									{getProfitColumnLabel(colKey)}
 									{#if profitSortColumn === col}
@@ -1742,7 +1741,7 @@
 									<button
 										class="row-hide-btn"
 										onclick={() => toggleStrategyVisibility(s.id)}
-										title={locale.value === 'zh' ? '隐藏' : 'Hide'}
+										title="Hide"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
 									</button>
@@ -1754,7 +1753,7 @@
 					{#if hiddenBuiltins.length > 0}
 						<button class="hidden-section-toggle" onclick={() => toggleCollapse('builtin-hidden')}>
 							<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('builtin-hidden')}><polyline points="6 9 12 15 18 9" /></svg>
-							{locale.value === 'zh' ? `已隐藏 (${hiddenBuiltins.length})` : `Hidden (${hiddenBuiltins.length})`}
+							{`Hidden (${hiddenBuiltins.length})`}
 						</button>
 						{#if !collapsedSections.has('builtin-hidden')}
 							<div class="version-options hidden-options">
@@ -1769,7 +1768,7 @@
 										<button
 											class="row-hide-btn"
 											onclick={() => toggleStrategyVisibility(s.id)}
-											title={locale.value === 'zh' ? '显示' : 'Show'}
+											title="Show"
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
 										</button>
@@ -1824,7 +1823,7 @@
 										<button
 											class="row-hide-btn"
 											onclick={() => toggleStrategyVisibility(s.id)}
-											title={locale.value === 'zh' ? '隐藏' : 'Hide'}
+											title="Hide"
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
 										</button>
@@ -1836,7 +1835,7 @@
 						{#if hiddenHostStrategies.length > 0}
 							<button class="hidden-section-toggle" onclick={() => toggleCollapse(`${host}-hidden`)}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(`${host}-hidden`)}><polyline points="6 9 12 15 18 9" /></svg>
-								{locale.value === 'zh' ? `已隐藏 (${hiddenHostStrategies.length})` : `Hidden (${hiddenHostStrategies.length})`}
+								{`Hidden (${hiddenHostStrategies.length})`}
 							</button>
 							{#if !collapsedSections.has(`${host}-hidden`)}
 								<div class="version-options hidden-options">
@@ -1852,7 +1851,7 @@
 											<button
 												class="row-hide-btn"
 												onclick={() => toggleStrategyVisibility(s.id)}
-												title={locale.value === 'zh' ? '显示' : 'Show'}
+												title="Show"
 											>
 												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
 											</button>
@@ -1961,7 +1960,6 @@
 						onClose={() => { configuratorEndpoint = null; }}
 						onSave={handleConfiguratorSave}
 						{t}
-						lang={locale.value === 'zh' ? 'zh' : 'en'}
 					/>
 				</div>
 			{:else}
@@ -2141,7 +2139,7 @@
 
 						<div class="sched-grid-no-hours">
 							<!-- Day headers -->
-							{#each (locale.value === 'zh' ? DAY_NAMES_ZH : DAY_NAMES_EN) as dayName, d}
+							{#each DAY_NAMES_EN as dayName, d}
 								<button class="sched-day-hdr" onclick={() => toggleDayColumn(d)}>{dayName}</button>
 							{/each}
 
@@ -2154,7 +2152,7 @@
 										class:cell-on={scheduleGrid[scheduleIdx(d, h)]}
 										onpointerdown={(e) => onCellDown(d, h, e)}
 										onpointerenter={() => onCellEnter(d, h)}
-										title="{(locale.value === 'zh' ? DAY_NAMES_ZH : DAY_NAMES_EN)[d]} {String(h).padStart(2, '0')}:00"
+										title="{DAY_NAMES_EN[d]} {String(h).padStart(2, '0')}:00"
 									></div>
 								{/each}
 							{/each}

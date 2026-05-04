@@ -78,7 +78,7 @@
 	);
 
 	function getSseLang(): string {
-		return locale.value === 'zh' ? 'zh' : 'en';
+		return 'en';
 	}
 
 	function getBaseUrl(tab: TabType): string {
@@ -331,7 +331,7 @@
 								</div>
 							</div>
 						{:else}
-							{@const ad = event.ad[getSseLang() as 'zh' | 'en']}
+							{@const ad = event.ad['en']}
 							<div class="event-card glass-card ad-card">
 								<div class="card-header">
 									<span class="card-time">{formatTime(event.timestamp)}</span>

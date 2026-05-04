@@ -2,7 +2,6 @@ import { type Handle } from '@sveltejs/kit';
 import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
 
-const SUPPORTED_LOCALES = ['en', 'zh'];
 const DEFAULT_LOCALE = 'en';
 const DEFAULT_THEME = 'dark';
 const DEFAULT_TEXT_SCALE = 'md';
@@ -21,24 +20,16 @@ setRouteMessages(routeMessages);
 const messageModules = import.meta.glob('./messages/**/*.json', { eager: false });
 
 // Server-side message loader using import.meta.glob (handles [brackets] in filenames)
-async function serverMessageLoader(locale: string, namespace: string) {
-  const path = `./messages/${locale}/${namespace}.json`;
-  const fallbackPath = `./messages/${DEFAULT_LOCALE}/${namespace}.json`;
+async function serverMessageLoader(_locale: string, namespace: string) {
+  const path = `./messages/en/${namespace}.json`;
 
   try {
     if (messageModules[path]) {
       const module = (await messageModules[path]()) as { default: Record<string, string> };
       return module.default;
-    } else if (messageModules[fallbackPath]) {
-      const module = (await messageModules[fallbackPath]()) as { default: Record<string, string> };
-      return module.default;
     }
     return {};
   } catch {
-    // Try fallback
-    if (locale !== DEFAULT_LOCALE) {
-      return serverMessageLoader(DEFAULT_LOCALE, namespace);
-    }
     return {};
   }
 }
@@ -64,29 +55,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     return resolve(event);
   }
 
-  // Get locale from URL
-  const pathParts = pathname.split('/').filter(Boolean);
-  const pathLocale = pathParts[0];
-
-  // Determine locale: use URL prefix if valid, otherwise default to 'en'
-  // No redirect - URLs without locale prefix are treated as English
-  const locale = SUPPORTED_LOCALES.includes(pathLocale) ? pathLocale : DEFAULT_LOCALE;
+  // Always use English
+  const locale = DEFAULT_LOCALE;
   event.locals.locale = locale;
   i18nState.locale = locale;
 
-  // Set cookie
-  event.cookies.set('locale', locale, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 365,
-    httpOnly: false,
-    sameSite: 'lax',
-  });
-
-  // Get actual route path (without locale prefix if present)
-  const hasLocalePrefix = SUPPORTED_LOCALES.includes(pathLocale);
-  const routePath = hasLocalePrefix
-    ? '/' + pathParts.slice(1).join('/') || '/'
-    : pathname;
+  const routePath = pathname;
 
   // Use matchRoute to automatically match namespaces (supports dynamic routes)
   let namespaces = matchRoute(routePath);

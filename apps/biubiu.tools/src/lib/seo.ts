@@ -7,7 +7,7 @@ import type { SEOProps, SoftwareApplicationData } from '@shelchin/seo-sveltekit'
 export const seoConfig = {
   siteName: 'BiuBiu Tools',
   domain: PUBLIC_DOMAIN || 'https://biubiu.tools',
-  locales: ['en', 'zh'],
+  locales: ['en'],
   defaultLocale: 'en',
   twitterSite: '@biubiutools'
 } as const;

@@ -15,8 +15,6 @@
 	} from '../auth/engine-client.js';
 	import ConfiguratorDrawer from '../configurator/ConfiguratorDrawer.svelte';
 	import type { StrategyConfigV2 } from '../configurator/types.js';
-	import { locale } from '$lib/i18n';
-
 	interface Props {
 		endpoint: ManagedEndpoint;
 		t: TranslateFn;
@@ -397,7 +395,6 @@
 		} : null}
 		initialLabel={editingInstance?.label ?? ''}
 		{t}
-		lang={locale.value === 'zh' ? 'zh' : 'en'}
 	/>
 </section>
 

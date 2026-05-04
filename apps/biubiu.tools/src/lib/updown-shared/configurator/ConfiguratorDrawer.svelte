@@ -10,10 +10,9 @@
 		initialConfig?: StrategyConfigV2 | null;
 		initialLabel?: string;
 		t: TranslateFn;
-		lang: 'en' | 'zh';
 	}
 
-	let { open, onClose, onSave, initialConfig = null, initialLabel = '', t, lang }: Props = $props();
+	let { open, onClose, onSave, initialConfig = null, initialLabel = '', t }: Props = $props();
 
 	const DRAFT_KEY = 'strategy-configurator-draft';
 
@@ -84,7 +83,7 @@
 				const text = await file.text();
 				const parsed = JSON.parse(text);
 				if (!parsed.meta?.n_estimators || !parsed.trees) {
-					modelUploadError = lang === 'zh' ? '无效的模型文件 (需要 meta + trees)' : 'Invalid model file (need meta + trees)';
+					modelUploadError = 'Invalid model file (need meta + trees)';
 					return;
 				}
 				modelMeta = parsed.meta as ModelMeta;
@@ -99,7 +98,7 @@
 					modelId: parsed.meta.version ?? file.name.replace('.json', ''),
 				};
 			} catch {
-				modelUploadError = lang === 'zh' ? 'JSON 解析失败' : 'JSON parse error';
+				modelUploadError = 'JSON parse error';
 			}
 		};
 		input.click();
@@ -191,7 +190,7 @@
 				const parsed = JSON.parse(text);
 				if (parsed.entry && parsed.direction && parsed.exit) {
 					config = parsed as StrategyConfigV2;
-					if (parsed.label) label = typeof parsed.label === 'string' ? parsed.label : (parsed.label[lang] ?? parsed.label.en ?? '');
+					if (parsed.label) label = typeof parsed.label === 'string' ? parsed.label : (parsed.label.en ?? '');
 					revealedSteps = 5;
 				} else {
 					jsonError = t('btcUpdown.configurator.jsonInvalid');
@@ -244,10 +243,10 @@
 	}
 
 	const ALL_DAYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-	const DAY_LABELS: Record<DayOfWeek, Record<string, string>> = {
-		sun: { zh: '日', en: 'Sun' }, mon: { zh: '一', en: 'Mon' }, tue: { zh: '二', en: 'Tue' },
-		wed: { zh: '三', en: 'Wed' }, thu: { zh: '四', en: 'Thu' }, fri: { zh: '五', en: 'Fri' },
-		sat: { zh: '六', en: 'Sat' },
+	const DAY_LABELS: Record<DayOfWeek, string> = {
+		sun: 'Sun', mon: 'Mon', tue: 'Tue',
+		wed: 'Wed', thu: 'Thu', fri: 'Fri',
+		sat: 'Sat',
 	};
 	const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -346,13 +345,13 @@
 
 	// ── Direction descriptions ──
 
-	const DIR_DESCRIPTIONS: Record<string, Record<string, string>> = {
-		clob_follow: { zh: '跟随 CLOB 中间价', en: 'Follow CLOB midpoint' },
-		prev_candle: { zh: '跟随前一根 K 线', en: 'Follow previous candle' },
-		rsi_reversal: { zh: 'RSI 极值反转', en: 'RSI extreme reversal' },
-		signal_score: { zh: '多指标评分', en: 'Signal scoring' },
-		ml_model: { zh: '机器学习模型', en: 'ML model' },
-		post_market_inference: { zh: '盘后推断结果', en: 'Post-market inference' },
+	const DIR_DESCRIPTIONS: Record<string, string> = {
+		clob_follow: 'Follow CLOB midpoint',
+		prev_candle: 'Follow previous candle',
+		rsi_reversal: 'RSI extreme reversal',
+		signal_score: 'Signal scoring',
+		ml_model: 'ML model',
+		post_market_inference: 'Post-market inference',
 	};
 
 	const DEFAULT_SIGNAL_PARAMS: SignalScoreParams = {
@@ -370,17 +369,17 @@
 		tradeWindowSec: 30,
 	};
 
-	const INDICATOR_LABELS: Record<IndicatorType, Record<string, string>> = {
-		roc: { zh: '变化率 (ROC)', en: 'Rate of Change' },
-		rsi: { zh: 'RSI', en: 'RSI' },
-		taker_buy_ratio: { zh: '主买比', en: 'Taker Buy Ratio' },
-		body_ratio: { zh: '实体比', en: 'Body Ratio' },
-		ema_crossover: { zh: 'EMA 交叉', en: 'EMA Crossover' },
-		vwap_deviation: { zh: 'VWAP 偏离', en: 'VWAP Deviation' },
-		volume_ratio: { zh: '量比', en: 'Volume Ratio' },
-		bullish_candles: { zh: '阳线占比', en: 'Bullish Candles' },
-		candle_range_pct: { zh: '振幅', en: 'Candle Range %' },
-		volume_trend: { zh: '量能趋势', en: 'Volume Trend' },
+	const INDICATOR_LABELS: Record<IndicatorType, string> = {
+		roc: 'Rate of Change',
+		rsi: 'RSI',
+		taker_buy_ratio: 'Taker Buy Ratio',
+		body_ratio: 'Body Ratio',
+		ema_crossover: 'EMA Crossover',
+		vwap_deviation: 'VWAP Deviation',
+		volume_ratio: 'Volume Ratio',
+		bullish_candles: 'Bullish Candles',
+		candle_range_pct: 'Candle Range %',
+		volume_trend: 'Volume Trend',
 	};
 
 	const ALL_INDICATORS: IndicatorType[] = ['roc', 'rsi', 'taker_buy_ratio', 'body_ratio', 'ema_crossover', 'vwap_deviation', 'volume_ratio', 'bullish_candles', 'candle_range_pct', 'volume_trend'];
@@ -437,22 +436,22 @@
 		updateSignalParams({ rules });
 	}
 
-	const METHOD_DESCRIPTIONS: Record<string, Record<string, string>> = {
-		market: { zh: '市价单，立刻成交', en: 'Market order, immediate fill' },
-		limit: { zh: '限价挂单，等待被动成交', en: 'Limit order, passive fill' },
-		swing_limit: { zh: '等待目标价出现后买入', en: 'Wait for target price, then buy' },
-		post_market_scan: { zh: '市场结束后扫描低价单', en: 'Scan cheap asks after market close' },
+	const METHOD_DESCRIPTIONS: Record<string, string> = {
+		market: 'Market order, immediate fill',
+		limit: 'Limit order, passive fill',
+		swing_limit: 'Wait for target price, then buy',
+		post_market_scan: 'Scan cheap asks after market close',
 	};
 
 	function exitTypeLabel(type: string): string {
-		const labels: Record<string, Record<string, string>> = {
-			settlement: { zh: '等待结算', en: 'Settlement' },
-			take_profit: { zh: '止盈', en: 'Take Profit' },
-			stop_loss: { zh: '止损', en: 'Stop Loss' },
-			trailing_stop: { zh: '追踪止损', en: 'Trailing Stop' },
-			checkpoint: { zh: '方向检查', en: 'Checkpoint' },
+		const labels: Record<string, string> = {
+			settlement: 'Settlement',
+			take_profit: 'Take Profit',
+			stop_loss: 'Stop Loss',
+			trailing_stop: 'Trailing Stop',
+			checkpoint: 'Checkpoint',
 		};
-		return labels[type]?.[lang] ?? type;
+		return labels[type] ?? type;
 	}
 </script>
 
@@ -491,17 +490,17 @@
 				<div class="step-card">
 					<div class="step-header">
 						<span class="step-num">1</span>
-						<span class="step-title">{lang === 'zh' ? '开始' : 'Start'}</span>
+						<span class="step-title">Start</span>
 					</div>
 					<div class="step-body">
 						<div class="start-options">
 							<!-- Templates -->
 							<div class="start-group">
-								<div class="field-label">{lang === 'zh' ? '从模板开始' : 'Start from template'}</div>
+								<div class="field-label">Start from template</div>
 								<div class="template-row">
 									{#each TEMPLATES as tmpl (tmpl.id)}
 										<button class="template-chip" onclick={() => { applyTemplate(tmpl.id); revealNext(1); }}>
-											{tmpl.label[lang] ?? tmpl.label.en}
+											{tmpl.label.en}
 										</button>
 									{/each}
 								</div>
@@ -510,14 +509,14 @@
 							<div class="start-group">
 								<button class="start-action-btn" onclick={() => { handleImport(); revealNext(1); }}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-									{lang === 'zh' ? '导入 JSON 文件' : 'Import JSON file'}
+									Import JSON file
 								</button>
 							</div>
 							<!-- Blank -->
 							<div class="start-group">
 								<button class="start-action-btn" onclick={() => { config = cloneConfig(BLANK_CONFIG); revealNext(1); }}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-									{lang === 'zh' ? '从空白开始' : 'Start blank'}
+									Start blank
 								</button>
 							</div>
 						</div>
@@ -529,19 +528,19 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">2</span>
-							<span class="step-title">{lang === 'zh' ? '门控条件' : 'Gates'}</span>
-							<span class="step-optional">{lang === 'zh' ? '可选' : 'optional'}</span>
+							<span class="step-title">Gates</span>
+							<span class="step-optional">optional</span>
 						</div>
 						<div class="step-body">
 							{#each config.gates ?? [] as gate, i (i)}
 								<div class="rule-card" class:rule-card-wide={gate.type === 'schedule'}>
 									<div class="rule-header">
 										<span class="rule-type">
-											{#if gate.type === 'volatility'}{lang === 'zh' ? '波动率' : 'Volatility'}
-											{:else if gate.type === 'trend'}{lang === 'zh' ? '趋势' : 'Trend'}
-											{:else if gate.type === 'schedule'}{lang === 'zh' ? '时间段' : 'Schedule'}
-											{:else if gate.type === 'daily_loss_limit'}{lang === 'zh' ? '日亏损上限' : 'Daily Loss Limit'}
-											{:else if gate.type === 'cooldown'}{lang === 'zh' ? '冷却' : 'Cooldown'}
+											{#if gate.type === 'volatility'}Volatility
+											{:else if gate.type === 'trend'}Trend
+											{:else if gate.type === 'schedule'}Schedule
+											{:else if gate.type === 'daily_loss_limit'}Daily Loss Limit
+											{:else if gate.type === 'cooldown'}Cooldown
 											{/if}
 										</span>
 										<button class="remove-btn" onclick={() => removeGate(i)}>&times;</button>
@@ -555,8 +554,8 @@
 											<div class="field">
 												<label class="field-label">Mode</label>
 												<select class="field-select" value={gate.mode} onchange={(e) => setGateProp(i, 'mode', e.currentTarget.value)}>
-													<option value="require_low">{lang === 'zh' ? '低波动' : 'Low Vol'}</option>
-													<option value="require_high">{lang === 'zh' ? '高波动' : 'High Vol'}</option>
+													<option value="require_low">Low Vol</option>
+													<option value="require_high">High Vol</option>
 												</select>
 											</div>
 										</div>
@@ -587,7 +586,7 @@
 												{@const activeHours = gate.grid?.[day] ?? []}
 												<div class="schedule-row">
 													<button class="schedule-day-label schedule-day-btn" onclick={() => toggleScheduleDay(i, day)}>
-														{DAY_LABELS[day][lang]}
+														{DAY_LABELS[day]}
 													</button>
 													{#each ALL_HOURS as h}
 														<button class="schedule-cell" class:schedule-cell-active={activeHours.includes(h)} onclick={() => toggleScheduleHour(i, day, h)}></button>
@@ -596,22 +595,22 @@
 											{/each}
 										</div>
 										<div class="field mt-2">
-											<label class="field-label">{lang === 'zh' ? '时区' : 'Timezone'}</label>
+											<label class="field-label">Timezone</label>
 											<input type="text" class="field-input" value={gate.timezone} oninput={(e) => setGateProp(i, 'timezone', e.currentTarget.value)} />
 										</div>
 									{:else if gate.type === 'daily_loss_limit'}
 										<div class="rule-fields">
-											<label class="field-label">{lang === 'zh' ? '上限 (USD)' : 'Limit (USD)'}</label>
+											<label class="field-label">Limit (USD)</label>
 											<input type="number" class="field-input sm" value={gate.maxLossUsd} oninput={(e) => setGateProp(i, 'maxLossUsd', +e.currentTarget.value)} min="1" step="1" />
 										</div>
 									{:else if gate.type === 'cooldown'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">{lang === 'zh' ? '连亏轮数' : 'After Losses'}</label>
+												<label class="field-label">After Losses</label>
 												<input type="number" class="field-input sm" value={gate.afterConsecutiveLosses} oninput={(e) => setGateProp(i, 'afterConsecutiveLosses', +e.currentTarget.value)} min="1" max="20" />
 											</div>
 											<div class="field">
-												<label class="field-label">{lang === 'zh' ? '暂停分钟' : 'Pause (min)'}</label>
+												<label class="field-label">Pause (min)</label>
 												<input type="number" class="field-input sm" value={gate.pauseMinutes} oninput={(e) => setGateProp(i, 'pauseMinutes', +e.currentTarget.value)} min="1" max="240" />
 											</div>
 										</div>
@@ -619,21 +618,21 @@
 								</div>
 							{/each}
 							<div class="add-row">
-								<button class="add-chip" onclick={() => addGate('volatility')}>+ {lang === 'zh' ? '波动率' : 'Volatility'}</button>
-								<button class="add-chip" onclick={() => addGate('trend')}>+ {lang === 'zh' ? '趋势' : 'Trend'}</button>
+								<button class="add-chip" onclick={() => addGate('volatility')}>+ Volatility</button>
+								<button class="add-chip" onclick={() => addGate('trend')}>+ Trend</button>
 								{#if !(config.gates ?? []).some(g => g.type === 'schedule')}
-									<button class="add-chip" onclick={() => addGate('schedule')}>+ {lang === 'zh' ? '时间段' : 'Schedule'}</button>
+									<button class="add-chip" onclick={() => addGate('schedule')}>+ Schedule</button>
 								{/if}
 								{#if !(config.gates ?? []).some(g => g.type === 'daily_loss_limit')}
-									<button class="add-chip" onclick={() => addGate('daily_loss_limit')}>+ {lang === 'zh' ? '日亏损' : 'Loss Limit'}</button>
+									<button class="add-chip" onclick={() => addGate('daily_loss_limit')}>+ Loss Limit</button>
 								{/if}
 								{#if !(config.gates ?? []).some(g => g.type === 'cooldown')}
-									<button class="add-chip" onclick={() => addGate('cooldown')}>+ {lang === 'zh' ? '冷却' : 'Cooldown'}</button>
+									<button class="add-chip" onclick={() => addGate('cooldown')}>+ Cooldown</button>
 								{/if}
 							</div>
 							{#if revealedSteps <= 2}
 								<button class="continue-btn" onclick={() => revealNext(2)}>
-									{lang === 'zh' ? '继续' : 'Continue'}
+									Continue
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -646,37 +645,37 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">3</span>
-							<span class="step-title">{lang === 'zh' ? '入场配置' : 'Entry'}</span>
+							<span class="step-title">Entry</span>
 						</div>
 						<div class="step-body">
 							<div class="field-grid-2">
 								<div class="field">
-									<label class="field-label">{lang === 'zh' ? '金额 (USD)' : 'Amount (USD)'}</label>
+									<label class="field-label">Amount (USD)</label>
 									<input type="number" class="field-input" bind:value={config.entry.amount} min="0.01" max="10000" step="1" />
 								</div>
 								<div class="field">
-									<label class="field-label">{lang === 'zh' ? '入场方式' : 'Method'}</label>
+									<label class="field-label">Method</label>
 									<select class="field-select" bind:value={config.entry.method}>
 										{#each (['market', 'limit', 'swing_limit', 'post_market_scan'] as EntryMethod[]) as m}
-											<option value={m}>{METHOD_DESCRIPTIONS[m]?.[lang] ?? m}</option>
+											<option value={m}>{METHOD_DESCRIPTIONS[m] ?? m}</option>
 										{/each}
 									</select>
 								</div>
 							</div>
 
 							<div class="field">
-								<label class="field-label">{lang === 'zh' ? '最大买入价' : 'Max Buy Price'}</label>
+								<label class="field-label">Max Buy Price</label>
 								<input type="number" class="field-input" bind:value={config.entry.maxBuyPrice} min="0.01" max="0.99" step="0.01" />
 							</div>
 
 							{#if config.entry.method === 'swing_limit'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '目标价' : 'Target Price'}</label>
+										<label class="field-label">Target Price</label>
 										<input type="number" class="field-input" bind:value={config.entry.swingTargetPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '等待秒数' : 'Window (sec)'}</label>
+										<label class="field-label">Window (sec)</label>
 										<input type="number" class="field-input" bind:value={config.entry.swingWindowSec} min="1" max="600" step="1" />
 									</div>
 								</div>
@@ -685,11 +684,11 @@
 							{#if config.entry.method === 'limit'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '挂单价格' : 'Limit Price'}</label>
+										<label class="field-label">Limit Price</label>
 										<input type="number" class="field-input" bind:value={config.entry.limitPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '超时秒数' : 'Timeout (sec)'}</label>
+										<label class="field-label">Timeout (sec)</label>
 										<input type="number" class="field-input" bind:value={config.entry.limitTimeoutSec} min="1" max="600" step="1" />
 									</div>
 								</div>
@@ -698,18 +697,18 @@
 							{#if config.entry.method === 'post_market_scan'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '扫描价格上限' : 'Scan Max Price'}</label>
+										<label class="field-label">Scan Max Price</label>
 										<input type="number" class="field-input" bind:value={config.entry.scanMaxBuyPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '扫描预算' : 'Scan Budget'}</label>
+										<label class="field-label">Scan Budget</label>
 										<input type="number" class="field-input" bind:value={config.entry.scanMaxSpend} min="1" max="10000" step="1" />
 									</div>
 								</div>
 							{/if}
 
 							<div class="field">
-								<label class="field-label">{lang === 'zh' ? '入场时间窗口' : 'Entry Time Windows'} <span class="field-optional">00:00 - 05:00</span></label>
+								<label class="field-label">Entry Time Windows <span class="field-optional">00:00 - 05:00</span></label>
 								{#each config.entry.windows as w, i}
 									<div class="window-row">
 										<span class="window-tag">W{w.window}</span>
@@ -747,13 +746,13 @@
 									<button class="add-chip" onclick={() => {
 										const nextNum = (config.entry.windows.length + 1) as 1 | 2 | 3;
 										config.entry.windows = [...config.entry.windows, { window: nextNum, start: 160, end: 130 }];
-									}}>+ {lang === 'zh' ? '添加窗口' : 'Add Window'}</button>
+									}}>+ Add Window</button>
 								{/if}
 							</div>
 
 							{#if revealedSteps <= 3}
 								<button class="continue-btn" onclick={() => revealNext(3)}>
-									{lang === 'zh' ? '继续' : 'Continue'}
+									Continue
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -766,7 +765,7 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">4</span>
-							<span class="step-title">{lang === 'zh' ? '方向决策' : 'Direction'}</span>
+							<span class="step-title">Direction</span>
 						</div>
 						<div class="step-body">
 							<div class="choice-grid">
@@ -786,7 +785,7 @@
 											}
 										}}
 									>
-										<span class="choice-name">{DIR_DESCRIPTIONS[m]?.[lang] ?? m}</span>
+										<span class="choice-name">{DIR_DESCRIPTIONS[m] ?? m}</span>
 									</button>
 								{/each}
 							</div>
@@ -797,15 +796,15 @@
 								<div class="dir-params mt-3">
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? 'RSI 超卖线' : 'RSI Oversold'}</label>
+											<label class="field-label">RSI Oversold</label>
 											<input type="number" class="field-input" value={rsi.thresholdLow} oninput={(e) => { config.direction.params = { ...rsi, thresholdLow: +e.currentTarget.value }; }} min="0" max="100" />
 										</div>
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? 'RSI 超买线' : 'RSI Overbought'}</label>
+											<label class="field-label">RSI Overbought</label>
 											<input type="number" class="field-input" value={rsi.thresholdHigh} oninput={(e) => { config.direction.params = { ...rsi, thresholdHigh: +e.currentTarget.value }; }} min="0" max="100" />
 										</div>
 									</div>
-									<div class="field-hint">{lang === 'zh' ? 'RSI 低于超卖线做多，高于超买线做空' : 'Go long below oversold, short above overbought'}</div>
+									<div class="field-hint">Go long below oversold, short above overbought</div>
 								</div>
 							{/if}
 
@@ -815,10 +814,10 @@
 								<div class="dir-params mt-3">
 									<!-- Upload -->
 									<div class="field">
-										<label class="field-label">{lang === 'zh' ? '模型文件' : 'Model File'}</label>
+										<label class="field-label">Model File</label>
 										<button class="upload-btn" onclick={handleModelUpload}>
 											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-											{lang === 'zh' ? '上传模型 (.json)' : 'Upload Model (.json)'}
+											Upload Model (.json)
 										</button>
 										{#if modelUploadError}
 											<div class="json-error">{modelUploadError}</div>
@@ -828,26 +827,26 @@
 									{#if modelMeta}
 										<div class="model-meta">
 											<div class="model-meta-row">
-												<span class="model-meta-label">{lang === 'zh' ? '版本' : 'Version'}</span>
+												<span class="model-meta-label">Version</span>
 												<span class="model-meta-value">{modelMeta.version}</span>
 											</div>
 											<div class="model-meta-row">
-												<span class="model-meta-label">{lang === 'zh' ? '决策树' : 'Trees'}</span>
+												<span class="model-meta-label">Trees</span>
 												<span class="model-meta-value">{modelMeta.n_estimators}</span>
 											</div>
 											<div class="model-meta-row">
-												<span class="model-meta-label">{lang === 'zh' ? '特征数' : 'Features'}</span>
+												<span class="model-meta-label">Features</span>
 												<span class="model-meta-value">{modelMeta.n_features}</span>
 											</div>
 											{#if modelMeta.accuracy != null}
 												<div class="model-meta-row">
-													<span class="model-meta-label">{lang === 'zh' ? '准确率' : 'Accuracy'}</span>
+													<span class="model-meta-label">Accuracy</span>
 													<span class="model-meta-value">{(modelMeta.accuracy * 100).toFixed(1)}%</span>
 												</div>
 											{/if}
 											{#if modelMeta.training_samples != null}
 												<div class="model-meta-row">
-													<span class="model-meta-label">{lang === 'zh' ? '训练样本' : 'Samples'}</span>
+													<span class="model-meta-label">Samples</span>
 													<span class="model-meta-value">{modelMeta.training_samples.toLocaleString()}</span>
 												</div>
 											{/if}
@@ -856,7 +855,7 @@
 									<!-- Params -->
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '模型类型' : 'Model Type'}</label>
+											<label class="field-label">Model Type</label>
 											<select class="field-select" value={ml.modelType} onchange={(e) => { config.direction.params = { ...ml, modelType: e.currentTarget.value as MlModelParams['modelType'] }; }}>
 												<option value="random_forest">Random Forest</option>
 												<option value="gradient_boosting">Gradient Boosting</option>
@@ -864,17 +863,17 @@
 											</select>
 										</div>
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '模型 ID' : 'Model ID'}</label>
+											<label class="field-label">Model ID</label>
 											<input type="text" class="field-input" value={ml.modelId} oninput={(e) => { config.direction.params = { ...ml, modelId: e.currentTarget.value }; }} placeholder="rf-v5-30s" />
 										</div>
 									</div>
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '最低置信度' : 'Min Confidence'}</label>
+											<label class="field-label">Min Confidence</label>
 											<input type="number" class="field-input" value={ml.confidenceThreshold} oninput={(e) => { config.direction.params = { ...ml, confidenceThreshold: +e.currentTarget.value }; }} min="0.5" max="1" step="0.01" />
 										</div>
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '数据等待秒数' : 'Data Wait (sec)'}</label>
+											<label class="field-label">Data Wait (sec)</label>
 											<input type="number" class="field-input" value={ml.tradeWindowSec} oninput={(e) => { config.direction.params = { ...ml, tradeWindowSec: +e.currentTarget.value }; }} min="5" max="120" />
 										</div>
 									</div>
@@ -888,21 +887,21 @@
 									<!-- Thresholds -->
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '下注阈值' : 'Bet Threshold'}</label>
+											<label class="field-label">Bet Threshold</label>
 											<input type="number" class="field-input" value={sig.betThreshold} oninput={(e) => updateSignalParams({ betThreshold: +e.currentTarget.value })} />
 										</div>
 										<div class="field">
-											<label class="field-label">{lang === 'zh' ? '反向阈值' : 'Reverse Threshold'}</label>
+											<label class="field-label">Reverse Threshold</label>
 											<input type="number" class="field-input" value={sig.reverseThreshold} oninput={(e) => updateSignalParams({ reverseThreshold: +e.currentTarget.value })} />
 										</div>
 									</div>
 									<label class="toggle-label mt-2">
 										<input type="checkbox" checked={sig.reverseEnabled} onchange={(e) => updateSignalParams({ reverseEnabled: e.currentTarget.checked })} />
-										<span>{lang === 'zh' ? '启用反向下注' : 'Enable reverse bets'}</span>
+										<span>Enable reverse bets</span>
 									</label>
 
 									<!-- Signal Rules -->
-									<div class="sub-header mt-3">{lang === 'zh' ? '信号规则' : 'Signal Rules'} ({sig.rules.length})</div>
+									<div class="sub-header mt-3">Signal Rules ({sig.rules.length})</div>
 									{#each sig.rules as rule, ri (ri)}
 										<div class="signal-rule-card">
 											<div class="rule-header">
@@ -911,25 +910,25 @@
 											</div>
 											<div class="field-grid-2">
 												<div class="field">
-													<label class="field-label">{lang === 'zh' ? '指标' : 'Indicator'}</label>
+													<label class="field-label">Indicator</label>
 													<select class="field-select" value={rule.indicator} onchange={(e) => updateSignalRule(ri, { indicator: e.currentTarget.value as IndicatorType })}>
 														{#each ALL_INDICATORS as ind}
-															<option value={ind}>{INDICATOR_LABELS[ind][lang]}</option>
+															<option value={ind}>{INDICATOR_LABELS[ind]}</option>
 														{/each}
 													</select>
 												</div>
 												<div class="field">
-													<label class="field-label">{lang === 'zh' ? '周期' : 'Period'}</label>
+													<label class="field-label">Period</label>
 													<input type="number" class="field-input" value={(rule.params as any)?.period ?? 14} oninput={(e) => updateSignalRule(ri, { params: { ...rule.params, period: +e.currentTarget.value } })} min="1" max="100" />
 												</div>
 											</div>
 											<label class="toggle-label mt-2">
 												<input type="checkbox" checked={rule.required ?? false} onchange={(e) => updateSignalRule(ri, { required: e.currentTarget.checked })} />
-												<span>{lang === 'zh' ? '必须满足 (AND)' : 'Required (AND gate)'}</span>
+												<span>Required (AND gate)</span>
 											</label>
 											<!-- Conditions -->
 											<div class="conditions-section mt-2">
-												<div class="field-label">{lang === 'zh' ? '条件' : 'Conditions'}</div>
+												<div class="field-label">Conditions</div>
 												{#each rule.conditions as cond, ci (ci)}
 													<div class="condition-row">
 														<input type="number" class="field-input cond-input" value={cond.range[0]} oninput={(e) => updateCondition(ri, ci, { range: [e.currentTarget.value === '' ? null : +e.currentTarget.value, cond.range[1]] })} placeholder="min" />
@@ -940,17 +939,17 @@
 														<button class="remove-btn" onclick={() => removeCondition(ri, ci)}>&times;</button>
 													</div>
 												{/each}
-												<button class="add-chip" onclick={() => addCondition(ri)}>+ {lang === 'zh' ? '条件' : 'Condition'}</button>
+												<button class="add-chip" onclick={() => addCondition(ri)}>+ Condition</button>
 											</div>
 										</div>
 									{/each}
-									<button class="add-chip" onclick={addSignalRule}>+ {lang === 'zh' ? '添加规则' : 'Add Rule'}</button>
+									<button class="add-chip" onclick={addSignalRule}>+ Add Rule</button>
 								</div>
 							{/if}
 
 							{#if revealedSteps <= 4}
 								<button class="continue-btn" onclick={() => revealNext(4)}>
-									{lang === 'zh' ? '继续' : 'Continue'}
+									Continue
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -963,7 +962,7 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">5</span>
-							<span class="step-title">{lang === 'zh' ? '退出规则' : 'Exit Rules'}</span>
+							<span class="step-title">Exit Rules</span>
 						</div>
 						<div class="step-body">
 							<!-- User-defined exit rules (reorderable) -->
@@ -979,44 +978,44 @@
 									</div>
 									{#if rule.type === 'take_profit'}
 										<div class="rule-fields">
-											<label class="field-label">{lang === 'zh' ? '止盈比例' : 'Profit %'}</label>
+											<label class="field-label">Profit %</label>
 											<input type="number" class="field-input sm" value={rule.pct} oninput={(e) => setExitProp(i, 'pct', +e.currentTarget.value)} min="0.01" max="10" step="0.01" />
 										</div>
 									{:else if rule.type === 'stop_loss'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">{lang === 'zh' ? '止损价' : 'Price'}</label>
+												<label class="field-label">Price</label>
 												<input type="number" class="field-input sm" value={rule.price} oninput={(e) => setExitProp(i, 'price', +e.currentTarget.value)} min="0" max="1" step="0.01" />
 											</div>
 											<div class="field">
-												<label class="field-label">{lang === 'zh' ? '最少持仓秒数' : 'Min Hold (s)'}</label>
+												<label class="field-label">Min Hold (s)</label>
 												<input type="number" class="field-input sm" value={rule.minHoldSec} oninput={(e) => setExitProp(i, 'minHoldSec', +e.currentTarget.value)} min="0" max="300" />
 											</div>
 										</div>
 									{:else if rule.type === 'trailing_stop'}
 										<div class="rule-fields">
-											<label class="field-label">{lang === 'zh' ? '回撤比例' : 'Drawdown %'}</label>
+											<label class="field-label">Drawdown %</label>
 											<input type="number" class="field-input sm" value={rule.drawdownPct} oninput={(e) => setExitProp(i, 'drawdownPct', +e.currentTarget.value)} min="0.01" max="1" step="0.01" />
 										</div>
 									{:else if rule.type === 'checkpoint'}
 										<div class="rule-fields">
-											<label class="field-label">{lang === 'zh' ? '检查时机 (剩余秒)' : 'Check at (sec remaining)'}</label>
+											<label class="field-label">Check at (sec remaining)</label>
 											<input type="number" class="field-input sm" value={rule.remainingSec} oninput={(e) => setExitProp(i, 'remainingSec', +e.currentTarget.value)} min="1" max="300" />
 										</div>
 									{/if}
 								</div>
 							{/each}
 							<div class="add-row">
-								<button class="add-chip" onclick={() => addExitRule('take_profit')}>+ {lang === 'zh' ? '止盈' : 'TP'}</button>
-								<button class="add-chip" onclick={() => addExitRule('stop_loss')}>+ {lang === 'zh' ? '止损' : 'SL'}</button>
-								<button class="add-chip" onclick={() => addExitRule('trailing_stop')}>+ {lang === 'zh' ? '追踪' : 'Trail'}</button>
-								<button class="add-chip" onclick={() => addExitRule('checkpoint')}>+ {lang === 'zh' ? '检查' : 'Check'}</button>
+								<button class="add-chip" onclick={() => addExitRule('take_profit')}>+ TP</button>
+								<button class="add-chip" onclick={() => addExitRule('stop_loss')}>+ SL</button>
+								<button class="add-chip" onclick={() => addExitRule('trailing_stop')}>+ Trail</button>
+								<button class="add-chip" onclick={() => addExitRule('checkpoint')}>+ Check</button>
 							</div>
 							<!-- Settlement (always last, non-removable) -->
 							<div class="rule-card settlement-card">
 								<div class="rule-header">
 									<span class="rule-type settlement-type">{exitTypeLabel('settlement')}</span>
-									<span class="field-optional">{lang === 'zh' ? '保底' : 'fallback'}</span>
+									<span class="field-optional">fallback</span>
 								</div>
 							</div>
 
@@ -1037,7 +1036,7 @@
 							type="text"
 							class="field-input naming-input"
 							bind:value={label}
-							placeholder={lang === 'zh' ? '给策略起个名字...' : 'Name your strategy...'}
+							placeholder="Name your strategy..."
 							onkeydown={(e) => { if (e.key === 'Enter' && label.trim()) handleSave(); }}
 						/>
 						<button class="btn-primary" onclick={handleSave} disabled={!label.trim()}>

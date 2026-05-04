@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { preferences, locale as uiLocale } from '$lib/i18n';
+	import { preferences } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 
 	type DateRange = { from: string; to: string };
@@ -37,7 +37,6 @@
 
 	// --- Derived ---
 	const locale = $derived(preferences.dateLocale || 'en-US');
-	const lang = $derived(uiLocale.value || 'en');
 	const panelBg = $derived.by(() => {
 		if (!browser) return '#1a1e1c';
 		return document.documentElement.dataset.theme === 'light' ? '#ffffff' : '#1a1e1c';
@@ -270,17 +269,17 @@
 		viewMonth = new Date();
 	}
 
-	const presetLabels: Record<string, Record<string, string>> = {
-		all: { en: 'All', zh: '全部' },
-		today: { en: 'Today', zh: '今天' },
-		yesterday: { en: 'Yesterday', zh: '昨天' },
-		'7d': { en: '7 Days', zh: '7天' },
-		'30d': { en: '30 Days', zh: '30天' },
-		'90d': { en: '90 Days', zh: '90天' }
+	const presetLabels: Record<string, string> = {
+		all: 'All',
+		today: 'Today',
+		yesterday: 'Yesterday',
+		'7d': '7 Days',
+		'30d': '30 Days',
+		'90d': '90 Days'
 	};
 
 	function getPresetLabel(key: string): string {
-		return presetLabels[key]?.[lang === 'zh' ? 'zh' : 'en'] ?? key;
+		return presetLabels[key] ?? key;
 	}
 
 	function isPresetActive(key: string): boolean {
@@ -450,14 +449,14 @@
 		<!-- Footer: Today jump + confirm -->
 		<div class="dp-panel-footer">
 			<button class="dp-today-btn" onclick={goToToday}>
-				{lang === 'zh' ? '今天' : 'Today'}
+				Today
 			</button>
 			{#if mode === 'range'}
 				<button
 					class="dp-confirm-btn"
 					disabled={!pendingRange.from}
 					onclick={confirmRange}
-				>{lang === 'zh' ? '确定' : 'Confirm'}</button>
+				>Confirm</button>
 			{/if}
 		</div>
 	</div>

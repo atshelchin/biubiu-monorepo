@@ -1,7 +1,6 @@
 import {
   createI18n,
   setMessageLoader,
-  localizeHref as _localizeHref,
   enableProductionDevTools,
   disableProductionDevTools,
   isProductionDevToolsEnabled,
@@ -61,8 +60,8 @@ export const t = _t as (key: TranslationKey, params?: InterpolateParams) => stri
 
 export { locale, preferences, formatNumber, formatCurrency, formatDate, formatDateTime, formatRelativeTime, parseNumber };
 
-// Export localizeHref helper
-export const localizeHref = (path: string) => _localizeHref(path);
+// localizeHref - English only, no locale prefix needed
+export const localizeHref = (path: string) => path;
 
 // Export devTools functions for translation debugging
 export { enableProductionDevTools, disableProductionDevTools, isProductionDevToolsEnabled };

@@ -129,25 +129,24 @@ export function getSkipReasonLabel(t: TranslateFn, reason: string): string {
 	}
 }
 
-export function getSwingExitLabel(locale: string, reason: string): string {
-	const zh = locale === 'zh';
+export function getSwingExitLabel(_locale: string, reason: string): string {
 	switch (reason) {
 		case 'stop_loss':
-			return zh ? '止损' : 'Stop Loss';
+			return 'Stop Loss';
 		case 'binance_stop_loss':
-			return zh ? '币安止损' : 'Binance Stop Loss';
+			return 'Binance Stop Loss';
 		case 'take_profit':
-			return zh ? '止盈' : 'Take Profit';
+			return 'Take Profit';
 		case 'checkpoint_mismatch':
-			return zh ? '信号反转' : 'Signal Reversed';
+			return 'Signal Reversed';
 		case 'clob_direction_mismatch':
-			return zh ? '方向偏离' : 'Direction Mismatch';
+			return 'Direction Mismatch';
 		case 'price_moved_against':
-			return zh ? '价格反向' : 'Price Moved Against';
+			return 'Price Moved Against';
 		case 'manual':
-			return zh ? '手动退出' : 'Manual Exit';
+			return 'Manual Exit';
 		case 'timeout':
-			return zh ? '超时退出' : 'Timeout';
+			return 'Timeout';
 		default:
 			return reason;
 	}

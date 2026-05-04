@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { t, locale, preferences } from '$lib/i18n';
+	import { t, preferences } from '$lib/i18n';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
-	import { removeLocaleFromPathname } from '@shelchin/i18n-sveltekit';
 	import {
 		loadSettings,
 		saveSettings,
@@ -15,9 +12,6 @@
 		type TimeFormat,
 		type Settings
 	} from '$lib/settings';
-	import { translateMode, shortcutKey } from '$lib/translate-mode.svelte';
-
-	const SUPPORTED_LOCALES = ['en', 'zh'];
 
 	// Unified settings state
 	let settings = $state<Settings>({
@@ -34,7 +28,7 @@
 	const localTimezone = browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
 	const timezoneOptions = $derived.by(() => {
 		const base = [
-			{ value: localTimezone, label: locale.value === 'zh' ? '本地' : 'Local' },
+			{ value: localTimezone, label: 'Local' },
 			{ value: 'UTC', label: 'UTC' },
 			{ value: 'America/New_York', label: 'ET' },
 			{ value: 'Asia/Shanghai', label: 'UTC+8' },
@@ -53,12 +47,6 @@
 	// Visual font sizes for text scale options (in px)
 	const scaleFontSizes: Record<TextScale, number> = {
 		xs: 10, sm: 12, md: 14, lg: 16, xl: 18, '2xl': 20
-	};
-
-	// Locales config
-	const locales: Record<string, { label: string; flag: string }> = {
-		en: { label: 'English', flag: '🇺🇸' },
-		zh: { label: '中文', flag: '🇨🇳' }
 	};
 
 	// Supported currencies
@@ -97,11 +85,6 @@
 	});
 
 	// Handlers
-	function switchLocale(lang: string) {
-		const pathWithoutLocale = removeLocaleFromPathname(page.url.pathname, SUPPORTED_LOCALES);
-		goto(`/${lang}${pathWithoutLocale}`);
-	}
-
 	function handleSetTheme(theme: Theme) {
 		if (settings.theme !== theme) {
 			setTheme(theme);
@@ -151,41 +134,6 @@
 </script>
 
 <div class="settings-panel">
-	<!-- Language Section -->
-	<section class="settings-section">
-		<div class="section-label">
-			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<circle cx="12" cy="12" r="10"/>
-				<line x1="2" y1="12" x2="22" y2="12"/>
-				<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-			</svg>
-			<span>{t('settings.language')}</span>
-		</div>
-		<div class="language-row">
-			<div class="button-group">
-				{#each Object.entries(locales) as [code, loc]}
-					<button
-						class="option-btn"
-						class:active={locale.value === code}
-						onclick={() => switchLocale(code)}
-					>
-						<span class="option-flag">{loc.flag}</span>
-						<span>{loc.label}</span>
-					</button>
-				{/each}
-			</div>
-			<button
-				class="help-translate-link"
-				class:active={translateMode.enabled}
-				onclick={() => translateMode.toggle()}
-			>
-				{t('settings.helpTranslate')}
-			</button>
-		</div>
-	</section>
-
-	<div class="section-divider"></div>
-
 	<!-- Appearance Section -->
 	<section class="settings-section">
 		<div class="section-label">
@@ -366,21 +314,21 @@
 
 		<!-- Week Start Day -->
 		<div class="setting-row">
-			<span class="setting-label">{locale.value === 'zh' ? '每周起始日' : 'Week starts on'}</span>
+			<span class="setting-label">Week starts on</span>
 			<div class="format-group">
 				<button
 					class="format-btn"
 					class:active={settings.weekStartDay === 1}
 					onclick={() => handleSetWeekStartDay(1)}
 				>
-					{locale.value === 'zh' ? '周一' : 'Mon'}
+					Mon
 				</button>
 				<button
 					class="format-btn"
 					class:active={settings.weekStartDay === 0}
 					onclick={() => handleSetWeekStartDay(0)}
 				>
-					{locale.value === 'zh' ? '周日' : 'Sun'}
+					Sun
 				</button>
 			</div>
 		</div>
@@ -470,9 +418,6 @@
 		padding: var(--space-2);
 	}
 
-	.option-flag {
-		font-size: var(--text-base);
-	}
 
 	/* Text Scale Group */
 	.text-scale-group {
@@ -666,33 +611,5 @@
 		}
 	}
 
-	/* Language Row */
-	.language-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	/* Help Translate Link */
-	.help-translate-link {
-		margin-left: auto;
-		padding: 0;
-		border: none;
-		background: none;
-		color: var(--fg-muted);
-		font-size: var(--text-xs);
-		cursor: pointer;
-		text-decoration: underline;
-		text-underline-offset: 2px;
-		transition: color var(--motion-fast) var(--easing);
-	}
-
-	.help-translate-link:hover {
-		color: var(--fg-base);
-	}
-
-	.help-translate-link.active {
-		color: var(--accent);
-	}
 
 </style>

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 export const prerender = true;
 
 const BASE_URL = 'https://biubiu.tools';
-const LOCALES = ['en', 'zh'];
+const LOCALES = ['en'];
 const DEFAULT_LOCALE = 'en';
 
 // Static pages that don't have dynamic parameters

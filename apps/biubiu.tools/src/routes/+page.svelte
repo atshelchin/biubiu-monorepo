@@ -20,12 +20,6 @@
 	// Mobile drawer state
 	let showMobileDrawer = $state(false);
 
-	// Navigation links
-	const navLinks: { key: TranslationKey; href: string; icon: string; external?: boolean }[] = [
-		{ key: 'nav.tools', href: '/apps/balance-radar', icon: 'tools' },
-		{ key: 'nav.github', href: 'https://github.com/atshelchin/biubiu-monorepo', icon: 'github', external: true }
-	];
-
 	function openSettings() {
 		showMobileDrawer = false;
 		showSettings = true;
@@ -82,21 +76,6 @@
 				<span class="logo-accent">Tools</span>
 			</a>
 
-			<!-- Desktop Navigation -->
-			<nav class="nav-desktop">
-				{#each navLinks as link}
-					{#if link.external}
-						<a href={link.href} class="nav-link" target="_blank" rel="noopener noreferrer">
-							{t(link.key)}
-						</a>
-					{:else}
-						<a href={localizeHref(link.href)} class="nav-link">
-							{t(link.key)}
-						</a>
-					{/if}
-				{/each}
-			</nav>
-
 			<!-- Header Actions -->
 			<div class="header-actions">
 				<!-- Settings Button (Desktop) -->
@@ -137,28 +116,6 @@
 	<!-- Mobile Drawer -->
 	<ResponsiveDrawer open={showMobileDrawer} onClose={() => (showMobileDrawer = false)} title={t('nav.menu')}>
 		<div class="drawer-nav">
-			<!-- Navigation Links -->
-			<nav class="drawer-links">
-				{#each navLinks as link}
-					{#if link.external}
-						<a href={link.href} class="drawer-link" target="_blank" rel="noopener noreferrer" onclick={() => (showMobileDrawer = false)}>
-							<span>{t(link.key)}</span>
-							<svg class="external-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-								<polyline points="15 3 21 3 21 9"/>
-								<line x1="10" y1="14" x2="21" y2="3"/>
-							</svg>
-						</a>
-					{:else}
-						<a href={localizeHref(link.href)} class="drawer-link" onclick={() => (showMobileDrawer = false)}>
-							<span>{t(link.key)}</span>
-						</a>
-					{/if}
-				{/each}
-			</nav>
-
-			<div class="drawer-divider"></div>
-
 			<!-- Settings Button -->
 			<button class="drawer-settings-btn" onclick={openSettings}>
 				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -363,30 +320,6 @@
 		color: var(--accent);
 	}
 
-	/* Desktop Navigation */
-	.nav-desktop {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-	}
-
-	.nav-link {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-4);
-		color: var(--fg-muted);
-		font-size: var(--text-sm);
-		font-weight: var(--weight-normal);
-		text-decoration: none;
-		border-radius: var(--radius-md);
-		transition: color var(--motion-fast) var(--easing);
-	}
-
-	.nav-link:hover {
-		color: var(--fg-base);
-	}
-
 	.header-actions {
 		display: flex;
 		align-items: center;
@@ -441,10 +374,6 @@
 	}
 
 	@media (max-width: 768px) {
-		.nav-desktop {
-			display: none;
-		}
-
 		.desktop-only {
 			display: none;
 		}
@@ -842,44 +771,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-	}
-
-	.drawer-links {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-	}
-
-	.drawer-link {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		color: var(--fg-base);
-		font-size: var(--text-base);
-		font-weight: var(--weight-medium);
-		text-decoration: none;
-		border-radius: var(--radius-lg);
-		transition: all var(--motion-fast) var(--easing);
-	}
-
-	.drawer-link:hover {
-		background: var(--bg-raised);
-	}
-
-	.drawer-link:active {
-		background: var(--accent-muted);
-	}
-
-	.drawer-link .external-icon {
-		margin-left: auto;
-		color: var(--fg-faint);
-	}
-
-	.drawer-divider {
-		height: 1px;
-		background: var(--border-subtle);
-		margin: var(--space-3) 0;
 	}
 
 	.drawer-settings-btn {

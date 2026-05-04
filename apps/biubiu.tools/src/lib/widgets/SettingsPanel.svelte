@@ -30,10 +30,8 @@
 		const base = [
 			{ value: localTimezone, label: 'Local' },
 			{ value: 'UTC', label: 'UTC' },
-			{ value: 'America/New_York', label: 'ET' },
-			{ value: 'Asia/Shanghai', label: 'UTC+8' },
 		];
-		// Deduplicate if local TZ matches a named option
+		// Deduplicate if local TZ is UTC
 		const seen = new Set<string>();
 		return base.filter(o => {
 			if (seen.has(o.value)) return false;
@@ -49,25 +47,6 @@
 		xs: 10, sm: 12, md: 14, lg: 16, xl: 18, '2xl': 20
 	};
 
-	// Supported currencies
-	const currencies: { code: string; symbol: string; name: string }[] = [
-		{ code: 'USD', symbol: '$', name: 'US Dollar' },
-		{ code: 'CNY', symbol: '¥', name: '人民币' },
-		{ code: 'EUR', symbol: '€', name: 'Euro' },
-		{ code: 'GBP', symbol: '£', name: 'British Pound' },
-		{ code: 'JPY', symbol: '¥', name: '日本円' },
-		{ code: 'KRW', symbol: '₩', name: '한국 원' },
-		{ code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
-		{ code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
-		{ code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-		{ code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-		{ code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-		{ code: 'BRL', symbol: 'R$', name: 'Real Brasileiro' },
-		{ code: 'MXN', symbol: 'MX$', name: 'Peso Mexicano' },
-		{ code: 'TRY', symbol: '₺', name: 'Türk Lirası' },
-		{ code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
-		{ code: 'IDR', symbol: 'Rp', name: 'Rupiah Indonesia' },
-	];
 
 	// Load settings on mount
 	let settingsLoaded = $state(false);
@@ -100,18 +79,6 @@
 	function handleSetNumberLocale(loc: string) {
 		settings = { ...settings, numberLocale: loc };
 		preferences.numberLocale = loc;
-		saveSettings(settings);
-	}
-
-	function handleSetDateLocale(loc: string) {
-		settings = { ...settings, dateLocale: loc };
-		preferences.dateLocale = loc;
-		saveSettings(settings);
-	}
-
-	function handleSetCurrency(code: string) {
-		settings = { ...settings, currency: code };
-		preferences.currency = code;
 		saveSettings(settings);
 	}
 
@@ -226,54 +193,6 @@
 			</div>
 		</div>
 
-		<!-- Date Format -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.dateFormat')}</span>
-			<div class="format-group">
-				<button
-					class="format-btn with-hint"
-					class:active={settings.dateLocale === 'en-US'}
-					onclick={() => handleSetDateLocale('en-US')}
-				>
-					<span class="format-value">2/10/2026</span>
-					<span class="format-hint">M/D/Y</span>
-				</button>
-				<button
-					class="format-btn with-hint"
-					class:active={settings.dateLocale === 'zh-CN'}
-					onclick={() => handleSetDateLocale('zh-CN')}
-				>
-					<span class="format-value">2026/2/10</span>
-					<span class="format-hint">Y/M/D</span>
-				</button>
-				<button
-					class="format-btn with-hint"
-					class:active={settings.dateLocale === 'de-DE'}
-					onclick={() => handleSetDateLocale('de-DE')}
-				>
-					<span class="format-value">10.2.2026</span>
-					<span class="format-hint">D.M.Y</span>
-				</button>
-			</div>
-		</div>
-
-		<!-- Currency -->
-		<div class="setting-block">
-			<span class="setting-label">{t('settings.currency')}</span>
-			<div class="currency-grid">
-				{#each currencies as currency}
-					<button
-						class="currency-btn"
-						class:active={settings.currency === currency.code}
-						onclick={() => handleSetCurrency(currency.code)}
-						title={currency.name}
-					>
-						<span class="currency-symbol">{currency.symbol}</span>
-						<span class="currency-code">{currency.code}</span>
-					</button>
-				{/each}
-			</div>
-		</div>
 
 		<!-- Timezone -->
 		<div class="setting-row">
@@ -512,103 +431,10 @@
 		line-height: 0.8;
 	}
 
-	/* Date format with hint */
-	.format-btn.with-hint {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		padding: var(--space-2) var(--space-3);
-	}
-
-	.format-value {
-		font-size: var(--text-sm);
-	}
-
-	.format-hint {
-		font-size: var(--text-xs);
-		color: var(--fg-faint);
-		font-weight: var(--weight-normal);
-	}
-
 	/* Override colors when format button is active */
 	.format-btn.active .sep-thousand,
 	.format-btn.active .sep-decimal {
 		color: inherit;
-	}
-
-	.format-btn.active .format-hint {
-		color: inherit;
-		opacity: 0.7;
-	}
-
-	/* Setting Block (full width label + content) */
-	.setting-block {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	/* Currency Grid */
-	.currency-grid {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: var(--space-1);
-		padding: var(--space-1);
-		background: var(--bg-raised);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md);
-	}
-
-	.currency-btn {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 2px;
-		padding: var(--space-2) var(--space-1);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-
-	.currency-btn:hover {
-		background: var(--accent-muted);
-	}
-
-	.currency-btn.active {
-		background: var(--accent);
-	}
-
-	.currency-symbol {
-		font-size: var(--text-base);
-		font-weight: var(--weight-bold);
-		color: var(--fg-base);
-		line-height: 1;
-	}
-
-	.currency-code {
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		font-weight: var(--weight-medium);
-	}
-
-	.currency-btn:hover .currency-symbol,
-	.currency-btn:hover .currency-code {
-		color: var(--fg-base);
-	}
-
-	.currency-btn.active .currency-symbol,
-	.currency-btn.active .currency-code {
-		color: var(--bg-base);
-	}
-
-	@media (max-width: 360px) {
-		.currency-grid {
-			grid-template-columns: repeat(3, 1fr);
-		}
 	}
 
 

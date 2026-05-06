@@ -2,7 +2,6 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { initSettings } from '$lib/settings';
 	import { i18nState } from '@shelchin/i18n-sveltekit';
-	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	// Import CSS (order matters: tokens first, then themes, then global)
 	import '../style/tokens.css';
@@ -12,9 +11,9 @@
 
 	let { children, data } = $props();
 
-	// Update i18nState when navigation completes (not during preload)
-	$effect(() => {
-		if (browser && data.messages && data.locale) {
+	// Update i18nState when data changes (must work for both SSR and client navigation)
+	$effect.pre(() => {
+		if (data.messages && data.locale) {
 			i18nState.setMessages(data.messages);
 			i18nState.locale = data.locale;
 		}

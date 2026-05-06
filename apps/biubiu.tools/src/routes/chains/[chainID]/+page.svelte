@@ -416,7 +416,11 @@
 										<span class="defi-item-name">{stable.symbol}</span>
 										<span class="defi-item-badge">{stable.type}</span>
 									</div>
-									<code class="defi-address">{stable.contract}</code>
+									{#if data.chain.explorers?.[0]?.url}
+										<a href={`${data.chain.explorers[0].url}/address/${stable.contract}`} target="_blank" rel="noopener noreferrer" class="defi-address-link">{stable.contract}</a>
+									{:else}
+										<code class="defi-address">{stable.contract}</code>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -427,7 +431,11 @@
 					<div class="defi-subsection">
 						<h3 class="defi-subtitle">{t('chains.defi.wrappedNative')}</h3>
 						<div class="glass-card defi-single">
-							<code class="defi-address">{data.chain.wrappedNativeToken}</code>
+							{#if data.chain.explorers?.[0]?.url}
+								<a href={`${data.chain.explorers[0].url}/address/${data.chain.wrappedNativeToken}`} target="_blank" rel="noopener noreferrer" class="defi-address-link">{data.chain.wrappedNativeToken}</a>
+							{:else}
+								<code class="defi-address">{data.chain.wrappedNativeToken}</code>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -444,7 +452,11 @@
 								{#each Object.entries(data.chain.dex.contracts) as [label, address]}
 									<div class="defi-contract-row">
 										<span class="defi-contract-label">{label}</span>
-										<code class="defi-address">{address}</code>
+										{#if data.chain.explorers?.[0]?.url}
+											<a href={`${data.chain.explorers[0].url}/address/${address}`} target="_blank" rel="noopener noreferrer" class="defi-address-link">{address}</a>
+										{:else}
+											<code class="defi-address">{address}</code>
+										{/if}
 									</div>
 								{/each}
 							</div>
@@ -939,11 +951,21 @@
 		color: var(--accent);
 	}
 
-	.defi-address {
+	.defi-address,
+	.defi-address-link {
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 		font-family: var(--font-mono, ui-monospace, monospace);
 		word-break: break-all;
+	}
+
+	.defi-address-link {
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.defi-address-link:hover {
+		color: var(--accent);
 	}
 
 	.defi-single {

@@ -22,5 +22,9 @@
   "chains.backToHome": "Back to Home",
   "chains.ens": "ENS Registry",
   "chains.faucets": "Faucets",
-  "chains.editOnGithub": "Edit"
+  "chains.editOnGithub": "Edit",
+  "chains.defi": "DeFi Info",
+  "chains.defi.stablecoins": "Stablecoins",
+  "chains.defi.wrappedNative": "Wrapped Native Token",
+  "chains.defi.dex": "DEX"
 }

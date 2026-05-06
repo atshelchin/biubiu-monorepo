@@ -28,6 +28,17 @@ export interface ChainData {
 		icon?: string;
 	}>;
 	slip44?: number;
+	stables?: Array<{
+		symbol: string;
+		type: string;
+		contract: string;
+	}>;
+	wrappedNativeToken?: string;
+	dex?: {
+		dex: string;
+		protocol: string;
+		contracts: Record<string, string>;
+	};
 }
 
 export const load: PageServerLoad = async ({ params, fetch }) => {

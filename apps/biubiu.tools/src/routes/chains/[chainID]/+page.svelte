@@ -401,6 +401,59 @@
 			</section>
 		{/if}
 
+		<!-- DeFi Info -->
+		{#if data.chain.stables?.length || data.chain.wrappedNativeToken || data.chain.dex}
+			<section class="defi-section" use:fadeInUp={{ delay: 250 }}>
+				<h2 class="section-title">{t('chains.defi')}</h2>
+
+				{#if data.chain.stables && data.chain.stables.length > 0}
+					<div class="defi-subsection">
+						<h3 class="defi-subtitle">{t('chains.defi.stablecoins')}</h3>
+						<div class="defi-list glass-card">
+							{#each data.chain.stables as stable}
+								<div class="defi-item">
+									<div class="defi-item-header">
+										<span class="defi-item-name">{stable.symbol}</span>
+										<span class="defi-item-badge">{stable.type}</span>
+									</div>
+									<code class="defi-address">{stable.contract}</code>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				{#if data.chain.wrappedNativeToken}
+					<div class="defi-subsection">
+						<h3 class="defi-subtitle">{t('chains.defi.wrappedNative')}</h3>
+						<div class="glass-card defi-single">
+							<code class="defi-address">{data.chain.wrappedNativeToken}</code>
+						</div>
+					</div>
+				{/if}
+
+				{#if data.chain.dex}
+					<div class="defi-subsection">
+						<h3 class="defi-subtitle">{t('chains.defi.dex')}</h3>
+						<div class="defi-list glass-card">
+							<div class="defi-item">
+								<div class="defi-item-header">
+									<span class="defi-item-name">{data.chain.dex.dex}</span>
+									<span class="defi-item-badge">{data.chain.dex.protocol}</span>
+								</div>
+								{#each Object.entries(data.chain.dex.contracts) as [label, address]}
+									<div class="defi-contract-row">
+										<span class="defi-contract-label">{label}</span>
+										<code class="defi-address">{address}</code>
+									</div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+			</section>
+		{/if}
+
 		<!-- ENS Registry -->
 		{#if data.chain.ens?.registry}
 			<section class="ens-section" use:fadeInUp={{ delay: 250 }}>
@@ -831,6 +884,84 @@
 	.faucet-link:hover {
 		color: var(--accent);
 		background: rgba(255, 255, 255, 0.08);
+	}
+
+	/* DeFi Section */
+	.defi-section {
+		margin-bottom: var(--space-8);
+	}
+
+	.defi-subsection {
+		margin-bottom: var(--space-4);
+	}
+
+	.defi-subtitle {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin: 0 0 var(--space-2);
+	}
+
+	.defi-list {
+		padding: var(--space-2);
+		border-radius: var(--radius-lg);
+	}
+
+	.defi-item {
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+	}
+
+	.defi-item + .defi-item {
+		border-top: 1px solid var(--border-subtle);
+	}
+
+	.defi-item-header {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		margin-bottom: var(--space-2);
+	}
+
+	.defi-item-name {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+	}
+
+	.defi-item-badge {
+		padding: var(--space-1) var(--space-2);
+		background: var(--accent-muted);
+		border-radius: var(--radius-sm);
+		font-size: var(--text-xs);
+		color: var(--accent);
+	}
+
+	.defi-address {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		font-family: var(--font-mono, ui-monospace, monospace);
+		word-break: break-all;
+	}
+
+	.defi-single {
+		padding: var(--space-4);
+		border-radius: var(--radius-md);
+	}
+
+	.defi-contract-row {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-3);
+		margin-top: var(--space-1);
+	}
+
+	.defi-contract-label {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		flex-shrink: 0;
 	}
 
 	/* Glass Card */

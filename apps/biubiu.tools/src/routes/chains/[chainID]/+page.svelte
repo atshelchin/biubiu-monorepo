@@ -446,7 +446,11 @@
 						<div class="defi-list glass-card">
 							<div class="defi-item">
 								<div class="defi-item-header">
-									<span class="defi-item-name">{data.chain.dex.dex}</span>
+									{#if data.chain.dex.url}
+										<a href={data.chain.dex.url} target="_blank" rel="noopener noreferrer" class="defi-item-name defi-dex-link">{data.chain.dex.dex}</a>
+									{:else}
+										<span class="defi-item-name">{data.chain.dex.dex}</span>
+									{/if}
 									<span class="defi-item-badge">{data.chain.dex.protocol}</span>
 								</div>
 								{#each Object.entries(data.chain.dex.contracts) as [label, address]}
@@ -965,6 +969,15 @@
 	}
 
 	.defi-address-link:hover {
+		color: var(--accent);
+	}
+
+	.defi-dex-link {
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.defi-dex-link:hover {
 		color: var(--accent);
 	}
 

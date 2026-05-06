@@ -38,6 +38,7 @@ export interface ChainData {
 		dex: string;
 		protocol: string;
 		contracts: Record<string, string>;
+		url?: string;
 	};
 }
 

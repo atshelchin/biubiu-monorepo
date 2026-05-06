@@ -11,18 +11,14 @@
 
 	let { children, data } = $props();
 
-	// Synchronously set messages on initial load (prevents hydration flash)
-	if (data.messages && data.locale) {
-		i18nState.setMessages(data.messages);
-		i18nState.locale = data.locale;
-	}
-
-	// Update i18nState on client-side navigation
-	$effect.pre(() => {
+	// Keep i18nState in sync with data from load function.
+	// Use $derived to ensure it runs before child components render.
+	const _syncMessages = $derived.by(() => {
 		if (data.messages && data.locale) {
 			i18nState.setMessages(data.messages);
 			i18nState.locale = data.locale;
 		}
+		return true;
 	});
 
 	// Initialize settings (theme, text-scale, etc.) on client mount

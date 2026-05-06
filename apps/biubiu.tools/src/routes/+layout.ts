@@ -1,5 +1,10 @@
 import type { LayoutLoad } from './$types';
-import { matchRoute } from '@shelchin/i18n-sveltekit';
+import { matchRoute, setRouteMessages } from '@shelchin/i18n-sveltekit';
+import { routeMessages } from '$i18n/routes';
+
+// Ensure route messages are registered (hooks.server.ts does this for SSR,
+// but on the client this module may load before $lib/i18n.ts)
+setRouteMessages(routeMessages);
 
 // Preload all message modules for dynamic import
 const messageModules = import.meta.glob('../messages/**/*.json', { eager: false });

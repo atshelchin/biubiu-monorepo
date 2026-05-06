@@ -11,14 +11,19 @@
 
 	let { children, data } = $props();
 
-	// Keep i18nState in sync with data from load function.
-	// Use $derived to ensure it runs before child components render.
-	const _syncMessages = $derived.by(() => {
-		if (data.messages && data.locale) {
-			i18nState.setMessages(data.messages);
-			i18nState.locale = data.locale;
+	// Set i18n messages before children render.
+	// This runs during component instantiation (synchronously, before any rendering).
+	function syncMessages(d: typeof data) {
+		if (d?.messages) {
+			i18nState.setMessages(d.messages);
+			i18nState.locale = d.locale ?? 'en';
 		}
-		return true;
+	}
+	syncMessages(data);
+
+	// Also sync on client-side navigation when data changes
+	$effect.pre(() => {
+		syncMessages(data);
 	});
 
 	// Initialize settings (theme, text-scale, etc.) on client mount

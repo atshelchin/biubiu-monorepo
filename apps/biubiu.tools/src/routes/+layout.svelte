@@ -11,7 +11,13 @@
 
 	let { children, data } = $props();
 
-	// Update i18nState when data changes (must work for both SSR and client navigation)
+	// Synchronously set messages on initial load (prevents hydration flash)
+	if (data.messages && data.locale) {
+		i18nState.setMessages(data.messages);
+		i18nState.locale = data.locale;
+	}
+
+	// Update i18nState on client-side navigation
 	$effect.pre(() => {
 		if (data.messages && data.locale) {
 			i18nState.setMessages(data.messages);

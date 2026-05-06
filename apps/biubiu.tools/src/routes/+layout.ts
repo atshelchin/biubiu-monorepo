@@ -1,5 +1,4 @@
 import type { LayoutLoad } from './$types';
-import { browser } from '$app/environment';
 import { matchRoute } from '@shelchin/i18n-sveltekit';
 
 // Preload all message modules for dynamic import
@@ -46,13 +45,6 @@ export const load: LayoutLoad = async ({ url, data, depends }) => {
   depends(`url:${url.pathname}`);
 
   const routePath = url.pathname;
-
-  // On browser, load messages (don't set i18nState here - let +layout.svelte handle it)
-  if (browser) {
-    const messages = await loadMessagesForRoute(routePath);
-    return { ...data, messages, locale: 'en' };
-  }
-
-  // On server, use data from +layout.server.ts
-  return data;
+  const messages = await loadMessagesForRoute(routePath);
+  return { ...data, messages, locale: 'en' };
 };

@@ -164,7 +164,7 @@ class DeployStore {
 			? (initCode.length - 2) / 2
 			: (contract.bytecode.length - 2) / 2;
 
-		return Math.max(500000, 32000 + rawBytes * 200 + 200000);
+		return Math.max(500000, (32000 + rawBytes * 200 + 200000) * 2);
 	}
 
 	/**

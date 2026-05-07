@@ -638,6 +638,10 @@ class DeployStore {
 			const data = await resp.json();
 			const code = data.result;
 			this.addressAlreadyDeployed = !!code && code !== '0x' && code !== '0x0';
+				// Auto-fill verify address for already-deployed contracts
+				if (this.addressAlreadyDeployed && this.predictedAddress) {
+					this.verifyAddress = this.predictedAddress;
+				}
 		} catch {
 			this.addressAlreadyDeployed = false;
 		} finally {

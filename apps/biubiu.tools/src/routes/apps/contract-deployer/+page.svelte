@@ -8,7 +8,7 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { encode } from 'uqr';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
-	import { deployStore, SUPPORTED_NETWORKS } from '$lib/deploy/deploy-store.svelte.js';
+	import { deployStore, SUPPORTED_NETWORKS, type SupportedNetwork } from '$lib/deploy/deploy-store.svelte.js';
 	import { formatRelativeTime } from '$lib/i18n';
 
 	const store = deployStore;
@@ -103,6 +103,32 @@
 		if (!probe || probe.status === 'pending') return `${host} — ...`;
 		if (probe.status === 'error') return `${host} — ${probe.error || 'Error'}`;
 		return `${host} — ${probe.latencyMs}ms`;
+	}
+
+	const CHAIN_EXPLORERS: Record<number, string> = {
+		1: 'https://etherscan.io',
+		42161: 'https://arbiscan.io',
+		8453: 'https://basescan.org',
+		10: 'https://optimistic.etherscan.io',
+		137: 'https://polygonscan.com',
+		56: 'https://bscscan.com',
+		43114: 'https://snowtrace.io',
+		100: 'https://gnosisscan.io'
+	};
+
+	function explorerForChain(chainId: number): string | null {
+		return CHAIN_EXPLORERS[chainId] ?? null;
+	}
+
+	/** Turn URLs and 0x addresses in log messages into clickable links */
+	function linkifyLog(msg: string): string {
+		// Escape HTML first
+		const escaped = msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		// Linkify URLs
+		return escaped.replace(
+			/(https?:\/\/[^\s]+)/g,
+			'<a href="$1" target="_blank" rel="noopener" class="log-link">$1</a>'
+		);
 	}
 
 	function truncateAddress(addr: string): string {
@@ -292,7 +318,11 @@
 
 			<!-- Explorer -->
 			<span class="label">{t('deploy.chain.explorer')}</span>
-			<div class="mono muted explorer-url">{store.explorerUrl || '-'}</div>
+			{#if store.explorerUrl}
+				<a class="mono explorer-link" href={store.explorerUrl} target="_blank" rel="noopener">{store.explorerUrl}</a>
+			{:else}
+				<div class="mono muted explorer-url">-</div>
+			{/if}
 		{/if}
 
 		<!-- Salt -->
@@ -328,9 +358,15 @@
 		{#if store.predictedAddress}
 			<div class="predicted-address" class:deployed={store.addressAlreadyDeployed}>
 				<span class="predicted-label">{t('deploy.create2.predictedAddress')}</span>
-				<button class="predicted-value" onclick={() => copyToClipboard(store.predictedAddress ?? '')}>
-					{store.predictedAddress}
-				</button>
+				{#if store.explorerUrl}
+					<a class="predicted-value" href="{store.explorerUrl}/address/{store.predictedAddress}" target="_blank" rel="noopener">
+						{store.predictedAddress}
+					</a>
+				{:else}
+					<button class="predicted-value" onclick={() => copyToClipboard(store.predictedAddress ?? '')}>
+						{store.predictedAddress}
+					</button>
+				{/if}
 				{#if store.checkingAddress}
 					<span class="predicted-status checking">{t('deploy.create2.checking')}</span>
 				{:else if store.addressAlreadyDeployed}
@@ -408,7 +444,7 @@
 				<div class="log-empty">{t('deploy.log.empty')}</div>
 			{:else}
 				{#each store.logs as entry (entry.id)}
-					<div class="log-item log-{entry.type}">{entry.message}</div>
+					<div class="log-item log-{entry.type}">{@html linkifyLog(entry.message)}</div>
 				{/each}
 			{/if}
 		</div>
@@ -443,10 +479,20 @@
 								<span class="history-time">{formatRelativeTime(record.timestamp)}</span>
 							</div>
 							<div class="history-row">
-								<button class="mono history-address" onclick={() => copyToClipboard(record.address)}>
-									{truncateAddress(record.address)}
-								</button>
-								{#if record.txHash}
+								{#if explorerForChain(record.chainId)}
+									<a class="mono history-address" href="{explorerForChain(record.chainId)}/address/{record.address}" target="_blank" rel="noopener">
+										{truncateAddress(record.address)}
+									</a>
+								{:else}
+									<button class="mono history-address" onclick={() => copyToClipboard(record.address)}>
+										{truncateAddress(record.address)}
+									</button>
+								{/if}
+								{#if record.txHash && explorerForChain(record.chainId)}
+									<a class="mono history-tx" href="{explorerForChain(record.chainId)}/tx/{record.txHash}" target="_blank" rel="noopener">
+										tx: {truncateAddress(record.txHash)}
+									</a>
+								{:else if record.txHash}
 									<button class="mono history-tx" onclick={() => copyToClipboard(record.txHash)}>
 										tx: {truncateAddress(record.txHash)}
 									</button>
@@ -867,6 +913,27 @@
 	.explorer-url {
 		font-size: var(--text-xs);
 		word-break: break-all;
+	}
+
+	.explorer-link {
+		font-size: var(--text-xs);
+		word-break: break-all;
+		color: var(--accent);
+		text-decoration: none;
+	}
+
+	.explorer-link:hover {
+		text-decoration: underline;
+	}
+
+	:global(.log-link) {
+		color: inherit;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	:global(.log-link:hover) {
+		opacity: 0.8;
 	}
 
 	/* Gas settings */

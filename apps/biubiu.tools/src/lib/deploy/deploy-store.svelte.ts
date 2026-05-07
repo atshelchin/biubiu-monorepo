@@ -30,6 +30,16 @@ export interface RpcProbeResult {
 	error?: string;
 }
 
+/** Format a gas price value with minimal but sufficient precision */
+function formatGasValue(v: number): string {
+	if (v === 0) return '0';
+	if (v >= 100) return v.toFixed(0);
+	if (v >= 1) return v.toFixed(2);
+	// For small values: show 2 significant digits
+	const digits = Math.max(0, -Math.floor(Math.log10(v))) + 2;
+	return v.toFixed(Math.min(digits, 10));
+}
+
 /** Verified supported networks — only these are available for deployment */
 export interface SupportedNetwork {
 	key: string;
@@ -539,28 +549,19 @@ class DeployStore {
 			const json = await res.json();
 			if (json.result) {
 				const gasWei = BigInt(json.result);
-				const gasPriceGwei = Number(gasWei * 12n / 10n) / 1e9;
-				const priorityGwei = Math.max(Number(gasWei / 2n) / 1e9, 0.001);
+				const maxFeeWei = Number(gasWei * 12n / 10n);
+				const priorityWei = Math.max(Number(gasWei / 2n), 1);
 
-				// Switch to wei display when gas price is extremely low (< 0.001 Gwei = 1M wei)
-				if (gasPriceGwei < 0.001) {
-					this.gasPriceUnit = 'wei';
-					const maxFeeWei = Number(gasWei * 12n / 10n);
-					const priorityWei = Math.max(Number(gasWei / 2n), 1000);
-					this.maxFeePerGasGwei = String(Math.round(maxFeeWei));
-					this.maxPriorityFeePerGasGwei = String(Math.round(priorityWei));
-				} else {
+				// Pick best unit: use gwei if >= 0.0001 gwei (100000 wei), otherwise wei
+				const gweiVal = maxFeeWei / 1e9;
+				if (gweiVal >= 0.0001) {
 					this.gasPriceUnit = 'gwei';
-					this.maxFeePerGasGwei = gasPriceGwei < 0.1
-						? gasPriceGwei.toFixed(4)
-						: gasPriceGwei < 10
-							? gasPriceGwei.toFixed(2)
-							: gasPriceGwei.toFixed(1);
-					this.maxPriorityFeePerGasGwei = priorityGwei < 0.1
-						? priorityGwei.toFixed(4)
-						: priorityGwei < 10
-							? priorityGwei.toFixed(2)
-							: priorityGwei.toFixed(1);
+					this.maxFeePerGasGwei = formatGasValue(gweiVal);
+					this.maxPriorityFeePerGasGwei = formatGasValue(priorityWei / 1e9);
+				} else {
+					this.gasPriceUnit = 'wei';
+					this.maxFeePerGasGwei = String(Math.round(maxFeeWei));
+					this.maxPriorityFeePerGasGwei = String(Math.max(Math.round(priorityWei), 1));
 				}
 			}
 		} catch {

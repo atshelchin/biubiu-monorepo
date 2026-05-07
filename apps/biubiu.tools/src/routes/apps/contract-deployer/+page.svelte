@@ -8,8 +8,7 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { encode } from 'uqr';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
-	import { deployStore } from '$lib/deploy/deploy-store.svelte.js';
-	import type { ChainInfo } from '$lib/deploy/types.js';
+	import { deployStore, SUPPORTED_NETWORKS } from '$lib/deploy/deploy-store.svelte.js';
 	import { formatRelativeTime } from '$lib/i18n';
 
 	const store = deployStore;
@@ -54,12 +53,8 @@
 		store.selectContract(parseInt(target.value));
 	}
 
-	function handleNetworkSelect(chain: ChainInfo) {
-		store.selectNetwork(chain);
-	}
-
-	function handleNetworkSearchInput() {
-		store.updateSearchResults();
+	function handleNetworkChange(e: Event) {
+		store.selectNetwork((e.target as HTMLSelectElement).value);
 	}
 
 	function handleRpcChange(e: Event) {
@@ -232,42 +227,21 @@
 			</div>
 		{/if}
 
-		<!-- Network Search -->
-		<label class="label" for="network-search">{t('deploy.chain.title')}</label>
-		<div class="network-search-wrap">
-			<input
-				id="network-search"
-				type="text"
-				class="input"
-				placeholder={t('deploy.chain.select')}
-				autocomplete="off"
-				bind:value={store.networkSearchQuery}
-				oninput={handleNetworkSearchInput}
-				onfocus={() => store.openNetworkDropdown()}
-				onblur={() => store.closeNetworkDropdown()}
-			/>
-			{#if store.chainIndexLoading || store.chainDataLoading}
-				<div class="network-loading"></div>
-			{/if}
-			{#if store.networkDropdownOpen && store.networkSearchResults.length > 0}
-				<div class="network-dropdown">
-					{#each store.networkSearchResults as chain (chain.chainId)}
-						<button
-							class="net-item"
-							class:active={store.selectedChain?.chainId === chain.chainId}
-							onmousedown={(e) => { e.preventDefault(); handleNetworkSelect(chain); }}
-						>
-							<span class="net-name">{chain.name}</span>
-							<span class="net-symbol">{chain.nativeCurrencySymbol || ''}</span>
-							<span class="net-chain-id">#{chain.chainId}</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
+		<!-- Network -->
+		<label class="label" for="network-select">{t('deploy.chain.title')}</label>
+		<select id="network-select" class="input" value={store.selectedNetworkKey} onchange={handleNetworkChange}>
+			<option value="">{t('deploy.chain.select')}</option>
+			{#each SUPPORTED_NETWORKS as net}
+				<option value={net.key}>{net.name} ({net.nativeSymbol}) · #{net.chainId}</option>
+			{/each}
+		</select>
 
 		<!-- Network check status -->
-		{#if store.networkChecking}
+		{#if store.chainDataLoading}
+			<div class="chain-checking">
+				<span class="spinner"></span> Loading chain data...
+			</div>
+		{:else if store.networkChecking}
 			<div class="chain-checking">
 				<span class="spinner"></span> Checking network infrastructure...
 			</div>
@@ -286,13 +260,13 @@
 			<div class="chain-ok">
 				All infrastructure contracts verified
 				{#if store.networkCheck.gasBalance !== null}
-					· Balance: {(Number(store.networkCheck.gasBalance) / 1e18).toFixed(6)} {store.selectedChain?.nativeCurrencySymbol || 'ETH'}
+					· Balance: {(Number(store.networkCheck.gasBalance) / 1e18).toFixed(6)} {store.selectedNetwork?.nativeSymbol || 'ETH'}
 				{/if}
 			</div>
 		{/if}
 
 		<!-- RPC -->
-		{#if store.selectedChain}
+		{#if store.selectedNetwork}
 			<label class="label" for="rpc-select">
 				{t('deploy.chain.rpc')}
 				{#if store.rpcProbing}
@@ -893,85 +867,6 @@
 	.explorer-url {
 		font-size: var(--text-xs);
 		word-break: break-all;
-	}
-
-	/* Network search dropdown */
-	.network-search-wrap {
-		position: relative;
-	}
-
-	.network-loading {
-		position: absolute;
-		right: var(--space-3);
-		top: 50%;
-		transform: translateY(-50%);
-		width: 14px;
-		height: 14px;
-		border: 2px solid var(--border-subtle);
-		border-top-color: var(--accent);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	.network-dropdown {
-		position: absolute;
-		top: calc(100% + 4px);
-		left: 0;
-		right: 0;
-		max-height: 260px;
-		overflow-y: auto;
-		background-color: var(--bg-elevated, #0a0f0d);
-		border: 1px solid var(--border-base);
-		border-radius: var(--radius-lg);
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-		z-index: 100;
-	}
-
-	.net-item {
-		display: flex;
-		align-items: center;
-		width: 100%;
-		padding: var(--space-2) var(--space-3);
-		background: transparent;
-		border: none;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-		color: var(--fg-base);
-		font-size: var(--text-sm);
-		text-align: left;
-		cursor: pointer;
-		gap: var(--space-2);
-		transition: background var(--motion-fast) var(--easing);
-	}
-
-	.net-item:last-child {
-		border-bottom: none;
-	}
-
-	.net-item:hover {
-		background: rgba(255, 255, 255, 0.05);
-	}
-
-	.net-item.active {
-		background: var(--accent-muted);
-	}
-
-	.net-name {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.net-symbol {
-		font-size: var(--text-xs);
-		color: var(--warning);
-	}
-
-	.net-chain-id {
-		font-size: var(--text-xs);
-		color: var(--fg-subtle);
-		font-family: var(--font-mono);
 	}
 
 	/* Gas settings */

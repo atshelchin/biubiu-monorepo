@@ -30,13 +30,24 @@ export interface RpcProbeResult {
 	error?: string;
 }
 
-/** Resolve CHAIN_CONFIG key from chainId (for Safe AA deployment) */
-function findChainConfigKey(chainId: number): string | null {
-	for (const [key, cfg] of Object.entries(CHAIN_CONFIG)) {
-		if (Number(cfg.chainId) === chainId) return key;
-	}
-	return null;
+/** Verified supported networks — only these are available for deployment */
+export interface SupportedNetwork {
+	key: string;
+	name: string;
+	chainId: number;
+	nativeSymbol: string;
 }
+
+export const SUPPORTED_NETWORKS: SupportedNetwork[] = [
+	{ key: 'eth-mainnet', name: 'Ethereum', chainId: 1, nativeSymbol: 'ETH' },
+	{ key: 'arb-mainnet', name: 'Arbitrum', chainId: 42161, nativeSymbol: 'ETH' },
+	{ key: 'base-mainnet', name: 'Base', chainId: 8453, nativeSymbol: 'ETH' },
+	{ key: 'opt-mainnet', name: 'Optimism', chainId: 10, nativeSymbol: 'ETH' },
+	{ key: 'matic-mainnet', name: 'Polygon', chainId: 137, nativeSymbol: 'POL' },
+	{ key: 'bnb-mainnet', name: 'BNB Chain', chainId: 56, nativeSymbol: 'BNB' },
+	{ key: 'avax-mainnet', name: 'Avalanche', chainId: 43114, nativeSymbol: 'AVAX' },
+	{ key: 'gnosis-mainnet', name: 'Gnosis', chainId: 100, nativeSymbol: 'xDAI' }
+];
 
 // ─── Store ───
 
@@ -54,15 +65,8 @@ class DeployStore {
 	selectedContractIndex = $state(-1);
 	constructorArgs = $state<ConstructorArg[]>([]);
 
-	// Chain index (all chains from ethereum-data API)
-	chainIndex = $state<ChainInfo[]>([]);
-	chainIndexLoading = $state(false);
-
-	// Chain search & selection
-	networkSearchQuery = $state('');
-	networkSearchResults = $state<ChainInfo[]>([]);
-	networkDropdownOpen = $state(false);
-	selectedChain = $state<ChainInfo | null>(null);
+	// Chain selection (from verified SUPPORTED_NETWORKS only)
+	selectedNetworkKey = $state('');
 	chainDataLoading = $state(false);
 
 	// Network readiness check
@@ -123,10 +127,8 @@ class DeployStore {
 		return this.selectedRpc;
 	}
 
-	/** The CHAIN_CONFIG key if this chain is supported by Safe AA bundler */
-	get safeNetworkKey(): string | null {
-		if (!this.selectedChain) return null;
-		return findChainConfigKey(this.selectedChain.chainId);
+	get selectedNetwork(): SupportedNetwork | null {
+		return SUPPORTED_NETWORKS.find((n) => n.key === this.selectedNetworkKey) ?? null;
 	}
 
 	/**
@@ -183,7 +185,7 @@ class DeployStore {
 			this.serverStatus === 'connected' &&
 			authStore.isLoggedIn &&
 			this.selectedContract !== null &&
-			this.selectedChain !== null &&
+			this.selectedNetwork !== null &&
 			this.networkCheck?.ready === true &&
 			this.effectiveRpc !== '' &&
 			this.salt.length === 66 &&
@@ -273,82 +275,24 @@ class DeployStore {
 		}
 	}
 
-	// ─── Chain index (all networks) ───
-
-	async loadChainIndex(): Promise<void> {
-		this.chainIndexLoading = true;
-		try {
-			const resp = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-chains.json`);
-			const json = await resp.json();
-			this.chainIndex = Array.isArray(json) ? json : (json.data || []);
-			this.log(`Loaded ${this.chainIndex.length} networks`, 'info');
-		} catch (e) {
-			this.log('Failed to load chain index: ' + (e instanceof Error ? e.message : String(e)), 'warn');
-		} finally {
-			this.chainIndexLoading = false;
-		}
-	}
-
-	/** Search chains by name, shortName, symbol, or chainId */
-	searchNetworks(query: string): ChainInfo[] {
-		if (!query.trim()) return this.chainIndex.slice(0, 20);
-
-		const q = query.toLowerCase();
-		const filtered = this.chainIndex.filter((c) => {
-			const name = (c.name || '').toLowerCase();
-			const shortName = (c.shortName || '').toLowerCase();
-			const symbol = (c.nativeCurrencySymbol || '').toLowerCase();
-			const idStr = String(c.chainId);
-			return name.includes(q) || shortName.includes(q) || symbol.includes(q) || idStr === q;
-		});
-
-		// Sort: exact matches first, then by name
-		return filtered
-			.sort((a, b) => {
-				const aExact =
-					String(a.chainId) === query.trim() || a.shortName?.toLowerCase() === q;
-				const bExact =
-					String(b.chainId) === query.trim() || b.shortName?.toLowerCase() === q;
-				if (aExact && !bExact) return -1;
-				if (!aExact && bExact) return 1;
-				return (a.name || '').localeCompare(b.name || '');
-			})
-			.slice(0, 30);
-	}
-
-	updateSearchResults(): void {
-		this.networkSearchResults = this.searchNetworks(this.networkSearchQuery);
-	}
-
-	openNetworkDropdown(): void {
-		this.networkDropdownOpen = true;
-		this.updateSearchResults();
-	}
-
-	closeNetworkDropdown(): void {
-		// Delay to allow click on results
-		setTimeout(() => {
-			this.networkDropdownOpen = false;
-		}, 200);
-	}
-
 	// ─── Network selection ───
 
-	async selectNetwork(chain: ChainInfo): Promise<void> {
-		this.selectedChain = chain;
-		this.networkSearchQuery = `${chain.name} (${chain.chainId})`;
-		this.networkDropdownOpen = false;
+	async selectNetwork(key: string): Promise<void> {
+		this.selectedNetworkKey = key;
 		this.explorerUrl = '';
 		this.rpcOptions = [];
 		this.selectedRpc = '';
 		this.customRpc = '';
 		this.networkCheck = null;
 
+		const network = this.selectedNetwork;
+		if (!network) return;
+
 		// Fetch full chain data for RPC list & explorer
 		this.chainDataLoading = true;
 		try {
 			const resp = await fetch(
-				`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${chain.chainId}.json`
+				`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${network.chainId}.json`
 			);
 			if (resp.ok) {
 				const data = await resp.json();
@@ -366,9 +310,7 @@ class DeployStore {
 				this.explorerUrl = data.explorers?.[0]?.url || '';
 
 				if (rpcs.length > 0) {
-					// Run RPC probing + network check in parallel:
-					// 1. Probe all RPCs (updates UI progressively)
-					// 2. Network check uses first responding RPC immediately
+					// RPC probing + network check in parallel
 					const probePromise = this.probeAllRpcs(rpcs);
 
 					// Use first responding RPC for immediate network check
@@ -376,11 +318,10 @@ class DeployStore {
 					if (firstRpc) {
 						this.selectedRpc = firstRpc;
 						this.updatePredictedAddress();
-						// Start network check immediately with first working RPC
 						this.runNetworkCheck();
 					}
 
-					// Wait for all probes to finish, then auto-select fastest
+					// Wait for all probes, auto-select fastest
 					const fastest = await probePromise;
 					if (fastest && fastest !== this.selectedRpc) {
 						this.selectedRpc = fastest;
@@ -409,19 +350,20 @@ class DeployStore {
 	/** Check if the selected network has all required infrastructure */
 	async runNetworkCheck(): Promise<void> {
 		const rpc = this.effectiveRpc;
-		if (!rpc || !this.selectedChain) {
+		const network = this.selectedNetwork;
+		if (!rpc || !network) {
 			this.networkCheck = null;
 			return;
 		}
 
 		this.networkChecking = true;
 		this.networkCheck = null;
-		this.log(`Checking network ${this.selectedChain.name} (${this.selectedChain.chainId})...`);
+		this.log(`Checking ${network.name} (${network.chainId})...`);
 
 		try {
 			const result = await checkNetworkSupport({
 				rpcUrl: rpc,
-				chainId: this.selectedChain.chainId,
+				chainId: network.chainId,
 				safeAddress: authStore.user?.safeAddress
 			});
 
@@ -431,7 +373,7 @@ class DeployStore {
 				this.log(`Network ready — all contracts deployed, bundler available`, 'ok');
 				if (result.gasBalance !== null) {
 					const ethBalance = Number(result.gasBalance) / 1e18;
-					this.log(`Gas balance: ${ethBalance.toFixed(6)} ${this.selectedChain.nativeCurrencySymbol || 'ETH'}`, 'info');
+					this.log(`Gas balance: ${ethBalance.toFixed(6)} ${network.nativeSymbol}`, 'info');
 				}
 			} else {
 				for (const issue of result.issues) {
@@ -626,10 +568,9 @@ class DeployStore {
 	async deploy(): Promise<void> {
 		const contract = this.selectedContract;
 		const user = authStore.user;
-		const chain = this.selectedChain;
-		const networkKey = this.safeNetworkKey;
+		const network = this.selectedNetwork;
 
-		if (!contract || !user || !chain || !networkKey || !this.canDeploy) return;
+		if (!contract || !user || !network || !this.canDeploy) return;
 
 		const ctor = contract.abi.find((a) => a.type === 'constructor');
 		const inputs = ctor?.inputs ?? [];
@@ -651,7 +592,7 @@ class DeployStore {
 		const calldata = (this.salt + initCode.slice(2)) as Hex;
 
 		this.deploying = true;
-		this.log(`Deploying ${contract.name} to ${chain.name} (${chain.chainId})...`);
+		this.log(`Deploying ${contract.name} to ${network.name} (${network.chainId})...`);
 		this.log(`Predicted address: ${predicted}`);
 
 		try {
@@ -663,7 +604,7 @@ class DeployStore {
 				to: CREATE2_PROXY as Address,
 				value: 0n,
 				data: calldata,
-				network: networkKey,
+				network: network.key,
 				gasOverrides: this.gasOverrides,
 				onStatus: (status: SendStatus) => {
 					this.deployStatus = status;
@@ -696,8 +637,8 @@ class DeployStore {
 					timestamp: Date.now(),
 					contractName: contract.name,
 					contractFile: contract.file,
-					chainId: chain.chainId,
-					chainName: chain.name,
+					chainId: network.chainId,
+					chainName: network.name,
 					address: predicted as Address,
 					salt: this.salt as Hex,
 					constructorArgs: values,
@@ -722,8 +663,8 @@ class DeployStore {
 
 	async verifyContract(): Promise<void> {
 		const contract = this.selectedContract;
-		const chain = this.selectedChain;
-		if (!contract || !chain) return;
+		const network = this.selectedNetwork;
+		if (!contract || !network) return;
 
 		const address = this.verifyAddress.trim();
 		if (!address) {
@@ -739,7 +680,7 @@ class DeployStore {
 				contractName: contract.name,
 				contractFile: `src/${contract.file}`,
 				address,
-				chainId: chain.chainId,
+				chainId: network.chainId,
 				verifier: this.verifier,
 				etherscanKey: this.verifier === 'etherscan' ? this.etherscanKey : undefined,
 				constructorArgs: this.getEncodedConstructorArgs(),
@@ -816,7 +757,7 @@ class DeployStore {
 	// ─── Init ───
 
 	async init(): Promise<void> {
-		await Promise.all([this.loadHistory(), this.loadChainIndex()]);
+		await this.loadHistory();
 		await this.connect();
 	}
 }

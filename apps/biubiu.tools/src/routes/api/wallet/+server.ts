@@ -12,7 +12,8 @@ const NETWORK_NAMES: Record<string, string> = {
 	'opt-mainnet': 'Optimism',
 	'matic-mainnet': 'Polygon',
 	'bnb-mainnet': 'BNB Chain',
-	'avax-mainnet': 'Avalanche'
+	'avax-mainnet': 'Avalanche',
+	'gnosis-mainnet': 'Gnosis'
 };
 
 /** Native token 信息（Alchemy 对 native token 可能不返回 metadata） */
@@ -23,7 +24,8 @@ const NATIVE_TOKENS: Record<string, { symbol: string; name: string }> = {
 	'opt-mainnet': { symbol: 'ETH', name: 'Ether' },
 	'matic-mainnet': { symbol: 'POL', name: 'POL' },
 	'bnb-mainnet': { symbol: 'BNB', name: 'BNB' },
-	'avax-mainnet': { symbol: 'AVAX', name: 'Avalanche' }
+	'avax-mainnet': { symbol: 'AVAX', name: 'Avalanche' },
+	'gnosis-mainnet': { symbol: 'xDAI', name: 'xDAI' }
 };
 
 const SUPPORTED_NETWORKS = Object.keys(NETWORK_NAMES);

@@ -25,6 +25,7 @@ const CHAIN_IDS: Record<string, number> = {
 	'matic-mainnet': 137,
 	'bnb-mainnet': 56,
 	'avax-mainnet': 43114,
+	'gnosis-mainnet': 100,
 	'polygon-amoy': 80002
 };
 
@@ -36,6 +37,7 @@ const ALCHEMY_SLUGS: Record<string, string> = {
 	'matic-mainnet': 'polygon-mainnet',
 	'bnb-mainnet': 'bnb-mainnet',
 	'avax-mainnet': 'avax-mainnet',
+	'gnosis-mainnet': 'gnosis-mainnet',
 	'polygon-amoy': 'polygon-amoy'
 };
 

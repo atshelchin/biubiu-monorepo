@@ -59,6 +59,13 @@ export const CHAIN_CONFIG: Record<
 		explorerName: 'Snowtrace',
 		nativeSymbol: 'AVAX'
 	},
+	'gnosis-mainnet': {
+		chainId: 100n,
+		alchemySlug: 'gnosis-mainnet',
+		explorerUrl: 'https://gnosisscan.io/tx/',
+		explorerName: 'GnosisScan',
+		nativeSymbol: 'xDAI'
+	},
 	'polygon-amoy': {
 		chainId: 80002n,
 		alchemySlug: 'polygon-amoy',

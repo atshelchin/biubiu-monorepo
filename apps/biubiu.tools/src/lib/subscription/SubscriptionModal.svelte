@@ -10,6 +10,7 @@
 	import { t } from '$lib/i18n';
 	import { formatNumber } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import ScanQrButton from '$lib/ui/ScanQrButton.svelte';
 	import { authStore } from '$lib/auth';
 	import { subscriptionStore } from './subscription-store.svelte.js';
 	import {
@@ -318,13 +319,16 @@
 			<p class="description">{t('sub.transferDesc')}</p>
 			<div class="field">
 				<label class="field-label" for="transfer-to">{t('auth.send.recipient')}</label>
-				<input
-					id="transfer-to"
-					class="field-input"
-					type="text"
-					placeholder="0x..."
-					bind:value={transferTo}
-				/>
+				<div class="field-with-scan">
+					<input
+						id="transfer-to"
+						class="field-input"
+						type="text"
+						placeholder="0x..."
+						bind:value={transferTo}
+					/>
+					<ScanQrButton onScan={(v) => transferTo = v.startsWith('ethereum:') ? v.split(':')[1].split('@')[0] : v} />
+				</div>
 			</div>
 			{#if error}
 				<span class="error-text">{error}</span>
@@ -595,6 +599,17 @@
 		color: var(--fg-subtle);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	.field-with-scan {
+		display: flex;
+		gap: var(--space-1);
+		align-items: stretch;
+	}
+
+	.field-with-scan .field-input {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.field-input {

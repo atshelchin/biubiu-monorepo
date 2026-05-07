@@ -16,6 +16,7 @@ const BUNDLER_PROVIDER = env.BUNDLER_PROVIDER ?? 'pimlico'; // 'pimlico' | 'alch
 
 // ─── Network Maps ───
 
+/** Legacy network key → chainId (for backwards compat with existing code) */
 const CHAIN_IDS: Record<string, number> = {
 	'eth-mainnet': 1,
 	'arb-mainnet': 42161,
@@ -37,6 +38,19 @@ const ALCHEMY_SLUGS: Record<string, string> = {
 	'avax-mainnet': 'avax-mainnet',
 	'polygon-amoy': 'polygon-amoy'
 };
+
+/** Resolve chainId from request: accept `chainId` number directly or `network` key */
+function resolveChainId(body: { network?: string; chainId?: number }): number | null {
+	if (body.chainId && typeof body.chainId === 'number') return body.chainId;
+	if (body.network && CHAIN_IDS[body.network]) return CHAIN_IDS[body.network];
+	return null;
+}
+
+/** Resolve Alchemy slug from network key (legacy RPC methods only) */
+function resolveAlchemySlug(body: { network?: string; chainId?: number }): string | null {
+	if (body.network && ALCHEMY_SLUGS[body.network]) return ALCHEMY_SLUGS[body.network];
+	return null;
+}
 
 // ─── Bundler Adapters ───
 
@@ -93,7 +107,7 @@ const RPC_METHODS = new Set([
 // ─── Handler ───
 
 export const POST: RequestHandler = async ({ request }) => {
-	let body: { method: string; params: unknown[]; network?: string };
+	let body: { method: string; params: unknown[]; network?: string; chainId?: number };
 	try {
 		body = await request.json();
 	} catch {
@@ -108,9 +122,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		return jsonError(`Method not allowed: ${method}`, 403);
 	}
 
-	const network = body.network ?? 'arb-mainnet';
-	if (!CHAIN_IDS[network]) {
-		return jsonError(`Unsupported network: ${network}`, 400);
+	const chainId = resolveChainId(body);
+	if (!chainId) {
+		return jsonError(`Missing or unsupported network/chainId`, 400);
 	}
 
 	// 路由：bundler 方法 → bundler adapter，标准 RPC → Alchemy
@@ -118,15 +132,23 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	if (BUNDLER_METHODS.has(method) || adapterExtras.has(method)) {
 		if (!adapter) return jsonError(`Unknown bundler provider: ${BUNDLER_PROVIDER}`, 503);
-		targetUrl = adapter.buildUrl(network);
-		if (!targetUrl) return jsonError(`${adapter.name} not configured or network unsupported`, 503);
-	} else {
-		// 标准 RPC → Alchemy
-		if (!ALCHEMY_API_KEY) {
-			console.error('[bundler] ALCHEMY_API_KEY is empty');
-			return jsonError('RPC not configured', 503);
+		// Pimlico uses chainId directly — works for any chain Pimlico supports
+		targetUrl = adapter.buildUrl(body.network ?? String(chainId));
+		if (!targetUrl) {
+			// Fallback: build Pimlico URL directly from chainId
+			if (BUNDLER_PROVIDER === 'pimlico' && PIMLICO_API_KEY) {
+				targetUrl = `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${PIMLICO_API_KEY}`;
+			} else {
+				return jsonError(`${adapter.name} not configured or network unsupported`, 503);
+			}
 		}
-		const slug = ALCHEMY_SLUGS[network] ?? network;
+	} else {
+		// 标准 RPC → Alchemy (only works with known slugs)
+		const slug = resolveAlchemySlug(body);
+		if (!slug || !ALCHEMY_API_KEY) {
+			console.error('[bundler] Alchemy not available for chainId', chainId);
+			return jsonError('RPC not configured for this chain', 503);
+		}
 		targetUrl = `https://${slug}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 	}
 

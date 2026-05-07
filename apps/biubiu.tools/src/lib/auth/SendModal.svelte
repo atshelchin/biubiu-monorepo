@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t, formatCurrency, preferences } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import ScanQrButton from '$lib/ui/ScanQrButton.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { sendToken, type SendStatus, type SendResult } from './safe-tx/send-token.js';
 	import { CHAIN_CONFIG } from './safe-tx/constants.js';
@@ -183,14 +184,17 @@
 				<!-- Recipient -->
 				<div class="input-group">
 					<label class="input-label" for="send-recipient">{t('auth.send.recipient')}</label>
-					<input
-						id="send-recipient"
-						type="text"
-						class="input-field"
-						placeholder="0x..."
-						bind:value={recipient}
-						spellcheck="false"
-					/>
+					<div class="input-with-scan">
+						<input
+							id="send-recipient"
+							type="text"
+							class="input-field"
+							placeholder="0x..."
+							bind:value={recipient}
+							spellcheck="false"
+						/>
+						<ScanQrButton onScan={(v) => recipient = v.startsWith('ethereum:') ? v.split(':')[1].split('@')[0] : v} />
+					</div>
 				</div>
 
 				<!-- Amount -->
@@ -387,6 +391,17 @@
 		font-size: var(--text-sm);
 		font-weight: var(--weight-medium);
 		color: var(--fg-base);
+	}
+
+	.input-with-scan {
+		display: flex;
+		gap: var(--space-1);
+		align-items: stretch;
+	}
+
+	.input-with-scan .input-field {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.input-field {

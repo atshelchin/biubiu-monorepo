@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { formatDateTime, formatDate, formatCurrency, preferences } from '$lib/i18n';
 	import { localizeHref } from '$lib/i18n';
+	import { encode as encodeQr } from 'uqr';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import DepositModal from './DepositModal.svelte';
@@ -22,6 +23,7 @@
 	let showLogoutConfirm = $state(false);
 	let showDeposit = $state(false);
 	let showSend = $state(false);
+	let showQr = $state(false);
 	let copiedField = $state<string | null>(null);
 	let balances = $state<TokenBalance[]>([]);
 	let balancesLoading = $state(false);
@@ -64,6 +66,25 @@
 		showLogoutConfirm = false;
 		authStore.logout();
 		onClose();
+	}
+
+	function renderQr(canvas: HTMLCanvasElement, address: string) {
+		const result = encodeQr(address, { ecc: 'M', border: 2 });
+		const size = result.size;
+		const data = result.data as boolean[][];
+		const scale = Math.floor(200 / size);
+		const px = size * scale;
+		canvas.width = px;
+		canvas.height = px;
+		const ctx = canvas.getContext('2d')!;
+		ctx.fillStyle = '#ffffff';
+		ctx.fillRect(0, 0, px, px);
+		ctx.fillStyle = '#000000';
+		for (let y = 0; y < size; y++) {
+			for (let x = 0; x < size; x++) {
+				if (data[y][x]) ctx.fillRect(x * scale, y * scale, scale, scale);
+			}
+		}
 	}
 
 	async function copyToClipboard(value: string, field: string) {
@@ -146,21 +167,31 @@
 			<!-- Wallet -->
 			<div class="wallet-section">
 				<span class="section-label">{t('auth.profile.safeAddress')}</span>
-				<button
-					class="address-row"
-					onclick={() => copyToClipboard(user.safeAddress, 'safeAddress')}
-					title={t('auth.profile.clickToCopy')}
-				>
-					<span class="address-text">{user.safeAddress}</span>
-					{#if copiedField === 'safeAddress'}
-						<span class="copied-badge">{t('auth.profile.copied')}</span>
-					{:else}
-						<svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-							<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-						</svg>
-					{/if}
-				</button>
+				<div class="address-actions">
+					<button
+						class="address-row"
+						onclick={() => copyToClipboard(user.safeAddress, 'safeAddress')}
+						title={t('auth.profile.clickToCopy')}
+					>
+						<span class="address-text">{user.safeAddress}</span>
+						{#if copiedField === 'safeAddress'}
+							<span class="copied-badge">{t('auth.profile.copied')}</span>
+						{:else}
+							<svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+							</svg>
+						{/if}
+					</button>
+					<button class="qr-toggle" class:active={showQr} onclick={() => showQr = !showQr} title="QR Code">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+					</button>
+				</div>
+				{#if showQr}
+					<div class="qr-inline">
+						<canvas class="qr-canvas" use:renderQr={user.safeAddress}></canvas>
+					</div>
+				{/if}
 				<p class="wallet-warning">{t('auth.profile.walletWarning')}</p>
 			</div>
 
@@ -496,10 +527,18 @@
 		gap: var(--space-1);
 	}
 
+	.address-actions {
+		display: flex;
+		gap: var(--space-1);
+		align-items: stretch;
+	}
+
 	.address-row {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
+		flex: 1;
+		min-width: 0;
 		padding: var(--space-2) var(--space-3);
 		background: var(--bg-sunken);
 		border: 1px solid var(--border-subtle);
@@ -511,6 +550,45 @@
 
 	.address-row:hover {
 		border-color: var(--border-base);
+	}
+
+	.qr-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 var(--space-2);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--fg-faint);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		flex-shrink: 0;
+	}
+
+	.qr-toggle:hover {
+		color: var(--fg-muted);
+		border-color: var(--border-base);
+	}
+
+	.qr-toggle.active {
+		color: var(--accent);
+		border-color: var(--accent);
+		background: var(--accent-subtle);
+	}
+
+	.qr-inline {
+		display: flex;
+		justify-content: center;
+		padding: var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+	}
+
+	.qr-canvas {
+		border-radius: var(--radius-md);
+		image-rendering: pixelated;
 	}
 
 	.address-text {

@@ -29,6 +29,13 @@ import {
 import { CHAIN_CONFIG } from './constants.js';
 import type { SendStatus, SendResult } from './send-token.js';
 
+/** 可选 gas 覆盖：用户自定义 callGasLimit / maxFeePerGas / maxPriorityFeePerGas */
+export interface GasOverrides {
+	callGasLimit?: bigint;
+	maxFeePerGas?: bigint;
+	maxPriorityFeePerGas?: bigint;
+}
+
 export interface ContractCallParams {
 	safeAddress: Address;
 	publicKeyHex: string;
@@ -43,10 +50,12 @@ export interface ContractCallParams {
 	/** 网络标识（如 'arb-mainnet'） */
 	network: string;
 	onStatus: (status: SendStatus) => void;
+	/** 自定义 gas 参数，未设置时自动估算 */
+	gasOverrides?: GasOverrides;
 }
 
 export async function sendContractCall(params: ContractCallParams): Promise<SendResult> {
-	const { safeAddress, publicKeyHex, credentialId, rpId, to, value, data, network, onStatus } =
+	const { safeAddress, publicKeyHex, credentialId, rpId, to, value, data, network, onStatus, gasOverrides } =
 		params;
 
 	const chainCfg = CHAIN_CONFIG[network];
@@ -88,11 +97,13 @@ export async function sendContractCall(params: ContractCallParams): Promise<Send
 
 		const estimates = await estimateUserOperationGas(dummyUserOp, network);
 
+		const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 13n) / 10n;
 		const refinedGas: GasParams = {
 			verificationGasLimit: (BigInt(estimates.verificationGasLimit) * 13n) / 10n,
-			callGasLimit: (BigInt(estimates.callGasLimit) * 13n) / 10n,
+			callGasLimit: gasOverrides?.callGasLimit ?? estimatedCallGasLimit,
 			preVerificationGas: BigInt(estimates.preVerificationGas) + 5000n,
-			...gasPrices
+			maxFeePerGas: gasOverrides?.maxFeePerGas ?? gasPrices.maxFeePerGas,
+			maxPriorityFeePerGas: gasOverrides?.maxPriorityFeePerGas ?? gasPrices.maxPriorityFeePerGas
 		};
 
 		const safeOpHash = calculateSafeOpHash(

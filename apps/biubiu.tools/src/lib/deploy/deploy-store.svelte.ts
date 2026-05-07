@@ -535,34 +535,60 @@ class DeployStore {
 	/** Gas unit: 'gwei' or 'wei', auto-detected from chain gas price */
 	gasPriceUnit = $state<'gwei' | 'wei'>('gwei');
 
-	/** Fetch actual gas prices from chain RPC and pre-fill the gas fields */
+	/** Fetch gas prices from both chain RPC and bundler, use the higher (bundler has minimums) */
 	async fetchGasPrices(): Promise<void> {
 		const rpc = this.effectiveRpc;
-		if (!rpc) return;
+		const network = this.selectedNetwork;
+		if (!rpc || !network) return;
 
 		try {
-			const res = await fetch(rpc, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] })
-			});
-			const json = await res.json();
-			if (json.result) {
-				const gasWei = BigInt(json.result);
-				const maxFeeWei = Number(gasWei * 12n / 10n);
-				const priorityWei = Math.max(Number(gasWei / 2n), 1);
+			// Fetch chain RPC price + bundler price in parallel
+			const [chainRes, bundlerRes] = await Promise.all([
+				fetch(rpc, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] })
+				}).then(r => r.json()).catch(() => null),
+				fetch('/api/bundler', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ method: 'pimlico_getUserOperationGasPrice', params: [], chainId: network.chainId })
+				}).then(r => r.json()).catch(() => null)
+			]);
 
-				// Pick best unit: use gwei if >= 0.0001 gwei (100000 wei), otherwise wei
-				const gweiVal = maxFeeWei / 1e9;
-				if (gweiVal >= 0.0001) {
-					this.gasPriceUnit = 'gwei';
-					this.maxFeePerGasGwei = formatGasValue(gweiVal);
-					this.maxPriorityFeePerGasGwei = formatGasValue(priorityWei / 1e9);
-				} else {
-					this.gasPriceUnit = 'wei';
-					this.maxFeePerGasGwei = String(Math.round(maxFeeWei));
-					this.maxPriorityFeePerGasGwei = String(Math.max(Math.round(priorityWei), 1));
-				}
+			// Chain gas price
+			const chainGasWei = chainRes?.result ? BigInt(chainRes.result) : 0n;
+
+			// Bundler minimum (use "standard" tier — cheapest that bundler accepts)
+			let bundlerMaxFee = 0n;
+			let bundlerPriority = 0n;
+			const bundlerData = bundlerRes?.result;
+			if (bundlerData?.standard) {
+				bundlerMaxFee = BigInt(bundlerData.standard.maxFeePerGas);
+				bundlerPriority = BigInt(bundlerData.standard.maxPriorityFeePerGas);
+			}
+
+			// Use max(chain price * 1.2, bundler minimum) — bundler won't accept less
+			const maxFeeWei = chainGasWei * 12n / 10n > bundlerMaxFee
+				? chainGasWei * 12n / 10n
+				: bundlerMaxFee;
+			const priorityWei = chainGasWei / 2n > bundlerPriority
+				? chainGasWei / 2n
+				: bundlerPriority;
+
+			const maxFeeNum = Number(maxFeeWei);
+			const priorityNum = Number(priorityWei);
+
+			// Pick best unit
+			const gweiVal = maxFeeNum / 1e9;
+			if (gweiVal >= 0.0001) {
+				this.gasPriceUnit = 'gwei';
+				this.maxFeePerGasGwei = formatGasValue(gweiVal);
+				this.maxPriorityFeePerGasGwei = formatGasValue(priorityNum / 1e9);
+			} else {
+				this.gasPriceUnit = 'wei';
+				this.maxFeePerGasGwei = String(Math.round(maxFeeNum));
+				this.maxPriorityFeePerGasGwei = String(Math.max(Math.round(priorityNum), 1));
 			}
 		} catch {
 			// Non-critical

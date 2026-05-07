@@ -8,15 +8,13 @@ import { buildInitCode, predictCreate2Address, CREATE2_PROXY } from './create2.j
 import { saveDeployment, getDeployments, markVerified, clearDeployments } from './history.js';
 import { sendContractCall, type GasOverrides } from '$lib/auth/safe-tx/send-contract-call.js';
 import type { SendStatus } from '$lib/auth/safe-tx/send-token.js';
-import { CHAIN_CONFIG } from '$lib/auth/safe-tx/constants.js';
 import { authStore } from '$lib/auth/auth-store.svelte.js';
 import { checkNetworkSupport, type NetworkCheckResult } from './network-check.js';
 import type {
 	ContractArtifact,
 	ConstructorArg,
 	DeploymentRecord,
-	LogEntry,
-	ChainInfo
+	LogEntry
 } from './types.js';
 
 const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
@@ -270,6 +268,10 @@ class DeployStore {
 			return;
 		}
 
+		if (!contract.bytecode || contract.bytecode === '0x' || contract.bytecode.length < 10) {
+			this.log(`${contract.name} has no deployable bytecode (interface or abstract contract?)`, 'warn');
+		}
+
 		const ctor = contract.abi.find((a) => a.type === 'constructor');
 		if (ctor?.inputs?.length) {
 			this.constructorArgs = ctor.inputs.map((inp) => ({
@@ -295,16 +297,29 @@ class DeployStore {
 
 	// ─── Network selection ───
 
+	/** Incremented on each network switch to invalidate in-flight probes */
+	private probeGeneration = 0;
+
 	async selectNetwork(key: string): Promise<void> {
 		this.selectedNetworkKey = key;
+		// Reset all network-dependent state
 		this.explorerUrl = '';
 		this.rpcOptions = [];
+		this.rpcProbes = {};
 		this.selectedRpc = '';
 		this.customRpc = '';
 		this.networkCheck = null;
+		this.predictedAddress = null;
+		this.addressAlreadyDeployed = false;
+		this.maxFeePerGasGwei = '';
+		this.maxPriorityFeePerGasGwei = '';
+		this.gasPriceUnit = 'gwei';
 
 		const network = this.selectedNetwork;
 		if (!network) return;
+
+		// Invalidate any in-flight probes from previous network
+		const generation = ++this.probeGeneration;
 
 		// Fetch full chain data for RPC list & explorer
 		this.chainDataLoading = true;
@@ -312,11 +327,12 @@ class DeployStore {
 			const resp = await fetch(
 				`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${network.chainId}.json`
 			);
+			if (generation !== this.probeGeneration) return; // Network changed, discard
+
 			if (resp.ok) {
 				const data = await resp.json();
 				this.fullChainData = data;
 
-				// Filter public HTTPS RPCs (no template variables)
 				const rpcs = (data.rpc || []).filter(
 					(r: string) =>
 						typeof r === 'string' &&
@@ -328,11 +344,11 @@ class DeployStore {
 				this.explorerUrl = data.explorers?.[0]?.url || '';
 
 				if (rpcs.length > 0) {
-					// RPC probing + network check in parallel
 					const probePromise = this.probeAllRpcs(rpcs);
 
-					// Use first responding RPC for immediate network check + gas price fetch
 					const firstRpc = await this.raceFirstWorkingRpc(rpcs);
+					if (generation !== this.probeGeneration) return; // Stale
+
 					if (firstRpc) {
 						this.selectedRpc = firstRpc;
 						this.updatePredictedAddress();
@@ -340,20 +356,26 @@ class DeployStore {
 						this.fetchGasPrices();
 					}
 
-					// Wait for all probes, auto-select fastest
 					const fastest = await probePromise;
+					if (generation !== this.probeGeneration) return; // Stale
 					if (fastest && fastest !== this.selectedRpc) {
 						this.selectedRpc = fastest;
 					}
 				}
 			}
 		} catch (e) {
-			this.log('Failed to load chain data: ' + (e instanceof Error ? e.message : String(e)), 'warn');
+			if (generation === this.probeGeneration) {
+				this.log('Failed to load chain data: ' + (e instanceof Error ? e.message : String(e)), 'warn');
+			}
 		} finally {
-			this.chainDataLoading = false;
+			if (generation === this.probeGeneration) {
+				this.chainDataLoading = false;
+			}
 		}
 
-		this.updatePredictedAddress();
+		if (generation === this.probeGeneration) {
+			this.updatePredictedAddress();
+		}
 	}
 
 	/** Called when user switches RPC — re-run network check + refresh gas prices */
@@ -590,8 +612,8 @@ class DeployStore {
 				this.maxFeePerGasGwei = String(Math.round(maxFeeNum));
 				this.maxPriorityFeePerGasGwei = String(Math.max(Math.round(priorityNum), 1));
 			}
-		} catch {
-			// Non-critical
+		} catch (e) {
+			this.log('Failed to fetch gas prices — bundler defaults will be used', 'warn');
 		}
 	}
 
@@ -642,8 +664,9 @@ class DeployStore {
 				if (this.addressAlreadyDeployed && this.predictedAddress) {
 					this.verifyAddress = this.predictedAddress;
 				}
-		} catch {
+		} catch (e) {
 			this.addressAlreadyDeployed = false;
+			this.log('Failed to check address: ' + (e instanceof Error ? e.message : String(e)), 'warn');
 		} finally {
 			this.checkingAddress = false;
 		}
@@ -657,6 +680,10 @@ class DeployStore {
 		const network = this.selectedNetwork;
 
 		if (!contract || !user || !network || !this.canDeploy) return;
+		if (this.addressAlreadyDeployed) {
+			this.log('Contract already deployed at predicted address', 'error');
+			return;
+		}
 
 		const ctor = contract.abi.find((a) => a.type === 'constructor');
 		const inputs = ctor?.inputs ?? [];

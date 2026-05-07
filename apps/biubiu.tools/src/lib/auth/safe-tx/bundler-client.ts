@@ -104,20 +104,13 @@ export async function getGasPrices(network: string): Promise<{
 	]);
 
 	if (pimlicoResult) {
-		let maxFeePerGas = BigInt(pimlicoResult.fast.maxFeePerGas);
-		let maxPriorityFeePerGas = BigInt(pimlicoResult.fast.maxPriorityFeePerGas);
-
-		// Sanity check: if Pimlico's price is >10x the chain's actual gas price,
-		// use chain gas price instead (Gnosis etc. have very low gas prices)
-		if (rpcGasPrice) {
-			const chainGas = BigInt(rpcGasPrice);
-			if (chainGas > 0n && maxFeePerGas > chainGas * 10n) {
-				maxFeePerGas = chainGas * 2n;
-				maxPriorityFeePerGas = chainGas;
-			}
-		}
-
-		return { maxFeePerGas, maxPriorityFeePerGas };
+		// Use Pimlico's fast tier — this is the bundler's required minimum
+		// The deploy UI separately fetches cheaper prices for display,
+		// but sendContractCall must respect bundler minimums
+		return {
+			maxFeePerGas: BigInt(pimlicoResult.fast.maxFeePerGas),
+			maxPriorityFeePerGas: BigInt(pimlicoResult.fast.maxPriorityFeePerGas)
+		};
 	}
 
 	// Fallback to RPC

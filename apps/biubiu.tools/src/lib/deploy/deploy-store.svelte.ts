@@ -134,34 +134,32 @@ class DeployStore {
 	/**
 	 * Estimate gas limit from current initcode size.
 	 *
-	 * Formula:
-	 *   32000 (CREATE base) + initcode_bytes × 150 (code deposit + memory)
-	 *   + 100000 (Safe executeUserOp overhead + constructor execution buffer)
-	 * Minimum 200000 for small contracts.
+	 * Breakdown:
+	 *   - 32000 (CREATE opcode base cost)
+	 *   - initcode_bytes × 200 (code deposit: 200 gas per deployed byte)
+	 *   - 150000 (Safe executeUserOp overhead + CREATE2 proxy + calldata)
+	 *   - constructor execution varies, add 50000 buffer
+	 * Minimum 500000 for safety.
 	 */
 	get estimatedGasLimit(): number {
 		const contract = this.selectedContract;
-		if (!contract) return 200000;
+		if (!contract) return 500000;
 
 		const ctor = contract.abi.find((a) => a.type === 'constructor');
 		const inputs = ctor?.inputs ?? [];
 		const values = this.constructorArgs.map((a) => a.value);
 		const initCode = buildInitCode(contract.bytecode, inputs, values);
 
-		if (!initCode || initCode === '0x') {
-			// Fallback: estimate from raw bytecode
-			const bytes = (contract.bytecode.length - 2) / 2;
-			return Math.max(200000, 32000 + bytes * 150 + 100000);
-		}
+		const rawBytes = initCode && initCode !== '0x'
+			? (initCode.length - 2) / 2
+			: (contract.bytecode.length - 2) / 2;
 
-		const bytes = (initCode.length - 2) / 2;
-		return Math.max(200000, 32000 + bytes * 150 + 100000);
+		return Math.max(500000, 32000 + rawBytes * 200 + 200000);
 	}
 
 	/**
-	 * Build gas overrides.
-	 * Gas limit always uses estimatedGasLimit unless user explicitly overrides.
-	 * Gas price fields: empty = auto from bundler.
+	 * Build gas overrides from UI fields.
+	 * All fields should be pre-filled with actual values — no "auto".
 	 */
 	get gasOverrides(): GasOverrides {
 		const overrides: GasOverrides = {};
@@ -251,6 +249,7 @@ class DeployStore {
 		const contract = this.selectedContract;
 		if (!contract) {
 			this.constructorArgs = [];
+			this.gasLimitInput = '';
 			this.updatePredictedAddress();
 			return;
 		}
@@ -265,12 +264,15 @@ class DeployStore {
 		} else {
 			this.constructorArgs = [];
 		}
+		// Pre-fill gas limit based on bytecode size
+		this.gasLimitInput = String(this.estimatedGasLimit);
 		this.updatePredictedAddress();
 	}
 
 	setArgValue(index: number, value: string): void {
 		if (this.constructorArgs[index]) {
 			this.constructorArgs[index].value = value;
+			this.gasLimitInput = String(this.estimatedGasLimit);
 			this.updatePredictedAddress();
 		}
 	}
@@ -313,12 +315,13 @@ class DeployStore {
 					// RPC probing + network check in parallel
 					const probePromise = this.probeAllRpcs(rpcs);
 
-					// Use first responding RPC for immediate network check
+					// Use first responding RPC for immediate network check + gas price fetch
 					const firstRpc = await this.raceFirstWorkingRpc(rpcs);
 					if (firstRpc) {
 						this.selectedRpc = firstRpc;
 						this.updatePredictedAddress();
 						this.runNetworkCheck();
+						this.fetchGasPrices();
 					}
 
 					// Wait for all probes, auto-select fastest
@@ -337,14 +340,14 @@ class DeployStore {
 		this.updatePredictedAddress();
 	}
 
-	/** Called when user switches RPC — re-run network check */
+	/** Called when user switches RPC — re-run network check + refresh gas prices */
 	switchRpc(rpc: string): void {
 		this.selectedRpc = rpc;
 		if (rpc !== '__custom__') {
 			this.customRpc = '';
 		}
-		// Re-check with new RPC
 		this.runNetworkCheck();
+		this.fetchGasPrices();
 	}
 
 	/** Check if the selected network has all required infrastructure */
@@ -511,6 +514,43 @@ class DeployStore {
 
 		this.log('No RPC responded — use Custom RPC', 'warn');
 		return rpcs[0];
+	}
+
+	/** Fetch actual gas prices from chain RPC and pre-fill the gas fields */
+	async fetchGasPrices(): Promise<void> {
+		const rpc = this.effectiveRpc;
+		if (!rpc) return;
+
+		try {
+			// Get chain's actual gas price via RPC
+			const res = await fetch(rpc, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] })
+			});
+			const json = await res.json();
+			if (json.result) {
+				const gasWei = BigInt(json.result);
+				// Convert wei to Gwei, use 1.2x for safety margin
+				const gasPriceGwei = Number(gasWei * 12n / 10n) / 1e9;
+				// Priority fee: use half of base fee or minimum 0.001 Gwei
+				const priorityGwei = Math.max(Number(gasWei / 2n) / 1e9, 0.001);
+
+				this.maxFeePerGasGwei = gasPriceGwei < 0.01
+					? gasPriceGwei.toFixed(6)
+					: gasPriceGwei < 1
+						? gasPriceGwei.toFixed(4)
+						: gasPriceGwei.toFixed(2);
+
+				this.maxPriorityFeePerGasGwei = priorityGwei < 0.01
+					? priorityGwei.toFixed(6)
+					: priorityGwei < 1
+						? priorityGwei.toFixed(4)
+						: priorityGwei.toFixed(2);
+			}
+		} catch {
+			// Non-critical, keep as empty (auto)
+		}
 	}
 
 	// ─── CREATE2 address prediction ───

@@ -167,14 +167,20 @@ class DeployStore {
 		const gl = this.gasLimitInput.trim();
 		overrides.callGasLimit = gl ? BigInt(gl) : BigInt(this.estimatedGasLimit);
 
+		const toWei = (v: string): bigint => {
+			const n = parseFloat(v);
+			if (isNaN(n)) return 0n;
+			return this.gasPriceUnit === 'wei'
+				? BigInt(Math.round(n))
+				: BigInt(Math.round(n * 1e9));
+		};
+
 		const mf = this.maxFeePerGasGwei.trim();
-		if (mf) {
-			overrides.maxFeePerGas = BigInt(Math.round(parseFloat(mf) * 1e9));
-		}
+		if (mf) overrides.maxFeePerGas = toWei(mf);
+
 		const mp = this.maxPriorityFeePerGasGwei.trim();
-		if (mp) {
-			overrides.maxPriorityFeePerGas = BigInt(Math.round(parseFloat(mp) * 1e9));
-		}
+		if (mp) overrides.maxPriorityFeePerGas = toWei(mp);
+
 		return overrides;
 	}
 
@@ -516,13 +522,15 @@ class DeployStore {
 		return rpcs[0];
 	}
 
+	/** Gas unit: 'gwei' or 'wei', auto-detected from chain gas price */
+	gasPriceUnit = $state<'gwei' | 'wei'>('gwei');
+
 	/** Fetch actual gas prices from chain RPC and pre-fill the gas fields */
 	async fetchGasPrices(): Promise<void> {
 		const rpc = this.effectiveRpc;
 		if (!rpc) return;
 
 		try {
-			// Get chain's actual gas price via RPC
 			const res = await fetch(rpc, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -531,25 +539,32 @@ class DeployStore {
 			const json = await res.json();
 			if (json.result) {
 				const gasWei = BigInt(json.result);
-				// Convert wei to Gwei, use 1.2x for safety margin
 				const gasPriceGwei = Number(gasWei * 12n / 10n) / 1e9;
-				// Priority fee: use half of base fee or minimum 0.001 Gwei
 				const priorityGwei = Math.max(Number(gasWei / 2n) / 1e9, 0.001);
 
-				this.maxFeePerGasGwei = gasPriceGwei < 0.01
-					? gasPriceGwei.toFixed(6)
-					: gasPriceGwei < 1
+				// Switch to wei display when gas price is extremely low (< 0.001 Gwei = 1M wei)
+				if (gasPriceGwei < 0.001) {
+					this.gasPriceUnit = 'wei';
+					const maxFeeWei = Number(gasWei * 12n / 10n);
+					const priorityWei = Math.max(Number(gasWei / 2n), 1000);
+					this.maxFeePerGasGwei = String(Math.round(maxFeeWei));
+					this.maxPriorityFeePerGasGwei = String(Math.round(priorityWei));
+				} else {
+					this.gasPriceUnit = 'gwei';
+					this.maxFeePerGasGwei = gasPriceGwei < 0.1
 						? gasPriceGwei.toFixed(4)
-						: gasPriceGwei.toFixed(2);
-
-				this.maxPriorityFeePerGasGwei = priorityGwei < 0.01
-					? priorityGwei.toFixed(6)
-					: priorityGwei < 1
+						: gasPriceGwei < 10
+							? gasPriceGwei.toFixed(2)
+							: gasPriceGwei.toFixed(1);
+					this.maxPriorityFeePerGasGwei = priorityGwei < 0.1
 						? priorityGwei.toFixed(4)
-						: priorityGwei.toFixed(2);
+						: priorityGwei < 10
+							? priorityGwei.toFixed(2)
+							: priorityGwei.toFixed(1);
+				}
 			}
 		} catch {
-			// Non-critical, keep as empty (auto)
+			// Non-critical
 		}
 	}
 

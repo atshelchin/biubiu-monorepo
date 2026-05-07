@@ -314,11 +314,11 @@
 					<input id="gas-limit" type="text" class="input input-sm mono" bind:value={store.gasLimitInput} />
 				</div>
 				<div class="gas-field">
-					<label class="gas-field-label" for="max-fee">Max Fee (Gwei)</label>
+					<label class="gas-field-label" for="max-fee">Max Fee ({store.gasPriceUnit})</label>
 					<input id="max-fee" type="text" class="input input-sm mono" bind:value={store.maxFeePerGasGwei} placeholder="fetching..." />
 				</div>
 				<div class="gas-field">
-					<label class="gas-field-label" for="priority-fee">Priority (Gwei)</label>
+					<label class="gas-field-label" for="priority-fee">Priority ({store.gasPriceUnit})</label>
 					<input id="priority-fee" type="text" class="input input-sm mono" bind:value={store.maxPriorityFeePerGasGwei} placeholder="fetching..." />
 				</div>
 			</div>

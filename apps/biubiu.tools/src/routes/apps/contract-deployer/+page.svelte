@@ -175,7 +175,7 @@
 			<div class="server-connect">
 				<div class="hint-box">
 					<p class="hint-text">{t('deploy.server.hint')}</p>
-					<code class="hint-code">deno run jsr:@command/foundry-contract-deployer</code>
+					<code class="hint-code">deno run jsr:@command/foundry-contract-deployer-server</code>
 				</div>
 				<div class="port-row">
 					<label class="label" for="server-port">{t('deploy.server.portLabel')}</label>

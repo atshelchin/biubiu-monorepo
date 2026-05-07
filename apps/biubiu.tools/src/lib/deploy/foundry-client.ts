@@ -1,6 +1,6 @@
 /**
  * Client for the local Foundry build server.
- * The server is started by running: deno run jsr:@command/foundry-contract-deployer
+ * The server is started by running: deno run jsr:@command/foundry-contract-deployer-server
  */
 import type {
 	ContractArtifact,

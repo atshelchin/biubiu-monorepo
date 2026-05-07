@@ -93,29 +93,40 @@ export async function getGasPrices(network: string): Promise<{
 	maxFeePerGas: bigint;
 	maxPriorityFeePerGas: bigint;
 }> {
-	// 优先用 Pimlico 的 gas price API
-	try {
-		const pimlicoGas = await rpc<{
+	// Fetch both Pimlico gas price and chain RPC gas price in parallel
+	const [pimlicoResult, rpcGasPrice] = await Promise.all([
+		rpc<{
 			slow: { maxFeePerGas: Hex; maxPriorityFeePerGas: Hex };
 			standard: { maxFeePerGas: Hex; maxPriorityFeePerGas: Hex };
 			fast: { maxFeePerGas: Hex; maxPriorityFeePerGas: Hex };
-		}>('pimlico_getUserOperationGasPrice', [], network);
+		}>('pimlico_getUserOperationGasPrice', [], network).catch(() => null),
+		rpc<Hex>('eth_gasPrice', [], network).catch(() => null)
+	]);
 
-		return {
-			maxFeePerGas: BigInt(pimlicoGas.fast.maxFeePerGas),
-			maxPriorityFeePerGas: BigInt(pimlicoGas.fast.maxPriorityFeePerGas)
-		};
-	} catch {
-		// 回退到标准 RPC
-		const [baseFee, priorityFee] = await Promise.all([
-			rpc<Hex>('eth_gasPrice', [], network),
-			rpc<Hex>('eth_maxPriorityFeePerGas', [], network).catch(() => '0x5f5e100' as Hex)
-		]);
+	if (pimlicoResult) {
+		let maxFeePerGas = BigInt(pimlicoResult.fast.maxFeePerGas);
+		let maxPriorityFeePerGas = BigInt(pimlicoResult.fast.maxPriorityFeePerGas);
 
-		return {
-			maxFeePerGas: BigInt(baseFee) + BigInt(priorityFee),
-			maxPriorityFeePerGas: BigInt(priorityFee)
-		};
+		// Sanity check: if Pimlico's price is >10x the chain's actual gas price,
+		// use chain gas price instead (Gnosis etc. have very low gas prices)
+		if (rpcGasPrice) {
+			const chainGas = BigInt(rpcGasPrice);
+			if (chainGas > 0n && maxFeePerGas > chainGas * 10n) {
+				maxFeePerGas = chainGas * 2n;
+				maxPriorityFeePerGas = chainGas;
+			}
+		}
+
+		return { maxFeePerGas, maxPriorityFeePerGas };
 	}
+
+	// Fallback to RPC
+	const priorityFee = await rpc<Hex>('eth_maxPriorityFeePerGas', [], network).catch(() => '0x5f5e100' as Hex);
+	const baseFee = rpcGasPrice ? BigInt(rpcGasPrice) : 0n;
+
+	return {
+		maxFeePerGas: baseFee + BigInt(priorityFee),
+		maxPriorityFeePerGas: BigInt(priorityFee)
+	};
 }
 

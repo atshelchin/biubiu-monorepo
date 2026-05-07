@@ -72,8 +72,8 @@ export async function sendContractCall(params: ContractCallParams): Promise<Send
 		const gasPrices = await getGasPrices(network);
 
 		const initialGas: GasParams = {
-			verificationGasLimit: deployed ? 300000n : 600000n,
-			callGasLimit: 300000n, // 合约调用需要更多 gas
+			verificationGasLimit: deployed ? 300000n : 800000n,
+			callGasLimit: 3000000n, // 合约部署可能需要很多 gas，给足初始值让 bundler 正确估算
 			preVerificationGas: 60000n,
 			...gasPrices
 		};
@@ -97,10 +97,16 @@ export async function sendContractCall(params: ContractCallParams): Promise<Send
 
 		const estimates = await estimateUserOperationGas(dummyUserOp, network);
 
-		const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 13n) / 10n;
+		const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 15n) / 10n; // 1.5x buffer
+		const estimatedVerificationGasLimit = (BigInt(estimates.verificationGasLimit) * 15n) / 10n;
+
+		// Gas limit: use the LARGER of bundler estimate vs user override (never go below estimate)
+		const userCallGas = gasOverrides?.callGasLimit ?? 0n;
+		const finalCallGasLimit = userCallGas > estimatedCallGasLimit ? userCallGas : estimatedCallGasLimit;
+
 		const refinedGas: GasParams = {
-			verificationGasLimit: (BigInt(estimates.verificationGasLimit) * 13n) / 10n,
-			callGasLimit: gasOverrides?.callGasLimit ?? estimatedCallGasLimit,
+			verificationGasLimit: estimatedVerificationGasLimit,
+			callGasLimit: finalCallGasLimit,
 			preVerificationGas: BigInt(estimates.preVerificationGas) + 5000n,
 			maxFeePerGas: gasOverrides?.maxFeePerGas ?? gasPrices.maxFeePerGas,
 			maxPriorityFeePerGas: gasOverrides?.maxPriorityFeePerGas ?? gasPrices.maxPriorityFeePerGas

@@ -10,6 +10,105 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import logo from '$lib/assets/logo.svg';
 
+	// ── Live user count from on-chain contract ──
+	const FALLBACK_RPCS = [
+		'https://rpc.gnosischain.com',
+		'https://rpc.gnosis.gateway.fm',
+		'https://gnosis-rpc.publicnode.com',
+		'https://rpc.ankr.com/gnosis',
+		'https://gnosis-mainnet.public.blastapi.io',
+		'https://gnosis.blockpi.network/v1/rpc/public',
+		'https://gnosis.drpc.org',
+		'https://1rpc.io/gnosis',
+		'https://gnosis.oat.farm',
+	];
+
+	const RPC_SOURCE = 'https://ethereum-data.awesometools.dev/chains/eip155-100.json';
+	const CONTRACT = '0xdd93420BD49baaBdFF4A363DdD300622Ae87E9c3';
+	// getAccountCount("biubiu.tools") - rpid encoded as domain name
+	const CALLDATA =
+		'0x3ebcb2150000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6269756269752e746f6f6c730000000000000000000000000000000000000000';
+
+	let rpcs = [...FALLBACK_RPCS];
+	let displayCount = $state(0);
+	let rpcIndex = 0;
+
+	async function refreshRpcs() {
+		try {
+			const res = await fetch(RPC_SOURCE);
+			const data = await res.json();
+			const urls: string[] = (data?.rpc ?? [])
+				.filter((r: { url: string }) => r.url.startsWith('https://') && !r.url.includes('${'))
+				.map((r: { url: string }) => r.url);
+			if (urls.length > 0) {
+				rpcs = urls;
+				rpcIndex = 0;
+			}
+		} catch {
+			// keep using current rpcs
+		}
+	}
+
+	async function fetchCount(): Promise<number | null> {
+		let attempts = 0;
+		while (attempts < rpcs.length) {
+			const rpc = rpcs[rpcIndex % rpcs.length];
+			attempts++;
+			try {
+				const res = await fetch(rpc, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						jsonrpc: '2.0',
+						id: 1,
+						method: 'eth_call',
+						params: [{ to: CONTRACT, data: CALLDATA }, 'latest'],
+					}),
+				});
+				const json = await res.json();
+				if (json.result) {
+					return parseInt(json.result, 16);
+				}
+			} catch {
+				// failover to next RPC
+			}
+			rpcIndex++;
+		}
+		return null;
+	}
+
+	function animateCount(target: number) {
+		const start = displayCount;
+		const diff = target - start;
+		if (diff === 0) return;
+		const duration = Math.min(2000, Math.max(800, Math.abs(diff) * 80));
+		const startTime = performance.now();
+
+		function step(now: number) {
+			const elapsed = now - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			const eased = 1 - Math.pow(1 - progress, 3);
+			displayCount = Math.round(start + diff * eased);
+			if (progress < 1) requestAnimationFrame(step);
+		}
+		requestAnimationFrame(step);
+	}
+
+	async function poll() {
+		const count = await fetchCount();
+		if (count !== null) animateCount(count);
+	}
+
+	$effect(() => {
+		refreshRpcs().then(() => poll());
+		const pollInterval = setInterval(poll, 5_000);
+		const rpcRefreshInterval = setInterval(refreshRpcs, 10 * 60_000);
+		return () => {
+			clearInterval(pollInterval);
+			clearInterval(rpcRefreshInterval);
+		};
+	});
+
 	declare const __COMMIT_HASH__: string;
 	const commitHash = __COMMIT_HASH__;
 	const commitUrl = `https://github.com/atshelchin/biubiu-monorepo/tree/${commitHash}`;
@@ -166,6 +265,14 @@
 				<ChainLogos />
 			</div>
 		</section>
+
+		{#if displayCount > 0}
+			<div class="social-proof" use:fadeInUp={{ delay: 0 }}>
+				<span class="social-proof-number">{displayCount.toLocaleString()}</span>
+				<span class="social-proof-divider"></span>
+				<span class="social-proof-label">Trusted by on-chain users</span>
+			</div>
+		{/if}
 
 		<!-- Featured Tool Section -->
 		<section id="featured" class="featured" use:fadeInUp={{ delay: 0 }}>
@@ -599,7 +706,46 @@
 	}
 
 	.section-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
 		margin-bottom: var(--space-4);
+	}
+
+	/* Social Proof */
+	.social-proof {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-4);
+		padding: var(--space-8) 0;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+
+	.social-proof-number {
+		font-size: var(--text-3xl);
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.02em;
+		text-transform: none;
+		background: linear-gradient(135deg, var(--accent) 0%, #34D399 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+
+	.social-proof-divider {
+		width: 1px;
+		height: 28px;
+		background: var(--border-base);
+	}
+
+	.social-proof-label {
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		color: var(--fg-muted);
+		line-height: var(--leading-tight);
 	}
 
 	.section-title {

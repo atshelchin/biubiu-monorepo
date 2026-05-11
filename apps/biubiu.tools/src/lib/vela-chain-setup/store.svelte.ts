@@ -104,6 +104,7 @@ class VelaChainSetupStore {
 
 	// ── Contract check results ──
 	contractStatuses = $state<ContractStatus[]>([]);
+	p256Available = $state(false);
 	checking = $state(false);
 	checkError = $state('');
 
@@ -269,9 +270,11 @@ class VelaChainSetupStore {
 		this.checkError = '';
 
 		try {
-			this.contractStatuses = await checkAllContracts(this.rpcUrl);
+			const result = await checkAllContracts(this.rpcUrl);
+			this.contractStatuses = result.contracts;
+			this.p256Available = result.p256Available;
 
-			if (this.allDeployed) {
+			if (this.allDeployed && this.p256Available) {
 				this.step = 'complete';
 			} else {
 				this.step = 'results';
@@ -607,8 +610,8 @@ class VelaChainSetupStore {
 		// Refresh balance after all deploys
 		await this.refreshDeployerBalance();
 
-		// If all deployed, go to complete
-		if (this.allDeployed) {
+		// If all deployed and P256 available, go to complete
+		if (this.allDeployed && this.p256Available) {
 			this.step = 'complete';
 		}
 	}

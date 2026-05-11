@@ -217,6 +217,39 @@ export async function hasCode(rpcUrl: string, address: string): Promise<boolean>
 	return !!code && code !== '0x' && code !== '0x0';
 }
 
+// ─── RIP-7212 P256 precompile check ───
+
+const P256_PRECOMPILE = '0x0000000000000000000000000000000000000100';
+
+/**
+ * Test vector: sha256("test") signed with a known P-256 key.
+ * Input: hash(32) + r(32) + s(32) + x(32) + y(32) = 160 bytes.
+ * Precompile returns 1 (32 bytes) for a valid signature.
+ */
+const VALID_P256_CALL =
+	'0x' +
+	'9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08' +
+	'7bf0e18d07660f15994adce5c3836d7bd6167cdb5726f631098f433ebe0be9c0' +
+	'3936edbe5c791477e714e58244afb690b9b88b833ff4acdf0fbd1b28bf0b1182' +
+	'3be8cbcb3f590087711ae5ed74b9cd06a88058d0bbe700b5f0ec5a1bfac15592' +
+	'f989ef9bfaae0fee03c36625e88eae99806a879d813411f876e7e03a2ffd8314';
+
+/**
+ * Check if the RIP-7212 P256 precompile is available on the chain.
+ * Required for passkey (WebAuthn) signature verification.
+ */
+export async function checkP256Precompile(rpcUrl: string): Promise<boolean> {
+	try {
+		const result = (await rpcCall(rpcUrl, 'eth_call', [
+			{ to: P256_PRECOMPILE, data: VALID_P256_CALL },
+			'latest',
+		])) as string;
+		return result !== '0x' && result.length >= 66 && BigInt(result) === 1n;
+	} catch {
+		return false;
+	}
+}
+
 export async function getBalance(rpcUrl: string, address: string): Promise<bigint> {
 	const result = (await rpcCall(rpcUrl, 'eth_getBalance', [address, 'latest'])) as string;
 	return BigInt(result);
@@ -275,9 +308,14 @@ export interface ContractStatus {
  * For non-CREATE2 contracts (Nick's method): verifies bytecode matches expected.
  * For CREATE2 contracts: code existence at the deterministic address is sufficient.
  */
-export async function checkAllContracts(rpcUrl: string): Promise<ContractStatus[]> {
-	const results = await Promise.all(
-		CONTRACT_ORDER.map(async (key) => {
+export interface CheckAllResult {
+	contracts: ContractStatus[];
+	p256Available: boolean;
+}
+
+export async function checkAllContracts(rpcUrl: string): Promise<CheckAllResult> {
+	const [contracts, p256Available] = await Promise.all([
+		Promise.all(CONTRACT_ORDER.map(async (key) => {
 			const def = REQUIRED_CONTRACTS[key];
 			const expectedBytecode = EXPECTED_RUNTIME_BYTECODES[key];
 			const expectedHash = EXPECTED_BYTECODE_HASHES[key];
@@ -308,9 +346,10 @@ export async function checkAllContracts(rpcUrl: string): Promise<ContractStatus[
 			} catch {
 				return { key, def, deployed: false, verified: false, mismatch: false };
 			}
-		}),
-	);
-	return results;
+		})),
+		checkP256Precompile(rpcUrl).catch(() => false),
+	]);
+	return { contracts, p256Available };
 }
 
 /**

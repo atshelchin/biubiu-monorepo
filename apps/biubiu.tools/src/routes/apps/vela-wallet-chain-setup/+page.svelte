@@ -355,7 +355,32 @@
 				{/each}
 			</ul>
 
+			<!-- P256 precompile status -->
+			<div class="contract-row" class:deployed={store.p256Available} class:missing={!store.p256Available}>
+				<span class="status-icon">{store.p256Available ? '\u2713' : '\u2717'}</span>
+				<div class="contract-name-group">
+					<span class="contract-name">P256 Precompile (RIP-7212)</span>
+					<span class="contract-address">Required for passkey signatures</span>
+				</div>
+				<span class="status-label">
+					{store.p256Available ? 'Available' : 'Not available'}
+				</span>
+			</div>
 		</section>
+
+		<!-- P256 missing warning -->
+		{#if !store.p256Available && store.contractStatuses.length > 0}
+			<section class="card action-card" use:fadeInUp={{ delay: 75 }}>
+				<div class="step-badge warning">Requirement</div>
+				<h3 class="action-title">P256 Precompile Not Available</h3>
+				<p class="action-desc">
+					This chain does not support the RIP-7212 P256 precompile, which is required for passkey (fingerprint/Face ID) signature verification. Vela Wallet cannot work on this chain without it.
+				</p>
+				<p class="note">
+					The P256 precompile is a chain-level feature that must be enabled by the chain's validators/operators. It cannot be deployed as a contract. Contact the chain team to request RIP-7212 support.
+				</p>
+			</section>
+		{/if}
 
 		<!-- ─── Action Card: Next step guidance ─── -->
 		{#if store.nextAction}

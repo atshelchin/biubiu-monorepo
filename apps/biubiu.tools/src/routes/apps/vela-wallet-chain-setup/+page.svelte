@@ -9,6 +9,7 @@
 	import {
 		ARACHNID_DEPLOYER_EOA,
 		ARACHNID_FUNDING_WEI,
+		MULTICALL3_DEPLOYER_EOA,
 		SAFE_FACTORY_GITHUB_URL,
 	} from '$lib/vela-chain-setup/contracts.js';
 	import { encode as encodeQr } from 'uqr';
@@ -466,6 +467,95 @@
 						<div class="error-banner" use:fadeInUp={{ delay: 0 }}>
 							<p>{store.deployError}</p>
 							<button class="btn btn-sm" onclick={() => store.startArachnidDeploy()}>
+								{t('vcs.error.retry')}
+							</button>
+						</div>
+					{/if}
+				</section>
+
+			<!-- Multicall3 (pre-signed tx) -->
+			{:else if next.key === 'multicall3'}
+				<section class="card action-card" use:fadeInUp={{ delay: 100 }}>
+					<div class="step-badge">{t('vcs.step.title')}</div>
+					<h3 class="action-title">Deploy Multicall3</h3>
+					<p class="action-desc">
+						Multicall3 enables efficient batch-reading of on-chain data. This is deployed using a pre-signed transaction — no wallet extension needed.
+					</p>
+
+					{#if store.deploySubStep === 'idle' || store.deploySubStep === 'fund-deployer'}
+						{#if store.deploySubStep === 'idle'}
+							<button class="btn btn-primary" onclick={() => store.startMulticall3Deploy()}>
+								Start Setup
+							</button>
+						{:else}
+							<div class="sub-step" use:fadeInUp={{ delay: 0 }}>
+								<h4 class="sub-step-title">Step 1: Fund the deployer</h4>
+								<p class="sub-step-desc">
+									Send at least 0.1 {store.selectedChain?.nativeCurrency.symbol ?? 'ETH'} to the deployer address below. This covers the gas fee.
+								</p>
+
+								<div class="address-box">
+									<span class="address-label">Send to this address:</span>
+									<div class="address-copy">
+										<code class="address-value">{MULTICALL3_DEPLOYER_EOA}</code>
+										<button
+											class="btn btn-sm btn-copy"
+											onclick={() => handleCopy(MULTICALL3_DEPLOYER_EOA)}
+										>
+											{copiedAddress === MULTICALL3_DEPLOYER_EOA ? 'Copied!' : 'Copy'}
+										</button>
+									</div>
+								</div>
+
+								<div class="info-row">
+									<span class="info-label">
+										Balance: {formatWei(store.multicall3DeployerBalance, store.selectedChain?.nativeCurrency.symbol ?? 'ETH')}
+									</span>
+									<button class="btn-link" onclick={() => store.refreshMulticall3Balance()}>
+										Refresh Balance
+									</button>
+								</div>
+
+								{#if store.multicall3Funded}
+									<div class="success-banner" use:fadeInUp={{ delay: 0 }}>
+										<span>Funded! Ready for next step.</span>
+									</div>
+
+									<div class="sub-step" use:fadeInUp={{ delay: 50 }}>
+										<h4 class="sub-step-title">Step 2: Deploy</h4>
+										<p class="sub-step-desc">
+											Click to broadcast the pre-signed deployment transaction.
+										</p>
+										<button class="btn btn-primary" onclick={() => store.broadcastMulticall3()}>
+											Deploy Now
+										</button>
+									</div>
+								{/if}
+							</div>
+						{/if}
+					{:else if store.deploySubStep === 'broadcast-tx' || store.deploySubStep === 'waiting'}
+						<div class="deploy-progress" use:fadeInUp={{ delay: 0 }}>
+							<div class="spinner"></div>
+							<p>{t('vcs.deploy.waiting')}</p>
+							{#if store.deployTxHash && store.selectedChain?.explorerUrl}
+								<a
+									href="{store.selectedChain.explorerUrl}/tx/{store.deployTxHash}"
+									target="_blank"
+									rel="noopener"
+									class="tx-link"
+								>
+									{t('vcs.deploy.viewExplorer')}
+								</a>
+							{/if}
+						</div>
+					{:else if store.deploySubStep === 'success'}
+						<div class="success-banner" use:fadeInUp={{ delay: 0 }}>
+							<span>{t('vcs.deploy.success')}</span>
+						</div>
+					{:else if store.deploySubStep === 'error'}
+						<div class="error-banner" use:fadeInUp={{ delay: 0 }}>
+							<p>{store.deployError}</p>
+							<button class="btn btn-sm" onclick={() => store.startMulticall3Deploy()}>
 								{t('vcs.error.retry')}
 							</button>
 						</div>

@@ -10,11 +10,13 @@ import {
 	CONTRACT_ORDER,
 	ARACHNID_DEPLOYER_EOA,
 	ARACHNID_FUNDING_WEI,
-	ARACHNID_PRESIGNED_TX,
+	MULTICALL3_DEPLOYER_EOA,
+	MULTICALL3_FUNDING_WEI,
 	SAFE_FACTORY_GITHUB_URL,
 	type ContractStatus,
 	checkAllContracts,
 	broadcastArachnidTx,
+	broadcastMulticall3Tx,
 	waitForTx,
 	rpcCall,
 	hasCode,
@@ -115,6 +117,9 @@ class VelaChainSetupStore {
 	// ── Arachnid-specific ──
 	arachnidDeployerBalance = $state<bigint>(0n);
 	currentGasPrice = $state<bigint>(0n);
+
+	// ── Multicall3-specific ──
+	multicall3DeployerBalance = $state<bigint>(0n);
 
 	// ── Deployer EOA wallet (generated in-browser) ──
 	deployerWallet = $state<DeployerWallet | null>(null);
@@ -390,6 +395,61 @@ class VelaChainSetupStore {
 				this.deploySubStep = 'success';
 				// Update contract status
 				await this.recheck();
+			} else {
+				this.deploySubStep = 'error';
+				this.deployError = 'Transaction failed or timed out';
+			}
+		} catch (e) {
+			this.deploySubStep = 'error';
+			this.deployError = e instanceof Error ? e.message : 'Broadcast failed';
+		}
+	}
+
+	// ── Multicall3 deployment (pre-signed tx) ──
+
+	async startMulticall3Deploy() {
+		this.activeContractKey = 'multicall3';
+		this.deployError = '';
+		this.deploySubStep = 'fund-deployer';
+
+		try {
+			this.multicall3DeployerBalance = await getBalance(this.rpcUrl, MULTICALL3_DEPLOYER_EOA);
+			this.currentGasPrice = await getGasPrice(this.rpcUrl);
+		} catch (e) {
+			this.deployError = e instanceof Error ? e.message : 'Failed to check deployer balance';
+		}
+	}
+
+	async refreshMulticall3Balance() {
+		try {
+			this.multicall3DeployerBalance = await getBalance(this.rpcUrl, MULTICALL3_DEPLOYER_EOA);
+		} catch {
+			// ignore
+		}
+	}
+
+	get multicall3Funded(): boolean {
+		return this.multicall3DeployerBalance >= MULTICALL3_FUNDING_WEI;
+	}
+
+	async broadcastMulticall3() {
+		this.deploySubStep = 'broadcast-tx';
+		this.deployError = '';
+
+		try {
+			const txHash = await broadcastMulticall3Tx(this.rpcUrl);
+			this.deployTxHash = txHash;
+			this.deploySubStep = 'waiting';
+
+			const success = await waitForTx(this.rpcUrl, txHash);
+			if (success) {
+				this.deploySubStep = 'success';
+				// Update status in-place
+				const status = this.contractStatuses.find((s) => s.key === 'multicall3');
+				if (status) {
+					status.deployed = true;
+					status.verified = true;
+				}
 			} else {
 				this.deploySubStep = 'error';
 				this.deployError = 'Transaction failed or timed out';

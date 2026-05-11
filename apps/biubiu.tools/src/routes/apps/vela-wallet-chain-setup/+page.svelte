@@ -313,6 +313,18 @@
 				></div>
 			</div>
 
+			<!-- P256 precompile status (first — it's a prerequisite) -->
+			<div class="contract-row" class:deployed={store.p256Available} class:missing={!store.p256Available}>
+				<span class="status-icon">{store.p256Available ? '\u2713' : '\u2717'}</span>
+				<div class="contract-name-group">
+					<span class="contract-name">P256 Precompile (RIP-7212)</span>
+					<span class="contract-address">Required for passkey signatures</span>
+				</div>
+				<span class="status-label">
+					{store.p256Available ? 'Available' : 'Not available'}
+				</span>
+			</div>
+
 			<!-- Contract checklist -->
 			<ul class="contract-list">
 				{#each store.contractStatuses as cs}
@@ -355,17 +367,6 @@
 				{/each}
 			</ul>
 
-			<!-- P256 precompile status -->
-			<div class="contract-row" class:deployed={store.p256Available} class:missing={!store.p256Available}>
-				<span class="status-icon">{store.p256Available ? '\u2713' : '\u2717'}</span>
-				<div class="contract-name-group">
-					<span class="contract-name">P256 Precompile (RIP-7212)</span>
-					<span class="contract-address">Required for passkey signatures</span>
-				</div>
-				<span class="status-label">
-					{store.p256Available ? 'Available' : 'Not available'}
-				</span>
-			</div>
 		</section>
 
 		<!-- P256 missing warning -->

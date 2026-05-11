@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet Chain Setup - BiuBiu Tools",
+  "vcs.meta.description": "Prepare any EVM chain for Vela Wallet. Check and deploy required smart contracts with step-by-step guidance.",
+
+  "vcs.title": "Vela Wallet Chain Setup",
+  "vcs.subtitle": "Prepare any EVM chain for Vela Wallet in a few simple steps",
+
+  "vcs.search.placeholder": "Search by chain name or Chain ID...",
+  "vcs.search.hint": "e.g. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "No chains found. Try a different search term.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Checking chain compatibility...",
+  "vcs.checking.subtitle": "Verifying required contracts on {chainName}",
+
+  "vcs.results.title": "Chain Status",
+  "vcs.results.ready": "{count} of {total} contracts ready",
+  "vcs.results.allReady": "All contracts are deployed!",
+  "vcs.results.needsSetup": "Some contracts need to be deployed",
+  "vcs.results.deployed": "Deployed",
+  "vcs.results.missing": "Not deployed",
+  "vcs.results.recheck": "Check Again",
+  "vcs.results.changeChain": "Change Chain",
+
+  "vcs.step.title": "Next Step",
+
+  "vcs.arachnid.title": "Deploy Deployment Proxy",
+  "vcs.arachnid.description": "This chain needs a base deployment tool installed first. This is a one-time setup that anyone can do.",
+  "vcs.arachnid.step1.title": "Step 1: Fund the deployer",
+  "vcs.arachnid.step1.description": "Send a small amount of {symbol} to the deployer address below. This covers the gas fee for creating the deployment tool.",
+  "vcs.arachnid.step1.amount": "Amount needed: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Send to this address:",
+  "vcs.arachnid.step1.balance": "Current balance: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Funded! Ready for next step.",
+  "vcs.arachnid.step1.refreshBalance": "Refresh Balance",
+  "vcs.arachnid.step2.title": "Step 2: Deploy",
+  "vcs.arachnid.step2.description": "Click the button below to broadcast the deployment transaction. No wallet connection needed — this uses a pre-signed transaction.",
+  "vcs.arachnid.step2.btn": "Deploy Now",
+  "vcs.arachnid.step2.broadcasting": "Broadcasting...",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "This contract must be deployed by the Safe team. It cannot be deployed by anyone else.",
+  "vcs.safeFactory.howTo": "How to request deployment:",
+  "vcs.safeFactory.step1": "Visit the Safe Singleton Factory GitHub repository",
+  "vcs.safeFactory.step2": "Open a new issue requesting deployment to your chain",
+  "vcs.safeFactory.step3": "Include the chain name, Chain ID, and an RPC URL",
+  "vcs.safeFactory.step4": "The Safe team will review and deploy (usually within a few days)",
+  "vcs.safeFactory.openGithub": "Open GitHub Issues",
+  "vcs.safeFactory.note": "This is a standard process. Many chains already have this deployed. Once the Safe team deploys it, come back and check again.",
+
+  "vcs.entrypoint.title": "Deploy EntryPoint",
+  "vcs.entrypoint.description": "The EntryPoint enables smart wallet transactions (account abstraction). It's deployed through the Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Deploy EntryPoint",
+
+  "vcs.safeContracts.title": "Deploy Vela Wallet Contracts",
+  "vcs.safeContracts.description": "These contracts enable Vela Wallet to work on this chain. They're deployed through the Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Deploy All ({count} contracts)",
+  "vcs.safeContracts.deploy": "Deploy",
+  "vcs.safeContracts.estimatedGas": "Estimated total gas: ~{gas}",
+
+  "vcs.deploy.waiting": "Waiting for confirmation...",
+  "vcs.deploy.success": "Deployed successfully!",
+  "vcs.deploy.failed": "Deployment failed",
+  "vcs.deploy.txHash": "Transaction:",
+  "vcs.deploy.viewExplorer": "View on Explorer",
+
+  "vcs.complete.title": "Chain is Ready!",
+  "vcs.complete.description": "{chainName} is fully set up for Vela Wallet. You can now go back to Vela Wallet and add this network.",
+  "vcs.complete.goToVela": "Open Vela Wallet",
+  "vcs.complete.setupAnother": "Set Up Another Chain",
+
+  "vcs.error.rpc": "RPC Error",
+  "vcs.error.retry": "Try Again",
+
+  "vcs.info.whatIsThis": "What is this?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet is a smart wallet that uses passkeys (fingerprint/Face ID) instead of seed phrases. For it to work on a new chain, several smart contracts need to be deployed first. This tool guides you through that process.",
+  "vcs.info.isFree": "Is this free?",
+  "vcs.info.isFreeAnswer": "Deploying contracts requires a small amount of the chain's native token to pay for gas fees. The tool itself is free.",
+  "vcs.info.isItSafe": "Is it safe?",
+  "vcs.info.isItSafeAnswer": "Yes. All contracts deployed are official, audited open-source contracts from the Safe and ERC-4337 ecosystems. The addresses are deterministic — the same contracts are deployed at the same addresses on every chain."
+}

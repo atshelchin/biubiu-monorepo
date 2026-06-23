@@ -23,7 +23,7 @@ contract ForeverTest is Test {
     // ============ Defaults ============
 
     function test_Defaults() public view {
-        assertEq(forever.fee(), 0.0001 ether);
+        assertEq(forever.fee(), 0.001 ether);
         assertEq(forever.maxPayload(), 4096);
         assertEq(forever.COOLDOWN(), 24 hours);
         assertEq(forever.entryCount(alice), 0);
@@ -41,20 +41,20 @@ contract ForeverTest is Test {
     function test_Seal_RevertsEmptyPayload() public {
         vm.prank(alice);
         vm.expectRevert(Forever.EmptyPayload.selector);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"");
     }
 
     function test_Seal_RevertsPayloadTooLarge() public {
         bytes memory big = new bytes(4097);
         vm.prank(alice);
         vm.expectRevert(Forever.PayloadTooLarge.selector);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), big);
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), big);
     }
 
     function test_Seal_StoresAndCharges() public {
         vm.prank(alice);
-        forever.seal{value: 0.0003 ether}(0, 0, 0, bytes32(0), hex"c0ffee");
-        assertEq(forever.collected(), 0.0003 ether);
+        forever.seal{value: 0.003 ether}(0, 0, 0, bytes32(0), hex"c0ffee");
+        assertEq(forever.collected(), 0.003 ether);
         assertEq(forever.entryCount(alice), 1);
 
         Forever.Entry[] memory page = forever.getEntries(alice, 0, 10);
@@ -69,7 +69,7 @@ contract ForeverTest is Test {
         vm.expectEmit(true, true, true, true, address(forever));
         emit Sealed(alice, 0, 1, uint64(block.timestamp), 1_893_456_000);
         vm.prank(alice);
-        forever.seal{value: 0.0001 ether}(1, 1_893_456_000, 123_456, scheme, hex"c0ffee");
+        forever.seal{value: 0.001 ether}(1, 1_893_456_000, 123_456, scheme, hex"c0ffee");
 
         // capsule metadata is retrievable from state
         Forever.Entry[] memory page = forever.getEntries(alice, 0, 1);
@@ -82,17 +82,17 @@ contract ForeverTest is Test {
 
     function test_Seal_CooldownBlocksSecondWrite() public {
         vm.startPrank(alice);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"01");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"01");
         vm.expectRevert(abi.encodeWithSelector(Forever.CooldownActive.selector, uint64(block.timestamp + 24 hours)));
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"02");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"02");
         vm.stopPrank();
     }
 
     function test_Seal_CooldownClearsAfter24h() public {
         vm.startPrank(alice);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"01");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"01");
         vm.warp(block.timestamp + 24 hours);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"02");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"02");
         vm.stopPrank();
         assertEq(forever.entryCount(alice), 2);
     }
@@ -100,7 +100,7 @@ contract ForeverTest is Test {
     function test_CooldownRemaining() public {
         assertEq(forever.cooldownRemaining(alice), 0);
         vm.prank(alice);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"01");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"01");
         assertEq(forever.cooldownRemaining(alice), 24 hours);
         vm.warp(block.timestamp + 10 hours);
         assertEq(forever.cooldownRemaining(alice), 14 hours);
@@ -112,7 +112,7 @@ contract ForeverTest is Test {
         vm.startPrank(who);
         for (uint256 i = 0; i < count; i++) {
             if (i > 0) vm.warp(block.timestamp + 24 hours + 1);
-            forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), abi.encodePacked(uint8(i)));
+            forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), abi.encodePacked(uint8(i)));
         }
         vm.stopPrank();
     }
@@ -150,9 +150,9 @@ contract ForeverTest is Test {
 
     function test_EntriesArePerAuthor() public {
         vm.prank(alice);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"a1");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"a1");
         vm.prank(bob);
-        forever.seal{value: 0.0001 ether}(0, 0, 0, bytes32(0), hex"b1");
+        forever.seal{value: 0.001 ether}(0, 0, 0, bytes32(0), hex"b1");
         assertEq(forever.entryCount(alice), 1);
         assertEq(forever.entryCount(bob), 1);
         assertEq(forever.getEntries(alice, 0, 1)[0].payload, hex"a1");
@@ -215,11 +215,11 @@ contract ForeverTest is Test {
         forever.setTreasury(treasury);
 
         vm.prank(alice);
-        forever.seal{value: 0.0003 ether}(0, 0, 0, bytes32(0), hex"01");
+        forever.seal{value: 0.003 ether}(0, 0, 0, bytes32(0), hex"01");
 
         vm.prank(bob);
         forever.withdraw();
-        assertEq(treasury.balance, 0.0003 ether);
+        assertEq(treasury.balance, 0.003 ether);
         assertEq(forever.collected(), 0);
     }
 

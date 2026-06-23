@@ -55,7 +55,7 @@ contract Forever {
 
     // ============ Storage (field-initialized => part of creation code, deterministic) ============
 
-    uint256 public fee = 0.0001 ether; // 1e14 wei
+    uint256 public fee = 0.001 ether; // 1e15 wei
     uint16 public maxPayload = 4096;
     address public treasury = 0x7602db7FbBc4f0FD7dfA2Be206B39e002A5C94cA;
     uint256 public collected; // pull-payment; owner withdraws

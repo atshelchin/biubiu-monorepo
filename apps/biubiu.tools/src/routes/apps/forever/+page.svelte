@@ -75,7 +75,12 @@
 		</div>
 	</header>
 
-	<WalletGate requireBuiltin>
+	<WalletGate
+		requireBuiltin
+		variant="forever"
+		title="连接你的信匣"
+		description="《致未来》需要你的 biubiu 内置钱包(passkey)——它既是你的签名,也是你的加密钥匙。"
+	>
 		{#if !store.hasKey}
 			<section class="leaf intro">
 				<div class="key-mark" aria-hidden="true"><KeyRound size={22} /></div>

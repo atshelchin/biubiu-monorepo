@@ -316,6 +316,7 @@
 	confirmText={t('auth.logout')}
 	onConfirm={handleLogout}
 	onCancel={() => (showLogoutConfirm = false)}
+	{variant}
 />
 
 <style>

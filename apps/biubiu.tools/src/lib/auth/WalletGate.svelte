@@ -20,10 +20,12 @@
 		/** 覆盖默认标题/描述(否则用 i18n 默认文案)。 */
 		title?: string;
 		description?: string;
+		/** Color theme. 'default' = app green; 'forever' = warm gold + serif. */
+		variant?: 'default' | 'forever';
 		children: Snippet;
 	}
 
-	let { requireBuiltin = false, title, description, children }: Props = $props();
+	let { requireBuiltin = false, title, description, variant = 'default', children }: Props = $props();
 
 	let showAuth = $state(false);
 
@@ -35,16 +37,24 @@
 {#if connected}
 	{@render children()}
 {:else}
-	<section class="wallet-gate">
+	<section class="wallet-gate" class:forever-theme={variant === 'forever'}>
 		<h2>{title ?? t('auth.connect.title')}</h2>
 		<p>{description ?? (requireBuiltin ? t('auth.connect.builtinOnly') : t('auth.connect.subtitle'))}</p>
 		<button class="gate-btn" onclick={() => (showAuth = true)}>{t('auth.connect.button')}</button>
 	</section>
 {/if}
 
-<AuthModal open={showAuth} onClose={() => (showAuth = false)} />
+<AuthModal open={showAuth} onClose={() => (showAuth = false)} {variant} />
 
 <style>
+	.wallet-gate.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-fg: #ffffff;
+		font-family: 'Georgia', 'Songti SC', 'Noto Serif SC', serif;
+		background: color-mix(in srgb, var(--bg-raised) 88%, #c8972f 4%);
+		border-color: rgba(184, 134, 47, 0.22);
+	}
 	.wallet-gate {
 		display: flex;
 		flex-direction: column;

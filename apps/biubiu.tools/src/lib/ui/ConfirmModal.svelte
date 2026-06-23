@@ -11,6 +11,8 @@
 		destructive?: boolean;
 		onConfirm: () => void;
 		onCancel: () => void;
+		/** Color theme. 'default' = app green; 'forever' = warm gold. */
+		variant?: 'default' | 'forever';
 	}
 
 	let {
@@ -21,7 +23,8 @@
 		cancelText,
 		destructive = false,
 		onConfirm,
-		onCancel
+		onCancel,
+		variant = 'default'
 	}: Props = $props();
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -40,7 +43,13 @@
 
 {#if open}
 	<div class="confirm-backdrop" onclick={onCancel} role="presentation"></div>
-	<div class="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+	<div
+		class="confirm-panel"
+		class:forever-theme={variant === 'forever'}
+		role="alertdialog"
+		aria-modal="true"
+		aria-labelledby="confirm-title"
+	>
 		<h3 id="confirm-title" class="confirm-title">{title}</h3>
 		<p class="confirm-message">{message}</p>
 		<div class="confirm-actions">
@@ -59,6 +68,12 @@
 {/if}
 
 <style>
+	.confirm-panel.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-fg: #ffffff;
+		font-family: 'Georgia', 'Songti SC', 'Noto Serif SC', serif;
+	}
 	.confirm-backdrop {
 		position: fixed;
 		inset: 0;

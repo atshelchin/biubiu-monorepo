@@ -13,9 +13,11 @@
 	interface Props {
 		open: boolean;
 		onClose: () => void;
+		/** Color theme. 'default' = app green; 'forever' = warm gold + serif. */
+		variant?: 'default' | 'forever';
 	}
 
-	let { open, onClose }: Props = $props();
+	let { open, onClose, variant = 'default' }: Props = $props();
 
 	let mode = $state<
 		| 'connect'
@@ -218,7 +220,7 @@
 </script>
 
 <ResponsiveModal {open} onClose={handleClose} {title}>
-	<div class="auth-content">
+	<div class="auth-content" class:forever-theme={variant === 'forever'}>
 		{#if mode === 'connect'}
 			<!-- Wallet method picker -->
 			<p class="auth-description">{t('auth.connect.subtitle')}</p>
@@ -497,6 +499,14 @@
 </ResponsiveModal>
 
 <style>
+	.auth-content.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-muted: rgba(184, 134, 47, 0.12);
+		--accent-subtle: rgba(184, 134, 47, 0.08);
+		--accent-fg: #ffffff;
+		font-family: 'Georgia', 'Songti SC', 'Noto Serif SC', serif;
+	}
 	.auth-content {
 		display: flex;
 		flex-direction: column;

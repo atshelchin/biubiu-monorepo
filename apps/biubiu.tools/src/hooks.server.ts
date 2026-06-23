@@ -1,8 +1,8 @@
 import { type Handle } from '@sveltejs/kit';
 import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
+import { resolveLocale, DEFAULT_LOCALE } from '$lib/locales';
 
-const DEFAULT_LOCALE = 'en';
 const DEFAULT_THEME = 'dark';
 const DEFAULT_TEXT_SCALE = 'md';
 const VALID_TEXT_SCALES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
@@ -19,10 +19,9 @@ setRouteMessages(routeMessages);
 // Preload all message modules using import.meta.glob (handles special chars in filenames)
 const messageModules = import.meta.glob('./messages/**/*.json', { eager: false });
 
-// Server-side message loader using import.meta.glob (handles [brackets] in filenames)
-async function serverMessageLoader(_locale: string, namespace: string) {
-  const path = `./messages/en/${namespace}.json`;
-
+// Load a single namespace file for one locale (handles [brackets] in filenames)
+async function loadNamespace(locale: string, namespace: string): Promise<Record<string, string>> {
+  const path = `./messages/${locale}/${namespace}.json`;
   try {
     if (messageModules[path]) {
       const module = (await messageModules[path]()) as { default: Record<string, string> };
@@ -32,6 +31,15 @@ async function serverMessageLoader(_locale: string, namespace: string) {
   } catch {
     return {};
   }
+}
+
+// Server-side message loader: English base, with the target locale layered on top
+// so any missing key falls back to English per-key.
+async function serverMessageLoader(locale: string, namespace: string) {
+  const en = await loadNamespace(DEFAULT_LOCALE, namespace);
+  if (locale === DEFAULT_LOCALE) return en;
+  const localized = await loadNamespace(locale, namespace);
+  return { ...en, ...localized };
 }
 
 // Set server-side message loader
@@ -55,8 +63,11 @@ export const handle: Handle = async ({ event, resolve }) => {
     return resolve(event);
   }
 
-  // Always use English
-  const locale = DEFAULT_LOCALE;
+  // Resolve locale: explicit cookie wins, else the browser's Accept-Language, else English
+  const locale = resolveLocale(
+    event.cookies.get('locale'),
+    event.request.headers.get('accept-language')
+  );
   event.locals.locale = locale;
   i18nState.locale = locale;
 

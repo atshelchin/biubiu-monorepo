@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Penyiapan Chain Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Siapkan chain EVM mana pun untuk Vela Wallet. Cek dan deploy smart contract yang diperlukan dengan panduan langkah demi langkah.",
+
+  "vcs.title": "Penyiapan Chain Vela Wallet",
+  "vcs.subtitle": "Siapkan chain EVM mana pun untuk Vela Wallet dalam beberapa langkah mudah",
+
+  "vcs.search.placeholder": "Cari berdasarkan nama chain atau Chain ID…",
+  "vcs.search.hint": "mis. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Tidak ada chain ditemukan. Coba kata kunci lain.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Memeriksa kompatibilitas chain…",
+  "vcs.checking.subtitle": "Memverifikasi kontrak yang diperlukan di {chainName}",
+
+  "vcs.results.title": "Status Chain",
+  "vcs.results.ready": "{count} dari {total} kontrak siap",
+  "vcs.results.allReady": "Semua kontrak sudah di-deploy!",
+  "vcs.results.needsSetup": "Beberapa kontrak perlu di-deploy",
+  "vcs.results.deployed": "Ter-deploy",
+  "vcs.results.missing": "Belum di-deploy",
+  "vcs.results.recheck": "Cek Lagi",
+  "vcs.results.changeChain": "Ganti Chain",
+
+  "vcs.step.title": "Langkah Berikutnya",
+
+  "vcs.arachnid.title": "Deploy Deployment Proxy",
+  "vcs.arachnid.description": "Chain ini perlu memasang alat deploy dasar terlebih dahulu. Ini penyiapan sekali jalan yang bisa dilakukan siapa saja.",
+  "vcs.arachnid.step1.title": "Langkah 1: Danai deployer",
+  "vcs.arachnid.step1.description": "Kirim sejumlah kecil {symbol} ke alamat deployer di bawah. Ini menutupi biaya gas untuk membuat alat deploy.",
+  "vcs.arachnid.step1.amount": "Jumlah yang diperlukan: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Kirim ke alamat ini:",
+  "vcs.arachnid.step1.balance": "Saldo saat ini: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Terdanai! Siap untuk langkah berikutnya.",
+  "vcs.arachnid.step1.refreshBalance": "Segarkan Saldo",
+  "vcs.arachnid.step2.title": "Langkah 2: Deploy",
+  "vcs.arachnid.step2.description": "Klik tombol di bawah untuk menyiarkan transaksi deploy. Tidak perlu menghubungkan dompet — ini menggunakan transaksi yang sudah ditandatangani.",
+  "vcs.arachnid.step2.btn": "Deploy Sekarang",
+  "vcs.arachnid.step2.broadcasting": "Menyiarkan…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Kontrak ini harus di-deploy oleh tim Safe. Tidak bisa di-deploy oleh siapa pun yang lain.",
+  "vcs.safeFactory.howTo": "Cara meminta deploy:",
+  "vcs.safeFactory.step1": "Kunjungi repositori GitHub Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Buka issue baru yang meminta deploy ke chain-mu",
+  "vcs.safeFactory.step3": "Sertakan nama chain, Chain ID, dan URL RPC",
+  "vcs.safeFactory.step4": "Tim Safe akan meninjau dan men-deploy (biasanya dalam beberapa hari)",
+  "vcs.safeFactory.openGithub": "Buka GitHub Issues",
+  "vcs.safeFactory.note": "Ini proses standar. Banyak chain sudah memiliki ini ter-deploy. Setelah tim Safe men-deploy-nya, kembali dan cek lagi.",
+
+  "vcs.entrypoint.title": "Deploy EntryPoint",
+  "vcs.entrypoint.description": "EntryPoint memungkinkan transaksi smart wallet (account abstraction). Ia di-deploy melalui Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Deploy EntryPoint",
+
+  "vcs.safeContracts.title": "Deploy Kontrak Vela Wallet",
+  "vcs.safeContracts.description": "Kontrak-kontrak ini memungkinkan Vela Wallet bekerja di chain ini. Mereka di-deploy melalui Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Deploy Semua ({count} kontrak)",
+  "vcs.safeContracts.deploy": "Deploy",
+  "vcs.safeContracts.estimatedGas": "Perkiraan total gas: ~{gas}",
+
+  "vcs.deploy.waiting": "Menunggu konfirmasi…",
+  "vcs.deploy.success": "Berhasil di-deploy!",
+  "vcs.deploy.failed": "Deploy gagal",
+  "vcs.deploy.txHash": "Transaksi:",
+  "vcs.deploy.viewExplorer": "Lihat di Explorer",
+
+  "vcs.complete.title": "Chain Sudah Siap!",
+  "vcs.complete.description": "{chainName} sudah sepenuhnya disiapkan untuk Vela Wallet. Kamu sekarang bisa kembali ke Vela Wallet dan menambahkan jaringan ini.",
+  "vcs.complete.goToVela": "Buka Vela Wallet",
+  "vcs.complete.setupAnother": "Siapkan Chain Lain",
+
+  "vcs.error.rpc": "Kesalahan RPC",
+  "vcs.error.retry": "Coba Lagi",
+
+  "vcs.info.whatIsThis": "Apa ini?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet adalah smart wallet yang menggunakan passkey (sidik jari/Face ID) alih-alih seed phrase. Agar bekerja di chain baru, beberapa smart contract perlu di-deploy lebih dulu. Alat ini memandumu melalui proses tersebut.",
+  "vcs.info.isFree": "Apakah ini gratis?",
+  "vcs.info.isFreeAnswer": "Men-deploy kontrak memerlukan sejumlah kecil native token chain untuk membayar biaya gas. Alatnya sendiri gratis.",
+  "vcs.info.isItSafe": "Apakah aman?",
+  "vcs.info.isItSafeAnswer": "Ya. Semua kontrak yang di-deploy adalah kontrak open-source resmi yang telah diaudit dari ekosistem Safe dan ERC-4337. Alamatnya deterministik — kontrak yang sama di-deploy di alamat yang sama di setiap chain."
+}

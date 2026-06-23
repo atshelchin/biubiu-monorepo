@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "Penjelajah Chain",
+  "chainsList.description": "Jelajahi dan cari jaringan blockchain. Temukan endpoint RPC, block explorer, dan detail jaringan.",
+  "chainsList.popularChains": "Chain Populer",
+  "chainsList.allChains": "Semua Chain",
+  "chainsList.totalChains": "{count} chain",
+  "chainsList.viewDetails": "Lihat Detail",
+  "chains.search.placeholder": "Cari chain berdasarkan nama, simbol, atau chain ID…",
+  "chains.search.noResults": "Tidak ada chain ditemukan"
+}

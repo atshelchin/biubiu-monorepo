@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { t, preferences } from '$lib/i18n';
+	import { t, preferences, locale } from '$lib/i18n';
+	import { SUPPORTED_LOCALES, LOCALE_NAMES, type AppLanguage } from '$lib/locales';
 	import { browser } from '$app/environment';
 	import {
 		loadSettings,
@@ -63,6 +64,16 @@
 		}
 	});
 
+	// Current UI language (resolved server-side, exposed via the i18n store)
+	const currentLocale = $derived(locale.value as string);
+
+	function handleSetLocale(code: AppLanguage) {
+		if (!browser || code === currentLocale) return;
+		// Persist for SSR; a reload re-renders the whole page in the new locale.
+		document.cookie = `locale=${code};path=/;max-age=31536000;SameSite=Lax`;
+		location.reload();
+	}
+
 	// Handlers
 	function handleSetTheme(theme: Theme) {
 		if (settings.theme !== theme) {
@@ -101,6 +112,32 @@
 </script>
 
 <div class="settings-panel">
+	<!-- Language Section -->
+	<section class="settings-section">
+		<div class="section-label">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="10"/>
+				<path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+			</svg>
+			<span>{t('settings.language')}</span>
+		</div>
+
+		<div class="lang-grid">
+			{#each SUPPORTED_LOCALES as code}
+				<button
+					class="lang-btn"
+					class:active={currentLocale === code}
+					onclick={() => handleSetLocale(code)}
+					lang={code}
+				>
+					{LOCALE_NAMES[code]}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<div class="section-divider"></div>
+
 	<!-- Appearance Section -->
 	<section class="settings-section">
 		<div class="section-label">
@@ -383,6 +420,41 @@
 	}
 
 	.scale-btn.active .scale-letter {
+		color: var(--bg-base);
+	}
+
+	/* Language Grid */
+	.lang-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-1);
+	}
+
+	.lang-btn {
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--bg-raised);
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		text-align: left;
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.lang-btn:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-base);
+		color: var(--fg-base);
+	}
+
+	.lang-btn.active {
+		background: var(--accent);
+		border-color: var(--accent);
 		color: var(--bg-base);
 	}
 

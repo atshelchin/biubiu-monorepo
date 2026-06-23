@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Configuração de Chain da Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Prepare qualquer chain EVM para a Vela Wallet. Verifique e implante os contratos inteligentes necessários com orientação passo a passo.",
+
+  "vcs.title": "Configuração de Chain da Vela Wallet",
+  "vcs.subtitle": "Prepare qualquer chain EVM para a Vela Wallet em poucos passos simples",
+
+  "vcs.search.placeholder": "Busque por nome da chain ou Chain ID…",
+  "vcs.search.hint": "ex.: Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Nenhuma chain encontrada. Tente outro termo de busca.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Verificando a compatibilidade da chain…",
+  "vcs.checking.subtitle": "Verificando os contratos necessários em {chainName}",
+
+  "vcs.results.title": "Status da chain",
+  "vcs.results.ready": "{count} de {total} contratos prontos",
+  "vcs.results.allReady": "Todos os contratos estão implantados!",
+  "vcs.results.needsSetup": "Alguns contratos precisam ser implantados",
+  "vcs.results.deployed": "Implantado",
+  "vcs.results.missing": "Não implantado",
+  "vcs.results.recheck": "Verificar de novo",
+  "vcs.results.changeChain": "Trocar de chain",
+
+  "vcs.step.title": "Próximo passo",
+
+  "vcs.arachnid.title": "Implantar o Deployment Proxy",
+  "vcs.arachnid.description": "Esta chain precisa que uma ferramenta base de implantação seja instalada primeiro. É uma configuração única que qualquer pessoa pode fazer.",
+  "vcs.arachnid.step1.title": "Passo 1: Abasteça o implantador",
+  "vcs.arachnid.step1.description": "Envie uma pequena quantia de {symbol} para o endereço do implantador abaixo. Isso cobre a taxa de gas para criar a ferramenta de implantação.",
+  "vcs.arachnid.step1.amount": "Quantia necessária: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Envie para este endereço:",
+  "vcs.arachnid.step1.balance": "Saldo atual: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Abastecido! Pronto para o próximo passo.",
+  "vcs.arachnid.step1.refreshBalance": "Atualizar saldo",
+  "vcs.arachnid.step2.title": "Passo 2: Implantar",
+  "vcs.arachnid.step2.description": "Clique no botão abaixo para transmitir a transação de implantação. Não é preciso conectar carteira — isto usa uma transação pré-assinada.",
+  "vcs.arachnid.step2.btn": "Implantar agora",
+  "vcs.arachnid.step2.broadcasting": "Transmitindo…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Este contrato precisa ser implantado pela equipe da Safe. Não pode ser implantado por mais ninguém.",
+  "vcs.safeFactory.howTo": "Como solicitar a implantação:",
+  "vcs.safeFactory.step1": "Acesse o repositório do Safe Singleton Factory no GitHub",
+  "vcs.safeFactory.step2": "Abra uma nova issue solicitando a implantação na sua chain",
+  "vcs.safeFactory.step3": "Inclua o nome da chain, o Chain ID e uma URL de RPC",
+  "vcs.safeFactory.step4": "A equipe da Safe vai revisar e implantar (geralmente em alguns dias)",
+  "vcs.safeFactory.openGithub": "Abrir issues no GitHub",
+  "vcs.safeFactory.note": "Este é um processo padrão. Muitas chains já têm isto implantado. Assim que a equipe da Safe implantar, volte e verifique novamente.",
+
+  "vcs.entrypoint.title": "Implantar o EntryPoint",
+  "vcs.entrypoint.description": "O EntryPoint habilita transações de smart wallet (account abstraction). Ele é implantado através do Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Implantar o EntryPoint",
+
+  "vcs.safeContracts.title": "Implantar os contratos da Vela Wallet",
+  "vcs.safeContracts.description": "Estes contratos permitem que a Vela Wallet funcione nesta chain. Eles são implantados através do Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Implantar todos ({count} contratos)",
+  "vcs.safeContracts.deploy": "Implantar",
+  "vcs.safeContracts.estimatedGas": "Gas total estimado: ~{gas}",
+
+  "vcs.deploy.waiting": "Aguardando confirmação…",
+  "vcs.deploy.success": "Implantado com sucesso!",
+  "vcs.deploy.failed": "Falha na implantação",
+  "vcs.deploy.txHash": "Transação:",
+  "vcs.deploy.viewExplorer": "Ver no explorador",
+
+  "vcs.complete.title": "A chain está pronta!",
+  "vcs.complete.description": "{chainName} está totalmente configurada para a Vela Wallet. Agora você pode voltar à Vela Wallet e adicionar esta rede.",
+  "vcs.complete.goToVela": "Abrir a Vela Wallet",
+  "vcs.complete.setupAnother": "Configurar outra chain",
+
+  "vcs.error.rpc": "Erro de RPC",
+  "vcs.error.retry": "Tentar novamente",
+
+  "vcs.info.whatIsThis": "O que é isto?",
+  "vcs.info.whatIsThisAnswer": "A Vela Wallet é uma smart wallet que usa passkeys (impressão digital/Face ID) em vez de frases semente. Para funcionar em uma nova chain, vários contratos inteligentes precisam ser implantados primeiro. Esta ferramenta orienta você nesse processo.",
+  "vcs.info.isFree": "Isto é gratuito?",
+  "vcs.info.isFreeAnswer": "Implantar contratos exige uma pequena quantia do token nativo da chain para pagar as taxas de gas. A ferramenta em si é gratuita.",
+  "vcs.info.isItSafe": "É seguro?",
+  "vcs.info.isItSafeAnswer": "Sim. Todos os contratos implantados são contratos oficiais, auditados e de código aberto dos ecossistemas Safe e ERC-4337. Os endereços são determinísticos — os mesmos contratos são implantados nos mesmos endereços em todas as chains."
+}

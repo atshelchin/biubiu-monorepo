@@ -17,14 +17,14 @@
 	"ws.step.done": "完成",
 
 	"ws.security.title": "你的私钥只留在本浏览器",
-	"ws.security.body": "粘贴的私钥永不离开你的设备、永不被存储。链上操作由一个一次性中继钱包(你会下载它)完成 —— 你给它充 gas,它只能把资产发往你设定的目标地址。无需 passkey 或登录。",
+	"ws.security.body": "粘贴的私钥永不离开你的设备、永不被存储。链上操作由一个一次性中继钱包（你会下载它）完成 —— 你给它充 gas，它只能把资产发往你设定的目标地址。无需 passkey 或登录。",
 
 	"ws.network.addCustom": "添加网络",
 	"ws.run.wallets": "钱包数",
 	"ws.run.batch": "第 {done} / {total} 批",
 
 	"ws.relay.title": "中继钱包",
-	"ws.relay.subtitle": "一个一次性钱包,负责链上操作。先下载它、证明你已保存,再给它充 gas。",
+	"ws.relay.subtitle": "一个一次性钱包，负责链上操作。先下载它、证明你已保存，再给它充 gas。",
 	"ws.relay.step1": "下载中继私钥",
 	"ws.relay.downloadHint": "充值中继、回收剩余 gas 都要用到它。它只能把资产发往你的目标地址。",
 	"ws.relay.step2": "确认你已保存",
@@ -127,10 +127,10 @@
 
 	"ws.sweep.title": "归集",
 	"ws.sweep.subtitle": "你的 passkey 把每个已升级钱包的原生币 + ERC20 拉到收款地址。",
-	"ws.sweep.fingerprint": "每批一次指纹。",
+	"ws.sweep.fingerprint": "每批点按一次 passkey。",
 
 	"ws.run.title": "确认并执行",
-	"ws.run.subtitle": "确认将归集的内容,如需则给一次性中继充值,然后一键全部完成。",
+	"ws.run.subtitle": "确认将归集的内容，如需则给一次性中继充值，然后一键全部完成。",
 	"ws.run.details": "查看每个钱包余额",
 	"ws.run.deploying": "部署",
 	"ws.run.upgrading": "升级中…",
@@ -139,8 +139,8 @@
 	"ws.run.fundAndStart": "充值并归集",
 
 	"ws.fee.label": "手续费",
-	"ws.fee.free": "免费(会员)",
-	"ws.fee.note": "每次归集收取一次,在第一批里从你的 Safe 支付。",
+	"ws.fee.free": "免费（会员）",
+	"ws.fee.note": "每次归集收取一次，在第一批里从你的 Safe 支付。",
 
 	"ws.done.title": "归集完成",
 	"ws.done.subtitle": "资产已转入收款地址。钱包保持已升级状态，下次一键即可再归集。",

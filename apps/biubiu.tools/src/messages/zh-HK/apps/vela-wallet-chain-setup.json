@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet 鏈設定 - BiuBiu Tools",
+  "vcs.meta.description": "為 Vela Wallet 準備任意 EVM 鏈。分步引導你偵測並部署所需的智能合約。",
+
+  "vcs.title": "Vela Wallet 鏈設定",
+  "vcs.subtitle": "幾步即可為 Vela Wallet 準備好任意 EVM 鏈",
+
+  "vcs.search.placeholder": "按鏈名稱或鏈 ID 搜尋…",
+  "vcs.search.hint": "例如 Ethereum、Polygon、42161",
+  "vcs.search.noResults": "找不到鏈，換個關鍵字試試。",
+  "vcs.search.testnet": "測試網",
+
+  "vcs.checking.title": "正在偵測鏈相容性…",
+  "vcs.checking.subtitle": "正在核查 {chainName} 上所需的合約",
+
+  "vcs.results.title": "鏈狀態",
+  "vcs.results.ready": "{total} 個合約中已就緒 {count} 個",
+  "vcs.results.allReady": "所有合約均已部署！",
+  "vcs.results.needsSetup": "部分合約尚需部署",
+  "vcs.results.deployed": "已部署",
+  "vcs.results.missing": "未部署",
+  "vcs.results.recheck": "重新偵測",
+  "vcs.results.changeChain": "更換鏈",
+
+  "vcs.step.title": "下一步",
+
+  "vcs.arachnid.title": "部署 Deployment Proxy",
+  "vcs.arachnid.description": "這條鏈需要先安裝一個基礎部署工具。這是一次性設定，任何人都可以完成。",
+  "vcs.arachnid.step1.title": "第 1 步：為部署者充值",
+  "vcs.arachnid.step1.description": "向下方的部署者地址轉入少量 {symbol}，用於支付建立該部署工具的 gas 費。",
+  "vcs.arachnid.step1.amount": "所需金額：{amount} {symbol}",
+  "vcs.arachnid.step1.address": "轉入此地址：",
+  "vcs.arachnid.step1.balance": "當前餘額：{balance} {symbol}",
+  "vcs.arachnid.step1.funded": "已充值！可以進行下一步。",
+  "vcs.arachnid.step1.refreshBalance": "重新整理餘額",
+  "vcs.arachnid.step2.title": "第 2 步：部署",
+  "vcs.arachnid.step2.description": "點擊下方按鈕廣播部署交易。無需連接錢包——這裏使用的是預先簽署的交易。",
+  "vcs.arachnid.step2.btn": "立即部署",
+  "vcs.arachnid.step2.broadcasting": "廣播中…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "此合約必須由 Safe 團隊部署，其他任何人都無法部署。",
+  "vcs.safeFactory.howTo": "如何申請部署：",
+  "vcs.safeFactory.step1": "前往 Safe Singleton Factory 的 GitHub 倉庫",
+  "vcs.safeFactory.step2": "新建一個 issue，申請部署到你的鏈",
+  "vcs.safeFactory.step3": "附上鏈名稱、鏈 ID 和一個 RPC 地址",
+  "vcs.safeFactory.step4": "Safe 團隊會審核並部署（通常幾天內完成）",
+  "vcs.safeFactory.openGithub": "開啟 GitHub Issues",
+  "vcs.safeFactory.note": "這是標準流程，許多鏈都已部署。待 Safe 團隊部署完成後，回來再偵測一次。",
+
+  "vcs.entrypoint.title": "部署 EntryPoint",
+  "vcs.entrypoint.description": "EntryPoint 讓智能錢包交易（帳戶抽象）成為可能，它透過 Deployment Proxy 部署。",
+  "vcs.entrypoint.deploy": "部署 EntryPoint",
+
+  "vcs.safeContracts.title": "部署 Vela Wallet 合約",
+  "vcs.safeContracts.description": "這些合約讓 Vela Wallet 能在這條鏈上運行，它們透過 Safe Singleton Factory 部署。",
+  "vcs.safeContracts.deployAll": "全部部署（{count} 個合約）",
+  "vcs.safeContracts.deploy": "部署",
+  "vcs.safeContracts.estimatedGas": "預計總 gas：約 {gas}",
+
+  "vcs.deploy.waiting": "等待確認…",
+  "vcs.deploy.success": "部署成功！",
+  "vcs.deploy.failed": "部署失敗",
+  "vcs.deploy.txHash": "交易：",
+  "vcs.deploy.viewExplorer": "在區塊瀏覽器中查看",
+
+  "vcs.complete.title": "鏈已就緒！",
+  "vcs.complete.description": "{chainName} 已為 Vela Wallet 設定完畢。現在可以回到 Vela Wallet 新增這個網絡了。",
+  "vcs.complete.goToVela": "開啟 Vela Wallet",
+  "vcs.complete.setupAnother": "設定另一條鏈",
+
+  "vcs.error.rpc": "RPC 錯誤",
+  "vcs.error.retry": "重試",
+
+  "vcs.info.whatIsThis": "這是甚麼？",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet 是一款智能錢包，用 passkey（指紋 / Face ID）取代助記詞。要讓它在一條新鏈上運行，需要先部署幾個智能合約。本工具會引導你完成整個過程。",
+  "vcs.info.isFree": "這是免費的嗎？",
+  "vcs.info.isFreeAnswer": "部署合約需要少量該鏈的原生代幣來支付 gas 費，工具本身是免費的。",
+  "vcs.info.isItSafe": "安全嗎？",
+  "vcs.info.isItSafeAnswer": "安全。所部署的全部是來自 Safe 與 ERC-4337 生態、經過審計的官方開源合約。地址是確定性的——相同的合約在每條鏈上都部署在相同的地址。"
+}

@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name}（{symbol}） - トークン詳細",
+  "assets.description": "{name}（{symbol}）のトークン情報、コントラクトアドレス、ソーシャルリンクを表示。",
+  "assets.website": "公式サイト",
+  "assets.explorer": "エクスプローラー",
+  "assets.editOnGithub": "編集",
+  "assets.tokenInfo": "トークン情報",
+  "assets.networkInfo": "ネットワーク情報",
+  "assets.symbol": "シンボル",
+  "assets.decimals": "小数桁数",
+  "assets.type": "種類",
+  "assets.chainId": "チェーン ID",
+  "assets.contract": "コントラクト",
+  "assets.tags": "タグ",
+  "assets.links": "リンク",
+  "assets.notFound": "資産が見つかりません",
+  "assets.notFound.description": "アドレスが {address} の資産は見つかりませんでした。",
+  "assets.backToHome": "ホームに戻る",
+  "assets.search.placeholder": "名前、シンボル、またはアドレスでトークンを検索…",
+  "assets.search.noResults": "トークンが見つかりません"
+}

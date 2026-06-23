@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "Обзор сетей",
+  "chainsList.description": "Просматривайте и ищите блокчейн-сети. Находите RPC-узлы, обозреватели блоков и сведения о сетях.",
+  "chainsList.popularChains": "Популярные сети",
+  "chainsList.allChains": "Все сети",
+  "chainsList.totalChains": "{count} сетей",
+  "chainsList.viewDetails": "Подробнее",
+  "chains.search.placeholder": "Поиск сетей по названию, символу или Chain ID…",
+  "chains.search.noResults": "Сети не найдены"
+}

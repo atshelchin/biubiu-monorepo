@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name}（{symbol}） - 代幣詳情",
+  "assets.description": "查看 {name}（{symbol}）代幣資訊、合約地址與社交連結。",
+  "assets.website": "官網",
+  "assets.explorer": "區塊瀏覽器",
+  "assets.editOnGithub": "編輯",
+  "assets.tokenInfo": "代幣資訊",
+  "assets.networkInfo": "網絡資訊",
+  "assets.symbol": "符號",
+  "assets.decimals": "小數位",
+  "assets.type": "類型",
+  "assets.chainId": "鏈 ID",
+  "assets.contract": "合約",
+  "assets.tags": "標籤",
+  "assets.links": "連結",
+  "assets.notFound": "找不到該資產",
+  "assets.notFound.description": "找不到地址為 {address} 的資產。",
+  "assets.backToHome": "返回首頁",
+  "assets.search.placeholder": "按名稱、符號或地址搜尋代幣…",
+  "assets.search.noResults": "找不到代幣"
+}

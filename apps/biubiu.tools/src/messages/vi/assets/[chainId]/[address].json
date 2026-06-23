@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - Chi tiết token",
+  "assets.description": "Xem thông tin token {name} ({symbol}), địa chỉ hợp đồng và liên kết mạng xã hội.",
+  "assets.website": "Trang web",
+  "assets.explorer": "Trình duyệt khối",
+  "assets.editOnGithub": "Sửa",
+  "assets.tokenInfo": "Thông tin token",
+  "assets.networkInfo": "Thông tin mạng",
+  "assets.symbol": "Ký hiệu",
+  "assets.decimals": "Số thập phân",
+  "assets.type": "Loại",
+  "assets.chainId": "Chain ID",
+  "assets.contract": "Hợp đồng",
+  "assets.tags": "Thẻ",
+  "assets.links": "Liên kết",
+  "assets.notFound": "Không tìm thấy tài sản",
+  "assets.notFound.description": "Không tìm thấy tài sản với địa chỉ {address}.",
+  "assets.backToHome": "Về trang chủ",
+  "assets.search.placeholder": "Tìm token theo tên, ký hiệu hoặc địa chỉ…",
+  "assets.search.noResults": "Không tìm thấy token nào"
+}

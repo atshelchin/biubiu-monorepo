@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "Trình Duyệt Chuỗi",
+  "chainsList.description": "Duyệt và tìm kiếm các mạng blockchain. Tìm endpoint RPC, trình duyệt khối và thông tin mạng.",
+  "chainsList.popularChains": "Chuỗi phổ biến",
+  "chainsList.allChains": "Tất cả các chuỗi",
+  "chainsList.totalChains": "{count} chuỗi",
+  "chainsList.viewDetails": "Xem chi tiết",
+  "chains.search.placeholder": "Tìm chuỗi theo tên, ký hiệu hoặc Chain ID…",
+  "chains.search.noResults": "Không tìm thấy chuỗi nào"
+}

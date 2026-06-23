@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet Chain-Einrichtung – BiuBiu Tools",
+  "vcs.meta.description": "Jede EVM-Chain für Vela Wallet vorbereiten. Erforderliche Smart Contracts mit Schritt-für-Schritt-Anleitung prüfen und bereitstellen.",
+
+  "vcs.title": "Vela Wallet Chain-Einrichtung",
+  "vcs.subtitle": "Jede EVM-Chain in wenigen einfachen Schritten für Vela Wallet vorbereiten",
+
+  "vcs.search.placeholder": "Nach Chain-Name oder Chain-ID suchen…",
+  "vcs.search.hint": "z. B. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Keine Chains gefunden. Versuche einen anderen Suchbegriff.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Chain-Kompatibilität wird geprüft…",
+  "vcs.checking.subtitle": "Erforderliche Verträge auf {chainName} werden überprüft",
+
+  "vcs.results.title": "Chain-Status",
+  "vcs.results.ready": "{count} von {total} Verträgen bereit",
+  "vcs.results.allReady": "Alle Verträge sind bereitgestellt!",
+  "vcs.results.needsSetup": "Einige Verträge müssen bereitgestellt werden",
+  "vcs.results.deployed": "Bereitgestellt",
+  "vcs.results.missing": "Nicht bereitgestellt",
+  "vcs.results.recheck": "Erneut prüfen",
+  "vcs.results.changeChain": "Chain ändern",
+
+  "vcs.step.title": "Nächster Schritt",
+
+  "vcs.arachnid.title": "Deployment Proxy bereitstellen",
+  "vcs.arachnid.description": "Diese Chain benötigt zuerst ein Basis-Deployment-Tool. Dies ist eine einmalige Einrichtung, die jeder durchführen kann.",
+  "vcs.arachnid.step1.title": "Schritt 1: Deployer finanzieren",
+  "vcs.arachnid.step1.description": "Sende einen kleinen Betrag {symbol} an die untenstehende Deployer-Adresse. Dies deckt die gas-Gebühr für das Erstellen des Deployment-Tools.",
+  "vcs.arachnid.step1.amount": "Benötigter Betrag: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "An diese Adresse senden:",
+  "vcs.arachnid.step1.balance": "Aktuelles Guthaben: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Finanziert! Bereit für den nächsten Schritt.",
+  "vcs.arachnid.step1.refreshBalance": "Guthaben aktualisieren",
+  "vcs.arachnid.step2.title": "Schritt 2: Bereitstellen",
+  "vcs.arachnid.step2.description": "Klicke auf die Schaltfläche unten, um die Deployment-Transaktion zu senden. Keine Wallet-Verbindung nötig – es wird eine vorsignierte Transaktion verwendet.",
+  "vcs.arachnid.step2.btn": "Jetzt bereitstellen",
+  "vcs.arachnid.step2.broadcasting": "Wird gesendet…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Dieser Vertrag muss vom Safe-Team bereitgestellt werden. Niemand sonst kann ihn bereitstellen.",
+  "vcs.safeFactory.howTo": "So beantragst du die Bereitstellung:",
+  "vcs.safeFactory.step1": "Besuche das GitHub-Repository der Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Erstelle ein neues Issue mit der Bitte um Bereitstellung auf deiner Chain",
+  "vcs.safeFactory.step3": "Gib Chain-Name, Chain-ID und eine RPC-URL an",
+  "vcs.safeFactory.step4": "Das Safe-Team prüft und stellt bereit (meist innerhalb weniger Tage)",
+  "vcs.safeFactory.openGithub": "GitHub Issues öffnen",
+  "vcs.safeFactory.note": "Dies ist ein Standardverfahren. Viele Chains haben dies bereits bereitgestellt. Sobald das Safe-Team es bereitstellt, komm zurück und prüfe erneut.",
+
+  "vcs.entrypoint.title": "EntryPoint bereitstellen",
+  "vcs.entrypoint.description": "Der EntryPoint ermöglicht Smart-Wallet-Transaktionen (Account Abstraction). Er wird über den Deployment Proxy bereitgestellt.",
+  "vcs.entrypoint.deploy": "EntryPoint bereitstellen",
+
+  "vcs.safeContracts.title": "Vela Wallet-Verträge bereitstellen",
+  "vcs.safeContracts.description": "Diese Verträge ermöglichen den Betrieb von Vela Wallet auf dieser Chain. Sie werden über die Safe Singleton Factory bereitgestellt.",
+  "vcs.safeContracts.deployAll": "Alle bereitstellen ({count} Verträge)",
+  "vcs.safeContracts.deploy": "Bereitstellen",
+  "vcs.safeContracts.estimatedGas": "Geschätztes Gesamt-gas: ~{gas}",
+
+  "vcs.deploy.waiting": "Warten auf Bestätigung…",
+  "vcs.deploy.success": "Erfolgreich bereitgestellt!",
+  "vcs.deploy.failed": "Bereitstellung fehlgeschlagen",
+  "vcs.deploy.txHash": "Transaktion:",
+  "vcs.deploy.viewExplorer": "Im Explorer ansehen",
+
+  "vcs.complete.title": "Chain ist bereit!",
+  "vcs.complete.description": "{chainName} ist vollständig für Vela Wallet eingerichtet. Du kannst nun zu Vela Wallet zurückkehren und dieses Netzwerk hinzufügen.",
+  "vcs.complete.goToVela": "Vela Wallet öffnen",
+  "vcs.complete.setupAnother": "Weitere Chain einrichten",
+
+  "vcs.error.rpc": "RPC-Fehler",
+  "vcs.error.retry": "Erneut versuchen",
+
+  "vcs.info.whatIsThis": "Was ist das?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet ist ein Smart Wallet, das passkeys (Fingerabdruck/Face ID) statt Seed-Phrasen verwendet. Damit es auf einer neuen Chain funktioniert, müssen zuerst mehrere Smart Contracts bereitgestellt werden. Dieses Tool führt dich durch diesen Vorgang.",
+  "vcs.info.isFree": "Ist das kostenlos?",
+  "vcs.info.isFreeAnswer": "Das Bereitstellen von Verträgen erfordert einen kleinen Betrag des nativen Tokens der Chain für die gas-Gebühren. Das Tool selbst ist kostenlos.",
+  "vcs.info.isItSafe": "Ist es sicher?",
+  "vcs.info.isItSafeAnswer": "Ja. Alle bereitgestellten Verträge sind offizielle, auditierte Open-Source-Verträge aus den Ökosystemen von Safe und ERC-4337. Die Adressen sind deterministisch – dieselben Verträge werden auf jeder Chain an denselben Adressen bereitgestellt."
+}

@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet チェーンセットアップ - BiuBiu Tools",
+  "vcs.meta.description": "任意の EVM チェーンを Vela Wallet 用に準備。必要なスマートコントラクトをステップごとのガイドで確認・デプロイできます。",
+
+  "vcs.title": "Vela Wallet チェーンセットアップ",
+  "vcs.subtitle": "数ステップで任意の EVM チェーンを Vela Wallet 用に準備",
+
+  "vcs.search.placeholder": "チェーン名またはチェーン ID で検索…",
+  "vcs.search.hint": "例：Ethereum、Polygon、42161",
+  "vcs.search.noResults": "チェーンが見つかりません。別のキーワードでお試しください。",
+  "vcs.search.testnet": "テストネット",
+
+  "vcs.checking.title": "チェーンの互換性を確認しています…",
+  "vcs.checking.subtitle": "{chainName} 上で必要なコントラクトを検証しています",
+
+  "vcs.results.title": "チェーンの状態",
+  "vcs.results.ready": "{total} 件中 {count} 件のコントラクトが準備完了",
+  "vcs.results.allReady": "すべてのコントラクトがデプロイ済みです！",
+  "vcs.results.needsSetup": "一部のコントラクトはデプロイが必要です",
+  "vcs.results.deployed": "デプロイ済み",
+  "vcs.results.missing": "未デプロイ",
+  "vcs.results.recheck": "再確認",
+  "vcs.results.changeChain": "チェーンを変更",
+
+  "vcs.step.title": "次のステップ",
+
+  "vcs.arachnid.title": "Deployment Proxy をデプロイ",
+  "vcs.arachnid.description": "このチェーンには、まず基盤となるデプロイツールをインストールする必要があります。これは誰でも実行できる一度きりのセットアップです。",
+  "vcs.arachnid.step1.title": "ステップ 1：デプロイヤーに資金を入れる",
+  "vcs.arachnid.step1.description": "下のデプロイヤーアドレスに少額の {symbol} を送ってください。これはデプロイツール作成の gas 代をまかなうものです。",
+  "vcs.arachnid.step1.amount": "必要な金額：{amount} {symbol}",
+  "vcs.arachnid.step1.address": "このアドレスに送付：",
+  "vcs.arachnid.step1.balance": "現在の残高：{balance} {symbol}",
+  "vcs.arachnid.step1.funded": "資金を入れました！次のステップに進めます。",
+  "vcs.arachnid.step1.refreshBalance": "残高を更新",
+  "vcs.arachnid.step2.title": "ステップ 2：デプロイ",
+  "vcs.arachnid.step2.description": "下のボタンを押してデプロイトランザクションをブロードキャストします。ウォレットの接続は不要です。あらかじめ署名されたトランザクションを使います。",
+  "vcs.arachnid.step2.btn": "今すぐデプロイ",
+  "vcs.arachnid.step2.broadcasting": "ブロードキャスト中…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "このコントラクトは Safe チームがデプロイする必要があります。他の誰もデプロイできません。",
+  "vcs.safeFactory.howTo": "デプロイを依頼する方法：",
+  "vcs.safeFactory.step1": "Safe Singleton Factory の GitHub リポジトリにアクセス",
+  "vcs.safeFactory.step2": "新しい issue を開き、あなたのチェーンへのデプロイを依頼",
+  "vcs.safeFactory.step3": "チェーン名、チェーン ID、RPC URL を記載",
+  "vcs.safeFactory.step4": "Safe チームが確認してデプロイします（通常は数日以内）",
+  "vcs.safeFactory.openGithub": "GitHub Issues を開く",
+  "vcs.safeFactory.note": "これは標準的な手続きです。多くのチェーンではすでにデプロイ済みです。Safe チームがデプロイしたら、戻ってもう一度確認してください。",
+
+  "vcs.entrypoint.title": "EntryPoint をデプロイ",
+  "vcs.entrypoint.description": "EntryPoint はスマートウォレットのトランザクション（アカウント抽象化）を可能にします。Deployment Proxy 経由でデプロイされます。",
+  "vcs.entrypoint.deploy": "EntryPoint をデプロイ",
+
+  "vcs.safeContracts.title": "Vela Wallet のコントラクトをデプロイ",
+  "vcs.safeContracts.description": "これらのコントラクトにより、Vela Wallet がこのチェーン上で動作します。Safe Singleton Factory 経由でデプロイされます。",
+  "vcs.safeContracts.deployAll": "すべてデプロイ（{count} 件のコントラクト）",
+  "vcs.safeContracts.deploy": "デプロイ",
+  "vcs.safeContracts.estimatedGas": "推定合計 gas：約 {gas}",
+
+  "vcs.deploy.waiting": "承認を待っています…",
+  "vcs.deploy.success": "デプロイに成功しました！",
+  "vcs.deploy.failed": "デプロイに失敗しました",
+  "vcs.deploy.txHash": "トランザクション：",
+  "vcs.deploy.viewExplorer": "エクスプローラーで表示",
+
+  "vcs.complete.title": "チェーンの準備が完了しました！",
+  "vcs.complete.description": "{chainName} は Vela Wallet 用に完全にセットアップされました。Vela Wallet に戻って、このネットワークを追加できます。",
+  "vcs.complete.goToVela": "Vela Wallet を開く",
+  "vcs.complete.setupAnother": "別のチェーンをセットアップ",
+
+  "vcs.error.rpc": "RPC エラー",
+  "vcs.error.retry": "再試行",
+
+  "vcs.info.whatIsThis": "これは何ですか？",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet は、シードフレーズの代わりに passkey（指紋 / Face ID）を使うスマートウォレットです。新しいチェーンで動作させるには、まずいくつかのスマートコントラクトをデプロイする必要があります。このツールがその手順をガイドします。",
+  "vcs.info.isFree": "これは無料ですか？",
+  "vcs.info.isFreeAnswer": "コントラクトのデプロイには、gas 代を支払うためにそのチェーンのネイティブトークンが少額必要です。ツール自体は無料です。",
+  "vcs.info.isItSafe": "安全ですか？",
+  "vcs.info.isItSafeAnswer": "はい。デプロイされるコントラクトはすべて、Safe と ERC-4337 エコシステムの、監査済みで公式のオープンソースコントラクトです。アドレスは決定論的で、同じコントラクトはどのチェーンでも同じアドレスにデプロイされます。"
+}

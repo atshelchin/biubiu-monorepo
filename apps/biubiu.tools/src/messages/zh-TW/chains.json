@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "鏈瀏覽器",
+  "chainsList.description": "瀏覽並搜尋區塊鏈網路，查找 RPC 節點、區塊瀏覽器與網路詳情。",
+  "chainsList.popularChains": "熱門鏈",
+  "chainsList.allChains": "全部鏈",
+  "chainsList.totalChains": "{count} 條鏈",
+  "chainsList.viewDetails": "查看詳情",
+  "chains.search.placeholder": "依名稱、符號或鏈 ID 搜尋…",
+  "chains.search.noResults": "找不到鏈"
+}

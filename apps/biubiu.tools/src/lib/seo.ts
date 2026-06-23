@@ -1,5 +1,6 @@
 import { PUBLIC_DOMAIN } from '$env/static/public';
 import type { SEOProps, SoftwareApplicationData } from '@shelchin/seo-sveltekit';
+import { SUPPORTED_LOCALES } from '$lib/locales';
 
 /**
  * Site-wide SEO configuration
@@ -7,7 +8,7 @@ import type { SEOProps, SoftwareApplicationData } from '@shelchin/seo-sveltekit'
 export const seoConfig = {
   siteName: 'BiuBiu Tools',
   domain: PUBLIC_DOMAIN || 'https://biubiu.tools',
-  locales: ['en'],
+  locales: SUPPORTED_LOCALES,
   defaultLocale: 'en',
   twitterSite: '@biubiutools'
 } as const;

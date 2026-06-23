@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "Esplora Chain",
+  "chainsList.description": "Sfoglia e cerca tra le reti blockchain. Trova endpoint RPC, block explorer e dettagli di rete.",
+  "chainsList.popularChains": "Chain popolari",
+  "chainsList.allChains": "Tutte le chain",
+  "chainsList.totalChains": "{count} chain",
+  "chainsList.viewDetails": "Vedi dettagli",
+  "chains.search.placeholder": "Cerca chain per nome, simbolo o chain ID…",
+  "chains.search.noResults": "Nessuna chain trovata"
+}

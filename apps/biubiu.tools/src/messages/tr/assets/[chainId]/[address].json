@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - Token Ayrıntıları",
+  "assets.description": "{name} ({symbol}) token bilgilerini, sözleşme adresini ve sosyal bağlantıları görüntüleyin.",
+  "assets.website": "Web sitesi",
+  "assets.explorer": "Gezgin",
+  "assets.editOnGithub": "Düzenle",
+  "assets.tokenInfo": "Token bilgisi",
+  "assets.networkInfo": "Ağ bilgisi",
+  "assets.symbol": "Sembol",
+  "assets.decimals": "Ondalık basamak",
+  "assets.type": "Tür",
+  "assets.chainId": "Zincir ID'si",
+  "assets.contract": "Sözleşme",
+  "assets.tags": "Etiketler",
+  "assets.links": "Bağlantılar",
+  "assets.notFound": "Varlık bulunamadı",
+  "assets.notFound.description": "{address} adresine sahip varlık bulunamadı.",
+  "assets.backToHome": "Ana sayfaya dön",
+  "assets.search.placeholder": "Token'ları ada, sembole veya adrese göre arayın…",
+  "assets.search.noResults": "Token bulunamadı"
+}

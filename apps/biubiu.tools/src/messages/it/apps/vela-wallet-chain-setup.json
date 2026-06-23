@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Configurazione chain per Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Prepara qualsiasi chain EVM per Vela Wallet. Verifica e distribuisci gli smart contract necessari con una guida passo passo.",
+
+  "vcs.title": "Configurazione chain per Vela Wallet",
+  "vcs.subtitle": "Prepara qualsiasi chain EVM per Vela Wallet in pochi semplici passaggi",
+
+  "vcs.search.placeholder": "Cerca per nome della chain o Chain ID…",
+  "vcs.search.hint": "es. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Nessuna chain trovata. Prova con un altro termine di ricerca.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Verifica della compatibilità della chain…",
+  "vcs.checking.subtitle": "Verifica dei contratti necessari su {chainName}",
+
+  "vcs.results.title": "Stato della chain",
+  "vcs.results.ready": "{count} di {total} contratti pronti",
+  "vcs.results.allReady": "Tutti i contratti sono distribuiti!",
+  "vcs.results.needsSetup": "Alcuni contratti devono essere distribuiti",
+  "vcs.results.deployed": "Distribuito",
+  "vcs.results.missing": "Non distribuito",
+  "vcs.results.recheck": "Controlla di nuovo",
+  "vcs.results.changeChain": "Cambia chain",
+
+  "vcs.step.title": "Prossimo passo",
+
+  "vcs.arachnid.title": "Distribuisci il Deployment Proxy",
+  "vcs.arachnid.description": "Su questa chain è necessario installare prima uno strumento di deploy di base. È una configurazione una tantum che chiunque può effettuare.",
+  "vcs.arachnid.step1.title": "Passo 1: finanzia il deployer",
+  "vcs.arachnid.step1.description": "Invia una piccola quantità di {symbol} all'indirizzo del deployer qui sotto. Copre la commissione gas per la creazione dello strumento di deploy.",
+  "vcs.arachnid.step1.amount": "Quantità necessaria: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Invia a questo indirizzo:",
+  "vcs.arachnid.step1.balance": "Saldo attuale: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Finanziato! Pronto per il passo successivo.",
+  "vcs.arachnid.step1.refreshBalance": "Aggiorna saldo",
+  "vcs.arachnid.step2.title": "Passo 2: deploy",
+  "vcs.arachnid.step2.description": "Clicca il pulsante qui sotto per trasmettere la transazione di deploy. Non serve collegare alcun wallet — viene usata una transazione pre-firmata.",
+  "vcs.arachnid.step2.btn": "Esegui il deploy",
+  "vcs.arachnid.step2.broadcasting": "Trasmissione…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Questo contratto deve essere distribuito dal team Safe. Non può essere distribuito da nessun altro.",
+  "vcs.safeFactory.howTo": "Come richiedere il deploy:",
+  "vcs.safeFactory.step1": "Visita il repository GitHub di Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Apri una nuova issue richiedendo il deploy sulla tua chain",
+  "vcs.safeFactory.step3": "Includi il nome della chain, il Chain ID e un URL RPC",
+  "vcs.safeFactory.step4": "Il team Safe esaminerà la richiesta e procederà al deploy (di solito entro pochi giorni)",
+  "vcs.safeFactory.openGithub": "Apri le issue su GitHub",
+  "vcs.safeFactory.note": "È una procedura standard. Molte chain hanno già questo contratto distribuito. Una volta che il team Safe lo ha distribuito, torna e controlla di nuovo.",
+
+  "vcs.entrypoint.title": "Distribuisci l'EntryPoint",
+  "vcs.entrypoint.description": "L'EntryPoint abilita le transazioni degli smart wallet (account abstraction). Viene distribuito tramite il Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Distribuisci l'EntryPoint",
+
+  "vcs.safeContracts.title": "Distribuisci i contratti di Vela Wallet",
+  "vcs.safeContracts.description": "Questi contratti permettono a Vela Wallet di funzionare su questa chain. Vengono distribuiti tramite la Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Distribuisci tutti ({count} contratti)",
+  "vcs.safeContracts.deploy": "Distribuisci",
+  "vcs.safeContracts.estimatedGas": "Gas totale stimato: ~{gas}",
+
+  "vcs.deploy.waiting": "In attesa di conferma…",
+  "vcs.deploy.success": "Distribuito con successo!",
+  "vcs.deploy.failed": "Deploy fallito",
+  "vcs.deploy.txHash": "Transazione:",
+  "vcs.deploy.viewExplorer": "Vedi sull'explorer",
+
+  "vcs.complete.title": "La chain è pronta!",
+  "vcs.complete.description": "{chainName} è completamente configurata per Vela Wallet. Ora puoi tornare a Vela Wallet e aggiungere questa rete.",
+  "vcs.complete.goToVela": "Apri Vela Wallet",
+  "vcs.complete.setupAnother": "Configura un'altra chain",
+
+  "vcs.error.rpc": "Errore RPC",
+  "vcs.error.retry": "Riprova",
+
+  "vcs.info.whatIsThis": "Cos'è?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet è uno smart wallet che usa le passkey (impronta digitale/Face ID) invece delle seed phrase. Perché funzioni su una nuova chain, è necessario distribuire prima diversi smart contract. Questo strumento ti guida nel processo.",
+  "vcs.info.isFree": "È gratuito?",
+  "vcs.info.isFreeAnswer": "Distribuire i contratti richiede una piccola quantità del token nativo della chain per pagare le commissioni gas. Lo strumento in sé è gratuito.",
+  "vcs.info.isItSafe": "È sicuro?",
+  "vcs.info.isItSafeAnswer": "Sì. Tutti i contratti distribuiti sono contratti open source ufficiali e auditati, provenienti dagli ecosistemi Safe ed ERC-4337. Gli indirizzi sono deterministici — gli stessi contratti vengono distribuiti agli stessi indirizzi su ogni chain."
+}

@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Настройка сети Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Подготовьте любую EVM-сеть для Vela Wallet. Проверяйте и разворачивайте нужные смарт-контракты с пошаговыми подсказками.",
+
+  "vcs.title": "Настройка сети Vela Wallet",
+  "vcs.subtitle": "Подготовьте любую EVM-сеть для Vela Wallet за несколько простых шагов",
+
+  "vcs.search.placeholder": "Поиск по названию сети или Chain ID…",
+  "vcs.search.hint": "например, Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Сети не найдены. Попробуйте другой запрос.",
+  "vcs.search.testnet": "Тестовая сеть",
+
+  "vcs.checking.title": "Проверка совместимости сети…",
+  "vcs.checking.subtitle": "Проверка нужных контрактов в {chainName}",
+
+  "vcs.results.title": "Статус сети",
+  "vcs.results.ready": "Готово контрактов: {count} из {total}",
+  "vcs.results.allReady": "Все контракты развёрнуты!",
+  "vcs.results.needsSetup": "Часть контрактов нужно развернуть",
+  "vcs.results.deployed": "Развёрнут",
+  "vcs.results.missing": "Не развёрнут",
+  "vcs.results.recheck": "Проверить снова",
+  "vcs.results.changeChain": "Сменить сеть",
+
+  "vcs.step.title": "Следующий шаг",
+
+  "vcs.arachnid.title": "Развернуть Deployment Proxy",
+  "vcs.arachnid.description": "В этой сети сначала нужно установить базовый инструмент деплоя. Это разовая настройка, которую может выполнить любой.",
+  "vcs.arachnid.step1.title": "Шаг 1. Пополните деплоер",
+  "vcs.arachnid.step1.description": "Отправьте немного {symbol} на адрес деплоера ниже. Это покроет комиссию gas за создание инструмента деплоя.",
+  "vcs.arachnid.step1.amount": "Требуется: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Отправьте на этот адрес:",
+  "vcs.arachnid.step1.balance": "Текущий баланс: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Пополнено! Можно переходить к следующему шагу.",
+  "vcs.arachnid.step1.refreshBalance": "Обновить баланс",
+  "vcs.arachnid.step2.title": "Шаг 2. Развернуть",
+  "vcs.arachnid.step2.description": "Нажмите кнопку ниже, чтобы транслировать транзакцию деплоя. Подключение кошелька не нужно — используется заранее подписанная транзакция.",
+  "vcs.arachnid.step2.btn": "Развернуть",
+  "vcs.arachnid.step2.broadcasting": "Трансляция…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Этот контракт должна развернуть команда Safe. Никто другой развернуть его не может.",
+  "vcs.safeFactory.howTo": "Как запросить деплой:",
+  "vcs.safeFactory.step1": "Откройте репозиторий Safe Singleton Factory на GitHub",
+  "vcs.safeFactory.step2": "Создайте новый issue с просьбой развернуть его в вашей сети",
+  "vcs.safeFactory.step3": "Укажите название сети, Chain ID и RPC-адрес",
+  "vcs.safeFactory.step4": "Команда Safe рассмотрит запрос и развернёт (обычно за несколько дней)",
+  "vcs.safeFactory.openGithub": "Открыть GitHub Issues",
+  "vcs.safeFactory.note": "Это стандартная процедура. Во многих сетях он уже развёрнут. Когда команда Safe его развернёт, вернитесь и проверьте снова.",
+
+  "vcs.entrypoint.title": "Развернуть EntryPoint",
+  "vcs.entrypoint.description": "EntryPoint обеспечивает транзакции смарт-кошельков (абстракция аккаунта). Он разворачивается через Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Развернуть EntryPoint",
+
+  "vcs.safeContracts.title": "Развернуть контракты Vela Wallet",
+  "vcs.safeContracts.description": "Эти контракты позволяют Vela Wallet работать в этой сети. Они разворачиваются через Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Развернуть все ({count} контрактов)",
+  "vcs.safeContracts.deploy": "Развернуть",
+  "vcs.safeContracts.estimatedGas": "Оценочный общий gas: ~{gas}",
+
+  "vcs.deploy.waiting": "Ожидание подтверждения…",
+  "vcs.deploy.success": "Развёрнуто успешно!",
+  "vcs.deploy.failed": "Деплой не удался",
+  "vcs.deploy.txHash": "Транзакция:",
+  "vcs.deploy.viewExplorer": "Открыть в обозревателе",
+
+  "vcs.complete.title": "Сеть готова!",
+  "vcs.complete.description": "{chainName} полностью настроена для Vela Wallet. Теперь вернитесь в Vela Wallet и добавьте эту сеть.",
+  "vcs.complete.goToVela": "Открыть Vela Wallet",
+  "vcs.complete.setupAnother": "Настроить другую сеть",
+
+  "vcs.error.rpc": "Ошибка RPC",
+  "vcs.error.retry": "Повторить",
+
+  "vcs.info.whatIsThis": "Что это?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet — это смарт-кошелёк, использующий passkey (отпечаток / Face ID) вместо seed-фраз. Чтобы он работал в новой сети, сначала нужно развернуть несколько смарт-контрактов. Этот инструмент проведёт вас через весь процесс.",
+  "vcs.info.isFree": "Это бесплатно?",
+  "vcs.info.isFreeAnswer": "Для деплоя контрактов нужно немного нативного токена сети на оплату комиссии gas. Сам инструмент бесплатен.",
+  "vcs.info.isItSafe": "Это безопасно?",
+  "vcs.info.isItSafeAnswer": "Да. Все разворачиваемые контракты — это официальные аудированные опенсорс-контракты из экосистем Safe и ERC-4337. Адреса детерминированы — одни и те же контракты разворачиваются по одним и тем же адресам в каждой сети."
+}

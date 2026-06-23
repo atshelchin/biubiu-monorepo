@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet 체인 설정 - BiuBiu Tools",
+  "vcs.meta.description": "Vela Wallet을 위해 모든 EVM 체인을 준비하세요. 단계별 안내에 따라 필요한 스마트 컨트랙트를 확인하고 배포합니다.",
+
+  "vcs.title": "Vela Wallet 체인 설정",
+  "vcs.subtitle": "몇 가지 간단한 단계로 Vela Wallet을 위한 EVM 체인을 준비하세요",
+
+  "vcs.search.placeholder": "체인 이름이나 체인 ID로 검색…",
+  "vcs.search.hint": "예: Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "체인을 찾을 수 없습니다. 다른 검색어로 시도해 보세요.",
+  "vcs.search.testnet": "테스트넷",
+
+  "vcs.checking.title": "체인 호환성을 확인하는 중…",
+  "vcs.checking.subtitle": "{chainName}에서 필요한 컨트랙트를 검증하는 중",
+
+  "vcs.results.title": "체인 상태",
+  "vcs.results.ready": "{total}개 컨트랙트 중 {count}개 준비됨",
+  "vcs.results.allReady": "모든 컨트랙트가 배포되었습니다!",
+  "vcs.results.needsSetup": "일부 컨트랙트를 배포해야 합니다",
+  "vcs.results.deployed": "배포됨",
+  "vcs.results.missing": "배포 안 됨",
+  "vcs.results.recheck": "다시 확인",
+  "vcs.results.changeChain": "체인 변경",
+
+  "vcs.step.title": "다음 단계",
+
+  "vcs.arachnid.title": "Deployment Proxy 배포",
+  "vcs.arachnid.description": "이 체인에는 먼저 기본 배포 도구를 설치해야 합니다. 누구나 할 수 있는 일회성 설정입니다.",
+  "vcs.arachnid.step1.title": "1단계: 배포자에게 자금 충전",
+  "vcs.arachnid.step1.description": "아래 배포자 주소로 소량의 {symbol}을 보내세요. 배포 도구 생성에 드는 gas 비용에 사용됩니다.",
+  "vcs.arachnid.step1.amount": "필요 금액: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "이 주소로 보내세요:",
+  "vcs.arachnid.step1.balance": "현재 잔액: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "충전 완료! 다음 단계로 진행할 수 있습니다.",
+  "vcs.arachnid.step1.refreshBalance": "잔액 새로고침",
+  "vcs.arachnid.step2.title": "2단계: 배포",
+  "vcs.arachnid.step2.description": "아래 버튼을 클릭해 배포 트랜잭션을 브로드캐스트하세요. 지갑 연결이 필요 없으며, 사전 서명된 트랜잭션을 사용합니다.",
+  "vcs.arachnid.step2.btn": "지금 배포",
+  "vcs.arachnid.step2.broadcasting": "브로드캐스트하는 중…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "이 컨트랙트는 Safe 팀이 배포해야 하며, 다른 누구도 배포할 수 없습니다.",
+  "vcs.safeFactory.howTo": "배포 요청 방법:",
+  "vcs.safeFactory.step1": "Safe Singleton Factory GitHub 저장소를 방문하세요",
+  "vcs.safeFactory.step2": "새 이슈를 열어 해당 체인에 배포를 요청하세요",
+  "vcs.safeFactory.step3": "체인 이름, 체인 ID, RPC 주소를 포함하세요",
+  "vcs.safeFactory.step4": "Safe 팀이 검토 후 배포합니다 (보통 며칠 이내)",
+  "vcs.safeFactory.openGithub": "GitHub Issues 열기",
+  "vcs.safeFactory.note": "이것은 표준 절차입니다. 많은 체인에 이미 배포되어 있습니다. Safe 팀이 배포를 완료하면 돌아와서 다시 확인하세요.",
+
+  "vcs.entrypoint.title": "EntryPoint 배포",
+  "vcs.entrypoint.description": "EntryPoint는 스마트 지갑 트랜잭션(계정 추상화)을 가능하게 합니다. Deployment Proxy를 통해 배포됩니다.",
+  "vcs.entrypoint.deploy": "EntryPoint 배포",
+
+  "vcs.safeContracts.title": "Vela Wallet 컨트랙트 배포",
+  "vcs.safeContracts.description": "이 컨트랙트들은 Vela Wallet이 이 체인에서 작동하도록 합니다. Safe Singleton Factory를 통해 배포됩니다.",
+  "vcs.safeContracts.deployAll": "모두 배포 (컨트랙트 {count}개)",
+  "vcs.safeContracts.deploy": "배포",
+  "vcs.safeContracts.estimatedGas": "예상 총 gas: 약 {gas}",
+
+  "vcs.deploy.waiting": "확인을 기다리는 중…",
+  "vcs.deploy.success": "배포 성공!",
+  "vcs.deploy.failed": "배포 실패",
+  "vcs.deploy.txHash": "트랜잭션:",
+  "vcs.deploy.viewExplorer": "탐색기에서 보기",
+
+  "vcs.complete.title": "체인이 준비되었습니다!",
+  "vcs.complete.description": "{chainName}이(가) Vela Wallet을 위해 완전히 설정되었습니다. 이제 Vela Wallet으로 돌아가 이 네트워크를 추가할 수 있습니다.",
+  "vcs.complete.goToVela": "Vela Wallet 열기",
+  "vcs.complete.setupAnother": "다른 체인 설정",
+
+  "vcs.error.rpc": "RPC 오류",
+  "vcs.error.retry": "다시 시도",
+
+  "vcs.info.whatIsThis": "이게 무엇인가요?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet은 시드 문구 대신 passkey(지문/Face ID)를 사용하는 스마트 지갑입니다. 새 체인에서 작동하려면 먼저 여러 스마트 컨트랙트를 배포해야 합니다. 이 도구가 그 과정을 안내합니다.",
+  "vcs.info.isFree": "무료인가요?",
+  "vcs.info.isFreeAnswer": "컨트랙트 배포에는 gas 비용을 지불할 소량의 해당 체인 네이티브 토큰이 필요합니다. 도구 자체는 무료입니다.",
+  "vcs.info.isItSafe": "안전한가요?",
+  "vcs.info.isItSafeAnswer": "네. 배포되는 모든 컨트랙트는 Safe 및 ERC-4337 생태계의 공식적이고 감사를 받은 오픈소스 컨트랙트입니다. 주소는 결정적이므로, 동일한 컨트랙트가 모든 체인에서 동일한 주소에 배포됩니다."
+}

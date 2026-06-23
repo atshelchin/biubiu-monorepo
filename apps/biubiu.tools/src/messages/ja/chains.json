@@ -1,0 +1,10 @@
+{
+  "chainsList.title": "チェーンエクスプローラー",
+  "chainsList.description": "ブロックチェーンネットワークを閲覧・検索。RPC エンドポイント、ブロックエクスプローラー、ネットワークの詳細を見つけられます。",
+  "chainsList.popularChains": "人気のチェーン",
+  "chainsList.allChains": "すべてのチェーン",
+  "chainsList.totalChains": "{count} 件のチェーン",
+  "chainsList.viewDetails": "詳細を見る",
+  "chains.search.placeholder": "名前、シンボル、またはチェーン ID でチェーンを検索…",
+  "chains.search.noResults": "チェーンが見つかりません"
+}

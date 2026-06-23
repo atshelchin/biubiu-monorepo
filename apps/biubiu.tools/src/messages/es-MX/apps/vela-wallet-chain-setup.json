@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Configuración de Cadena para Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Prepara cualquier cadena EVM para Vela Wallet. Verifica y despliega los contratos inteligentes necesarios con una guía paso a paso.",
+
+  "vcs.title": "Configuración de Cadena para Vela Wallet",
+  "vcs.subtitle": "Prepara cualquier cadena EVM para Vela Wallet en unos sencillos pasos",
+
+  "vcs.search.placeholder": "Busca por nombre de cadena o Chain ID…",
+  "vcs.search.hint": "p. ej. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "No se encontraron cadenas. Prueba con otro término de búsqueda.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Verificando la compatibilidad de la cadena…",
+  "vcs.checking.subtitle": "Verificando los contratos necesarios en {chainName}",
+
+  "vcs.results.title": "Estado de la cadena",
+  "vcs.results.ready": "{count} de {total} contratos listos",
+  "vcs.results.allReady": "¡Todos los contratos están desplegados!",
+  "vcs.results.needsSetup": "Algunos contratos deben desplegarse",
+  "vcs.results.deployed": "Desplegado",
+  "vcs.results.missing": "No desplegado",
+  "vcs.results.recheck": "Verificar de nuevo",
+  "vcs.results.changeChain": "Cambiar cadena",
+
+  "vcs.step.title": "Siguiente paso",
+
+  "vcs.arachnid.title": "Desplegar el Deployment Proxy",
+  "vcs.arachnid.description": "Esta cadena necesita instalar primero una herramienta base de despliegue. Es una configuración única que cualquiera puede hacer.",
+  "vcs.arachnid.step1.title": "Paso 1: Fondea al desplegador",
+  "vcs.arachnid.step1.description": "Envía una pequeña cantidad de {symbol} a la dirección del desplegador de abajo. Esto cubre la comisión de gas para crear la herramienta de despliegue.",
+  "vcs.arachnid.step1.amount": "Cantidad necesaria: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Envía a esta dirección:",
+  "vcs.arachnid.step1.balance": "Saldo actual: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "¡Fondeado! Listo para el siguiente paso.",
+  "vcs.arachnid.step1.refreshBalance": "Actualizar saldo",
+  "vcs.arachnid.step2.title": "Paso 2: Desplegar",
+  "vcs.arachnid.step2.description": "Haz clic en el botón de abajo para transmitir la transacción de despliegue. No se necesita conectar una billetera: usa una transacción prefirmada.",
+  "vcs.arachnid.step2.btn": "Desplegar ahora",
+  "vcs.arachnid.step2.broadcasting": "Transmitiendo…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Este contrato debe ser desplegado por el equipo de Safe. Nadie más puede desplegarlo.",
+  "vcs.safeFactory.howTo": "Cómo solicitar el despliegue:",
+  "vcs.safeFactory.step1": "Visita el repositorio de GitHub de Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Abre un nuevo issue solicitando el despliegue en tu cadena",
+  "vcs.safeFactory.step3": "Incluye el nombre de la cadena, el Chain ID y una URL de RPC",
+  "vcs.safeFactory.step4": "El equipo de Safe lo revisará y desplegará (normalmente en pocos días)",
+  "vcs.safeFactory.openGithub": "Abrir GitHub Issues",
+  "vcs.safeFactory.note": "Es un proceso estándar. Muchas cadenas ya lo tienen desplegado. Una vez que el equipo de Safe lo despliegue, vuelve y verifica de nuevo.",
+
+  "vcs.entrypoint.title": "Desplegar el EntryPoint",
+  "vcs.entrypoint.description": "El EntryPoint habilita las transacciones de billetera inteligente (abstracción de cuentas). Se despliega a través del Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Desplegar EntryPoint",
+
+  "vcs.safeContracts.title": "Desplegar los contratos de Vela Wallet",
+  "vcs.safeContracts.description": "Estos contratos permiten que Vela Wallet funcione en esta cadena. Se despliegan a través de Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Desplegar todos ({count} contratos)",
+  "vcs.safeContracts.deploy": "Desplegar",
+  "vcs.safeContracts.estimatedGas": "Gas total estimado: ~{gas}",
+
+  "vcs.deploy.waiting": "Esperando la confirmación…",
+  "vcs.deploy.success": "¡Desplegado correctamente!",
+  "vcs.deploy.failed": "El despliegue falló",
+  "vcs.deploy.txHash": "Transacción:",
+  "vcs.deploy.viewExplorer": "Ver en el explorador",
+
+  "vcs.complete.title": "¡La cadena está lista!",
+  "vcs.complete.description": "{chainName} está totalmente configurada para Vela Wallet. Ahora puedes volver a Vela Wallet y agregar esta red.",
+  "vcs.complete.goToVela": "Abrir Vela Wallet",
+  "vcs.complete.setupAnother": "Configurar otra cadena",
+
+  "vcs.error.rpc": "Error de RPC",
+  "vcs.error.retry": "Intentar de nuevo",
+
+  "vcs.info.whatIsThis": "¿Qué es esto?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet es una billetera inteligente que usa passkeys (huella/Face ID) en lugar de frases semilla. Para que funcione en una cadena nueva, primero deben desplegarse varios contratos inteligentes. Esta herramienta te guía por ese proceso.",
+  "vcs.info.isFree": "¿Es gratis?",
+  "vcs.info.isFreeAnswer": "Desplegar contratos requiere una pequeña cantidad del token nativo de la cadena para pagar las comisiones de gas. La herramienta en sí es gratuita.",
+  "vcs.info.isItSafe": "¿Es seguro?",
+  "vcs.info.isItSafeAnswer": "Sí. Todos los contratos desplegados son contratos oficiales, auditados y de código abierto de los ecosistemas de Safe y ERC-4337. Las direcciones son deterministas: los mismos contratos se despliegan en las mismas direcciones en cada cadena."
+}

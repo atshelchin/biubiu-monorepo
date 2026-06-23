@@ -20,7 +20,7 @@
 	"wg.strength.weak": "弱——极易被暴力破解",
 	"wg.strength.fair": "一般——用于真实资金仍有风险",
 	"wg.strength.strong": "强",
-	"wg.strength.bits": "约 {bits} 比特",
+	"wg.strength.bits": "约 {bits} 位",
 
 	"wg.words.label": "助记词长度",
 	"wg.words.12": "12 词",
@@ -76,7 +76,7 @@
 	"wg.xpub.xfp": "指纹",
 	"wg.xpub.xpubLabel": "扩展公钥",
 
-	"wg.sign.desc": "扫描来自观察钱包的未签名请求（动图二维码），核对后离线签名，再把签名以二维码回传。",
+	"wg.sign.desc": "扫描来自观察钱包的未签名请求（动态二维码），核对后离线签名，再把签名以二维码回传。",
 	"wg.sign.scan": "扫描请求",
 	"wg.sign.scanAnother": "再扫一个",
 	"wg.sign.fpOk": "指纹与此种子匹配",

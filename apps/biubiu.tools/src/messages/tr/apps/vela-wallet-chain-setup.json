@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Vela Wallet Zincir Kurulumu - BiuBiu Tools",
+  "vcs.meta.description": "Herhangi bir EVM zincirini Vela Wallet için hazırlayın. Gerekli akıllı sözleşmeleri adım adım rehberlikle kontrol edin ve dağıtın.",
+
+  "vcs.title": "Vela Wallet Zincir Kurulumu",
+  "vcs.subtitle": "Herhangi bir EVM zincirini birkaç basit adımda Vela Wallet için hazırlayın",
+
+  "vcs.search.placeholder": "Zincir adına veya Zincir ID'sine göre arayın…",
+  "vcs.search.hint": "örn. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Zincir bulunamadı. Farklı bir arama terimi deneyin.",
+  "vcs.search.testnet": "Test ağı",
+
+  "vcs.checking.title": "Zincir uyumluluğu kontrol ediliyor…",
+  "vcs.checking.subtitle": "{chainName} üzerinde gerekli sözleşmeler doğrulanıyor",
+
+  "vcs.results.title": "Zincir durumu",
+  "vcs.results.ready": "{total} sözleşmeden {count} tanesi hazır",
+  "vcs.results.allReady": "Tüm sözleşmeler dağıtıldı!",
+  "vcs.results.needsSetup": "Bazı sözleşmelerin dağıtılması gerekiyor",
+  "vcs.results.deployed": "Dağıtıldı",
+  "vcs.results.missing": "Dağıtılmadı",
+  "vcs.results.recheck": "Yeniden kontrol et",
+  "vcs.results.changeChain": "Zinciri değiştir",
+
+  "vcs.step.title": "Sonraki adım",
+
+  "vcs.arachnid.title": "Deployment Proxy dağıt",
+  "vcs.arachnid.description": "Bu zincire önce bir temel dağıtım aracının kurulması gerekir. Bu, herkesin yapabileceği tek seferlik bir kurulumdur.",
+  "vcs.arachnid.step1.title": "1. Adım: Dağıtıcıyı fonla",
+  "vcs.arachnid.step1.description": "Aşağıdaki dağıtıcı adresine az miktarda {symbol} gönderin. Bu, dağıtım aracını oluşturmanın gas ücretini karşılar.",
+  "vcs.arachnid.step1.amount": "Gerekli tutar: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Bu adrese gönderin:",
+  "vcs.arachnid.step1.balance": "Mevcut bakiye: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Fonlandı! Sonraki adıma hazır.",
+  "vcs.arachnid.step1.refreshBalance": "Bakiyeyi yenile",
+  "vcs.arachnid.step2.title": "2. Adım: Dağıt",
+  "vcs.arachnid.step2.description": "Dağıtım işlemini yayınlamak için aşağıdaki düğmeye tıklayın. Cüzdan bağlantısı gerekmez — bu, önceden imzalanmış bir işlem kullanır.",
+  "vcs.arachnid.step2.btn": "Hemen dağıt",
+  "vcs.arachnid.step2.broadcasting": "Yayınlanıyor…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Bu sözleşme Safe ekibi tarafından dağıtılmalıdır. Başka kimse tarafından dağıtılamaz.",
+  "vcs.safeFactory.howTo": "Dağıtım nasıl talep edilir:",
+  "vcs.safeFactory.step1": "Safe Singleton Factory GitHub deposunu ziyaret edin",
+  "vcs.safeFactory.step2": "Zincirinize dağıtım talep eden yeni bir konu açın",
+  "vcs.safeFactory.step3": "Zincir adını, Zincir ID'sini ve bir RPC URL'sini ekleyin",
+  "vcs.safeFactory.step4": "Safe ekibi inceleyip dağıtacak (genellikle birkaç gün içinde)",
+  "vcs.safeFactory.openGithub": "GitHub Issues'ı aç",
+  "vcs.safeFactory.note": "Bu standart bir süreçtir. Birçok zincirde bu zaten dağıtılmıştır. Safe ekibi dağıttıktan sonra geri dönün ve yeniden kontrol edin.",
+
+  "vcs.entrypoint.title": "EntryPoint dağıt",
+  "vcs.entrypoint.description": "EntryPoint, akıllı cüzdan işlemlerini (hesap soyutlaması) etkinleştirir. Deployment Proxy aracılığıyla dağıtılır.",
+  "vcs.entrypoint.deploy": "EntryPoint dağıt",
+
+  "vcs.safeContracts.title": "Vela Wallet sözleşmelerini dağıt",
+  "vcs.safeContracts.description": "Bu sözleşmeler Vela Wallet'ın bu zincirde çalışmasını sağlar. Safe Singleton Factory aracılığıyla dağıtılırlar.",
+  "vcs.safeContracts.deployAll": "Tümünü dağıt ({count} sözleşme)",
+  "vcs.safeContracts.deploy": "Dağıt",
+  "vcs.safeContracts.estimatedGas": "Tahmini toplam gas: ~{gas}",
+
+  "vcs.deploy.waiting": "Onay bekleniyor…",
+  "vcs.deploy.success": "Başarıyla dağıtıldı!",
+  "vcs.deploy.failed": "Dağıtım başarısız",
+  "vcs.deploy.txHash": "İşlem:",
+  "vcs.deploy.viewExplorer": "Gezginde görüntüle",
+
+  "vcs.complete.title": "Zincir hazır!",
+  "vcs.complete.description": "{chainName} Vela Wallet için tamamen ayarlandı. Artık Vela Wallet'a dönüp bu ağı ekleyebilirsiniz.",
+  "vcs.complete.goToVela": "Vela Wallet'ı aç",
+  "vcs.complete.setupAnother": "Başka bir zincir ayarla",
+
+  "vcs.error.rpc": "RPC hatası",
+  "vcs.error.retry": "Yeniden dene",
+
+  "vcs.info.whatIsThis": "Bu nedir?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet, kurtarma ifadeleri yerine passkey (parmak izi/Face ID) kullanan akıllı bir cüzdandır. Yeni bir zincirde çalışması için önce birkaç akıllı sözleşmenin dağıtılması gerekir. Bu araç sizi o süreçte yönlendirir.",
+  "vcs.info.isFree": "Bu ücretsiz mi?",
+  "vcs.info.isFreeAnswer": "Sözleşme dağıtmak, gas ücretlerini ödemek için zincirin yerel token'ından az miktarda gerektirir. Aracın kendisi ücretsizdir.",
+  "vcs.info.isItSafe": "Güvenli mi?",
+  "vcs.info.isItSafeAnswer": "Evet. Dağıtılan tüm sözleşmeler, Safe ve ERC-4337 ekosistemlerinden gelen resmi, denetlenmiş açık kaynak sözleşmelerdir. Adresler deterministiktir — aynı sözleşmeler her zincirde aynı adreslerde dağıtılır."
+}

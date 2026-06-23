@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Thiết Lập Chuỗi cho Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Chuẩn bị bất kỳ chuỗi EVM nào cho Vela Wallet. Kiểm tra và triển khai các hợp đồng thông minh cần thiết với hướng dẫn từng bước.",
+
+  "vcs.title": "Thiết Lập Chuỗi cho Vela Wallet",
+  "vcs.subtitle": "Chuẩn bị bất kỳ chuỗi EVM nào cho Vela Wallet chỉ trong vài bước đơn giản",
+
+  "vcs.search.placeholder": "Tìm theo tên chuỗi hoặc Chain ID…",
+  "vcs.search.hint": "ví dụ Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Không tìm thấy chuỗi nào. Hãy thử từ khóa khác.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Đang kiểm tra tính tương thích của chuỗi…",
+  "vcs.checking.subtitle": "Đang xác minh các hợp đồng cần thiết trên {chainName}",
+
+  "vcs.results.title": "Trạng thái chuỗi",
+  "vcs.results.ready": "{count} trên {total} hợp đồng đã sẵn sàng",
+  "vcs.results.allReady": "Tất cả hợp đồng đã được triển khai!",
+  "vcs.results.needsSetup": "Một số hợp đồng cần được triển khai",
+  "vcs.results.deployed": "Đã triển khai",
+  "vcs.results.missing": "Chưa triển khai",
+  "vcs.results.recheck": "Kiểm tra lại",
+  "vcs.results.changeChain": "Đổi chuỗi",
+
+  "vcs.step.title": "Bước tiếp theo",
+
+  "vcs.arachnid.title": "Triển khai Deployment Proxy",
+  "vcs.arachnid.description": "Chuỗi này cần cài đặt một công cụ triển khai cơ bản trước. Đây là thiết lập một lần mà ai cũng có thể làm.",
+  "vcs.arachnid.step1.title": "Bước 1: Nạp tiền cho trình triển khai",
+  "vcs.arachnid.step1.description": "Gửi một lượng nhỏ {symbol} đến địa chỉ trình triển khai bên dưới. Khoản này dùng để trả phí gas cho việc tạo công cụ triển khai.",
+  "vcs.arachnid.step1.amount": "Lượng cần thiết: {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Gửi đến địa chỉ này:",
+  "vcs.arachnid.step1.balance": "Số dư hiện tại: {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Đã nạp tiền! Sẵn sàng cho bước tiếp theo.",
+  "vcs.arachnid.step1.refreshBalance": "Làm mới số dư",
+  "vcs.arachnid.step2.title": "Bước 2: Triển khai",
+  "vcs.arachnid.step2.description": "Nhấp nút bên dưới để phát đi giao dịch triển khai. Không cần kết nối ví — giao dịch này dùng một giao dịch đã ký sẵn.",
+  "vcs.arachnid.step2.btn": "Triển khai ngay",
+  "vcs.arachnid.step2.broadcasting": "Đang phát đi…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Hợp đồng này phải do đội Safe triển khai. Không ai khác có thể triển khai được.",
+  "vcs.safeFactory.howTo": "Cách yêu cầu triển khai:",
+  "vcs.safeFactory.step1": "Truy cập kho lưu trữ GitHub của Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Mở một issue mới yêu cầu triển khai cho chuỗi của bạn",
+  "vcs.safeFactory.step3": "Kèm theo tên chuỗi, Chain ID và một URL RPC",
+  "vcs.safeFactory.step4": "Đội Safe sẽ xem xét và triển khai (thường trong vài ngày)",
+  "vcs.safeFactory.openGithub": "Mở GitHub Issues",
+  "vcs.safeFactory.note": "Đây là quy trình tiêu chuẩn. Nhiều chuỗi đã có hợp đồng này được triển khai. Sau khi đội Safe triển khai, hãy quay lại và kiểm tra lần nữa.",
+
+  "vcs.entrypoint.title": "Triển khai EntryPoint",
+  "vcs.entrypoint.description": "EntryPoint cho phép các giao dịch ví thông minh (account abstraction). Nó được triển khai thông qua Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Triển khai EntryPoint",
+
+  "vcs.safeContracts.title": "Triển khai hợp đồng Vela Wallet",
+  "vcs.safeContracts.description": "Các hợp đồng này giúp Vela Wallet hoạt động trên chuỗi này. Chúng được triển khai thông qua Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Triển khai tất cả ({count} hợp đồng)",
+  "vcs.safeContracts.deploy": "Triển khai",
+  "vcs.safeContracts.estimatedGas": "Tổng gas ước tính: ~{gas}",
+
+  "vcs.deploy.waiting": "Đang chờ xác nhận…",
+  "vcs.deploy.success": "Đã triển khai thành công!",
+  "vcs.deploy.failed": "Triển khai thất bại",
+  "vcs.deploy.txHash": "Giao dịch:",
+  "vcs.deploy.viewExplorer": "Xem trên trình duyệt khối",
+
+  "vcs.complete.title": "Chuỗi đã sẵn sàng!",
+  "vcs.complete.description": "{chainName} đã được thiết lập hoàn chỉnh cho Vela Wallet. Bây giờ bạn có thể quay lại Vela Wallet và thêm mạng này.",
+  "vcs.complete.goToVela": "Mở Vela Wallet",
+  "vcs.complete.setupAnother": "Thiết lập chuỗi khác",
+
+  "vcs.error.rpc": "Lỗi RPC",
+  "vcs.error.retry": "Thử lại",
+
+  "vcs.info.whatIsThis": "Đây là gì?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet là ví thông minh dùng passkey (vân tay/Face ID) thay vì cụm từ khôi phục. Để nó hoạt động trên một chuỗi mới, cần triển khai trước một vài hợp đồng thông minh. Công cụ này hướng dẫn bạn qua quy trình đó.",
+  "vcs.info.isFree": "Cái này có miễn phí không?",
+  "vcs.info.isFreeAnswer": "Triển khai hợp đồng cần một lượng nhỏ native token của chuỗi để trả phí gas. Bản thân công cụ thì miễn phí.",
+  "vcs.info.isItSafe": "Có an toàn không?",
+  "vcs.info.isItSafeAnswer": "Có. Tất cả hợp đồng được triển khai đều là hợp đồng mã nguồn mở chính thức, đã được kiểm toán từ hệ sinh thái Safe và ERC-4337. Các địa chỉ là xác định — cùng một hợp đồng được triển khai tại cùng một địa chỉ trên mọi chuỗi."
+}

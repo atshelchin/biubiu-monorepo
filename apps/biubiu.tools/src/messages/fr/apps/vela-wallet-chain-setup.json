@@ -1,0 +1,81 @@
+{
+  "vcs.meta.title": "Configuration de chaîne Vela Wallet - BiuBiu Tools",
+  "vcs.meta.description": "Préparez n'importe quelle chaîne EVM pour Vela Wallet. Vérifiez et déployez les smart contracts requis avec un guide étape par étape.",
+
+  "vcs.title": "Configuration de chaîne Vela Wallet",
+  "vcs.subtitle": "Préparez n'importe quelle chaîne EVM pour Vela Wallet en quelques étapes simples",
+
+  "vcs.search.placeholder": "Rechercher par nom de chaîne ou Chain ID…",
+  "vcs.search.hint": "ex. Ethereum, Polygon, 42161",
+  "vcs.search.noResults": "Aucune chaîne trouvée. Essayez un autre terme de recherche.",
+  "vcs.search.testnet": "Testnet",
+
+  "vcs.checking.title": "Vérification de la compatibilité de la chaîne…",
+  "vcs.checking.subtitle": "Vérification des contrats requis sur {chainName}",
+
+  "vcs.results.title": "État de la chaîne",
+  "vcs.results.ready": "{count} contrats sur {total} prêts",
+  "vcs.results.allReady": "Tous les contrats sont déployés !",
+  "vcs.results.needsSetup": "Certains contrats doivent être déployés",
+  "vcs.results.deployed": "Déployé",
+  "vcs.results.missing": "Non déployé",
+  "vcs.results.recheck": "Vérifier à nouveau",
+  "vcs.results.changeChain": "Changer de chaîne",
+
+  "vcs.step.title": "Étape suivante",
+
+  "vcs.arachnid.title": "Déployer le Deployment Proxy",
+  "vcs.arachnid.description": "Cette chaîne nécessite d'abord l'installation d'un outil de déploiement de base. Il s'agit d'une configuration unique que n'importe qui peut effectuer.",
+  "vcs.arachnid.step1.title": "Étape 1 : approvisionner le déployeur",
+  "vcs.arachnid.step1.description": "Envoyez une petite quantité de {symbol} à l'adresse du déployeur ci-dessous. Cela couvre les frais de gas pour créer l'outil de déploiement.",
+  "vcs.arachnid.step1.amount": "Montant nécessaire : {amount} {symbol}",
+  "vcs.arachnid.step1.address": "Envoyer à cette adresse :",
+  "vcs.arachnid.step1.balance": "Solde actuel : {balance} {symbol}",
+  "vcs.arachnid.step1.funded": "Approvisionné ! Prêt pour l'étape suivante.",
+  "vcs.arachnid.step1.refreshBalance": "Actualiser le solde",
+  "vcs.arachnid.step2.title": "Étape 2 : déployer",
+  "vcs.arachnid.step2.description": "Cliquez sur le bouton ci-dessous pour diffuser la transaction de déploiement. Aucune connexion de wallet requise — cela utilise une transaction pré-signée.",
+  "vcs.arachnid.step2.btn": "Déployer maintenant",
+  "vcs.arachnid.step2.broadcasting": "Diffusion…",
+
+  "vcs.safeFactory.title": "Safe Singleton Factory",
+  "vcs.safeFactory.description": "Ce contrat doit être déployé par l'équipe Safe. Il ne peut être déployé par personne d'autre.",
+  "vcs.safeFactory.howTo": "Comment demander le déploiement :",
+  "vcs.safeFactory.step1": "Visitez le dépôt GitHub de Safe Singleton Factory",
+  "vcs.safeFactory.step2": "Ouvrez une nouvelle issue demandant le déploiement sur votre chaîne",
+  "vcs.safeFactory.step3": "Indiquez le nom de la chaîne, le Chain ID et une URL RPC",
+  "vcs.safeFactory.step4": "L'équipe Safe examinera et déploiera (généralement en quelques jours)",
+  "vcs.safeFactory.openGithub": "Ouvrir les issues GitHub",
+  "vcs.safeFactory.note": "Il s'agit d'un processus standard. De nombreuses chaînes l'ont déjà déployé. Une fois que l'équipe Safe l'aura déployé, revenez vérifier à nouveau.",
+
+  "vcs.entrypoint.title": "Déployer EntryPoint",
+  "vcs.entrypoint.description": "L'EntryPoint permet les transactions de smart wallet (account abstraction). Il est déployé via le Deployment Proxy.",
+  "vcs.entrypoint.deploy": "Déployer EntryPoint",
+
+  "vcs.safeContracts.title": "Déployer les contrats Vela Wallet",
+  "vcs.safeContracts.description": "Ces contrats permettent à Vela Wallet de fonctionner sur cette chaîne. Ils sont déployés via la Safe Singleton Factory.",
+  "vcs.safeContracts.deployAll": "Tout déployer ({count} contrats)",
+  "vcs.safeContracts.deploy": "Déployer",
+  "vcs.safeContracts.estimatedGas": "Gas total estimé : ~{gas}",
+
+  "vcs.deploy.waiting": "En attente de confirmation…",
+  "vcs.deploy.success": "Déployé avec succès !",
+  "vcs.deploy.failed": "Échec du déploiement",
+  "vcs.deploy.txHash": "Transaction :",
+  "vcs.deploy.viewExplorer": "Voir sur l'explorateur",
+
+  "vcs.complete.title": "La chaîne est prête !",
+  "vcs.complete.description": "{chainName} est entièrement configuré pour Vela Wallet. Vous pouvez maintenant revenir à Vela Wallet et ajouter ce réseau.",
+  "vcs.complete.goToVela": "Ouvrir Vela Wallet",
+  "vcs.complete.setupAnother": "Configurer une autre chaîne",
+
+  "vcs.error.rpc": "Erreur RPC",
+  "vcs.error.retry": "Réessayer",
+
+  "vcs.info.whatIsThis": "Qu'est-ce que c'est ?",
+  "vcs.info.whatIsThisAnswer": "Vela Wallet est un smart wallet qui utilise des passkeys (empreinte digitale / Face ID) au lieu de phrases mnémoniques. Pour qu'il fonctionne sur une nouvelle chaîne, plusieurs smart contracts doivent d'abord être déployés. Cet outil vous guide tout au long du processus.",
+  "vcs.info.isFree": "Est-ce gratuit ?",
+  "vcs.info.isFreeAnswer": "Le déploiement de contrats nécessite une petite quantité du token natif de la chaîne pour payer les frais de gas. L'outil lui-même est gratuit.",
+  "vcs.info.isItSafe": "Est-ce sûr ?",
+  "vcs.info.isItSafeAnswer": "Oui. Tous les contrats déployés sont des contrats open source officiels et audités, issus des écosystèmes Safe et ERC-4337. Les adresses sont déterministes — les mêmes contrats sont déployés aux mêmes adresses sur chaque chaîne."
+}

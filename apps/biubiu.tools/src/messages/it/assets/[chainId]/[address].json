@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - Dettagli del token",
+  "assets.description": "Visualizza le informazioni del token {name} ({symbol}), l'indirizzo del contratto e i link social.",
+  "assets.website": "Sito web",
+  "assets.explorer": "Explorer",
+  "assets.editOnGithub": "Modifica",
+  "assets.tokenInfo": "Info token",
+  "assets.networkInfo": "Info rete",
+  "assets.symbol": "Simbolo",
+  "assets.decimals": "Decimali",
+  "assets.type": "Tipo",
+  "assets.chainId": "Chain ID",
+  "assets.contract": "Contratto",
+  "assets.tags": "Tag",
+  "assets.links": "Link",
+  "assets.notFound": "Asset non trovato",
+  "assets.notFound.description": "L'asset con indirizzo {address} non è stato trovato.",
+  "assets.backToHome": "Torna alla home",
+  "assets.search.placeholder": "Cerca token per nome, simbolo o indirizzo…",
+  "assets.search.noResults": "Nessun token trovato"
+}

@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) - Detail Token",
+  "assets.description": "Lihat informasi token {name} ({symbol}), alamat kontrak, dan tautan sosial.",
+  "assets.website": "Situs Web",
+  "assets.explorer": "Explorer",
+  "assets.editOnGithub": "Edit",
+  "assets.tokenInfo": "Info Token",
+  "assets.networkInfo": "Info Jaringan",
+  "assets.symbol": "Simbol",
+  "assets.decimals": "Desimal",
+  "assets.type": "Tipe",
+  "assets.chainId": "Chain ID",
+  "assets.contract": "Kontrak",
+  "assets.tags": "Tag",
+  "assets.links": "Tautan",
+  "assets.notFound": "Aset Tidak Ditemukan",
+  "assets.notFound.description": "Aset dengan alamat {address} tidak ditemukan.",
+  "assets.backToHome": "Kembali ke Beranda",
+  "assets.search.placeholder": "Cari token berdasarkan nama, simbol, atau alamat…",
+  "assets.search.noResults": "Tidak ada token ditemukan"
+}

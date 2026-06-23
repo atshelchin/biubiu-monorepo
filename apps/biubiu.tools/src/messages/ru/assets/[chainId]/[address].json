@@ -1,0 +1,21 @@
+{
+  "assets.title": "{name} ({symbol}) — сведения о токене",
+  "assets.description": "Информация о токене {name} ({symbol}), адрес контракта и ссылки на соцсети.",
+  "assets.website": "Сайт",
+  "assets.explorer": "Обозреватель",
+  "assets.editOnGithub": "Изменить",
+  "assets.tokenInfo": "О токене",
+  "assets.networkInfo": "О сети",
+  "assets.symbol": "Символ",
+  "assets.decimals": "Знаков после запятой",
+  "assets.type": "Тип",
+  "assets.chainId": "Chain ID",
+  "assets.contract": "Контракт",
+  "assets.tags": "Теги",
+  "assets.links": "Ссылки",
+  "assets.notFound": "Актив не найден",
+  "assets.notFound.description": "Актив с адресом {address} не найден.",
+  "assets.backToHome": "На главную",
+  "assets.search.placeholder": "Поиск токенов по названию, символу или адресу…",
+  "assets.search.noResults": "Токены не найдены"
+}

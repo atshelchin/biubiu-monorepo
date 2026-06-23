@@ -163,6 +163,8 @@
   "auth.login.switch": "Already have an account? Sign in",
   "auth.connect.title": "Connect Wallet",
   "auth.connect.subtitle": "Only smart contract wallets are supported — including EOAs upgraded via EIP-7702.",
+  "auth.connect.button": "Connect wallet",
+  "auth.connect.builtinOnly": "This tool needs the built-in biubiu wallet (passkey).",
   "auth.connect.recommended": "Recommended",
   "auth.connect.biubiu": "BiuBiu Built-in",
   "auth.connect.biubiuDesc": "Passkey + smart account. No extension or seed phrase.",

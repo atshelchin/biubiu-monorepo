@@ -4,10 +4,11 @@
 	import { t, locale, formatNumber } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import { authStore } from '$lib/auth/auth-store.svelte';
+	import WalletGate from '$lib/auth/WalletGate.svelte';
 	import { WalletSweepStore, type LogEntry } from '$lib/pda-apps/wallet-sweep/store.svelte';
 	import type { Phase } from '$lib/pda-apps/wallet-sweep/types';
 	import AddTokenModal from './components/AddTokenModal.svelte';
+	import KeysEditor from './components/KeysEditor.svelte';
 	import { Fingerprint } from '@lucide/svelte';
 
 	const store = new WalletSweepStore();
@@ -22,23 +23,29 @@
 
 	const steps: { id: Phase; label: () => string }[] = [
 		{ id: 'config', label: () => t('ws.step.config') },
-		{ id: 'preview', label: () => t('ws.step.preview') },
-		{ id: 'fund', label: () => t('ws.step.fund') },
-		{ id: 'upgrade', label: () => t('ws.step.upgrade') },
-		{ id: 'sweep', label: () => t('ws.step.sweep') },
+		{ id: 'run', label: () => t('ws.step.run') },
 		{ id: 'done', label: () => t('ws.step.done') },
 	];
 	const stepIndex = $derived(steps.findIndex((s) => s.id === store.phase));
 
-	let keysText = $state('');
-	let parseTimer: ReturnType<typeof setTimeout>;
-	function onKeysInput() {
-		clearTimeout(parseTimer);
-		parseTimer = setTimeout(() => void store.setKeys(keysText), 250);
-	}
-
 	let showAddToken = $state(false);
 	let showLogs = $state(false);
+
+	// Stage label for the merged Run step.
+	const stageLabel = $derived.by(() => {
+		switch (store.runStage) {
+			case 'funding':
+				return t('ws.btn.funding');
+			case 'deploying':
+				return t('ws.run.deploying');
+			case 'upgrading':
+				return t('ws.run.upgrading');
+			case 'sweeping':
+				return t('ws.run.sweeping');
+			default:
+				return store.relayerFunded ? t('ws.run.start') : t('ws.run.fundAndStart');
+		}
+	});
 
 	onMount(() => {
 		void store.probeAll();
@@ -78,14 +85,7 @@
 		<p class="subtitle">{t('ws.subtitle')}</p>
 	</header>
 
-	{#if !store.user}
-		<section class="card connect">
-			<p>{t('ws.connect.required')}</p>
-			<button class="btn btn-primary" onclick={() => authStore.login()} disabled={authStore.loading}>
-				{t('ws.connect.cta')}
-			</button>
-		</section>
-	{:else}
+	<WalletGate requireBuiltin>
 		<!-- Stepper -->
 		<nav class="stepper" aria-label="progress">
 			{#each steps as s, i (s.id)}
@@ -143,15 +143,7 @@
 			<section class="card">
 				<h2 class="card-title">{t('ws.keys.title')}</h2>
 				<p class="card-sub">{t('ws.keys.subtitle')}</p>
-				<textarea
-					class="keys-input"
-					placeholder={t('ws.keys.placeholder')}
-					bind:value={keysText}
-					oninput={onKeysInput}
-					rows="6"
-					spellcheck="false"
-					autocomplete="off"
-				></textarea>
+				<KeysEditor onChange={(text) => store.setKeys(text)} />
 				{#if store.parseStats.total > 0}
 					<div class="key-stats">
 						<span class="chip chip-ok">{t('ws.keys.summary', { valid: store.parseStats.valid })}</span>
@@ -198,14 +190,16 @@
 
 			<div class="actions">
 				<button class="btn btn-primary lg" disabled={!canContinue || store.balancesLoading} onclick={() => store.preflight()}>
-					{store.balancesLoading ? t('ws.btn.checking') : t('ws.btn.preflight')}
+					{store.balancesLoading ? t('ws.btn.checking') : t('ws.btn.continue')}
 				</button>
 			</div>
 
-		<!-- ─────────── PREVIEW ─────────── -->
-		{:else if store.phase === 'preview' && store.plan}
+		<!-- ─────────── RUN (preview + fund + upgrade + sweep, merged) ─────────── -->
+		{:else if store.phase === 'run' && store.plan}
+			{@const needsRelayer = store.plan.toUpgrade.length > 0 || store.needSweeperDeploy}
 			<section class="card">
-				<h2 class="card-title">{t('ws.preview.title')}</h2>
+				<h2 class="card-title">{t('ws.run.title')}</h2>
+				<p class="card-sub">{t('ws.run.subtitle')}</p>
 				<div class="summary">
 					<div class="stat"><span class="stat-n">{store.plan.toUpgrade.length}</span><span class="stat-l">{t('ws.preview.toUpgrade')}</span></div>
 					<div class="stat"><span class="stat-n">{store.plan.alreadyOurs.length}</span><span class="stat-l">{t('ws.preview.alreadyUpgraded')}</span></div>
@@ -220,93 +214,67 @@
 						<div class="stat"><span class="stat-n">{store.plan.contracts.length}</span><span class="stat-l">{t('ws.preview.contractsSkipped')}</span></div>
 					{/if}
 				</div>
-				<div class="table-wrap">
-					<table class="preview-table">
-						<thead>
-							<tr><th>{t('ws.preview.address')}</th><th>{store.network?.symbol}</th>{#each store.tokens as tk (tk.address)}<th>{tk.symbol}</th>{/each}</tr>
-						</thead>
-						<tbody>
-							{#each store.balances as b (b.address)}
-								<tr>
-									<td class="mono">{short(b.address)}</td>
-									<td>{fmt(b.native)}</td>
-									{#each store.tokens as tk (tk.address)}
-										<td>{fmt(b.tokens[(tk.address ?? '').toLowerCase()] ?? 0n, tk.decimals)}</td>
-									{/each}
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
+				<details class="details">
+					<summary>{t('ws.run.details')}</summary>
+					<div class="table-wrap">
+						<table class="preview-table">
+							<thead><tr><th>{t('ws.preview.address')}</th><th>{store.network?.symbol}</th>{#each store.tokens as tk (tk.address)}<th>{tk.symbol}</th>{/each}</tr></thead>
+							<tbody>
+								{#each store.balances as b (b.address)}
+									<tr>
+										<td class="mono">{short(b.address)}</td>
+										<td>{fmt(b.native)}</td>
+										{#each store.tokens as tk (tk.address)}<td>{fmt(b.tokens[(tk.address ?? '').toLowerCase()] ?? 0n, tk.decimals)}</td>{/each}
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</details>
 			</section>
-			<div class="actions">
-				<button class="btn btn-ghost" onclick={() => store.back()}>{t('ws.btn.back')}</button>
-				<button class="btn btn-primary lg" onclick={() => store.goToFund()}>{t('ws.step.fund')}</button>
-			</div>
 
-		<!-- ─────────── FUND ─────────── -->
-		{:else if store.phase === 'fund' && store.relayer}
-			<section class="card">
-				<h2 class="card-title">{t('ws.fund.title')}</h2>
-				<p class="card-sub">{t('ws.fund.subtitle')}</p>
-				<div class="kv"><span>{t('ws.fund.relayerAddress')}</span><code class="mono">{short(store.relayer.address)}</code></div>
-				<div class="kv"><span>{t('ws.fund.needed')}</span><strong>{fmt(store.fundNeeded)} {store.network?.symbol}</strong></div>
-				<div class="kv"><span>{t('ws.fund.balance')}</span><strong>{fmt(store.relayerBal)} {store.network?.symbol}</strong></div>
-				{#if store.needSweeperDeploy}
-					<p class="note">{t('ws.fund.deployNote')}</p>
-				{/if}
-				<div class="fund-state" class:ok={store.relayerFunded}>
-					{store.relayerFunded ? t('ws.fund.funded') : t('ws.fund.notFunded')}
-				</div>
-				<div class="fund-actions">
-					<button class="btn btn-primary" onclick={() => store.fundFromSafe()} disabled={store.funding}>
-						{store.funding ? t('ws.btn.funding') : t('ws.btn.fundFromSafe')}
-					</button>
-					<button class="btn btn-ghost" onclick={() => store.refreshRelayerBalance()}>{t('ws.btn.refresh')}</button>
-					<button class="btn btn-ghost" onclick={() => store.downloadRelayer()}>{t('ws.btn.download')}</button>
-				</div>
-				<p class="note">{t('ws.fund.manualHint')}</p>
-			</section>
+			{#if needsRelayer && store.relayer}
+				<section class="card">
+					<h2 class="card-title">{t('ws.fund.title')}</h2>
+					<p class="card-sub">{t('ws.fund.subtitle')}</p>
+					<div class="kv"><span>{t('ws.fund.relayerAddress')}</span><code class="mono">{short(store.relayer.address)}</code></div>
+					<div class="kv"><span>{t('ws.fund.needed')}</span><strong>{fmt(store.fundNeeded)} {store.network?.symbol}</strong></div>
+					<div class="kv"><span>{t('ws.fund.balance')}</span><strong>{fmt(store.relayerBal)} {store.network?.symbol}</strong></div>
+					{#if store.needSweeperDeploy}<p class="note">{t('ws.fund.deployNote')}</p>{/if}
+					<div class="fund-actions">
+						<button class="btn btn-ghost" onclick={() => store.refreshRelayerBalance()}>{t('ws.btn.refresh')}</button>
+						<button class="btn btn-ghost" onclick={() => store.downloadRelayer()}>{t('ws.btn.download')}</button>
+					</div>
+					<p class="note">{t('ws.fund.manualHint')}</p>
+				</section>
+			{/if}
+
+			{#if store.running}
+				<section class="card center">
+					<div class="timeline">
+						{#if store.needSweeperDeploy || store.runStage === 'deploying'}
+							<span class="tl" class:on={store.runStage === 'deploying'} class:past={store.runStage === 'upgrading' || store.runStage === 'sweeping'}>{t('ws.run.deploying')}</span>
+						{/if}
+						<span class="tl" class:on={store.runStage === 'upgrading'} class:past={store.runStage === 'sweeping'}>{t('ws.step.upgrade')}</span>
+						<span class="tl" class:on={store.runStage === 'sweeping'}>{t('ws.step.sweep')}</span>
+					</div>
+					{#if store.upgradeProgress}
+						{@const p = store.upgradeProgress}
+						<div class="progress"><div class="progress-bar" style="width:{store.plan ? Math.round((p.done / Math.max(1, store.plan.toUpgrade.length)) * 100) : 0}%"></div></div>
+						<p class="progress-text">{t('ws.upgrade.progress', { done: p.done, total: store.plan?.toUpgrade.length ?? 0 })}</p>
+					{:else}
+						<div class="spinner"></div>
+					{/if}
+				</section>
+			{/if}
+
+			{#if store.fee && store.fee.amount > 0n}<p class="note center-text">{t('ws.fee.note')}</p>{/if}
 			<div class="actions">
-				<button class="btn btn-ghost" onclick={() => store.back()}>{t('ws.btn.back')}</button>
-				<button class="btn btn-primary lg" disabled={!store.relayerFunded || store.upgrading} onclick={() => store.runUpgradePhase()}>
-					{t('ws.btn.startUpgrade')}
+				<button class="btn btn-ghost" onclick={() => store.back()} disabled={store.running}>{t('ws.btn.back')}</button>
+				<button class="btn btn-primary lg with-icon" onclick={() => store.proceed()} disabled={store.running}>
+					<Fingerprint size={15} />{stageLabel}
 				</button>
 			</div>
-
-		<!-- ─────────── UPGRADE ─────────── -->
-		{:else if store.phase === 'upgrade'}
-			<section class="card center">
-				<h2 class="card-title">{t('ws.upgrade.title')}</h2>
-				<p class="card-sub">{t('ws.upgrade.subtitle')}</p>
-				{#if store.upgradeProgress}
-					{@const p = store.upgradeProgress}
-					<div class="progress">
-						<div class="progress-bar" style="width:{store.plan ? Math.round((p.done / Math.max(1, store.plan.toUpgrade.length)) * 100) : 0}%"></div>
-					</div>
-					<p class="progress-text">{t('ws.upgrade.progress', { done: p.done, total: store.plan?.toUpgrade.length ?? 0 })}</p>
-				{:else}
-					<div class="spinner"></div>
-				{/if}
-			</section>
-
-		<!-- ─────────── SWEEP ─────────── -->
-		{:else if store.phase === 'sweep'}
-			<section class="card center">
-				<h2 class="card-title">{t('ws.sweep.title')}</h2>
-				<p class="card-sub">{t('ws.sweep.subtitle')}</p>
-				{#if store.fee}
-					<div class="fee-pill" class:free={store.fee.amount === 0n}>
-						<span>{t('ws.fee.label')}</span>
-						<strong>{store.fee.amount === 0n ? t('ws.fee.free') : `${fmt(store.fee.amount)} ${store.network?.symbol}`}</strong>
-					</div>
-					{#if store.fee.amount > 0n}<p class="note">{t('ws.fee.note')}</p>{/if}
-				{/if}
-				<p class="fingerprint"><Fingerprint size={15} />{t('ws.sweep.fingerprint')}</p>
-				<button class="btn btn-primary lg" onclick={() => store.runSweepPhase()} disabled={store.sweeping}>
-					{store.sweeping ? t('ws.btn.checking') : t('ws.btn.startSweep')}
-				</button>
-			</section>
 
 		<!-- ─────────── DONE ─────────── -->
 		{:else if store.phase === 'done'}
@@ -325,7 +293,7 @@
 					{/each}
 				</div>
 				<div class="fund-actions">
-					<button class="btn btn-primary" onclick={() => store.runSweepPhase()} disabled={store.sweeping}>{t('ws.done.sweepAgain')}</button>
+					<button class="btn btn-primary" onclick={() => store.sweepAgain()} disabled={store.running}>{t('ws.done.sweepAgain')}</button>
 					<button class="btn btn-ghost" onclick={() => store.reset()}>{t('ws.btn.reset')}</button>
 				</div>
 			</section>
@@ -376,7 +344,7 @@
 				{/if}
 			</section>
 		{/if}
-	{/if}
+	</WalletGate>
 </main>
 
 <AddTokenModal open={showAddToken} onClose={() => (showAddToken = false)} {store} />
@@ -429,14 +397,6 @@
 		margin: var(--space-2) 0 var(--space-4);
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
-	}
-
-	.connect {
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-		align-items: center;
 	}
 
 	/* Stepper */
@@ -576,8 +536,7 @@
 		color: var(--fg-subtle);
 	}
 
-	/* Keys */
-	.keys-input,
+	/* Inputs */
 	.input,
 	.dest-row .input {
 		width: 100%;
@@ -590,12 +549,6 @@
 		transition: border-color var(--motion-fast) var(--easing);
 		box-sizing: border-box;
 	}
-	.keys-input {
-		font-family: var(--font-mono);
-		font-size: var(--text-xs);
-		resize: vertical;
-	}
-	.keys-input:focus,
 	.input:focus {
 		outline: none;
 		border-color: var(--accent);
@@ -698,6 +651,12 @@
 	.btn.lg {
 		padding: var(--space-3) var(--space-8);
 	}
+	.btn.with-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+	}
 	.btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
@@ -723,7 +682,7 @@
 		color: var(--error);
 	}
 
-	/* Preview */
+	/* Summary + preview table */
 	.summary {
 		display: flex;
 		gap: var(--space-5);
@@ -743,8 +702,15 @@
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
 	}
+	.details summary {
+		font-size: var(--text-sm);
+		color: var(--accent);
+		cursor: pointer;
+		user-select: none;
+	}
 	.table-wrap {
 		overflow-x: auto;
+		margin-top: var(--space-3);
 	}
 	.preview-table {
 		width: 100%;
@@ -783,18 +749,8 @@
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 	}
-	.fund-state {
-		margin-top: var(--space-4);
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		background: var(--warning-muted);
-		color: var(--warning);
+	.note.center-text {
 		text-align: center;
-	}
-	.fund-state.ok {
-		background: var(--accent-muted);
-		color: var(--accent);
 	}
 	.fund-actions {
 		display: flex;
@@ -803,7 +759,28 @@
 		margin-top: var(--space-4);
 	}
 
-	/* Progress */
+	/* Progress / timeline */
+	.timeline {
+		display: flex;
+		justify-content: center;
+		gap: var(--space-3);
+		margin-bottom: var(--space-2);
+		font-size: var(--text-xs);
+	}
+	.tl {
+		color: var(--fg-subtle);
+		padding: 2px 10px;
+		border-radius: var(--radius-full);
+		background: var(--bg-sunken);
+	}
+	.tl.on {
+		color: var(--accent-fg);
+		background: var(--accent);
+	}
+	.tl.past {
+		color: var(--accent);
+		background: var(--accent-muted);
+	}
 	.progress {
 		height: 8px;
 		background: var(--bg-sunken);
@@ -833,32 +810,6 @@
 		to {
 			transform: rotate(360deg);
 		}
-	}
-	.fingerprint {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
-		margin: var(--space-3) 0 var(--space-5);
-	}
-	.fee-pill {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		margin: var(--space-3) auto 0;
-		padding: var(--space-2) var(--space-4);
-		background: var(--bg-sunken);
-		border: 1px solid var(--border-base);
-		border-radius: var(--radius-full);
-		font-size: var(--text-sm);
-		color: var(--fg-muted);
-	}
-	.fee-pill strong {
-		color: var(--fg-base);
-	}
-	.fee-pill.free strong {
-		color: var(--accent);
 	}
 
 	/* Batches / history */

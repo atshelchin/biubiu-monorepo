@@ -8,11 +8,23 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { encode } from 'uqr';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
+	import { walletStore } from '$lib/wallet';
+	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import { deployStore, SUPPORTED_NETWORKS, type SupportedNetwork } from '$lib/deploy/deploy-store.svelte.js';
 	import { formatRelativeTime } from '$lib/i18n';
 
 	const store = deployStore;
 	let showQrCode = $state(false);
+	let showAuth = $state(false);
+
+	/** Label for the connected wallet: passkey name for biubiu, else the kind. */
+	const walletLabel = $derived(
+		walletStore.kind === 'biubiu'
+			? authStore.displayName
+			: walletStore.kind === 'walletpair'
+				? 'WalletPair'
+				: 'Browser wallet'
+	);
 
 	// SEO
 	const seoProps = $derived(
@@ -198,16 +210,16 @@
 	<!-- Account -->
 	<section class="card" use:fadeInUp={{ delay: 100 }}>
 		<div class="card-title">{t('deploy.account.title')}</div>
-		{#if authStore.isLoggedIn}
+		{#if walletStore.isConnected}
 			<div class="status-row">
 				<span class="dot dot-green"></span>
-				<span class="status-text">{authStore.displayName}</span>
+				<span class="status-text">{walletLabel}</span>
 				<button
 					class="mono address"
-					onclick={() => copyToClipboard(authStore.user?.safeAddress ?? '')}
+					onclick={() => copyToClipboard(walletStore.activeWallet?.address ?? '')}
 					title="Click to copy"
 				>
-					{truncateAddress(authStore.user?.safeAddress ?? '')}
+					{truncateAddress(walletStore.activeWallet?.address ?? '')}
 				</button>
 				<button class="btn-icon" onclick={() => showQrCode = true} title="Show QR Code">
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
@@ -215,7 +227,7 @@
 			</div>
 		{:else}
 			<p class="muted">{t('deploy.account.notLoggedIn')}</p>
-			<button class="btn btn-primary" onclick={() => authStore.login()}>
+			<button class="btn btn-primary" onclick={() => (showAuth = true)}>
 				{t('deploy.account.login')}
 			</button>
 		{/if}
@@ -508,7 +520,7 @@
 		{/if}
 	</section>
 	<!-- QR Code Modal -->
-	{#if showQrCode && authStore.user?.safeAddress}
+	{#if showQrCode && walletStore.activeWallet?.address}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="qr-overlay" role="presentation" onclick={() => showQrCode = false}>
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -520,12 +532,14 @@
 					</button>
 				</div>
 				<div class="qr-body">
-					<canvas class="qr-canvas" use:renderQrCode={authStore.user.safeAddress}></canvas>
-					<div class="qr-address">{authStore.user.safeAddress}</div>
+					<canvas class="qr-canvas" use:renderQrCode={walletStore.activeWallet?.address ?? ''}></canvas>
+					<div class="qr-address">{walletStore.activeWallet?.address ?? ''}</div>
 				</div>
 			</div>
 		</div>
 	{/if}
+
+	<AuthModal open={showAuth} onClose={() => (showAuth = false)} />
 </main>
 
 <PageFooter />

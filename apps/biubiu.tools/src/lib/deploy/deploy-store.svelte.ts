@@ -6,9 +6,9 @@ import { type Address, type Hex } from 'viem';
 import { FoundryClient } from './foundry-client.js';
 import { buildInitCode, predictCreate2Address, CREATE2_PROXY } from './create2.js';
 import { saveDeployment, getDeployments, markVerified, clearDeployments } from './history.js';
-import { sendContractCall, type GasOverrides } from '$lib/auth/safe-tx/send-contract-call.js';
+import { type GasOverrides } from '$lib/auth/safe-tx/send-contract-call.js';
 import type { SendStatus } from '$lib/auth/safe-tx/send-token.js';
-import { authStore } from '$lib/auth/auth-store.svelte.js';
+import { walletStore } from '$lib/wallet';
 import { checkNetworkSupport, type NetworkCheckResult } from './network-check.js';
 import type {
 	ContractArtifact,
@@ -195,7 +195,7 @@ class DeployStore {
 	get canDeploy(): boolean {
 		return (
 			this.serverStatus === 'connected' &&
-			authStore.isLoggedIn &&
+			walletStore.isConnected &&
 			this.selectedContract !== null &&
 			this.selectedNetwork !== null &&
 			this.networkCheck?.ready === true &&
@@ -405,7 +405,7 @@ class DeployStore {
 			const result = await checkNetworkSupport({
 				rpcUrl: rpc,
 				chainId: network.chainId,
-				safeAddress: authStore.user?.safeAddress
+				safeAddress: walletStore.activeWallet?.address
 			});
 
 			this.networkCheck = result;
@@ -676,10 +676,10 @@ class DeployStore {
 
 	async deploy(): Promise<void> {
 		const contract = this.selectedContract;
-		const user = authStore.user;
+		const wallet = walletStore.activeWallet;
 		const network = this.selectedNetwork;
 
-		if (!contract || !user || !network || !this.canDeploy) return;
+		if (!contract || !wallet || !network || !this.canDeploy) return;
 		if (this.addressAlreadyDeployed) {
 			this.log('Contract already deployed at predicted address', 'error');
 			return;
@@ -709,17 +709,10 @@ class DeployStore {
 		this.log(`Predicted address: ${predicted}`);
 
 		try {
-			const result = await sendContractCall({
-				safeAddress: user.safeAddress as Address,
-				publicKeyHex: user.publicKey,
-				credentialId: user.credentialId,
-				rpId: user.rpId,
-				to: CREATE2_PROXY as Address,
-				value: 0n,
-				data: calldata,
-				network: network.key,
+			const result = await wallet.sendCalls([{ to: CREATE2_PROXY as Address, value: 0n, data: calldata }], {
+				chainId: network.chainId,
 				gasOverrides: this.gasOverrides,
-				onStatus: (status: SendStatus) => {
+				onPhase: (status: SendStatus) => {
 					this.deployStatus = status;
 					const statusMessages: Record<SendStatus, string> = {
 						checking: 'Checking wallet status...',
@@ -756,7 +749,7 @@ class DeployStore {
 					salt: this.salt as Hex,
 					constructorArgs: values,
 					txHash: result.txHash as Hex,
-					deployer: user.safeAddress as Address,
+					deployer: wallet.address,
 					verified: false
 				};
 				await saveDeployment(record);

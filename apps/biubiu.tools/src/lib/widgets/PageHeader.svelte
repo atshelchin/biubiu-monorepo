@@ -38,14 +38,11 @@
 
 	// Navigation links removed from header — moved to footer
 
-	// 登录后加载订阅状态
+	// 全站唯一的订阅状态加载点：任意已连接钱包都按其地址加载，断开则重置。
 	$effect(() => {
-		if (authStore.isLoggedIn && authStore.user?.safeAddress) {
-			subscriptionStore.load(authStore.user.safeAddress as `0x${string}`);
-		}
-		if (!authStore.isLoggedIn) {
-			subscriptionStore.reset();
-		}
+		const w = walletStore.activeWallet;
+		if (w) subscriptionStore.load(w.address);
+		else subscriptionStore.reset();
 	});
 
 </script>

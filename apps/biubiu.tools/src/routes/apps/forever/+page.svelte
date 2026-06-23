@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { authStore } from '$lib/auth/auth-store.svelte.js';
+	import WalletGate from '$lib/auth/WalletGate.svelte';
 	import { foreverStore, FEE_WEI } from '$lib/pda-apps/forever/store.svelte.js';
 	import { formatDate } from '$lib/i18n';
 	import { formatUnits } from 'viem';
@@ -13,10 +13,6 @@
 	});
 
 	const busy = $derived(store.status === 'setup' || store.status === 'unlocking' || store.status === 'sealing');
-
-	async function connect() {
-		await authStore.login();
-	}
 </script>
 
 <svelte:head><title>致未来 · Forever</title></svelte:head>
@@ -28,14 +24,8 @@
 		<p class="sub">A permanent, encrypted note on the chain you choose — readable only by you.</p>
 	</section>
 
-	{#if !authStore.isLoggedIn}
-		<div class="card center">
-			<p>Sign in with your passkey wallet to begin.</p>
-			<button class="primary" onclick={connect} disabled={authStore.loading}>
-				{authStore.loading ? 'Connecting…' : 'Connect passkey'}
-			</button>
-		</div>
-	{:else if !store.hasKey}
+	<WalletGate requireBuiltin>
+		{#if !store.hasKey}
 		<div class="card center">
 			<h2>Create your Forever key</h2>
 			<p class="muted">
@@ -44,6 +34,9 @@
 			</p>
 			<button class="primary" onclick={() => store.setupKey()} disabled={busy}>
 				{store.status === 'setup' ? 'Setting up…' : 'Create encryption key'}
+			</button>
+			<button class="ghost" onclick={() => store.useExistingKey()} disabled={busy}>
+				{store.status === 'unlocking' ? 'Unlocking…' : 'I already have a Forever passkey'}
 			</button>
 		</div>
 	{:else}
@@ -141,7 +134,8 @@
 				<p class="muted empty">No notes yet on {store.network?.name}.</p>
 			{/if}
 		</section>
-	{/if}
+		{/if}
+	</WalletGate>
 
 	{#if store.message}
 		<div class="status" class:err={store.status === 'error'} class:ok={store.status === 'done'}>

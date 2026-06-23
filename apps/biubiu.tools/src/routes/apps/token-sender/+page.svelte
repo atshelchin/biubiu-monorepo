@@ -7,17 +7,15 @@
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
-	import AuthModal from '$lib/auth/AuthModal.svelte';
+	import WalletGate from '$lib/auth/WalletGate.svelte';
 	import DepositModal from '$lib/auth/DepositModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { walletStore } from '$lib/wallet';
-	import { subscriptionStore } from '$lib/subscription';
 	import { tokenSender as s } from '$lib/pda-apps/token-sender/store.svelte.js';
 	import { chainVisual, chainInitials } from '$lib/pda-apps/token-sender/infra/chain-visuals.js';
 	import { Lock, Key, Shield, BookOpen } from '@lucide/svelte';
 	import RecipientsEditor from './RecipientsEditor.svelte';
 
-	let showAuth = $state(false);
 	let showDeposit = $state(false);
 	let showAddNetwork = $state(false);
 	let showRpcEdit = $state(false);
@@ -48,15 +46,7 @@
 	onMount(() => {
 		s.loadHistory();
 		s.hydrateCustom();
-		const w = walletStore.activeWallet;
-		if (w) subscriptionStore.load(w.address);
 	});
-
-	function onLoggedIn() {
-		showAuth = false;
-		const w = walletStore.activeWallet;
-		if (w) subscriptionStore.load(w.address);
-	}
 
 	function next2() {
 		s.parse();
@@ -181,16 +171,7 @@
 		{/if}
 	</section>
 
-	{#if !walletStore.isConnected}
-		<section class="glass gate" use:fadeInUp={{ delay: 80 }}>
-			<h2>Connect your wallet</h2>
-			<p>
-				Connect a smart contract wallet — biubiu built-in (passkey), a browser wallet, or WalletPair
-				— to hold funds and sign sends.
-			</p>
-			<button class="btn primary" onclick={() => (showAuth = true)}>Connect wallet</button>
-		</section>
-	{:else}
+	<WalletGate>
 		<!-- Stepper -->
 		<nav class="stepper" use:fadeInUp={{ delay: 80 }}>
 			{#each [{ n: 1, label: 'Token' }, { n: 2, label: 'Recipients' }, { n: 3, label: 'Review' }, { n: 4, label: 'Send' }] as st (st.n)}
@@ -386,7 +367,7 @@
 							<strong>
 								{s.fee.amount === 0n
 									? 'Free'
-									: `${s.fmt(s.fee.amount, s.network.decimals)} ${s.network.symbol}`}
+									: `${s.fmt(s.feeTotal, s.network.decimals)} ${s.network.symbol}`}
 							</strong>
 						</div>
 						<p class="fee-note">
@@ -398,7 +379,9 @@
 							{/if}
 						</p>
 						{#if s.fee.amount > 0n}
-							<p class="fee-note muted">Charged inside the first batch — no extra confirmation.</p>
+							<p class="fee-note muted">
+							{s.fmt(s.fee.amount, s.network.decimals)} {s.network.symbol} per transaction × {s.totalBatches} batch(es)
+						</p>
 						{/if}
 					{/if}
 				</div>
@@ -485,12 +468,12 @@
 					</div>
 					<p class="muted">Approve each batch in your wallet when prompted.</p>
 					<div class="panel-actions">
-						<button class="btn ghost" onclick={() => s.abort()}>Stop after current batch</button>
+						<button class="btn ghost" onclick={() => s.abort()}>Pause (after current batch)</button>
 					</div>
 				{:else}
 					<div class="result-summary" class:partial={s.failures.length > 0}>
 						{#if s.execStatus === 'aborted'}
-							Stopped — {s.results.length} batch(es) sent, {s.failures.length} failed/skipped.
+							Paused — {s.results.length} batch(es) sent, {s.failures.length} failed/skipped. You can continue below.
 						{:else if s.failures.length === 0}
 							✓ Done — {s.results.length} batch(es) sent successfully.
 						{:else}
@@ -528,7 +511,7 @@
 				{/if}
 			</section>
 		{/if}
-	{/if}
+	</WalletGate>
 
 	<!-- ── History ── -->
 	{#if s.history.length > 0}
@@ -552,7 +535,6 @@
 
 <PageFooter />
 
-<AuthModal open={showAuth} onClose={onLoggedIn} />
 {#if walletStore.kind === 'biubiu' && authStore.user}
 	<DepositModal
 		open={showDeposit}
@@ -737,14 +719,6 @@
 
 	.gate {
 		text-align: center;
-	}
-	.gate h2 {
-		margin: 0 0 var(--space-2);
-		font-size: var(--text-xl);
-	}
-	.gate p {
-		color: var(--fg-muted);
-		margin: 0 0 var(--space-4);
 	}
 
 	/* Stepper */

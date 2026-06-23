@@ -10,6 +10,12 @@ import { browser } from '$app/environment';
 import { fromBase64url, toBase64url } from '$lib/auth/crypto-utils.js';
 
 const RP_NAME = 'BiuBiu Forever';
+const SALT_TEXT = 'forever.biubiu.tools/prf/v1';
+
+/** The fixed PRF salt as a standalone ArrayBuffer (the least ambiguous BufferSource type). */
+function prfSalt(): ArrayBuffer {
+	return new Uint8Array(new TextEncoder().encode(SALT_TEXT)).buffer;
+}
 
 export interface EncryptionCredential {
 	/** base64url credential id of the dedicated encryption passkey. */
@@ -25,13 +31,13 @@ export function isWebAuthnAvailable(): boolean {
 /** Create the dedicated encryption passkey with the prf extension enabled. */
 export async function createEncryptionPasskey(
 	rpId: string,
-	name = 'Forever Encryption Key'
-): Promise<{ credential: EncryptionCredential; prfEnabled: boolean }> {
+	name = 'Forever'
+): Promise<{ credential: EncryptionCredential; prfEnabled: boolean; prf: Uint8Array | null }> {
 	const cred = (await navigator.credentials.create({
 		publicKey: {
 			rp: { id: rpId, name: RP_NAME },
-			user: { id: crypto.getRandomValues(new Uint8Array(32)), name, displayName: name },
-			challenge: crypto.getRandomValues(new Uint8Array(32)),
+			user: { id: crypto.getRandomValues(new Uint8Array(32)).buffer, name, displayName: name },
+			challenge: crypto.getRandomValues(new Uint8Array(32)).buffer,
 			pubKeyCredParams: [
 				{ alg: -7, type: 'public-key' },
 				{ alg: -257, type: 'public-key' }
@@ -41,16 +47,21 @@ export async function createEncryptionPasskey(
 				requireResidentKey: true,
 				userVerification: 'required'
 			},
-			extensions: { prf: {} },
+			// Enable PRF AND try to evaluate it in the same ceremony (one Touch ID when supported).
+			extensions: { prf: { eval: { first: prfSalt() } } },
 			timeout: 120_000
 		} as PublicKeyCredentialCreationOptions
 	})) as PublicKeyCredential | null;
 
 	if (!cred) throw new Error('Failed to create encryption passkey');
-	const ext = cred.getClientExtensionResults() as { prf?: { enabled?: boolean } };
+	const ext = cred.getClientExtensionResults() as {
+		prf?: { enabled?: boolean; results?: { first?: ArrayBuffer } };
+	};
+	const first = ext.prf?.results?.first;
 	return {
 		credential: { credentialId: toBase64url(cred.rawId), rpId, createdAt: Date.now() },
-		prfEnabled: ext.prf?.enabled ?? false
+		prfEnabled: ext.prf?.enabled ?? false,
+		prf: first ? new Uint8Array(first) : null
 	};
 }
 
@@ -62,20 +73,12 @@ export async function createEncryptionPasskey(
 export async function evaluatePrf(
 	cred?: EncryptionCredential
 ): Promise<{ prf: Uint8Array; credentialId: string }> {
-	// Fresh Uint8Arrays at the call site (a fresh Uint8Array is unambiguously an ArrayBufferView).
-	const salt = new Uint8Array(new TextEncoder().encode('forever.biubiu.tools/prf/v1'));
-	const challenge = crypto.getRandomValues(new Uint8Array(32));
+	// Pass every BufferSource as a real ArrayBuffer (the least ambiguous WebIDL type).
+	const salt = prfSalt();
+	const challenge = crypto.getRandomValues(new Uint8Array(32)).buffer;
 	const allowCredentials = cred
-		? [{ type: 'public-key' as const, id: new Uint8Array(fromBase64url(cred.credentialId)) }]
+		? [{ type: 'public-key' as const, id: fromBase64url(cred.credentialId) }]
 		: [];
-
-	// Diagnostic marker — confirms THIS (fresh) code is running, not a stale build.
-	console.info('[forever-prf] evaluatePrf', {
-		salt: Object.prototype.toString.call(salt),
-		isUint8Array: salt instanceof Uint8Array,
-		len: salt.byteLength,
-		discoverable: !cred
-	});
 
 	const assertion = (await navigator.credentials.get({
 		publicKey: {

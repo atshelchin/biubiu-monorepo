@@ -103,7 +103,12 @@ const RPC_METHODS = new Set([
 	'eth_getCode',
 	'eth_call',
 	'eth_gasPrice',
-	'eth_maxPriorityFeePerGas'
+	'eth_maxPriorityFeePerGas',
+	// Read methods (Forever note/key reads + funding preflight)
+	'eth_getLogs',
+	'eth_getBalance',
+	'eth_blockNumber',
+	'eth_chainId'
 ]);
 
 // ─── Handler ───

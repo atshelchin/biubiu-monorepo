@@ -47,8 +47,8 @@ export interface TimelineEntry {
 const LS_CRED = 'forever.enc.cred';
 const LS_ENVELOPE = 'forever.enc.envelope';
 
-/** Per-write fee — matches the contract default (0.0001 native). */
-export const FEE_WEI = 100_000_000_000_000n;
+/** Per-write fee charged + displayed (0.001 native). Must be >= the contract's on-chain floor. */
+export const FEE_WEI = 1_000_000_000_000_000n;
 /** Contract-enforced max ciphertext bytes; reserve headroom for version + iv + GCM tag. */
 const MAX_PAYLOAD = 4096;
 const TEXT_BYTE_LIMIT = MAX_PAYLOAD - 29; // 1 version + 12 iv + 16 tag
@@ -69,6 +69,8 @@ class ForeverStore {
 	mode = $state<'private' | 'capsule'>('private');
 	/** datetime-local string for capsule unlock (local time). */
 	unlockDate = $state('');
+	/** User-chosen name for the encryption passkey (shown in the OS passkey manager). */
+	keyName = $state('');
 
 	status = $state<Status>('idle');
 	message = $state('');
@@ -132,19 +134,59 @@ class ForeverStore {
 		return false;
 	}
 
+	/** Map low-level bundler/RPC errors to a clear, actionable message. */
+	private friendlyError(raw: string): string {
+		if (/AA21|prefund|insufficient funds|insufficient balance|exceeds balance/i.test(raw)) {
+			const sym = this.network?.nativeSymbol ?? '';
+			const addr = authStore.user?.safeAddress ?? '';
+			return `钱包余额不足以支付 gas（首次使用还需先部署钱包）。请给你的钱包充值一点 ${sym}，再重试：${addr}`;
+		}
+		return raw;
+	}
+
+	/** True if the Safe currently holds zero native balance (best-effort; false on RPC error). */
+	private async isUnfunded(addr: string): Promise<boolean> {
+		try {
+			const bal = BigInt(await rpcCall<string>(this.networkSlug, 'eth_getBalance', [addr, 'latest']));
+			return bal === 0n;
+		} catch {
+			return false;
+		}
+	}
+
+	/** True while a passkey/tx flow is in progress (used to prevent concurrent WebAuthn requests). */
+	get busy(): boolean {
+		return this.status === 'setup' || this.status === 'unlocking' || this.status === 'sealing';
+	}
+
 	/** One-time: create the encryption passkey, generate + publish the wrapped-DEK envelope. */
 	async setupKey(): Promise<boolean> {
+		if (this.busy) return false; // re-entry guard: only one WebAuthn request at a time
 		const user = authStore.user;
 		if (!user) return this.fail('Please sign in first.');
 		if (!isWebAuthnAvailable()) return this.fail('WebAuthn is not available in this browser.');
 
+		// Go busy immediately (disables buttons) BEFORE any await, so a slow funding check can't
+		// leave a window for a second click → "A request is already pending".
 		this.status = 'setup';
+		this.message = '检查钱包…';
+
+		// First-time setup deploys the Safe AND publishes the key on the SELECTED network — both
+		// cost gas, paid from the Safe.
+		if (await this.isUnfunded(user.safeAddress)) return this.fail(this.friendlyError('AA21'));
+
 		this.message = 'Creating your encryption passkey…';
 		try {
-			const { credential, prfEnabled } = await createEncryptionPasskey(user.rpId);
-			if (!prfEnabled) return this.fail('This authenticator does not support PRF encryption.');
+			const { credential, prfEnabled, prf: createPrf } = await createEncryptionPasskey(
+				user.rpId,
+				this.keyName.trim() || 'Forever'
+			);
+			if (!prfEnabled && !createPrf) {
+				return this.fail('This authenticator does not support PRF encryption.');
+			}
 
-			const { prf } = await evaluatePrf(credential);
+			// Prefer the PRF returned by create() (single ceremony); else evaluate via a get().
+			const prf = createPrf ?? (await evaluatePrf(credential)).prf;
 			const kek = await deriveKEK(prf);
 			const { rawDek, envelope } = await createEnvelope(kek);
 
@@ -160,7 +202,7 @@ class ForeverStore {
 				network: this.networkSlug,
 				onStatus: (s) => (this.message = `Key setup: ${s}…`)
 			});
-			if (!res.success) return this.fail(res.error ?? 'Key setup failed.');
+			if (!res.success) return this.fail(this.friendlyError(res.error ?? 'Key setup failed.'));
 
 			this.credential = credential;
 			this.envelopeHex = toHex(envelope);
@@ -180,6 +222,7 @@ class ForeverStore {
 	 * Recovers the data key by opening an on-chain envelope this passkey can unwrap.
 	 */
 	async useExistingKey(): Promise<boolean> {
+		if (this.busy) return false; // re-entry guard
 		const user = authStore.user;
 		if (!user) return this.fail('Please sign in first.');
 		if (!isWebAuthnAvailable()) return this.fail('WebAuthn is not available in this browser.');
@@ -258,26 +301,26 @@ class ForeverStore {
 
 	/** Encrypt the current text and seal it on-chain (private mode), charging the fee. */
 	async seal(): Promise<boolean> {
+		if (this.busy) return false; // re-entry guard
 		const user = authStore.user;
 		if (!user) return this.fail('Please sign in first.');
 		const text = this.text.trim();
 		if (!text) return this.fail('Write something first.');
 		if (this.overLimit) return this.fail('Message is too long.');
-		if (!this.rawDek && !(await this.unlock())) return false;
 
-		// Preflight: a fresh/empty Safe can't pay the fee + gas. Catch the common case early
-		// with a clear message; the bundler still surfaces precise errors for edge cases.
+		this.status = 'sealing'; // go busy before any await (disables buttons)
+		this.message = '准备中…';
+		if (!this.rawDek && !(await this.unlock())) return false;
+		this.status = 'sealing'; // unlock() may have toggled status; re-assert busy
+
+		// Preflight: a fresh/empty Safe can't pay the fee + gas.
 		try {
 			const balHex = await rpcCall<string>(this.networkSlug, 'eth_getBalance', [user.safeAddress, 'latest']);
-			if (BigInt(balHex) < FEE_WEI) {
-				const sym = this.network?.nativeSymbol ?? 'funds';
-				return this.fail(`Your wallet needs ${sym} on ${this.network?.name} to seal. Deposit a little and try again.`);
-			}
+			if (BigInt(balHex) < FEE_WEI) return this.fail(this.friendlyError('AA21'));
 		} catch {
 			/* non-fatal: fall through and let the bundler report precise errors */
 		}
 
-		this.status = 'sealing';
 		this.message = 'Encrypting…';
 		try {
 			// AES-GCM(DEK, text) — the inner layer. Always present.
@@ -320,7 +363,7 @@ class ForeverStore {
 				network: this.networkSlug,
 				onStatus: (s) => (this.message = `Sealing: ${s}…`)
 			});
-			if (!res.success) return this.fail(res.error ?? 'Seal failed.');
+			if (!res.success) return this.fail(this.friendlyError(res.error ?? 'Seal failed.'));
 
 			this.lastTxHash = res.txHash ?? null;
 			this.text = '';

@@ -12,9 +12,11 @@
 		open: boolean;
 		onClose: () => void;
 		balances: TokenBalance[];
+		/** Color theme. 'default' = app green; 'forever' = warm gold. */
+		variant?: 'default' | 'forever';
 	}
 
-	let { open, onClose, balances }: Props = $props();
+	let { open, onClose, balances, variant = 'default' }: Props = $props();
 
 	/** 'select' | 'form' */
 	let step = $state<'select' | 'form'>('select');
@@ -138,7 +140,7 @@
 </script>
 
 <ResponsiveModal {open} onClose={handleClose} {title} zOffset={10}>
-	<div class="send-content">
+	<div class="send-content" class:forever-theme={variant === 'forever'}>
 		{#if !status}
 			{#if step === 'select'}
 				<!-- Step 1: Select Token -->
@@ -278,6 +280,13 @@
 </ResponsiveModal>
 
 <style>
+	.send-content.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-muted: rgba(184, 134, 47, 0.12);
+		--accent-subtle: rgba(184, 134, 47, 0.08);
+		--accent-fg: #ffffff;
+	}
 	.send-content {
 		display: flex;
 		flex-direction: column;

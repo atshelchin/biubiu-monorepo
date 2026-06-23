@@ -16,9 +16,11 @@
 		onClose: () => void;
 		/** 打开订阅弹窗（由 PageHeader 处理，避免弹窗嵌套） */
 		onSubscription?: (mode: 'subscribe' | 'renew' | 'transfer') => void;
+		/** Color theme. 'default' = app green; 'forever' = warm gold (matches the Forever app). */
+		variant?: 'default' | 'forever';
 	}
 
-	let { open, onClose, onSubscription }: Props = $props();
+	let { open, onClose, onSubscription, variant = 'default' }: Props = $props();
 
 	let showLogoutConfirm = $state(false);
 	let showDeposit = $state(false);
@@ -100,7 +102,7 @@
 
 <ResponsiveModal {open} {onClose} title={t('auth.profile.title')}>
 	{#if user}
-		<div class="profile-content">
+		<div class="profile-content" class:forever-theme={variant === 'forever'}>
 			<!-- Avatar + Name -->
 			<div class="profile-header">
 				<div class="profile-avatar" class:premium={subscriptionStore.isPremium}>
@@ -297,11 +299,13 @@
 		open={showDeposit}
 		onClose={() => (showDeposit = false)}
 		address={user.safeAddress}
+		{variant}
 	/>
 	<SendModal
 		open={showSend}
 		onClose={() => { showSend = false; loadBalances(); }}
 		balances={balances}
+		{variant}
 	/>
 {/if}
 
@@ -315,6 +319,14 @@
 />
 
 <style>
+	/* 'forever' theme: re-tint the accent tokens warm gold (scoped to this modal instance). */
+	.profile-content.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-muted: rgba(184, 134, 47, 0.12);
+		--accent-subtle: rgba(184, 134, 47, 0.08);
+		--accent-fg: #ffffff;
+	}
 	.profile-content {
 		display: flex;
 		flex-direction: column;

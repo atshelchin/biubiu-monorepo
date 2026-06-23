@@ -9,9 +9,11 @@
 		open: boolean;
 		onClose: () => void;
 		address: string;
+		/** Color theme. 'default' = app green; 'forever' = warm gold. */
+		variant?: 'default' | 'forever';
 	}
 
-	let { open, onClose, address }: Props = $props();
+	let { open, onClose, address, variant = 'default' }: Props = $props();
 
 	const browserInfo = detectBrowser();
 	let copiedAddress = $state(false);
@@ -128,7 +130,7 @@
 </script>
 
 <ResponsiveModal {open} {onClose} title={t('auth.wallet.deposit')} zOffset={10}>
-	<div class="deposit-content">
+	<div class="deposit-content" class:forever-theme={variant === 'forever'}>
 		<!-- Deposit Received Banner -->
 		{#if receivedTokens.length > 0}
 			<div class="received-banner">
@@ -207,6 +209,13 @@
 </ResponsiveModal>
 
 <style>
+	.deposit-content.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-muted: rgba(184, 134, 47, 0.12);
+		--accent-subtle: rgba(184, 134, 47, 0.08);
+		--accent-fg: #ffffff;
+	}
 	.deposit-content {
 		display: flex;
 		flex-direction: column;

@@ -7,6 +7,7 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
+	import { X } from '@lucide/svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -321,7 +322,7 @@
 											{latencyInfo.latency}ms
 										</span>
 									{:else if latencyInfo?.status === 'error'}
-										<span class="latency-badge latency-error">✕</span>
+										<span class="latency-badge latency-error"><X size={12} /></span>
 									{/if}
 								{/if}
 								<button class="copy-btn" onclick={() => copyToClipboard(rpc, index)}>

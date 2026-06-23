@@ -5,9 +5,18 @@
 	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import { authStore } from '$lib/auth';
+	import { walletStore } from '$lib/wallet';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import { subscriptionStore } from '$lib/subscription';
 	import logo from '$lib/assets/logo.svg';
+	import { Link2, Diamond } from '@lucide/svelte';
+
+	// 当前活动钱包是否为外部钱包（inject / walletpair）。biubiu 走原 passkey profile 流程。
+	const isExternalWallet = $derived(walletStore.isConnected && walletStore.kind !== 'biubiu');
+	const externalAddress = $derived(isExternalWallet ? (walletStore.activeWallet?.address ?? '') : '');
+	const shortAddress = $derived(
+		externalAddress ? `${externalAddress.slice(0, 6)}…${externalAddress.slice(-4)}` : ''
+	);
 
 	// Settings modal state
 	let showSettings = $state(false);
@@ -54,7 +63,7 @@
 
 		<!-- Header Actions -->
 		<div class="header-actions">
-			{#if authStore.isLoggedIn}
+			{#if walletStore.kind === 'biubiu'}
 				<!-- Desktop: avatar + name -->
 				<button
 					class="user-btn desktop-only"
@@ -71,6 +80,18 @@
 					aria-label={authStore.displayName}
 				>
 					<span class="user-avatar" class:premium={subscriptionStore.isPremium}>{authStore.displayName.charAt(0).toUpperCase()}</span>
+				</button>
+			{:else if isExternalWallet}
+				<!-- External wallet (inject / walletpair): show address, click to disconnect -->
+				<button
+					class="user-btn"
+					onclick={() => walletStore.disconnect()}
+					title={`${externalAddress} — ${t('auth.logout')}`}
+				>
+					<span class="user-avatar">
+						{#if walletStore.kind === 'walletpair'}<Link2 size={14} />{:else}<Diamond size={14} />{/if}
+					</span>
+					<span class="user-name addr">{shortAddress}</span>
 				</button>
 			{:else}
 				<button

@@ -3,6 +3,7 @@
 	import type { FormatterContext, TranslateFn } from '../types.js';
 	import { fmtProfit, fmtPct } from '../formatters.js';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
+	import { X, ExternalLink } from '@lucide/svelte';
 
 	interface Props {
 		stats: Stats;
@@ -29,7 +30,9 @@
 		<span
 			>{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(2, '0')}:59</span
 		>
-		<button class="stats-hour-clear" onclick={() => onClearHour?.()}>✕</button>
+		<button class="stats-hour-clear" onclick={() => onClearHour?.()} aria-label="Clear hour filter"
+			><X size={12} /></button
+		>
 	</div>
 {/if}
 <section class="stats-grid" class:stats-grid-live={hasLiveCards} use:fadeInUp={{ delay: 45 }}>
@@ -40,7 +43,7 @@
 			<span class="stat-sub stat-sub-rows">
 				<span>{t('btcUpdown.stats.portfolio')}: {ctx.formatCurrency(wallet.portfolioValue * (ctx.exchangeRate ?? 1))}</span>
 				<a class="wallet-addr" href="https://polymarket.com/profile/{wallet.safeAddress}" target="_blank" rel="noopener">
-					{shortAddr(wallet.safeAddress)} ↗
+					{shortAddr(wallet.safeAddress)} <ExternalLink size={12} />
 				</a>
 			</span>
 		</div>
@@ -212,6 +215,9 @@
 	}
 	/* Wallet card */
 	.wallet-addr {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		color: var(--accent);
 		text-decoration: none;
 		transition: opacity var(--motion-fast) var(--easing);

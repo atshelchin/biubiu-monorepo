@@ -25,6 +25,7 @@
 	import DatePicker from '$lib/ui/DatePicker.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
+	import { ArrowUp, ArrowDown } from '@lucide/svelte';
 	import { onDestroy, untrack } from 'svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
@@ -1593,7 +1594,9 @@
 					>
 						Name
 						{#if profitSortColumn === 'name'}
-							<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
+							<span class="sort-indicator">
+								{#if profitSortDir === 'desc'}<ArrowDown size={11} />{:else}<ArrowUp size={11} />{/if}
+							</span>
 						{/if}
 					</span>
 					<span class="profit-col-labels-right">
@@ -1636,7 +1639,9 @@
 								>
 									{getProfitColumnLabel(colKey)}
 									{#if profitSortColumn === col}
-										<span class="sort-indicator">{profitSortDir === 'desc' ? '↓' : '↑'}</span>
+										<span class="sort-indicator">
+								{#if profitSortDir === 'desc'}<ArrowDown size={11} />{:else}<ArrowUp size={11} />{/if}
+							</span>
 									{/if}
 								</span>
 								{#if col !== 'all'}
@@ -2865,6 +2870,8 @@
 		cursor: pointer;
 	}
 	.sort-indicator {
+		display: inline-flex;
+		align-items: center;
 		font-size: calc(10px * var(--text-scale, 1));
 		margin-left: 2px;
 		opacity: 0.8;

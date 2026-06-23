@@ -5,6 +5,10 @@
 	import { registerPasskey, retryUpload } from './passkey-auth.js';
 	import { detectBrowser } from './browser-check.js';
 	import type { LocalKey } from './types.js';
+	import { walletStore } from '$lib/wallet';
+	import type { Eip6963ProviderDetail } from '$lib/wallet';
+	import { renderSVG } from 'uqr';
+	import { ArrowLeft } from '@lucide/svelte';
 
 	interface Props {
 		open: boolean;
@@ -13,7 +17,15 @@
 
 	let { open, onClose }: Props = $props();
 
-	let mode = $state<'login' | 'register' | 'browser-warning' | 'risk-confirm' | 'upload-retry'>('login');
+	let mode = $state<
+		| 'connect'
+		| 'login'
+		| 'register'
+		| 'browser-warning'
+		| 'risk-confirm'
+		| 'upload-retry'
+		| 'walletpair'
+	>('connect');
 	const browserInfo = detectBrowser();
 	let name = $state('');
 	let riskAccepted = $state(false);
@@ -22,13 +34,104 @@
 	/** passkey 已创建但上传失败时，保存 localKey 供重试 */
 	let pendingLocalKey = $state<LocalKey | null>(null);
 
+	// ── 外部钱包（inject / EIP-6963）──
+	let injectedWallets = $state<Eip6963ProviderDetail[]>([]);
+	let discovering = $state(false);
+	let discovered = false;
+	let connectingId = $state<string | null>(null);
+	let connectError = $state<string | null>(null);
+
+	// ── walletpair（扫码配对）──
+	let walletpairUri = $state<string | null>(null);
+	let walletpairFingerprint = $state('');
+	let walletpairStarting = $state(false);
+	let walletpairCancel: (() => void) | null = null;
+	const walletpairQr = $derived(
+		walletpairUri ? renderSVG(walletpairUri, { border: 1 }) : ''
+	);
+
+	async function handleWalletPair() {
+		mode = 'walletpair';
+		connectError = null;
+		walletpairUri = null;
+		walletpairStarting = true;
+		try {
+			const view = await walletStore.startWalletPair();
+			walletpairUri = view.uri;
+			walletpairFingerprint = view.fingerprint;
+			walletpairCancel = view.cancel;
+			walletpairStarting = false;
+			const res = await view.done;
+			if (res.ok) {
+				// 连接成功：会话已交给已连接的 WalletPairWallet（由 walletStore 持有，
+				// 断开时才 close）。清掉 cancel 引用，避免 resetState 把活会话关掉。
+				walletpairCancel = null;
+				handleClose();
+			} else {
+				connectError =
+					res.reason === 'not-smart-account'
+						? t('auth.connect.notSmartAccount')
+						: (res.message ?? t('auth.connect.connecting'));
+				mode = 'connect';
+			}
+		} catch (err) {
+			walletpairStarting = false;
+			connectError = err instanceof Error ? err.message : String(err);
+			mode = 'connect';
+		}
+	}
+
+	function cancelWalletPair() {
+		walletpairCancel?.();
+		walletpairCancel = null;
+		walletpairUri = null;
+		mode = 'connect';
+	}
+
+	// 进入连接选择页时发现注入钱包（每次打开重新发现）。
+	$effect(() => {
+		if (open && mode === 'connect' && !discovered) {
+			discovered = true;
+			discovering = true;
+			walletStore.discoverInject().then((list) => {
+				injectedWallets = list;
+				discovering = false;
+			});
+		}
+	});
+
+	async function handleConnectInject(detail: Eip6963ProviderDetail) {
+		connectingId = detail.info.uuid;
+		connectError = null;
+		const res = await walletStore.connectInject(detail);
+		connectingId = null;
+		if (res.ok) {
+			handleClose();
+		} else {
+			connectError =
+				res.reason === 'not-smart-account'
+					? t('auth.connect.notSmartAccount')
+					: (res.message ?? t('auth.connect.connecting'));
+		}
+	}
+
 	function resetState() {
-		mode = 'login';
+		mode = 'connect';
 		name = '';
 		riskAccepted = false;
 		loading = false;
 		error = null;
 		pendingLocalKey = null;
+		injectedWallets = [];
+		discovering = false;
+		discovered = false;
+		connectingId = null;
+		connectError = null;
+		walletpairCancel?.();
+		walletpairCancel = null;
+		walletpairUri = null;
+		walletpairFingerprint = '';
+		walletpairStarting = false;
 		authStore.clearError();
 	}
 
@@ -98,9 +201,13 @@
 	}
 
 	const title = $derived(
-		mode === 'login'
-			? t('auth.login.title')
-			: mode === 'register'
+		mode === 'connect'
+			? t('auth.connect.title')
+			: mode === 'walletpair'
+				? t('auth.connect.walletpair')
+				: mode === 'login'
+					? t('auth.login.title')
+					: mode === 'register'
 				? t('auth.register.title')
 				: mode === 'upload-retry'
 					? t('auth.uploadRetry.title')
@@ -112,7 +219,95 @@
 
 <ResponsiveModal {open} onClose={handleClose} {title}>
 	<div class="auth-content">
-		{#if mode === 'login'}
+		{#if mode === 'connect'}
+			<!-- Wallet method picker -->
+			<p class="auth-description">{t('auth.connect.subtitle')}</p>
+
+			<!-- Recommended: biubiu built-in -->
+			<button
+				class="wallet-option recommended"
+				onclick={() => { connectError = null; authStore.clearError(); mode = 'login'; }}
+				disabled={connectingId !== null}
+			>
+				<span class="wallet-icon biubiu">B</span>
+				<span class="wallet-meta">
+					<span class="wallet-name">{t('auth.connect.biubiu')}</span>
+					<span class="wallet-sub">{t('auth.connect.biubiuDesc')}</span>
+				</span>
+				<span class="recommended-badge">{t('auth.connect.recommended')}</span>
+			</button>
+
+			<div class="section-label">{t('auth.connect.browserHeading')}</div>
+
+			{#if discovering}
+				<div class="wallet-hint"><span class="spinner"></span>{t('auth.connect.discovering')}</div>
+			{:else if injectedWallets.length === 0}
+				<p class="wallet-hint">{t('auth.connect.noInjected')}</p>
+			{:else}
+				<div class="wallet-list">
+					{#each injectedWallets as w (w.info.uuid)}
+						<button
+							class="wallet-option"
+							onclick={() => handleConnectInject(w)}
+							disabled={connectingId !== null}
+						>
+							{#if w.info.icon}
+								<img class="wallet-icon" src={w.info.icon} alt={w.info.name} />
+							{:else}
+								<span class="wallet-icon">{w.info.name.charAt(0)}</span>
+							{/if}
+							<span class="wallet-meta"><span class="wallet-name">{w.info.name}</span></span>
+							{#if connectingId === w.info.uuid}
+								<span class="spinner"></span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+
+			<!-- WalletPair (scan QR) -->
+			<button class="wallet-option" onclick={handleWalletPair} disabled={connectingId !== null}>
+				<span class="wallet-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<rect x="3" y="3" width="7" height="7" rx="1" />
+						<rect x="14" y="3" width="7" height="7" rx="1" />
+						<rect x="3" y="14" width="7" height="7" rx="1" />
+						<path d="M14 14h3v3" />
+						<path d="M21 14v7h-7" />
+						<path d="M17 21h.01" />
+						<path d="M21 17h.01" />
+					</svg>
+				</span>
+				<span class="wallet-meta"><span class="wallet-name">{t('auth.connect.walletpair')}</span></span>
+			</button>
+
+			{#if connectError}
+				<p class="auth-error">{connectError}</p>
+			{/if}
+
+		{:else if mode === 'walletpair'}
+			<!-- WalletPair QR pairing -->
+			<p class="auth-description">{t('auth.connect.walletpairHint')}</p>
+
+			{#if walletpairStarting || !walletpairUri}
+				<div class="wallet-hint"><span class="spinner"></span>{t('auth.connect.connecting')}</div>
+			{:else}
+				<div class="qr-wrap">{@html walletpairQr}</div>
+				<div class="fingerprint">
+					<span class="fingerprint-label">{t('auth.connect.fingerprint')}</span>
+					<span class="fingerprint-code">{walletpairFingerprint}</span>
+				</div>
+			{/if}
+
+			{#if connectError}
+				<p class="auth-error">{connectError}</p>
+			{/if}
+
+			<button class="auth-btn tertiary back-btn" onclick={cancelWalletPair}
+			><ArrowLeft size={14} /> {t('auth.connect.back')}</button
+		>
+
+		{:else if mode === 'login'}
 			<!-- Login View -->
 			<p class="auth-description">{t('auth.login.description')}</p>
 
@@ -143,6 +338,16 @@
 				onclick={() => { authStore.clearError(); mode = 'register'; }}
 			>
 				{t('auth.register.switch')}
+			</button>
+
+			<button
+				class="auth-btn tertiary back-btn"
+				onclick={() => {
+					authStore.clearError();
+					mode = 'connect';
+				}}
+			>
+				<ArrowLeft size={14} /> {t('auth.connect.back')}
 			</button>
 
 		{:else if mode === 'register'}
@@ -353,6 +558,149 @@
 
 	.auth-btn.tertiary:not(:disabled):hover {
 		color: var(--fg-base);
+	}
+
+	/* Wallet method picker */
+	.wallet-option {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		width: 100%;
+		padding: var(--space-3);
+		background: var(--bg-raised);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		color: var(--fg-base);
+		text-align: left;
+		cursor: pointer;
+		transition:
+			transform var(--motion-fast) var(--easing),
+			border-color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
+	}
+
+	.wallet-option:not(:disabled):hover {
+		transform: translateY(-1px);
+		background: var(--bg-elevated);
+		border-color: var(--border-strong);
+	}
+
+	.wallet-option:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+
+	.wallet-option.recommended {
+		border-color: var(--accent);
+		background: var(--accent-subtle, var(--bg-raised));
+	}
+
+	.wallet-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		flex-shrink: 0;
+		border-radius: var(--radius-md);
+		object-fit: contain;
+		background: var(--bg-sunken);
+		font-weight: var(--weight-bold);
+		font-size: var(--text-sm);
+	}
+
+	.wallet-icon.biubiu {
+		background: var(--accent);
+		color: var(--accent-fg, var(--fg-inverse));
+	}
+
+	.wallet-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.wallet-name {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+	}
+
+	.wallet-sub {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+
+	.recommended-badge {
+		flex-shrink: 0;
+		padding: 2px var(--space-2);
+		border-radius: var(--radius-full);
+		background: var(--accent);
+		color: var(--accent-fg, var(--fg-inverse));
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+	}
+
+	/* WalletPair QR */
+	.qr-wrap {
+		display: flex;
+		justify-content: center;
+		padding: var(--space-4);
+		background: #fff;
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--border-base);
+	}
+
+	.qr-wrap :global(svg) {
+		width: 200px;
+		height: 200px;
+		display: block;
+	}
+
+	.fingerprint {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.fingerprint-label {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.fingerprint-code {
+		font-family: var(--font-mono);
+		font-size: var(--text-2xl);
+		font-weight: var(--weight-bold);
+		letter-spacing: 0.2em;
+		color: var(--fg-base);
+	}
+
+	.section-label {
+		font-size: var(--text-xs);
+		color: var(--fg-faint);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-top: var(--space-1);
+	}
+
+	.wallet-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.wallet-hint {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+		margin: 0;
 	}
 
 	/* Divider */

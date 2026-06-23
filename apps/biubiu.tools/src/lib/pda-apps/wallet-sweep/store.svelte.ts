@@ -1,18 +1,15 @@
 /**
- * Wallet Sweep — wizard store (Svelte 5 runes class).
+ * Wallet Sweep v2 — wizard store (Svelte 5 runes class). No passkey / Safe.
  *
- * Orchestrates the two-phase flow:
- *   A) upgrade EOAs to the Sweeper delegate (relayer broadcasts type-4 txs)
- *   B) the passkey Safe sweeps native + ERC20 from all of them (one fingerprint)
+ * A throwaway relay EOA does everything: deploy the contracts, upgrade the EOAs
+ * (EIP-7702) and sweep them to a user-chosen destination. The user funds the
+ * relay with gas; the relay key MUST be downloaded and the download proven (by
+ * re-uploading the file) before the funding address/QR is shown.
  *
- * Private keys live only in this store's memory + the signing path; they are
- * NEVER written to localStorage or sent anywhere. Only the throwaway relayer key
- * (relayer.ts) and address-level history (sweep-history.ts) are persisted.
+ * Private keys live only in memory; only the relay key (relayer.ts) and
+ * address-level history (sweep-history.ts) are persisted.
  */
-import { type Address, type Hex } from 'viem';
-import { authStore } from '$lib/auth/auth-store.svelte';
-import { subscriptionStore } from '$lib/subscription';
-import { quoteSweepFee, type FeeQuote } from './infra/fee.js';
+import { type Address } from 'viem';
 import type {
 	SweepNetwork,
 	NetworkReadiness,
@@ -23,7 +20,14 @@ import type {
 	SweepRecord,
 	SweepBatchRecord,
 } from './types.js';
-import { listNetworks, getNetwork, probeNetwork, pickWorkingRpc } from './infra/networks.js';
+import {
+	listNetworks,
+	getNetwork,
+	probeNetwork,
+	pickWorkingRpc,
+	makeCustomNetwork,
+	verifyCustomRpc,
+} from './infra/networks.js';
 import { parsePrivateKey, dedupeKeys } from './infra/authorizations.js';
 import { predictSweeperAddress } from './infra/sweeper-address.js';
 import { fetchBalances, type EoaBalances } from './infra/balances.js';
@@ -31,17 +35,24 @@ import { fetchTokenMetadata, isValidTokenAddress } from './infra/erc20.js';
 import {
 	getOrCreateRelayer,
 	loadRelayer,
+	rotateRelayer,
 	clearRelayer,
 	relayerBalance,
-	estimateUpgradeCostWei,
+	estimateFundingWei,
 	downloadRelayerKey,
+	verifyRelayFile,
+	recoverGas,
 	type Relayer,
 } from './infra/relayer.js';
-import { ensureSweeper, isSweeperDeployed } from './infra/deploy-sweeper.js';
-import { planDelegations, runUpgrade, type DelegationPlan, type DelegationEvent } from './infra/upgrade.js';
+import {
+	ensureBatchSweeper,
+	ensureSweeper,
+	isBatchSweeperDeployed,
+	isSweeperDeployed,
+} from './infra/deploy-sweeper.js';
+import { planSweep, runSweep, type SweepPlan, type SweepEvent } from './infra/sweep.js';
 import { runRevoke } from './infra/revoke.js';
-import { runSweep, defaultSweepBatch, type SweepUser, type SweepBatchEvent } from './infra/sweep-multisend.js';
-import { fundRelayerFromSafe } from './infra/fund-relayer.js';
+import { quoteSweepFee, type FeeQuote } from './infra/fee.js';
 import { putSweep, listSweeps, deleteSweep } from './history/sweep-history.js';
 
 export type LogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -51,82 +62,74 @@ export interface LogEntry {
 	msg: string;
 }
 
+const CUSTOM_NETWORKS_KEY = 'wallet-sweep-custom-networks';
+
 export class WalletSweepStore {
-	// ─── wizard ───
 	phase = $state<Phase>('config');
 	includeTestnets = $state(false);
 
-	// ─── network ───
+	// network
 	networkSlug = $state<string | null>(null);
+	customNetworks = $state<SweepNetwork[]>(loadCustomNetworks());
 	readiness = $state<Record<string, NetworkReadiness>>({});
 	probing = $state(false);
-	private rpcCache: Record<string, string> = {};
+	addNetworkError = $state<string | null>(null);
+	addingNetwork = $state(false);
+	private rpcCache: Record<string, string[]> = {};
 
-	// ─── keys (in-memory only) ───
+	// keys (in-memory)
 	keys = $state<EoaKey[]>([]);
 	parseStats = $state({ total: 0, valid: 0, invalid: 0, duplicates: 0 });
 	parsing = $state(false);
 
-	// ─── tokens + destination ───
+	// tokens + destination
 	tokens = $state<TokenSpec[]>([]);
 	destination = $state('');
 	addingToken = $state(false);
 	addTokenError = $state<string | null>(null);
 
-	// ─── preview ───
+	// preview
 	balances = $state<EoaBalances[]>([]);
 	balancesLoading = $state(false);
-	plan = $state<DelegationPlan | null>(null);
+	plan = $state<SweepPlan | null>(null);
 	fee = $state<FeeQuote | null>(null);
 
-	// ─── relayer / funding ───
-	relayer = $state<Relayer | null>(null);
-	relayerBal = $state(0n);
+	// relay
+	relay = $state<Relayer | null>(null);
+	private relayTs = $state(0);
+	relayDownloaded = $state(false);
+	relayVerified = $state(false);
+	verifyError = $state<string | null>(null);
+	relayBal = $state(0n);
 	fundNeeded = $state(0n);
+	needBatchSweeperDeploy = $state(false);
 	needSweeperDeploy = $state(false);
-	funding = $state(false);
 
-	// ─── run (merged fund + upgrade + sweep) ───
+	// run
 	runStage = $state<RunStage>('idle');
-	upgrading = $state(false);
-	upgradeProgress = $state<{ chunk: number; total: number; done: number } | null>(null);
-	private upgradedSet = $state<Set<string>>(new Set());
-
-	// ─── sweep ───
-	sweeping = $state(false);
+	progress = $state<{ chunk: number; total: number } | null>(null);
 	sweepRecords = $state<SweepBatchRecord[]>([]);
+	private sweptSet = $state<Set<string>>(new Set());
 
-	// ─── revoke ───
+	// revoke / recover
 	revoking = $state(false);
+	recovering = $state(false);
 
-	// ─── misc ───
 	history = $state<SweepRecord[]>([]);
 	logs = $state<LogEntry[]>([]);
 	error = $state<string | null>(null);
 
 	// ─── derived ───
 	get networks(): SweepNetwork[] {
-		return listNetworks({ includeTestnets: this.includeTestnets });
+		const builtins = listNetworks({ includeTestnets: this.includeTestnets });
+		return [...builtins, ...this.customNetworks];
 	}
 	get network(): SweepNetwork | null {
-		return this.networkSlug ? (getNetwork(this.networkSlug) ?? null) : null;
-	}
-	get user(): SweepUser | null {
-		const u = authStore.user;
-		if (!u) return null;
-		return {
-			safeAddress: u.safeAddress as Address,
-			publicKey: u.publicKey,
-			credentialId: u.credentialId,
-			rpId: u.rpId,
-		};
+		if (!this.networkSlug) return null;
+		return getNetwork(this.networkSlug) ?? this.customNetworks.find((n) => n.slug === this.networkSlug) ?? null;
 	}
 	get sweeperAddress(): Address | null {
-		const u = this.user;
-		return u ? predictSweeperAddress(u.safeAddress) : null;
-	}
-	get isMember(): boolean {
-		return subscriptionStore.isPremium;
+		return this.relay ? predictSweeperAddress(this.relay.address) : null;
 	}
 	get erc20Addresses(): Address[] {
 		return this.tokens.filter((t) => t.kind === 'erc20' && t.address).map((t) => t.address as Address);
@@ -134,19 +137,14 @@ export class WalletSweepStore {
 	get destinationValid(): boolean {
 		return isValidTokenAddress(this.destination);
 	}
-	/** EOAs currently delegated to our Sweeper (already-ours + freshly upgraded). */
-	get upgradedAddresses(): Address[] {
-		return this.keys.map((k) => k.address).filter((a) => this.upgradedSet.has(a.toLowerCase()));
+	get relayerFunded(): boolean {
+		return this.relayBal >= this.fundNeeded && this.fundNeeded > 0n;
 	}
-	/** Upgraded EOAs that actually hold something worth sweeping. */
-	get sweepableAddresses(): Address[] {
-		const byAddr = new Map(this.balances.map((b) => [b.address.toLowerCase(), b]));
-		return this.upgradedAddresses.filter((a) => {
-			const b = byAddr.get(a.toLowerCase());
-			if (!b) return true; // unknown balance → include (will no-op if empty)
-			if (b.native > 0n) return true;
-			return Object.values(b.tokens).some((v) => v > 0n);
-		});
+	get running(): boolean {
+		return this.runStage !== 'idle';
+	}
+	get sweptAddresses(): Address[] {
+		return this.keys.map((k) => k.address).filter((a) => this.sweptSet.has(a.toLowerCase()));
 	}
 	get totalNative(): bigint {
 		return this.balances.reduce((s, b) => s + b.native, 0n);
@@ -170,11 +168,11 @@ export class WalletSweepStore {
 	selectNetwork(slug: string) {
 		this.networkSlug = slug;
 		this.error = null;
+		this.resetRelay();
 		void this.probe(slug);
 	}
-
 	async probe(slug: string) {
-		const net = getNetwork(slug);
+		const net = this.network && this.networkSlug === slug ? this.network : getNetwork(slug) ?? this.customNetworks.find((n) => n.slug === slug);
 		if (!net) return;
 		this.probing = true;
 		try {
@@ -184,38 +182,63 @@ export class WalletSweepStore {
 			this.probing = false;
 		}
 	}
-
 	async probeAll() {
 		this.probing = true;
 		try {
 			const results = await Promise.all(this.networks.map((n) => probeNetwork(n)));
-			const next: Record<string, NetworkReadiness> = { ...this.readiness };
+			const next = { ...this.readiness };
 			for (const r of results) next[r.slug] = r;
 			this.readiness = next;
 		} finally {
 			this.probing = false;
 		}
 	}
+	async addCustomNetwork(cfg: { name: string; chainId: number; symbol: string; rpc: string; explorerTxUrl?: string }) {
+		this.addNetworkError = null;
+		if (!cfg.name.trim() || !cfg.chainId || !cfg.rpc.trim()) {
+			this.addNetworkError = 'Name, chain ID and RPC are required';
+			return;
+		}
+		if (this.networks.some((n) => n.chainId === cfg.chainId)) {
+			this.addNetworkError = 'A network with this chain ID already exists';
+			return;
+		}
+		this.addingNetwork = true;
+		try {
+			const ok = await verifyCustomRpc(cfg.rpc, cfg.chainId);
+			if (!ok) {
+				this.addNetworkError = 'RPC unreachable or chain ID mismatch';
+				return;
+			}
+			const net = makeCustomNetwork({ ...cfg, rpcs: [cfg.rpc] });
+			this.customNetworks = [...this.customNetworks, net];
+			saveCustomNetworks(this.customNetworks);
+			this.selectNetwork(net.slug);
+		} finally {
+			this.addingNetwork = false;
+		}
+	}
+	removeCustomNetwork(slug: string) {
+		this.customNetworks = this.customNetworks.filter((n) => n.slug !== slug);
+		saveCustomNetworks(this.customNetworks);
+		if (this.networkSlug === slug) this.networkSlug = null;
+	}
 
-	private async resolveRpc(net: SweepNetwork): Promise<string> {
+	private async resolveRpcs(net: SweepNetwork): Promise<string[]> {
 		if (this.rpcCache[net.slug]) return this.rpcCache[net.slug];
-		const rpc = await pickWorkingRpc(net.rpcs, net.chainId);
-		if (!rpc) throw new Error(`No reachable RPC for ${net.name}`);
-		this.rpcCache[net.slug] = rpc;
-		return rpc;
+		const working = await pickWorkingRpc(net.rpcs, net.chainId);
+		const ordered = working ? [working, ...net.rpcs.filter((u) => u !== working)] : [...net.rpcs];
+		this.rpcCache[net.slug] = ordered;
+		return ordered;
 	}
 
 	// ─── keys ───
 	async setKeys(text: string) {
 		this.parsing = true;
 		try {
-			const lines = text
-				.split(/[\s,]+/)
-				.map((l) => l.trim())
-				.filter(Boolean);
+			const lines = text.split(/[\s,]+/).map((l) => l.trim()).filter(Boolean);
 			const parsed: EoaKey[] = [];
 			let invalid = 0;
-			// Batched to keep the UI responsive on large pastes.
 			for (let i = 0; i < lines.length; i++) {
 				const k = parsePrivateKey(lines[i]);
 				if (k) parsed.push(k);
@@ -250,9 +273,8 @@ export class WalletSweepStore {
 		}
 		this.addingToken = true;
 		try {
-			const rpc = await this.resolveRpc(net);
-			const meta = await fetchTokenMetadata(net, rpc, addr as Address);
-			this.tokens = [...this.tokens, meta];
+			const rpcs = await this.resolveRpcs(net);
+			this.tokens = [...this.tokens, await fetchTokenMetadata(net, rpcs, addr as Address)];
 		} catch (e) {
 			this.addTokenError = e instanceof Error ? e.message : 'Failed to read token';
 		} finally {
@@ -263,56 +285,97 @@ export class WalletSweepStore {
 		this.tokens = this.tokens.filter((t) => t.address !== addr);
 	}
 
+	// ─── relay lifecycle ───
+	private resetRelay() {
+		this.relay = null;
+		this.relayDownloaded = false;
+		this.relayVerified = false;
+		this.relayBal = 0n;
+		this.verifyError = null;
+	}
+	private ensureRelay() {
+		const net = this.network;
+		if (!net) return;
+		if (!this.relay) {
+			this.relay = loadRelayer(net.slug) ?? getOrCreateRelayer(net.slug);
+			this.relayTs = Date.now();
+		}
+	}
+	rotateRelay() {
+		const net = this.network;
+		if (!net) return;
+		this.relay = rotateRelayer(net.slug);
+		this.relayTs = Date.now();
+		this.relayDownloaded = false;
+		this.relayVerified = false;
+		this.relayBal = 0n;
+	}
+	downloadRelay() {
+		if (this.relay && this.network) {
+			downloadRelayerKey(this.relay, this.network.slug, this.relayTs);
+			this.relayDownloaded = true;
+		}
+	}
+	/** Called with the re-uploaded file's text; reveals funding only on match. */
+	verifyUpload(fileText: string) {
+		this.verifyError = null;
+		if (!this.relay) return;
+		if (verifyRelayFile(fileText, this.relay)) {
+			this.relayVerified = true;
+			void this.refreshRelayerBalance();
+		} else {
+			this.verifyError = 'This file does not match your relay key';
+		}
+	}
+	async refreshRelayerBalance() {
+		const net = this.network;
+		if (!net || !this.relay) return;
+		try {
+			const rpcs = await this.resolveRpcs(net);
+			this.relayBal = await relayerBalance(rpcs, this.relay.address);
+		} catch (e) {
+			this.fail(e, 'Relay balance');
+		}
+	}
+
 	// ─── preflight → run ───
 	async preflight() {
 		const net = this.network;
-		const sweeper = this.sweeperAddress;
-		if (!net || !sweeper) {
-			this.error = 'Select a network and connect your passkey first';
-			return;
-		}
-		if (this.keys.length === 0) {
-			this.error = 'Add at least one private key';
-			return;
-		}
-		if (!this.destinationValid) {
-			this.error = 'Enter a valid destination address';
-			return;
-		}
+		if (!net) return (void (this.error = 'Select a network'));
+		if (this.keys.length === 0) return (void (this.error = 'Add at least one private key'));
+		if (!this.destinationValid) return (void (this.error = 'Enter a valid destination address'));
 		this.error = null;
 		this.balancesLoading = true;
 		try {
-			const rpc = await this.resolveRpc(net);
+			const rpcs = await this.resolveRpcs(net);
+			this.ensureRelay();
+			const sweeper = this.sweeperAddress!;
 			const addresses = this.keys.map((k) => k.address);
-			const [balances, plan] = await Promise.all([
-				fetchBalances(net, rpc, addresses, this.erc20Addresses),
-				planDelegations(rpc, this.keys, sweeper),
+
+			const [balances, plan, fee, batchDeployed, sweeperDeployed] = await Promise.all([
+				fetchBalances(net, rpcs, addresses, this.erc20Addresses),
+				planSweep(rpcs, this.keys, sweeper),
+				quoteSweepFee(net),
+				isBatchSweeperDeployed(rpcs),
+				isSweeperDeployed(rpcs, this.relay!.address),
 			]);
 			this.balances = balances;
 			this.plan = plan;
-			// Seed upgraded set with already-ours.
-			const set = new Set(this.upgradedSet);
-			for (const a of plan.alreadyOurs) set.add(a.toLowerCase());
-			this.upgradedSet = set;
+			this.fee = fee;
+			this.needBatchSweeperDeploy = !batchDeployed;
+			this.needSweeperDeploy = !sweeperDeployed;
 
-			this.needSweeperDeploy = !(await isSweeperDeployed(rpc, sweeper));
-			this.fundNeeded = await estimateUpgradeCostWei(rpc, plan.toUpgrade.length, this.needSweeperDeploy);
+			this.fundNeeded = await estimateFundingWei({
+				rpcs,
+				eoaCount: plan.sweepable.length,
+				tokenCount: this.erc20Addresses.length,
+				deployBatchSweeper: this.needBatchSweeperDeploy,
+				deploySweeper: this.needSweeperDeploy,
+				feeWei: fee.amount,
+			});
 
-			// Fee (identical policy to token-sender): member-free → $5-equiv → fallback.
-			this.fee = await quoteSweepFee(net, this.isMember);
-
-			if (plan.contracts.length) {
-				this.log(`${plan.contracts.length} address(es) have contract code and will be skipped`, 'warn');
-			}
-			this.log(
-				`Preflight: ${plan.toUpgrade.length} to upgrade, ${plan.alreadyOurs.length} already upgraded`,
-				'ok',
-			);
-
-			// Prepare the relayer so the merged "Run" step has funding ready.
-			this.relayer = loadRelayer(net.slug) ?? getOrCreateRelayer(net.slug);
-			await this.refreshRelayerBalance();
-
+			if (plan.contracts.length) this.log(`${plan.contracts.length} address(es) are contracts — skipped`, 'warn');
+			this.log(`Preflight: ${plan.sweepable.length} sweepable wallets`, 'ok');
 			this.phase = 'run';
 		} catch (e) {
 			this.fail(e, 'Preflight failed');
@@ -321,206 +384,130 @@ export class WalletSweepStore {
 		}
 	}
 
-	// ─── relayer / funding ───
-	async refreshRelayerBalance() {
-		const net = this.network;
-		if (!net || !this.relayer) return;
-		try {
-			const rpc = await this.resolveRpc(net);
-			this.relayerBal = await relayerBalance(rpc, this.relayer.address);
-		} catch (e) {
-			this.fail(e, 'Relayer balance');
-		}
-	}
-	get relayerFunded(): boolean {
-		return this.relayerBal >= this.fundNeeded;
-	}
-	async fundFromSafe() {
-		const net = this.network;
-		const user = this.user;
-		if (!net || !user || !this.relayer) return;
-		this.funding = true;
-		this.error = null;
-		try {
-			// Send a little extra (10%) to cover fee fluctuation.
-			const amount = (this.fundNeeded * 11n) / 10n;
-			const res = await fundRelayerFromSafe({
-				network: net,
-				user,
-				relayerAddress: this.relayer.address,
-				amountWei: amount,
-				onStatus: (s) => this.log(`Fund relayer: ${s}`),
-			});
-			if (!res.success) throw new Error(res.error ?? 'fund failed');
-			this.log('Relayer funded from Safe', 'ok');
-			await this.refreshRelayerBalance();
-		} catch (e) {
-			this.fail(e, 'Auto-fund failed');
-		} finally {
-			this.funding = false;
-		}
-	}
-	downloadRelayer() {
-		if (this.relayer && this.network) downloadRelayerKey(this.relayer, this.network.slug);
-	}
-
-	// ─── The single "Run" action: fund (if needed) → upgrade → sweep ───
-	get running(): boolean {
-		return this.runStage !== 'idle';
-	}
-	/** Primary button on the Run step. Auto-funds from the Safe when needed. */
+	// ─── the single Run action ───
 	async proceed() {
-		if (this.running) return;
-		if (!this.relayerFunded) {
-			await this.fundFromSafe();
-			if (!this.relayerFunded) return; // funding failed / manual needed
-		}
-		await this.runAll();
-	}
-	/** Deploy (if needed) → upgrade → sweep, back to back. */
-	async runAll() {
-		const ok = await this._runUpgrade();
-		if (ok) await this._runSweep();
-		if (!this.error) this.phase = 'done';
-		this.runStage = 'idle';
-	}
-
-	private async _runUpgrade(): Promise<boolean> {
+		if (this.running || !this.relayerFunded) return;
 		const net = this.network;
-		const user = this.user;
 		const sweeper = this.sweeperAddress;
-		if (!net || !user || !sweeper || !this.relayer || !this.plan) return false;
+		if (!net || !sweeper || !this.relay || !this.plan) return;
 		this.error = null;
 		try {
-			const rpc = await this.resolveRpc(net);
+			const rpcs = await this.resolveRpcs(net);
 
-			if (this.needSweeperDeploy) {
+			if (this.needBatchSweeperDeploy || this.needSweeperDeploy) {
 				this.runStage = 'deploying';
-				this.log('Deploying your Sweeper contract…');
-				const dr = await ensureSweeper(net, rpc, this.relayer, user.safeAddress);
-				this.log(`Sweeper ready at ${dr.address}`, 'ok');
+				const bs = await ensureBatchSweeper(net, rpcs, this.relay);
+				if (bs.deployed) this.log(`BatchSweeper deployed at ${bs.address}`, 'ok');
+				const sw = await ensureSweeper(net, rpcs, this.relay);
+				if (sw.deployed) this.log(`Your Sweeper deployed at ${sw.address}`, 'ok');
+				this.needBatchSweeperDeploy = false;
 				this.needSweeperDeploy = false;
 			}
 
-			const toUpgrade = this.plan.toUpgrade;
-			if (toUpgrade.length === 0) {
-				this.log('Nothing to upgrade — all EOAs already delegated', 'ok');
-				return true;
-			}
-			this.runStage = 'upgrading';
-			this.upgrading = true;
-			this.upgradeProgress = { chunk: 0, total: Math.ceil(toUpgrade.length / net.maxBatchUpgrade), done: 0 };
-			const result = await runUpgrade({
-				network: net,
-				rpcUrl: rpc,
-				relayer: this.relayer,
-				keys: toUpgrade,
-				sweeper,
-				onEvent: (e: DelegationEvent) => this.onUpgradeEvent(e),
-			});
-			const set = new Set(this.upgradedSet);
-			for (const a of result.succeeded) set.add(a.toLowerCase());
-			this.upgradedSet = set;
-			this.log(`Upgraded ${result.succeeded.length}/${toUpgrade.length}`, result.failed.length ? 'warn' : 'ok');
-			for (const f of result.failed.slice(0, 5)) this.log(`Failed ${f.address}: ${f.error}`, 'error');
-			return true;
+			await this.executeSweep(rpcs, net, sweeper, this.fee?.amount ?? 0n);
+			this.phase = 'done';
 		} catch (e) {
-			this.fail(e, 'Upgrade failed');
-			return false;
+			this.fail(e, 'Sweep failed');
 		} finally {
-			this.upgrading = false;
-			this.upgradeProgress = null;
+			this.runStage = 'idle';
+			this.progress = null;
 		}
 	}
 
-	private onUpgradeEvent(e: DelegationEvent) {
+	/** Re-sweep (funds re-arrived) — relay only, no re-deploy. */
+	async sweepAgain() {
+		if (this.running) return;
+		const net = this.network;
+		const sweeper = this.sweeperAddress;
+		if (!net || !sweeper || !this.relay) return;
+		this.error = null;
+		try {
+			const rpcs = await this.resolveRpcs(net);
+			// refresh balances first so empty wallets are skipped
+			this.balances = await fetchBalances(net, rpcs, this.keys.map((k) => k.address), this.erc20Addresses);
+			const fee = await quoteSweepFee(net);
+			this.fee = fee;
+			await this.executeSweep(rpcs, net, sweeper, fee.amount);
+		} catch (e) {
+			this.fail(e, 'Re-sweep failed');
+		} finally {
+			this.runStage = 'idle';
+			this.progress = null;
+		}
+	}
+
+	private async executeSweep(rpcs: string[], net: SweepNetwork, sweeper: Address, feeWei: bigint) {
+		const dest = this.destination as Address;
+		// Only sweep wallets that hold something.
+		const byAddr = new Map(this.balances.map((b) => [b.address.toLowerCase(), b]));
+		const sweepable = (this.plan?.sweepable ?? this.keys).filter((k) => {
+			const b = byAddr.get(k.address.toLowerCase());
+			if (!b) return true;
+			return b.native > 0n || Object.values(b.tokens).some((v) => v > 0n);
+		});
+		if (sweepable.length === 0) {
+			this.log('No wallets with a balance to sweep', 'warn');
+			return;
+		}
+		this.runStage = 'sweeping';
+		this.sweepRecords = [];
+		const records = await runSweep({
+			network: net,
+			rpcs,
+			relay: this.relay!,
+			keys: sweepable,
+			sweeperAddr: sweeper,
+			dest,
+			erc20s: this.erc20Addresses,
+			feeWei,
+			onEvent: (e: SweepEvent) => this.onSweepEvent(e),
+		});
+		this.sweepRecords = records;
+		const set = new Set(this.sweptSet);
+		for (const k of sweepable) set.add(k.address.toLowerCase());
+		this.sweptSet = set;
+		await this.saveHistory(records, dest, feeWei);
+		const ok = records.filter((r) => r.status === 'completed').length;
+		this.log(`Swept ${ok}/${records.length} batches`, ok === records.length ? 'ok' : 'warn');
+		void this.loadHistory();
+		void this.refreshRelayerBalance();
+	}
+
+	private onSweepEvent(e: SweepEvent) {
 		if (e.phase === 'broadcast' && e.txHash) {
-			this.log(`Upgrade batch ${e.chunkIndex + 1}/${e.chunkTotal} broadcast: ${e.txHash.slice(0, 10)}…`);
+			this.progress = { chunk: e.chunkIndex + 1, total: e.chunkTotal };
+			this.log(`Batch ${e.chunkIndex + 1}/${e.chunkTotal} broadcast: ${e.txHash.slice(0, 10)}…`);
 		} else if (e.phase === 'chunk-done') {
-			const done = (this.upgradeProgress?.done ?? 0) + (e.done?.length ?? 0);
-			this.upgradeProgress = { chunk: e.chunkIndex + 1, total: e.chunkTotal, done };
+			this.log(`Batch ${e.chunkIndex + 1}/${e.chunkTotal} confirmed`, 'ok');
 		} else if (e.phase === 'error') {
 			this.log(`Batch ${e.chunkIndex + 1} error: ${e.message}`, 'error');
 		}
 	}
 
-	/** Re-sweep upgraded EOAs (e.g. after funds re-arrive). Used from "Done". */
-	async sweepAgain() {
-		if (this.running) return;
-		await this._runSweep();
-		this.runStage = 'idle';
-	}
-
-	// ─── Phase B: sweep ───
-	private async _runSweep() {
-		const net = this.network;
-		const user = this.user;
-		if (!net || !user) return;
-		const dest = this.destination as Address;
-		const eoas = this.sweepableAddresses;
-		if (eoas.length === 0) {
-			this.log('No upgraded EOAs with a balance to sweep', 'warn');
-			return;
-		}
-		this.runStage = 'sweeping';
-		this.sweeping = true;
-		this.error = null;
-		this.sweepRecords = [];
-		try {
-			const records = await runSweep({
-				network: net,
-				user,
-				destination: dest,
-				eoas,
-				erc20s: this.erc20Addresses,
-				feeWei: this.fee?.amount ?? 0n,
-				chunkSize: defaultSweepBatch(net, this.erc20Addresses.length),
-				onBatch: (e: SweepBatchEvent) => this.onSweepBatch(e),
-			});
-			this.sweepRecords = records;
-			await this.saveHistory(records, dest);
-			const ok = records.filter((r) => r.status === 'completed').length;
-			this.log(`Swept ${ok}/${records.length} batches`, ok === records.length ? 'ok' : 'warn');
-			void this.loadHistory();
-		} catch (e) {
-			this.fail(e, 'Sweep failed');
-		} finally {
-			this.sweeping = false;
-		}
-	}
-
-	private onSweepBatch(e: SweepBatchEvent) {
-		if (e.status) this.log(`Batch ${e.index + 1}/${e.total}: ${e.status}`);
-		else if (e.txHash) this.log(`Batch ${e.index + 1}/${e.total} confirmed: ${e.txHash.slice(0, 10)}…`, 'ok');
-		else if (e.error) this.log(`Batch ${e.index + 1}/${e.total} failed: ${e.error}`, 'error');
-	}
-
-	private async saveHistory(records: SweepBatchRecord[], dest: Address) {
+	private async saveHistory(records: SweepBatchRecord[], dest: Address, feeWei: bigint) {
 		const net = this.network!;
 		const totalTokens: Record<string, string> = {};
 		for (const t of this.erc20Addresses) totalTokens[t.toLowerCase()] = this.totalForToken(t).toString();
 		const completed = records.filter((r) => r.status === 'completed').length;
 		const status: SweepRecord['status'] =
 			completed === records.length ? 'completed' : completed === 0 ? 'failed' : 'partial';
-		const rec: SweepRecord = {
-			id: crypto.randomUUID(),
-			createdAt: Date.now(),
-			network: net.slug,
-			networkName: net.name,
-			destination: dest,
-			tokens: [net.symbol, ...this.tokens.map((t) => t.symbol)],
-			eoaCount: this.sweepableAddresses.length,
-			totalNative: this.totalNative.toString(),
-			totalTokens,
-			feeWei: (this.fee?.amount ?? 0n).toString(),
-			isMember: this.isMember,
-			batches: records,
-			status,
-		};
 		try {
-			await putSweep(rec);
+			await putSweep({
+				id: crypto.randomUUID(),
+				createdAt: Date.now(),
+				network: net.slug,
+				networkName: net.name,
+				destination: dest,
+				tokens: [net.symbol, ...this.tokens.map((t) => t.symbol)],
+				eoaCount: records.reduce((s, r) => s + r.count, 0),
+				totalNative: this.totalNative.toString(),
+				totalTokens,
+				feeWei: feeWei.toString(),
+				batches: records,
+				status,
+			});
 		} catch {
-			// history is non-critical
+			// history non-critical
 		}
 	}
 
@@ -536,35 +523,28 @@ export class WalletSweepStore {
 		void this.loadHistory();
 	}
 
-	// ─── Revoke ───
+	// ─── revoke / recover ───
 	async revoke(addresses: Address[]) {
 		const net = this.network;
-		const sweeper = this.sweeperAddress;
-		if (!net || !sweeper) return;
-		const relayer = loadRelayer(net.slug) ?? getOrCreateRelayer(net.slug);
+		if (!net || !this.relay) return;
 		const keys = this.keys.filter((k) => addresses.some((a) => a.toLowerCase() === k.address.toLowerCase()));
-		if (keys.length === 0) {
-			this.log('No matching keys to revoke (need the private keys present)', 'warn');
-			return;
-		}
+		if (keys.length === 0) return void this.log('No matching keys to revoke', 'warn');
 		this.revoking = true;
 		this.error = null;
 		try {
-			const rpc = await this.resolveRpc(net);
+			const rpcs = await this.resolveRpcs(net);
 			const result = await runRevoke({
 				network: net,
-				rpcUrl: rpc,
-				relayer,
+				rpcs,
+				relay: this.relay,
 				keys,
-				sweeper,
-				onEvent: (e) => {
-					if (e.phase === 'broadcast' && e.txHash) this.log(`Revoke broadcast ${e.txHash.slice(0, 10)}…`);
-				},
+				onTx: (h) => this.log(`Revoke broadcast ${h.slice(0, 10)}…`),
 			});
-			const set = new Set(this.upgradedSet);
+			const set = new Set(this.sweptSet);
 			for (const a of result.succeeded) set.delete(a.toLowerCase());
-			this.upgradedSet = set;
+			this.sweptSet = set;
 			this.log(`Revoked ${result.succeeded.length}/${keys.length}`, result.failed.length ? 'warn' : 'ok');
+			void this.refreshRelayerBalance();
 		} catch (e) {
 			this.fail(e, 'Revoke failed');
 		} finally {
@@ -572,11 +552,28 @@ export class WalletSweepStore {
 		}
 	}
 
-	clearRelayerWallet() {
+	async recoverRelayGas() {
+		const net = this.network;
+		if (!net || !this.relay) return;
+		const dest = (this.destinationValid ? this.destination : this.relay.address) as Address;
+		this.recovering = true;
+		this.error = null;
+		try {
+			const rpcs = await this.resolveRpcs(net);
+			const tx = await recoverGas(net, rpcs, this.relay, dest);
+			this.log(tx ? `Recovered relay gas → ${dest.slice(0, 8)}… (${tx.slice(0, 10)}…)` : 'No leftover gas to recover', tx ? 'ok' : 'info');
+			await this.refreshRelayerBalance();
+		} catch (e) {
+			this.fail(e, 'Recover gas failed');
+		} finally {
+			this.recovering = false;
+		}
+	}
+
+	clearRelayWallet() {
 		if (this.network) {
 			clearRelayer(this.network.slug);
-			this.relayer = null;
-			this.relayerBal = 0n;
+			this.resetRelay();
 		}
 	}
 
@@ -593,7 +590,25 @@ export class WalletSweepStore {
 		this.balances = [];
 		this.plan = null;
 		this.sweepRecords = [];
-		this.upgradedSet = new Set();
+		this.sweptSet = new Set();
 		this.error = null;
+	}
+}
+
+// ─── custom-network persistence ───
+function loadCustomNetworks(): SweepNetwork[] {
+	try {
+		if (typeof localStorage === 'undefined') return [];
+		const raw = localStorage.getItem(CUSTOM_NETWORKS_KEY);
+		return raw ? (JSON.parse(raw) as SweepNetwork[]) : [];
+	} catch {
+		return [];
+	}
+}
+function saveCustomNetworks(nets: SweepNetwork[]): void {
+	try {
+		localStorage.setItem(CUSTOM_NETWORKS_KEY, JSON.stringify(nets));
+	} catch {
+		// non-critical
 	}
 }

@@ -1,9 +1,9 @@
 {
 	"ws.meta.title": "Wallet Sweep",
-	"ws.meta.description": "Drain native coin and ERC20 tokens out of many EOAs into one wallet using EIP-7702. Upgrade once, then sweep 100+ wallets with a single passkey tap.",
+	"ws.meta.description": "Drain native coin and ERC20 tokens out of many EOAs into one wallet using EIP-7702. A relay wallet you fund does the upgrade and sweep — no passkey, no login.",
 
 	"ws.title": "Wallet Sweep",
-	"ws.subtitle": "Vacuum native + ERC20 from many wallets into one — secured by your passkey, powered by EIP-7702.",
+	"ws.subtitle": "Vacuum native + ERC20 from many wallets into one — no passkey, no login. A relay wallet you control does the on-chain work, powered by EIP-7702.",
 
 	"ws.connect.required": "Connect your biubiu.tools passkey to continue. Only your passkey can authorize a sweep.",
 	"ws.connect.cta": "Connect passkey",
@@ -17,10 +17,34 @@
 	"ws.step.done": "Done",
 
 	"ws.security.title": "Your keys stay in this browser",
-	"ws.security.body": "Pasted private keys never leave your device and are never stored — they only sign the on-chain upgrade locally. After upgrade, each wallet obeys only your passkey Safe; not even the relayer can move funds.",
+	"ws.security.body": "Pasted private keys never leave your device and are never stored. A throwaway relay wallet (which you download) does the on-chain work — you fund it with gas, and it can only send assets to the destination you set. No passkey or login needed.",
+
+	"ws.network.addCustom": "Add network",
+	"ws.run.wallets": "Wallets",
+	"ws.run.batch": "Batch {done} of {total}",
+
+	"ws.relay.title": "Relay wallet",
+	"ws.relay.subtitle": "A throwaway wallet that does the on-chain work. Download it, prove you saved it, then fund it with gas.",
+	"ws.relay.step1": "Download the relay key",
+	"ws.relay.downloadHint": "You need this to fund the relay and recover leftover gas. It can only ever send assets to your destination.",
+	"ws.relay.step2": "Confirm you saved it",
+	"ws.relay.verifyHint": "Re-upload the file you just downloaded — we check it matches before revealing the funding address.",
+	"ws.relay.verified": "Saved & verified",
+	"ws.relay.rotate": "New relay",
+	"ws.relay.step3": "Fund the relay with gas",
+	"ws.relay.fundHint": "Send the amount below to the relay address. It covers contract deploys, the upgrade, the sweep and the fee.",
+	"ws.relay.needed": "Needed",
+	"ws.relay.balance": "Balance",
+	"ws.relay.funded": "Funded — ready to sweep",
+	"ws.relay.notFunded": "Waiting for funds",
+
+	"ws.btn.verifyUpload": "Upload key file to verify",
+	"ws.btn.recoverGas": "Recover relay gas",
+	"ws.copy": "Copy",
+	"ws.copied": "Copied",
 
 	"ws.network.title": "Choose a network",
-	"ws.network.subtitle": "Only chains that support EIP-7702 and your passkey wallet (RIP-7212 + Safe stack).",
+	"ws.network.subtitle": "Any chain that supports EIP-7702. Add a custom one if yours isn't listed.",
 	"ws.network.checking": "Checking…",
 	"ws.network.ready": "Ready",
 	"ws.network.unavailable": "Unavailable",

@@ -1,17 +1,18 @@
 /**
- * Ephemeral, zero-privilege relayer EOA.
+ * The relay EOA — the heart of v2. It deploys the contracts, upgrades the EOAs
+ * and sweeps them; it is the Sweeper's `controller`. The user funds it with gas,
+ * MUST download its key, and proves the download by re-uploading the file before
+ * the funding address/QR is revealed.
  *
- * Its ONLY job is to broadcast the EIP-7702 upgrade (type-4) transaction — it
- * holds no power, because the Sweeper's controller is hard-wired (immutable) to
- * the user's passkey Safe. Generated in-browser, persisted in localStorage per
- * network so a page reload doesn't strand its gas. (NOTE: only the relayer key
- * is persisted — the swept EOAs' private keys are NEVER persisted.)
- *
- * Generalized from vela-chain-setup/deployer-wallet.ts.
+ * Persisted in localStorage per network so a reload doesn't strand its gas.
+ * (Only the relay key is persisted — the swept EOAs' keys are never persisted.)
  */
 import { type Address, type Hex, formatEther } from 'viem';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
-import { rpcCall, getBalance } from '$lib/vela-chain-setup/contracts';
+import { getBalance, getGasPrice } from './rpc.js';
+import { makeWalletClient } from './viem-chain.js';
+import { waitForReceipt } from './tx-utils.js';
+import type { SweepNetwork } from '../types.js';
 
 const STORAGE_KEY = 'wallet-sweep-relayer';
 
@@ -40,6 +41,15 @@ export function getOrCreateRelayer(slug: string): Relayer {
 	return relayer;
 }
 
+/** Generate a brand-new relay (e.g. user wants a fresh one). */
+export function rotateRelayer(slug: string): Relayer {
+	const privateKey = generatePrivateKey();
+	const { address } = privateKeyToAccount(privateKey);
+	const relayer: Relayer = { privateKey, address };
+	save(slug, relayer);
+	return relayer;
+}
+
 export function clearRelayer(slug: string): void {
 	try {
 		const all = loadAll();
@@ -50,70 +60,112 @@ export function clearRelayer(slug: string): void {
 	}
 }
 
-export async function relayerBalance(rpcUrl: string, address: Address): Promise<bigint> {
-	return getBalance(rpcUrl, address);
+export async function relayerBalance(rpcs: string[], address: Address): Promise<bigint> {
+	return getBalance(rpcs, address);
 }
 
-/** Current gas price (wei) from the chain. */
-export async function gasPrice(rpcUrl: string): Promise<bigint> {
-	const r = (await rpcCall(rpcUrl, 'eth_gasPrice', [])) as string;
-	return BigInt(r);
+export async function gasPrice(rpcs: string[]): Promise<bigint> {
+	return getGasPrice(rpcs);
 }
 
 /**
- * Estimate the native gas the relayer needs to upgrade `eoaCount` EOAs.
- *
- * Per-tx gas ≈ base 21k + per-authorization cost (~PER_EMPTY_ACCOUNT 25k, plus
- * intrinsic). We use a conservative ~60k/EOA to cover signature recovery +
- * delegation, plus a Sweeper deploy budget when needed, all × 1.3 buffer.
+ * Estimate the native the relay needs: fee + deploys + combined upgrade/sweep gas.
+ * Generous (×2 on price) — leftover is recoverable via recoverGas().
  */
-export function estimateUpgradeGasUnits(eoaCount: number, includeSweeperDeploy: boolean): bigint {
-	// No upgrade tx and no deploy → relayer needs no gas.
-	if (eoaCount === 0 && !includeSweeperDeploy) return 0n;
-	const perEoa = 60_000n;
-	const base = 21_000n * BigInt(Math.max(1, Math.ceil(eoaCount / 100)));
-	const deploy = includeSweeperDeploy ? 250_000n : 0n;
-	return base + perEoa * BigInt(eoaCount) + deploy;
-}
-
-export async function estimateUpgradeCostWei(
-	rpcUrl: string,
-	eoaCount: number,
-	includeSweeperDeploy: boolean,
-): Promise<bigint> {
-	const price = await gasPrice(rpcUrl);
-	const units = estimateUpgradeGasUnits(eoaCount, includeSweeperDeploy);
-	// 1.3x buffer on price too (volatile L1s/L2s).
-	return (units * price * 13n) / 10n;
+export async function estimateFundingWei(opts: {
+	rpcs: string[];
+	eoaCount: number;
+	tokenCount: number;
+	deployBatchSweeper: boolean;
+	deploySweeper: boolean;
+	feeWei: bigint;
+}): Promise<bigint> {
+	const { rpcs, eoaCount, tokenCount, deployBatchSweeper, deploySweeper, feeWei } = opts;
+	const price = await getGasPrice(rpcs);
+	const deploy = (deployBatchSweeper ? 600_000n : 0n) + (deploySweeper ? 300_000n : 0n);
+	const perEoa = 70_000n + 40_000n * BigInt(tokenCount); // auth + sweep, generous
+	const units = 60_000n + deploy + perEoa * BigInt(Math.max(0, eoaCount));
+	return feeWei + (units * price * 2n);
 }
 
 export function formatNative(wei: bigint): string {
 	return formatEther(wei);
 }
 
-export function downloadRelayerKey(relayer: Relayer, slug: string): void {
-	const content = [
-		'BiuBiu Wallet Sweep — Relayer Private Key',
-		'==========================================',
+/** The text written into the downloaded key file. */
+export function relayFileContent(relay: Relayer, slug: string, ts: number): string {
+	return [
+		'BiuBiu Wallet Sweep — Relay Private Key',
+		'========================================',
 		'',
 		`Network: ${slug}`,
-		`Address: ${relayer.address}`,
-		`Private Key: ${relayer.privateKey}`,
+		`Address: ${relay.address}`,
+		`Private Key: ${relay.privateKey}`,
 		'',
-		'This is a throwaway gas-payer for the 7702 upgrade. It controls nothing.',
-		'Recover any leftover gas by importing this key into a wallet.',
+		'This relay controls the sweep: it upgrades your EOAs and pulls funds to',
+		'your destination. KEEP IT until you have swept and recovered leftover gas.',
+		'Anyone with this key can spend its gas balance (but cannot redirect a sweep',
+		'— the destination is fixed per transaction).',
 		'',
-		`Generated: ${new Date().toISOString()}`,
+		`Generated: ${new Date(ts).toISOString()}`,
 	].join('\n');
-	const blob = new Blob([content], { type: 'text/plain' });
+}
+
+export function downloadRelayerKey(relay: Relayer, slug: string, ts: number): void {
+	const blob = new Blob([relayFileContent(relay, slug, ts)], { type: 'text/plain' });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = `sweep-relayer-${slug}-${relayer.address.slice(0, 8)}.txt`;
+	a.download = `sweep-relay-${slug}-${relay.address.slice(0, 8)}.txt`;
 	document.body.appendChild(a);
 	a.click();
 	document.body.removeChild(a);
 	URL.revokeObjectURL(url);
+}
+
+/**
+ * Verify an uploaded file proves the user saved THIS relay's key: extract a
+ * 0x-private-key from the text and check it derives the expected address.
+ */
+export function verifyRelayFile(fileText: string, expected: Relayer): boolean {
+	const m = fileText.match(/0x[0-9a-fA-F]{64}/);
+	if (!m) return false;
+	try {
+		const { address } = privateKeyToAccount(m[0] as Hex);
+		return (
+			address.toLowerCase() === expected.address.toLowerCase() &&
+			m[0].toLowerCase() === expected.privateKey.toLowerCase()
+		);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Recover the relay's leftover gas: send (balance − gas for this tx) to `dest`.
+ * Returns null if there's nothing worth sending.
+ */
+export async function recoverGas(
+	network: SweepNetwork,
+	rpcs: string[],
+	relay: Relayer,
+	dest: Address,
+): Promise<Hex | null> {
+	const [bal, price] = await Promise.all([getBalance(rpcs, relay.address), getGasPrice(rpcs)]);
+	const gas = 21_000n;
+	const cost = gas * price * 12n / 10n; // 1.2x buffer on the send itself
+	if (bal <= cost) return null;
+	const account = privateKeyToAccount(relay.privateKey);
+	const wallet = makeWalletClient(network, rpcs, account);
+	const txHash = await wallet.sendTransaction({
+		to: dest,
+		value: bal - cost,
+		gas,
+		maxFeePerGas: price * 12n / 10n,
+		maxPriorityFeePerGas: price / 10n,
+	});
+	await waitForReceipt(network, rpcs, txHash);
+	return txHash;
 }
 
 // ─── internal ───

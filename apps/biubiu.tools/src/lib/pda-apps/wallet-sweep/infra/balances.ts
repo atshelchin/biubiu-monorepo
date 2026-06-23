@@ -4,6 +4,7 @@
  */
 import { type Address } from 'viem';
 import { makePublicClient } from './viem-chain.js';
+import { chunk } from './tx-utils.js';
 import type { SweepNetwork } from '../types.js';
 
 const MULTICALL3_GET_ETH_BALANCE = [
@@ -39,12 +40,12 @@ export interface EoaBalances {
  */
 export async function fetchBalances(
 	network: SweepNetwork,
-	rpcUrl: string,
+	rpcs: string[],
 	addresses: Address[],
 	erc20s: Address[],
 ): Promise<EoaBalances[]> {
 	if (addresses.length === 0) return [];
-	const client = makePublicClient(network, rpcUrl);
+	const client = makePublicClient(network, rpcs);
 
 	type Call = { address: Address; abi: typeof MULTICALL3_GET_ETH_BALANCE | typeof ERC20_BALANCE_OF; functionName: 'getEthBalance' | 'balanceOf'; args: readonly [Address] };
 	const calls: Call[] = [];
@@ -64,7 +65,14 @@ export async function fetchBalances(
 		}
 	}
 
-	const results = await client.multicall({ contracts: calls, allowFailure: true, batchSize: 0 });
+	// One Multicall3 aggregate per ~500 calls → a handful of requests even for
+	// thousands of wallets (vs. one request per wallet, which would rate-limit).
+	const CALLS_PER_REQUEST = 500;
+	const results: { status: 'success' | 'failure'; result?: unknown }[] = [];
+	for (const group of chunk(calls, CALLS_PER_REQUEST)) {
+		const r = await client.multicall({ contracts: group, allowFailure: true, batchSize: 0 });
+		results.push(...r);
+	}
 
 	const out: EoaBalances[] = addresses.map((address) => ({ address, native: 0n, tokens: {} }));
 	const idx = (i: number) => (results[i]?.status === 'success' ? (results[i].result as bigint) : 0n);

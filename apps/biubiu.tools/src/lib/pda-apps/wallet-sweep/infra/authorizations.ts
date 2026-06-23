@@ -8,7 +8,7 @@
  */
 import { type Address, type Hex, type SignedAuthorization, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { rpcCall } from '$lib/vela-chain-setup/contracts';
+import { getCode, getPendingNonce as rpcPendingNonce } from './rpc.js';
 import type { EoaKey, Delegation } from '../types.js';
 
 /** Zero delegation target = "revoke" (clears the EOA's code). */
@@ -40,18 +40,17 @@ export function classifyCode(code: string, ourSweeper: Address): Delegation {
 }
 
 export async function getDelegation(
-	rpcUrl: string,
+	rpcs: string[],
 	address: Address,
 	ourSweeper: Address,
 ): Promise<Delegation> {
-	const code = (await rpcCall(rpcUrl, 'eth_getCode', [address, 'latest'])) as string;
+	const code = await getCode(rpcs, address);
 	return classifyCode(code, ourSweeper);
 }
 
 /** EOA's pending transaction count (the 7702 authorization nonce, sponsored). */
-export async function getPendingNonce(rpcUrl: string, address: Address): Promise<number> {
-	const n = (await rpcCall(rpcUrl, 'eth_getTransactionCount', [address, 'pending'])) as string;
-	return Number(BigInt(n));
+export async function getPendingNonce(rpcs: string[], address: Address): Promise<number> {
+	return rpcPendingNonce(rpcs, address);
 }
 
 /**
@@ -59,13 +58,13 @@ export async function getPendingNonce(rpcUrl: string, address: Address): Promise
  * (the Sweeper to upgrade, or zeroAddress to revoke).
  */
 export async function signEoaAuthorization(
-	rpcUrl: string,
+	rpcs: string[],
 	eoa: EoaKey,
 	target: Address,
 	chainId: number,
 ): Promise<SignedAuthorization> {
 	const account = privateKeyToAccount(eoa.privateKey);
-	const nonce = await getPendingNonce(rpcUrl, eoa.address);
+	const nonce = await getPendingNonce(rpcs, eoa.address);
 	// account-level signing: signs (chainId, address, nonce) verbatim — no +1.
 	return account.signAuthorization({ address: target, chainId, nonce });
 }

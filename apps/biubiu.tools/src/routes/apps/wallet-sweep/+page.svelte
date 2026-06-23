@@ -4,12 +4,16 @@
 	import { t, locale, formatNumber } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import WalletGate from '$lib/auth/WalletGate.svelte';
+	import PageHeader from '$lib/widgets/PageHeader.svelte';
+	import PageFooter from '$lib/ui/PageFooter.svelte';
+	import Stepper from '$lib/ui/Stepper.svelte';
+	import QrCanvas from '$lib/ui/QrCanvas.svelte';
 	import { WalletSweepStore, type LogEntry } from '$lib/pda-apps/wallet-sweep/store.svelte';
 	import type { Phase } from '$lib/pda-apps/wallet-sweep/types';
 	import AddTokenModal from './components/AddTokenModal.svelte';
 	import KeysEditor from './components/KeysEditor.svelte';
-	import { Fingerprint } from '@lucide/svelte';
+	import AddNetworkModal from '$lib/widgets/AddNetworkModal.svelte';
+	import { Fingerprint, Download, Upload, Check, RefreshCw } from '@lucide/svelte';
 
 	const store = new WalletSweepStore();
 
@@ -27,23 +31,21 @@
 		{ id: 'done', label: () => t('ws.step.done') },
 	];
 	const stepIndex = $derived(steps.findIndex((s) => s.id === store.phase));
+	const stepLabels = $derived(steps.map((s) => s.label()));
 
 	let showAddToken = $state(false);
+	let showAddNetwork = $state(false);
 	let showLogs = $state(false);
+	let copied = $state('');
 
-	// Stage label for the merged Run step.
 	const stageLabel = $derived.by(() => {
 		switch (store.runStage) {
-			case 'funding':
-				return t('ws.btn.funding');
 			case 'deploying':
 				return t('ws.run.deploying');
-			case 'upgrading':
-				return t('ws.run.upgrading');
 			case 'sweeping':
 				return t('ws.run.sweeping');
 			default:
-				return store.relayerFunded ? t('ws.run.start') : t('ws.run.fundAndStart');
+				return t('ws.run.start');
 		}
 	});
 
@@ -68,9 +70,21 @@
 		if (n < 0.0001) return '<0.0001';
 		return formatNumber(n, { maximumFractionDigits: 6 });
 	}
-	function useSafeDest() {
-		const u = store.user;
-		if (u) store.destination = u.safeAddress;
+	function copy(text: string) {
+		navigator.clipboard?.writeText(text);
+		copied = text;
+		setTimeout(() => (copied = ''), 1500);
+	}
+	async function onRelayFile(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		store.verifyUpload(await file.text());
+		input.value = '';
+	}
+	async function submitCustomNetwork(data: { name: string; chainId: number; rpcs: string[]; symbol: string }) {
+		await store.addCustomNetwork({ name: data.name, chainId: data.chainId, symbol: data.symbol, rpc: data.rpcs[0] });
+		if (store.addNetworkError) throw new Error(store.addNetworkError);
 	}
 	function logClass(l: LogEntry): string {
 		return `log log-${l.level}`;
@@ -78,6 +92,7 @@
 </script>
 
 <SEO {...seoProps} />
+<PageHeader />
 
 <main class="page">
 	<header class="hero">
@@ -85,269 +100,271 @@
 		<p class="subtitle">{t('ws.subtitle')}</p>
 	</header>
 
-	<WalletGate requireBuiltin>
-		<!-- Stepper -->
-		<nav class="stepper" aria-label="progress">
-			{#each steps as s, i (s.id)}
-				<div class="step" class:active={i === stepIndex} class:done={i < stepIndex}>
-					<span class="dot">{i < stepIndex ? '✓' : i + 1}</span>
-					<span class="step-label">{s.label()}</span>
-				</div>
-			{/each}
-		</nav>
+	<Stepper steps={stepLabels} current={stepIndex} />
 
-		<!-- Security note -->
-		<section class="security">
-			<strong>{t('ws.security.title')}</strong>
-			<span>{t('ws.security.body')}</span>
-		</section>
+	<section class="security">
+		<strong>{t('ws.security.title')}</strong>
+		<span>{t('ws.security.body')}</span>
+	</section>
 
-		{#if store.error}
-			<div class="banner banner-error" role="alert">{store.error}</div>
-		{/if}
+	{#if store.error}
+		<div class="banner banner-error" role="alert">{store.error}</div>
+	{/if}
 
-		<!-- ─────────── CONFIG ─────────── -->
-		{#if store.phase === 'config'}
-			<section class="card">
+	<!-- ─────────── CONFIG ─────────── -->
+	{#if store.phase === 'config'}
+		<section class="card">
+			<div class="card-head">
 				<h2 class="card-title">{t('ws.network.title')}</h2>
-				<p class="card-sub">{t('ws.network.subtitle')}</p>
-				<label class="testnet-toggle">
-					<input type="checkbox" bind:checked={store.includeTestnets} />
-					<span>{t('ws.network.testnets')}</span>
-				</label>
-				<div class="net-grid">
-					{#each store.networks as net (net.slug)}
-						{@const r = store.readiness[net.slug]}
-						<button
-							class="net-card"
-							class:selected={store.networkSlug === net.slug}
-							class:disabled={r && !r.ready}
-							onclick={() => store.selectNetwork(net.slug)}
-						>
+				<button class="link" onclick={() => (showAddNetwork = true)}>+ {t('ws.network.addCustom')}</button>
+			</div>
+			<p class="card-sub">{t('ws.network.subtitle')}</p>
+			<label class="testnet-toggle">
+				<input type="checkbox" bind:checked={store.includeTestnets} />
+				<span>{t('ws.network.testnets')}</span>
+			</label>
+			<div class="net-grid">
+				{#each store.networks as net (net.slug)}
+					{@const r = store.readiness[net.slug]}
+					<div class="net-card-wrap">
+						<button class="net-card" class:selected={store.networkSlug === net.slug} onclick={() => store.selectNetwork(net.slug)}>
 							<span class="net-name">{net.name}</span>
 							<span class="net-badges">
 								<span class="badge">{t('ws.network.badge7702')}</span>
 								{#if !r}
 									<span class="badge badge-muted">{t('ws.network.checking')}</span>
 								{:else if r.ready}
-									<span class="badge badge-ok">{t('ws.network.badgePasskey')}</span>
+									<span class="badge badge-ok">{t('ws.network.ready')}</span>
 								{:else}
 									<span class="badge badge-bad" title={r.error}>{t('ws.network.unavailable')}</span>
 								{/if}
 							</span>
 						</button>
-					{/each}
-				</div>
-			</section>
-
-			<section class="card">
-				<h2 class="card-title">{t('ws.keys.title')}</h2>
-				<p class="card-sub">{t('ws.keys.subtitle')}</p>
-				<KeysEditor onChange={(text) => store.setKeys(text)} />
-				{#if store.parseStats.total > 0}
-					<div class="key-stats">
-						<span class="chip chip-ok">{t('ws.keys.summary', { valid: store.parseStats.valid })}</span>
-						{#if store.parseStats.invalid > 0}
-							<span class="chip chip-bad">{t('ws.keys.invalid', { count: store.parseStats.invalid })}</span>
-						{/if}
-						{#if store.parseStats.duplicates > 0}
-							<span class="chip chip-muted">{t('ws.keys.duplicates', { count: store.parseStats.duplicates })}</span>
+						{#if net.isCustom}
+							<button class="net-remove" onclick={() => store.removeCustomNetwork(net.slug)} aria-label="remove network">×</button>
 						{/if}
 					</div>
+				{/each}
+			</div>
+		</section>
+
+		<section class="card">
+			<h2 class="card-title">{t('ws.keys.title')}</h2>
+			<p class="card-sub">{t('ws.keys.subtitle')}</p>
+			<KeysEditor onChange={(text) => store.setKeys(text)} />
+			{#if store.parseStats.total > 0}
+				<div class="key-stats">
+					<span class="chip chip-ok">{t('ws.keys.summary', { valid: store.parseStats.valid })}</span>
+					{#if store.parseStats.invalid > 0}<span class="chip chip-bad">{t('ws.keys.invalid', { count: store.parseStats.invalid })}</span>{/if}
+					{#if store.parseStats.duplicates > 0}<span class="chip chip-muted">{t('ws.keys.duplicates', { count: store.parseStats.duplicates })}</span>{/if}
+				</div>
+			{/if}
+		</section>
+
+		<section class="card">
+			<h2 class="card-title">{t('ws.tokens.title')}</h2>
+			<p class="card-sub">{t('ws.tokens.subtitle')}</p>
+			<div class="token-row">
+				<span class="token-chip token-native">{store.network?.symbol ?? 'Native'} · {t('ws.tokens.native')}</span>
+				{#each store.tokens as tk (tk.address)}
+					<span class="token-chip">{tk.symbol}<button class="chip-x" onclick={() => store.removeToken(tk.address)} aria-label="remove">×</button></span>
+				{/each}
+				<button class="token-add" onclick={() => (showAddToken = true)} disabled={!store.network}>+ {t('ws.tokens.add')}</button>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2 class="card-title">{t('ws.dest.title')}</h2>
+			<p class="card-sub">{t('ws.dest.subtitle')}</p>
+			<input class="input mono" placeholder={t('ws.dest.placeholder')} bind:value={store.destination} spellcheck="false" />
+		</section>
+
+		<div class="actions">
+			<button class="btn btn-primary lg" disabled={!canContinue || store.balancesLoading} onclick={() => store.preflight()}>
+				{store.balancesLoading ? t('ws.btn.checking') : t('ws.btn.continue')}
+			</button>
+		</div>
+
+	<!-- ─────────── RUN ─────────── -->
+	{:else if store.phase === 'run' && store.plan && store.relay}
+		<section class="card">
+			<h2 class="card-title">{t('ws.run.title')}</h2>
+			<div class="summary">
+				<div class="stat"><span class="stat-n">{store.plan.sweepable.length}</span><span class="stat-l">{t('ws.run.wallets')}</span></div>
+				<div class="stat"><span class="stat-n">{fmt(store.totalNative)}</span><span class="stat-l">{t('ws.preview.totalNative')} {store.network?.symbol}</span></div>
+				{#if store.fee}
+					<div class="stat"><span class="stat-n">{fmt(store.fee.amount)} {store.network?.symbol}</span><span class="stat-l">{t('ws.fee.label')}</span></div>
 				{/if}
-			</section>
-
-			<section class="card">
-				<h2 class="card-title">{t('ws.tokens.title')}</h2>
-				<p class="card-sub">{t('ws.tokens.subtitle')}</p>
-				<div class="token-row">
-					<span class="token-chip token-native">{store.network?.symbol ?? 'Native'} · {t('ws.tokens.native')}</span>
-					{#each store.tokens as tk (tk.address)}
-						<span class="token-chip">
-							{tk.symbol}
-							<button class="chip-x" onclick={() => store.removeToken(tk.address)} aria-label="remove">×</button>
-						</span>
-					{/each}
-					<button class="token-add" onclick={() => (showAddToken = true)} disabled={!store.network}>
-						+ {t('ws.tokens.add')}
-					</button>
+				{#if store.plan.contracts.length}
+					<div class="stat"><span class="stat-n">{store.plan.contracts.length}</span><span class="stat-l">{t('ws.preview.contractsSkipped')}</span></div>
+				{/if}
+			</div>
+			<details class="details">
+				<summary>{t('ws.run.details')}</summary>
+				<div class="table-wrap">
+					<table class="preview-table">
+						<thead><tr><th>{t('ws.preview.address')}</th><th>{store.network?.symbol}</th>{#each store.tokens as tk (tk.address)}<th>{tk.symbol}</th>{/each}</tr></thead>
+						<tbody>
+							{#each store.balances as b (b.address)}
+								<tr><td class="mono">{short(b.address)}</td><td>{fmt(b.native)}</td>{#each store.tokens as tk (tk.address)}<td>{fmt(b.tokens[(tk.address ?? '').toLowerCase()] ?? 0n, tk.decimals)}</td>{/each}</tr>
+							{/each}
+						</tbody>
+					</table>
 				</div>
-			</section>
+			</details>
+		</section>
 
-			<section class="card">
-				<h2 class="card-title">{t('ws.dest.title')}</h2>
-				<p class="card-sub">{t('ws.dest.subtitle')}</p>
-				<div class="dest-row">
-					<input
-						class="input mono"
-						placeholder={t('ws.dest.placeholder')}
-						bind:value={store.destination}
-						spellcheck="false"
-					/>
-					<button class="btn btn-ghost" onclick={useSafeDest}>{t('ws.dest.useSafe')}</button>
+		<!-- Relay: download → verify → fund -->
+		<section class="card">
+			<h2 class="card-title">{t('ws.relay.title')}</h2>
+			<p class="card-sub">{t('ws.relay.subtitle')}</p>
+
+			<!-- Step 1: download -->
+			<div class="relay-step" class:done={store.relayDownloaded}>
+				<span class="rs-num">{store.relayDownloaded ? '✓' : 1}</span>
+				<div class="rs-body">
+					<strong>{t('ws.relay.step1')}</strong>
+					<p class="note">{t('ws.relay.downloadHint')}</p>
+					<div class="rs-actions">
+						<button class="btn btn-primary with-icon" onclick={() => store.downloadRelay()}><Download size={15} />{t('ws.btn.download')}</button>
+						<button class="btn btn-ghost" onclick={() => store.rotateRelay()}>{t('ws.relay.rotate')}</button>
+					</div>
 				</div>
-			</section>
-
-			<div class="actions">
-				<button class="btn btn-primary lg" disabled={!canContinue || store.balancesLoading} onclick={() => store.preflight()}>
-					{store.balancesLoading ? t('ws.btn.checking') : t('ws.btn.continue')}
-				</button>
 			</div>
 
-		<!-- ─────────── RUN (preview + fund + upgrade + sweep, merged) ─────────── -->
-		{:else if store.phase === 'run' && store.plan}
-			{@const needsRelayer = store.plan.toUpgrade.length > 0 || store.needSweeperDeploy}
-			<section class="card">
-				<h2 class="card-title">{t('ws.run.title')}</h2>
-				<p class="card-sub">{t('ws.run.subtitle')}</p>
-				<div class="summary">
-					<div class="stat"><span class="stat-n">{store.plan.toUpgrade.length}</span><span class="stat-l">{t('ws.preview.toUpgrade')}</span></div>
-					<div class="stat"><span class="stat-n">{store.plan.alreadyOurs.length}</span><span class="stat-l">{t('ws.preview.alreadyUpgraded')}</span></div>
-					<div class="stat"><span class="stat-n">{fmt(store.totalNative)}</span><span class="stat-l">{t('ws.preview.totalNative')} {store.network?.symbol}</span></div>
-					{#if store.fee}
-						<div class="stat">
-							<span class="stat-n">{store.fee.amount === 0n ? t('ws.fee.free') : `${fmt(store.fee.amount)} ${store.network?.symbol}`}</span>
-							<span class="stat-l">{t('ws.fee.label')}</span>
-						</div>
-					{/if}
-					{#if store.plan.contracts.length}
-						<div class="stat"><span class="stat-n">{store.plan.contracts.length}</span><span class="stat-l">{t('ws.preview.contractsSkipped')}</span></div>
-					{/if}
-				</div>
-				<details class="details">
-					<summary>{t('ws.run.details')}</summary>
-					<div class="table-wrap">
-						<table class="preview-table">
-							<thead><tr><th>{t('ws.preview.address')}</th><th>{store.network?.symbol}</th>{#each store.tokens as tk (tk.address)}<th>{tk.symbol}</th>{/each}</tr></thead>
-							<tbody>
-								{#each store.balances as b (b.address)}
-									<tr>
-										<td class="mono">{short(b.address)}</td>
-										<td>{fmt(b.native)}</td>
-										{#each store.tokens as tk (tk.address)}<td>{fmt(b.tokens[(tk.address ?? '').toLowerCase()] ?? 0n, tk.decimals)}</td>{/each}
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</details>
-			</section>
-
-			{#if needsRelayer && store.relayer}
-				<section class="card">
-					<h2 class="card-title">{t('ws.fund.title')}</h2>
-					<p class="card-sub">{t('ws.fund.subtitle')}</p>
-					<div class="kv"><span>{t('ws.fund.relayerAddress')}</span><code class="mono">{short(store.relayer.address)}</code></div>
-					<div class="kv"><span>{t('ws.fund.needed')}</span><strong>{fmt(store.fundNeeded)} {store.network?.symbol}</strong></div>
-					<div class="kv"><span>{t('ws.fund.balance')}</span><strong>{fmt(store.relayerBal)} {store.network?.symbol}</strong></div>
-					{#if store.needSweeperDeploy}<p class="note">{t('ws.fund.deployNote')}</p>{/if}
-					<div class="fund-actions">
-						<button class="btn btn-ghost" onclick={() => store.refreshRelayerBalance()}>{t('ws.btn.refresh')}</button>
-						<button class="btn btn-ghost" onclick={() => store.downloadRelayer()}>{t('ws.btn.download')}</button>
-					</div>
-					<p class="note">{t('ws.fund.manualHint')}</p>
-				</section>
-			{/if}
-
-			{#if store.running}
-				<section class="card center">
-					<div class="timeline">
-						{#if store.needSweeperDeploy || store.runStage === 'deploying'}
-							<span class="tl" class:on={store.runStage === 'deploying'} class:past={store.runStage === 'upgrading' || store.runStage === 'sweeping'}>{t('ws.run.deploying')}</span>
+			<!-- Step 2: verify upload -->
+			{#if store.relayDownloaded}
+				<div class="relay-step" class:done={store.relayVerified}>
+					<span class="rs-num">{store.relayVerified ? '✓' : 2}</span>
+					<div class="rs-body">
+						<strong>{t('ws.relay.step2')}</strong>
+						<p class="note">{t('ws.relay.verifyHint')}</p>
+						{#if !store.relayVerified}
+							<label class="upload">
+								<Upload size={15} /> {t('ws.btn.verifyUpload')}
+								<input type="file" accept=".txt,text/plain" onchange={onRelayFile} hidden />
+							</label>
+							{#if store.verifyError}<p class="error">{store.verifyError}</p>{/if}
+						{:else}
+							<p class="ok-line"><Check size={15} /> {t('ws.relay.verified')}</p>
 						{/if}
-						<span class="tl" class:on={store.runStage === 'upgrading'} class:past={store.runStage === 'sweeping'}>{t('ws.step.upgrade')}</span>
-						<span class="tl" class:on={store.runStage === 'sweeping'}>{t('ws.step.sweep')}</span>
 					</div>
-					{#if store.upgradeProgress}
-						{@const p = store.upgradeProgress}
-						<div class="progress"><div class="progress-bar" style="width:{store.plan ? Math.round((p.done / Math.max(1, store.plan.toUpgrade.length)) * 100) : 0}%"></div></div>
-						<p class="progress-text">{t('ws.upgrade.progress', { done: p.done, total: store.plan?.toUpgrade.length ?? 0 })}</p>
-					{:else}
-						<div class="spinner"></div>
-					{/if}
-				</section>
+				</div>
 			{/if}
 
-			{#if store.fee && store.fee.amount > 0n}<p class="note center-text">{t('ws.fee.note')}</p>{/if}
-			<div class="actions">
-				<button class="btn btn-ghost" onclick={() => store.back()} disabled={store.running}>{t('ws.btn.back')}</button>
-				<button class="btn btn-primary lg with-icon" onclick={() => store.proceed()} disabled={store.running}>
-					<Fingerprint size={15} />{stageLabel}
-				</button>
-			</div>
-
-		<!-- ─────────── DONE ─────────── -->
-		{:else if store.phase === 'done'}
-			<section class="card">
-				<h2 class="card-title">{t('ws.done.title')}</h2>
-				<p class="card-sub">{t('ws.done.subtitle')}</p>
-				<div class="batches">
-					{#each store.sweepRecords as r (r.index)}
-						<div class="batch" class:failed={r.status === 'failed'}>
-							<span>#{r.index + 1} · {r.count}</span>
-							<span class="batch-status">{r.status}</span>
-							{#if r.explorerUrl}
-								<a href={r.explorerUrl} target="_blank" rel="noopener">{t('ws.done.viewTx')}</a>
-							{/if}
+			<!-- Step 3: fund (gated on verify) -->
+			{#if store.relayVerified}
+				<div class="relay-step" class:done={store.relayerFunded}>
+					<span class="rs-num">{store.relayerFunded ? '✓' : 3}</span>
+					<div class="rs-body">
+						<strong>{t('ws.relay.step3')}</strong>
+						<p class="note">{t('ws.relay.fundHint')}</p>
+						<div class="fund">
+							<QrCanvas value={store.relay.address} />
+							<div class="fund-info">
+								<button class="addr-copy" onclick={() => copy(store.relay!.address)}>
+									<code>{short(store.relay.address)}</code>
+									<span class="copy-hint">{copied === store.relay.address ? t('ws.copied') : t('ws.copy')}</span>
+								</button>
+								<div class="kv"><span>{t('ws.relay.needed')}</span><strong>{fmt(store.fundNeeded)} {store.network?.symbol}</strong></div>
+								<div class="kv"><span>{t('ws.relay.balance')}</span><strong>{fmt(store.relayBal)} {store.network?.symbol}</strong></div>
+								<button class="btn btn-ghost with-icon sm" onclick={() => store.refreshRelayerBalance()}><RefreshCw size={13} />{t('ws.btn.refresh')}</button>
+								<div class="fund-state" class:ok={store.relayerFunded}>{store.relayerFunded ? t('ws.relay.funded') : t('ws.relay.notFunded')}</div>
+							</div>
 						</div>
-					{/each}
-				</div>
-				<div class="fund-actions">
-					<button class="btn btn-primary" onclick={() => store.sweepAgain()} disabled={store.running}>{t('ws.done.sweepAgain')}</button>
-					<button class="btn btn-ghost" onclick={() => store.reset()}>{t('ws.btn.reset')}</button>
-				</div>
-			</section>
-
-			<!-- Revoke -->
-			<section class="card">
-				<h2 class="card-title">{t('ws.revoke.title')}</h2>
-				<p class="card-sub">{t('ws.revoke.subtitle')}</p>
-				<button
-					class="btn btn-danger"
-					disabled={store.revoking || store.upgradedAddresses.length === 0}
-					onclick={() => store.revoke(store.upgradedAddresses)}
-				>
-					{store.revoking ? t('ws.revoke.revoking') : `${t('ws.revoke.all')} (${store.upgradedAddresses.length})`}
-				</button>
-			</section>
-		{/if}
-
-		<!-- History -->
-		{#if store.history.length > 0 && (store.phase === 'config' || store.phase === 'done')}
-			<section class="card">
-				<h2 class="card-title">{t('ws.history.title')}</h2>
-				<div class="history">
-					{#each store.history as h (h.id)}
-						<div class="hist-row">
-							<span class="hist-net">{h.networkName}</span>
-							<span class="hist-meta">{h.eoaCount} · {fmt(BigInt(h.totalNative))} → {short(h.destination)}</span>
-							<span class="badge {h.status === 'completed' ? 'badge-ok' : h.status === 'partial' ? 'badge-muted' : 'badge-bad'}">{h.status}</span>
-							<button class="chip-x" onclick={() => store.removeHistory(h.id)} aria-label="delete">×</button>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Activity log -->
-		{#if store.logs.length > 0}
-			<section class="card logs">
-				<button class="logs-head" onclick={() => (showLogs = !showLogs)}>
-					<span>{t('ws.logs.title')}</span><span>{showLogs ? '▾' : '▸'}</span>
-				</button>
-				{#if showLogs}
-					<div class="log-list">
-						{#each store.logs.slice().reverse() as l (l.ts + l.msg)}
-							<div class={logClass(l)}>{l.msg}</div>
-						{/each}
 					</div>
+				</div>
+			{/if}
+		</section>
+
+		{#if store.running}
+			<section class="card center">
+				<div class="timeline">
+					{#if store.needBatchSweeperDeploy || store.needSweeperDeploy || store.runStage === 'deploying'}
+						<span class="tl" class:on={store.runStage === 'deploying'} class:past={store.runStage === 'sweeping'}>{t('ws.run.deploying')}</span>
+					{/if}
+					<span class="tl" class:on={store.runStage === 'sweeping'}>{t('ws.step.sweep')}</span>
+				</div>
+				{#if store.progress}
+					<p class="progress-text">{t('ws.run.batch', { done: store.progress.chunk, total: store.progress.total })}</p>
 				{/if}
+				<div class="spinner"></div>
 			</section>
 		{/if}
-	</WalletGate>
+
+		<div class="actions">
+			<button class="btn btn-ghost" onclick={() => store.back()} disabled={store.running}>{t('ws.btn.back')}</button>
+			<button class="btn btn-primary lg with-icon" onclick={() => store.proceed()} disabled={store.running || !store.relayerFunded}>
+				<Fingerprint size={15} />{stageLabel}
+			</button>
+		</div>
+
+	<!-- ─────────── DONE ─────────── -->
+	{:else if store.phase === 'done'}
+		<section class="card">
+			<h2 class="card-title">{t('ws.done.title')}</h2>
+			<p class="card-sub">{t('ws.done.subtitle')}</p>
+			<div class="batches">
+				{#each store.sweepRecords as r (r.index)}
+					<div class="batch" class:failed={r.status === 'failed'}>
+						<span>#{r.index + 1} · {r.count}</span>
+						<span class="batch-status">{r.status}</span>
+						{#if r.explorerUrl}<a href={r.explorerUrl} target="_blank" rel="noopener">{t('ws.done.viewTx')}</a>{/if}
+					</div>
+				{/each}
+			</div>
+			<div class="fund-actions">
+				<button class="btn btn-primary" onclick={() => store.sweepAgain()} disabled={store.running}>{t('ws.done.sweepAgain')}</button>
+				<button class="btn btn-ghost" onclick={() => store.recoverRelayGas()} disabled={store.recovering}>{store.recovering ? t('ws.btn.checking') : t('ws.btn.recoverGas')}</button>
+				<button class="btn btn-ghost" onclick={() => store.reset()}>{t('ws.btn.reset')}</button>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2 class="card-title">{t('ws.revoke.title')}</h2>
+			<p class="card-sub">{t('ws.revoke.subtitle')}</p>
+			<button class="btn btn-danger" disabled={store.revoking || store.sweptAddresses.length === 0} onclick={() => store.revoke(store.sweptAddresses)}>
+				{store.revoking ? t('ws.revoke.revoking') : `${t('ws.revoke.all')} (${store.sweptAddresses.length})`}
+			</button>
+		</section>
+	{/if}
+
+	<!-- History -->
+	{#if store.history.length > 0 && (store.phase === 'config' || store.phase === 'done')}
+		<section class="card">
+			<h2 class="card-title">{t('ws.history.title')}</h2>
+			<div class="history">
+				{#each store.history as h (h.id)}
+					<div class="hist-row">
+						<span class="hist-net">{h.networkName}</span>
+						<span class="hist-meta">{h.eoaCount} · {fmt(BigInt(h.totalNative))} → {short(h.destination)}</span>
+						<span class="badge {h.status === 'completed' ? 'badge-ok' : h.status === 'partial' ? 'badge-muted' : 'badge-bad'}">{h.status}</span>
+						<button class="chip-x" onclick={() => store.removeHistory(h.id)} aria-label="delete">×</button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if store.logs.length > 0}
+		<section class="card logs">
+			<button class="logs-head" onclick={() => (showLogs = !showLogs)}><span>{t('ws.logs.title')}</span><span>{showLogs ? '▾' : '▸'}</span></button>
+			{#if showLogs}
+				<div class="log-list">{#each store.logs.slice().reverse() as l (l.ts + l.msg)}<div class={logClass(l)}>{l.msg}</div>{/each}</div>
+			{/if}
+		</section>
+	{/if}
 </main>
 
+<PageFooter />
+
 <AddTokenModal open={showAddToken} onClose={() => (showAddToken = false)} {store} />
+<AddNetworkModal
+	open={showAddNetwork}
+	onClose={() => (showAddNetwork = false)}
+	existingChainIds={store.networks.map((n) => n.chainId)}
+	onSubmit={submitCustomNetwork}
+/>
 
 <style>
 	.page {
@@ -376,7 +393,6 @@
 		color: var(--fg-muted);
 		line-height: var(--leading-snug);
 	}
-
 	.card {
 		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
@@ -386,6 +402,11 @@
 	}
 	.card.center {
 		text-align: center;
+	}
+	.card-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 	.card-title {
 		margin: 0;
@@ -398,48 +419,13 @@
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
 	}
-
-	/* Stepper */
-	.stepper {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--space-2);
-		overflow-x: auto;
-		padding-bottom: var(--space-1);
-	}
-	.step {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		flex: 0 0 auto;
-		color: var(--fg-subtle);
-		font-size: var(--text-xs);
-	}
-	.step .dot {
-		width: 22px;
-		height: 22px;
-		border-radius: var(--radius-full);
-		display: grid;
-		place-items: center;
-		background: var(--bg-sunken);
-		border: 1px solid var(--border-base);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-semibold);
-	}
-	.step.active {
-		color: var(--fg-base);
-	}
-	.step.active .dot {
-		background: var(--accent);
-		color: var(--accent-fg);
-		border-color: var(--accent);
-	}
-	.step.done .dot {
-		background: var(--accent-muted);
+	.link {
+		background: none;
+		border: none;
 		color: var(--accent);
-		border-color: var(--accent);
+		font-size: var(--text-sm);
+		cursor: pointer;
 	}
-
 	.security {
 		display: flex;
 		flex-direction: column;
@@ -455,7 +441,6 @@
 		color: var(--fg-base);
 		font-size: var(--text-sm);
 	}
-
 	.banner {
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-md);
@@ -465,8 +450,6 @@
 		background: var(--error-muted);
 		color: var(--error);
 	}
-
-	/* Network grid */
 	.testnet-toggle {
 		display: inline-flex;
 		align-items: center;
@@ -481,7 +464,29 @@
 		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 		gap: var(--space-3);
 	}
+	.net-card-wrap {
+		position: relative;
+	}
+	.net-remove {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		width: 20px;
+		height: 20px;
+		border-radius: var(--radius-full);
+		border: 1px solid var(--border-base);
+		background: var(--bg-elevated);
+		color: var(--fg-subtle);
+		font-size: var(--text-sm);
+		line-height: 1;
+		cursor: pointer;
+	}
+	.net-remove:hover {
+		color: var(--error);
+		border-color: var(--error);
+	}
 	.net-card {
+		width: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
@@ -501,9 +506,6 @@
 		border-color: var(--accent);
 		box-shadow: 0 0 0 1px var(--accent) inset;
 	}
-	.net-card.disabled {
-		opacity: 0.55;
-	}
 	.net-name {
 		font-size: var(--text-md);
 		font-weight: var(--weight-semibold);
@@ -513,6 +515,7 @@
 		display: flex;
 		gap: var(--space-2);
 		flex-wrap: wrap;
+		align-items: center;
 	}
 	.badge {
 		font-size: 10px;
@@ -535,10 +538,7 @@
 	.badge-muted {
 		color: var(--fg-subtle);
 	}
-
-	/* Inputs */
-	.input,
-	.dest-row .input {
+	.input {
 		width: 100%;
 		padding: var(--space-3) var(--space-4);
 		background: var(--bg-sunken);
@@ -579,8 +579,6 @@
 		background: var(--bg-elevated);
 		color: var(--fg-subtle);
 	}
-
-	/* Tokens */
 	.token-row {
 		display: flex;
 		flex-wrap: wrap;
@@ -627,13 +625,6 @@
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-
-	.dest-row {
-		display: flex;
-		gap: var(--space-2);
-	}
-
-	/* Buttons */
 	.actions {
 		display: flex;
 		justify-content: flex-end;
@@ -650,6 +641,10 @@
 	}
 	.btn.lg {
 		padding: var(--space-3) var(--space-8);
+	}
+	.btn.sm {
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--text-xs);
 	}
 	.btn.with-icon {
 		display: inline-flex;
@@ -681,8 +676,6 @@
 		background: var(--error-muted);
 		color: var(--error);
 	}
-
-	/* Summary + preview table */
 	.summary {
 		display: flex;
 		gap: var(--space-5);
@@ -706,7 +699,6 @@
 		font-size: var(--text-sm);
 		color: var(--accent);
 		cursor: pointer;
-		user-select: none;
 	}
 	.table-wrap {
 		overflow-x: auto;
@@ -730,36 +722,133 @@
 		font-size: var(--text-xs);
 	}
 
-	/* Fund */
-	.kv {
+	/* Relay steps */
+	.relay-step {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-2) 0;
-		border-bottom: 1px solid var(--border-subtle);
-		font-size: var(--text-sm);
+		gap: var(--space-3);
+		padding: var(--space-4) 0;
+		border-top: 1px solid var(--border-subtle);
+	}
+	.relay-step:first-of-type {
+		border-top: none;
+		padding-top: var(--space-2);
+	}
+	.rs-num {
+		width: 24px;
+		height: 24px;
+		flex-shrink: 0;
+		border-radius: var(--radius-full);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-base);
+		display: grid;
+		place-items: center;
+		font-size: var(--text-xs);
+		font-weight: 700;
 		color: var(--fg-muted);
 	}
-	.kv strong,
-	.kv code {
+	.relay-step.done .rs-num {
+		background: var(--accent-muted);
+		color: var(--accent);
+		border-color: var(--accent);
+	}
+	.rs-body {
+		flex: 1;
+	}
+	.rs-body strong {
 		color: var(--fg-base);
+		font-size: var(--text-sm);
+	}
+	.rs-actions {
+		display: flex;
+		gap: var(--space-2);
+		margin-top: var(--space-3);
+		flex-wrap: wrap;
 	}
 	.note {
-		margin: var(--space-3) 0 0;
+		margin: var(--space-1) 0 0;
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 	}
-	.note.center-text {
-		text-align: center;
+	.error {
+		margin: var(--space-2) 0 0;
+		font-size: var(--text-sm);
+		color: var(--error);
 	}
-	.fund-actions {
+	.ok-line {
 		display: flex;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-		margin-top: var(--space-4);
+		align-items: center;
+		gap: 6px;
+		margin: var(--space-2) 0 0;
+		font-size: var(--text-sm);
+		color: var(--accent);
 	}
-
-	/* Progress / timeline */
+	.upload {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: var(--space-3);
+		padding: var(--space-3) var(--space-5);
+		border: 1px dashed var(--border-strong);
+		border-radius: var(--radius-md);
+		color: var(--accent);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+	}
+	.fund {
+		display: flex;
+		gap: var(--space-5);
+		margin-top: var(--space-3);
+		flex-wrap: wrap;
+		align-items: flex-start;
+	}
+	.fund-info {
+		flex: 1;
+		min-width: 220px;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.addr-copy {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		padding: var(--space-2) var(--space-3);
+		cursor: pointer;
+		font-family: var(--font-mono);
+		color: var(--fg-base);
+	}
+	.copy-hint {
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		color: var(--accent);
+	}
+	.kv {
+		display: flex;
+		justify-content: space-between;
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+	}
+	.kv strong {
+		color: var(--fg-base);
+	}
+	.fund-state {
+		margin-top: var(--space-1);
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+		text-align: center;
+		background: var(--warning-muted);
+		color: var(--warning);
+	}
+	.fund-state.ok {
+		background: var(--accent-muted);
+		color: var(--accent);
+	}
 	.timeline {
 		display: flex;
 		justify-content: center;
@@ -781,18 +870,6 @@
 		color: var(--accent);
 		background: var(--accent-muted);
 	}
-	.progress {
-		height: 8px;
-		background: var(--bg-sunken);
-		border-radius: var(--radius-full);
-		overflow: hidden;
-		margin: var(--space-4) 0 var(--space-2);
-	}
-	.progress-bar {
-		height: 100%;
-		background: var(--accent);
-		transition: width var(--motion-normal) var(--easing);
-	}
 	.progress-text {
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
@@ -800,7 +877,7 @@
 	.spinner {
 		width: 28px;
 		height: 28px;
-		margin: var(--space-4) auto 0;
+		margin: var(--space-3) auto 0;
 		border: 3px solid var(--border-base);
 		border-top-color: var(--accent);
 		border-radius: var(--radius-full);
@@ -811,8 +888,6 @@
 			transform: rotate(360deg);
 		}
 	}
-
-	/* Batches / history */
 	.batches {
 		display: flex;
 		flex-direction: column;
@@ -840,6 +915,11 @@
 		color: var(--accent);
 		text-decoration: none;
 	}
+	.fund-actions {
+		display: flex;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
 	.history {
 		display: flex;
 		flex-direction: column;
@@ -860,8 +940,6 @@
 		font-size: var(--text-xs);
 		margin-right: auto;
 	}
-
-	/* Logs */
 	.logs-head {
 		display: flex;
 		justify-content: space-between;
@@ -895,19 +973,12 @@
 	.log-error {
 		color: var(--error);
 	}
-
 	@media (max-width: 640px) {
 		.page {
 			padding: var(--space-4) var(--space-3) var(--space-12);
 		}
 		.title {
 			font-size: var(--text-3xl);
-		}
-		.step-label {
-			display: none;
-		}
-		.dest-row {
-			flex-direction: column;
 		}
 		.actions {
 			flex-direction: column-reverse;

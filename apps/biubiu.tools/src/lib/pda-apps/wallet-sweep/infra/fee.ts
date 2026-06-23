@@ -1,8 +1,8 @@
 /**
- * Sweep fee — identical policy to token-sender (shared constants so they never
- * diverge): member → free; else fixed-per-network → $5-equiv (Chainlink) →
- * 1-native fallback. Collected once per sweep, prepended to the FIRST MultiSend
- * batch as a native transfer from the Safe to FEE_COLLECTOR.
+ * Sweep fee (v2) — paid by the RELAY, forwarded to FEE_COLLECTOR by BatchSweeper
+ * (msg.value on the first batch). Same amount policy + constants as token-sender
+ * so they never diverge: fixed-per-network → $5-equiv (Chainlink) → 1-native
+ * fallback. No member-free tier (v2 has no passkey membership).
  */
 import { createPublicClient, http, fallback, parseUnits } from 'viem';
 import {
@@ -53,10 +53,8 @@ async function fetchNativeUsdPrice(network: SweepNetwork): Promise<number | null
 	}
 }
 
-/** Fee priority: member-free → config fixed → $5-equiv → 1-native fallback. */
-export async function quoteSweepFee(network: SweepNetwork, isMember: boolean): Promise<FeeQuote> {
-	if (isMember) return { amount: 0n, source: 'member-free' };
-
+/** Fee priority: config fixed → $5-equiv → 1-native fallback. */
+export async function quoteSweepFee(network: SweepNetwork): Promise<FeeQuote> {
 	const fixed = FEE_FIXED_NATIVE[network.slug];
 	if (fixed != null) return { amount: fixed, source: 'config' };
 

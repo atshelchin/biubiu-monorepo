@@ -35,6 +35,7 @@ export interface SweepNetwork {
 	/** Chainlink native/USD feed for the $5-equiv fee (omit → fallback). */
 	chainlinkNativeUsdFeed?: Address;
 	isTestnet?: boolean;
+	isCustom?: boolean;
 }
 
 /** Result of probing a network's live readiness. */
@@ -42,11 +43,7 @@ export interface NetworkReadiness {
 	slug: string;
 	/** RPC answered eth_chainId with the expected id. */
 	reachable: boolean;
-	/** RIP-7212 P256 precompile present (passkey can sign here). */
-	p256: boolean;
-	/** Safe MultiSend deployed (passkey Safe stack present). */
-	safeStack: boolean;
-	/** All checks passed → usable. */
+	/** Reachable (7702 itself is curated; the definitive check is broadcast). */
 	ready: boolean;
 	error?: string;
 }
@@ -92,7 +89,7 @@ export interface TokenSpec {
 export type Phase = 'config' | 'run' | 'done';
 
 /** Sub-state shown inside the merged "Run" step. */
-export type RunStage = 'idle' | 'funding' | 'deploying' | 'upgrading' | 'sweeping';
+export type RunStage = 'idle' | 'deploying' | 'sweeping';
 
 /** One executed sweep batch (one MultiSend / one fingerprint). */
 export interface SweepBatchRecord {
@@ -118,9 +115,8 @@ export interface SweepRecord {
 	totalNative: string;
 	/** tokenAddress → total raw amount string. */
 	totalTokens: Record<string, string>;
-	/** Fee charged (native wei) as string; "0" for members. */
+	/** Fee charged (native wei) as string. */
 	feeWei: string;
-	isMember: boolean;
 	batches: SweepBatchRecord[];
 	status: 'completed' | 'partial' | 'failed';
 }

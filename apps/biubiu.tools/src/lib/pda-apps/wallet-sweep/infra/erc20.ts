@@ -17,10 +17,10 @@ export function isValidTokenAddress(addr: string): boolean {
 /** Read symbol + decimals for a token; throws if not a readable ERC20. */
 export async function fetchTokenMetadata(
 	network: SweepNetwork,
-	rpcUrl: string,
+	rpcs: string[],
 	tokenAddress: Address,
 ): Promise<TokenSpec> {
-	const client = makePublicClient(network, rpcUrl);
+	const client = makePublicClient(network, rpcs);
 	const [symbol, decimals] = await Promise.all([
 		client.readContract({ address: tokenAddress, abi: ERC20_META_ABI, functionName: 'symbol' }) as Promise<string>,
 		client.readContract({ address: tokenAddress, abi: ERC20_META_ABI, functionName: 'decimals' }) as Promise<number>,

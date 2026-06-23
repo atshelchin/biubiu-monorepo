@@ -1,9 +1,9 @@
 {
 	"ws.meta.title": "钱包归集",
-	"ws.meta.description": "用 EIP-7702 把多个 EOA 钱包里的原生币和 ERC20 代币归集到一个钱包。升级一次，之后用一次指纹即可清空 100+ 钱包。",
+	"ws.meta.description": "用 EIP-7702 把多个 EOA 钱包里的原生币和 ERC20 代币归集到一个钱包。由你掌控的中继钱包完成升级与归集 —— 无需 passkey、无需登录。",
 
 	"ws.title": "钱包归集",
-	"ws.subtitle": "把多个钱包的原生币 + ERC20 一键吸入一个钱包 —— 由你的 passkey 守护，EIP-7702 驱动。",
+	"ws.subtitle": "把多个钱包的原生币 + ERC20 一键吸入一个钱包 —— 无需 passkey、无需登录。由你掌控的一次性中继钱包完成链上操作，EIP-7702 驱动。",
 
 	"ws.connect.required": "请先连接 biubiu.tools passkey。只有你的 passkey 能授权归集。",
 	"ws.connect.cta": "连接 passkey",
@@ -17,10 +17,34 @@
 	"ws.step.done": "完成",
 
 	"ws.security.title": "你的私钥只留在本浏览器",
-	"ws.security.body": "粘贴的私钥永不离开你的设备、永不被存储 —— 仅在本地为链上升级签名。升级后，每个钱包只听命于你的 passkey Safe；连中继都无法动用资产。",
+	"ws.security.body": "粘贴的私钥永不离开你的设备、永不被存储。链上操作由一个一次性中继钱包(你会下载它)完成 —— 你给它充 gas,它只能把资产发往你设定的目标地址。无需 passkey 或登录。",
+
+	"ws.network.addCustom": "添加网络",
+	"ws.run.wallets": "钱包数",
+	"ws.run.batch": "第 {done} / {total} 批",
+
+	"ws.relay.title": "中继钱包",
+	"ws.relay.subtitle": "一个一次性钱包,负责链上操作。先下载它、证明你已保存,再给它充 gas。",
+	"ws.relay.step1": "下载中继私钥",
+	"ws.relay.downloadHint": "充值中继、回收剩余 gas 都要用到它。它只能把资产发往你的目标地址。",
+	"ws.relay.step2": "确认你已保存",
+	"ws.relay.verifyHint": "把刚下载的文件重新上传 —— 校验一致后才显示充值地址。",
+	"ws.relay.verified": "已保存并校验",
+	"ws.relay.rotate": "换新中继",
+	"ws.relay.step3": "给中继充 gas",
+	"ws.relay.fundHint": "把下面的金额转到中继地址。它要支付合约部署、升级、归集和手续费。",
+	"ws.relay.needed": "需要",
+	"ws.relay.balance": "余额",
+	"ws.relay.funded": "已充值 —— 可以归集",
+	"ws.relay.notFunded": "等待充值",
+
+	"ws.btn.verifyUpload": "上传私钥文件以校验",
+	"ws.btn.recoverGas": "回收中继 gas",
+	"ws.copy": "复制",
+	"ws.copied": "已复制",
 
 	"ws.network.title": "选择网络",
-	"ws.network.subtitle": "仅支持同时支持 EIP-7702 与你的 passkey 钱包（RIP-7212 + Safe 合约栈）的链。",
+	"ws.network.subtitle": "任意支持 EIP-7702 的链。没有的话可以添加自定义网络。",
 	"ws.network.checking": "检测中…",
 	"ws.network.ready": "可用",
 	"ws.network.unavailable": "不可用",

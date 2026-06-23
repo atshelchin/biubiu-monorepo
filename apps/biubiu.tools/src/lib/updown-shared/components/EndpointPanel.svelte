@@ -1,13 +1,15 @@
 <script lang="ts">
 	import type { EndpointStore } from '../auth/endpoint-store.svelte.js';
 	import type { ManagedEndpoint, EndpointCapabilities } from '../auth/types.js';
+	import type { TranslateFn } from '../types.js';
 
 	interface Props {
 		store: EndpointStore;
+		t: TranslateFn;
 		onEndpointSelect?: (endpoint: ManagedEndpoint) => void;
 	}
 
-	let { store, onEndpointSelect }: Props = $props();
+	let { store, t, onEndpointSelect }: Props = $props();
 
 	// Add endpoint form
 	let showAddForm = $state(false);
@@ -73,18 +75,18 @@
 
 	function permissionBadge(endpoint: ManagedEndpoint): { text: string; class: string } {
 		if (!endpoint.permissions) return { text: '...', class: 'badge-unknown' };
-		if (endpoint.permissions.funds) return { text: 'Full', class: 'badge-funds' };
-		if (endpoint.permissions.trading) return { text: 'Trading', class: 'badge-trading' };
-		if (endpoint.permissions.read) return { text: 'Read', class: 'badge-read' };
-		return { text: 'None', class: 'badge-none' };
+		if (endpoint.permissions.funds) return { text: t('btcUpdown.endpoint.permFull'), class: 'badge-funds' };
+		if (endpoint.permissions.trading) return { text: t('btcUpdown.endpoint.permTrading'), class: 'badge-trading' };
+		if (endpoint.permissions.read) return { text: t('btcUpdown.endpoint.permRead'), class: 'badge-read' };
+		return { text: t('btcUpdown.endpoint.permNone'), class: 'badge-none' };
 	}
 </script>
 
 <section class="endpoint-panel">
 	<div class="panel-header">
-		<h3 class="panel-title">Managed Endpoints</h3>
+		<h3 class="panel-title">{t('btcUpdown.endpoint.title')}</h3>
 		<button class="btn-add" onclick={() => (showAddForm = !showAddForm)}>
-			{showAddForm ? 'Cancel' : '+ Add'}
+			{showAddForm ? t('btcUpdown.strategy.cancel') : t('btcUpdown.endpoint.add')}
 		</button>
 	</div>
 
@@ -93,41 +95,41 @@
 			<input
 				type="url"
 				bind:value={addUrl}
-				placeholder="Endpoint URL (https://...)"
+				placeholder={t('btcUpdown.endpoint.urlPlaceholder')}
 				required
 				class="form-input"
 			/>
 			<input
 				type="text"
 				bind:value={addToken}
-				placeholder="Token"
+				placeholder={t('btcUpdown.endpoint.tokenPlaceholder')}
 				required
 				class="form-input"
 			/>
 			<input
 				type="text"
 				bind:value={addClientId}
-				placeholder="Client ID"
+				placeholder={t('btcUpdown.endpoint.clientIdPlaceholder')}
 				required
 				class="form-input"
 			/>
 			<input
 				type="text"
 				bind:value={addLabel}
-				placeholder="Label (optional)"
+				placeholder={t('btcUpdown.endpoint.labelPlaceholder')}
 				class="form-input"
 			/>
 			{#if addError}
 				<div class="form-error">{addError}</div>
 			{/if}
 			<button type="submit" class="btn-submit" disabled={addLoading}>
-				{addLoading ? 'Connecting...' : 'Connect'}
+				{addLoading ? t('btcUpdown.endpoint.connecting') : t('btcUpdown.endpoint.connect')}
 			</button>
 		</form>
 	{/if}
 
 	{#if store.endpoints.length === 0}
-		<p class="empty-hint">No managed endpoints. Add one to enable live trading management.</p>
+		<p class="empty-hint">{t('btcUpdown.endpoint.empty')}</p>
 	{:else}
 		<ul class="endpoint-list">
 			{#each store.endpoints as endpoint (endpoint.url + endpoint.clientId)}
@@ -142,11 +144,11 @@
 						<div class="endpoint-meta">
 							<span class="badge {badge.class}">{badge.text}</span>
 							{#if endpoint.credentialId}
-								<span class="passkey-status registered" title="Passkey registered">K</span>
+								<span class="passkey-status registered" title={t('btcUpdown.endpoint.passkeyRegistered')}>K</span>
 							{:else if endpoint.permissions?.trading}
 								<button
 									class="passkey-status unregistered"
-									title="Register passkey"
+									title={t('btcUpdown.endpoint.registerPasskey')}
 									onclick={(e) => { e.stopPropagation(); handleRegisterPasskey(endpoint); }}
 								>
 									+K
@@ -156,7 +158,7 @@
 					</button>
 					<button
 						class="btn-remove"
-						title="Remove endpoint"
+						title={t('btcUpdown.endpoint.remove')}
 						onclick={(e) => { e.stopPropagation(); handleRemove(endpoint); }}
 					>
 						×
@@ -170,7 +172,7 @@
 		<div class="register-prompt glass-card">
 			<p class="register-error">{registerError}</p>
 			<button class="btn-dismiss" onclick={() => { registeringUrl = null; registerError = ''; }}>
-				Dismiss
+				{t('btcUpdown.endpoint.dismiss')}
 			</button>
 		</div>
 	{/if}

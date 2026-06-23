@@ -83,7 +83,7 @@
 				const text = await file.text();
 				const parsed = JSON.parse(text);
 				if (!parsed.meta?.n_estimators || !parsed.trees) {
-					modelUploadError = 'Invalid model file (need meta + trees)';
+					modelUploadError = t('btcUpdown.cfg.modelInvalid');
 					return;
 				}
 				modelMeta = parsed.meta as ModelMeta;
@@ -98,7 +98,7 @@
 					modelId: parsed.meta.version ?? file.name.replace('.json', ''),
 				};
 			} catch {
-				modelUploadError = 'JSON parse error';
+				modelUploadError = t('btcUpdown.configurator.jsonParseError');
 			}
 		};
 		input.click();
@@ -243,10 +243,10 @@
 	}
 
 	const ALL_DAYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-	const DAY_LABELS: Record<DayOfWeek, string> = {
-		sun: 'Sun', mon: 'Mon', tue: 'Tue',
-		wed: 'Wed', thu: 'Thu', fri: 'Fri',
-		sat: 'Sat',
+	const DAY_LABEL_KEYS: Record<DayOfWeek, string> = {
+		sun: 'btcUpdown.chart.weekday.sun', mon: 'btcUpdown.chart.weekday.mon', tue: 'btcUpdown.chart.weekday.tue',
+		wed: 'btcUpdown.chart.weekday.wed', thu: 'btcUpdown.chart.weekday.thu', fri: 'btcUpdown.chart.weekday.fri',
+		sat: 'btcUpdown.chart.weekday.sat',
 	};
 	const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -345,13 +345,13 @@
 
 	// ── Direction descriptions ──
 
-	const DIR_DESCRIPTIONS: Record<string, string> = {
-		clob_follow: 'Follow CLOB midpoint',
-		prev_candle: 'Follow previous candle',
-		rsi_reversal: 'RSI extreme reversal',
-		signal_score: 'Signal scoring',
-		ml_model: 'ML model',
-		post_market_inference: 'Post-market inference',
+	const DIR_DESCRIPTION_KEYS: Record<string, string> = {
+		clob_follow: 'btcUpdown.cfg.dirClobFollow',
+		prev_candle: 'btcUpdown.cfg.dirPrevCandle',
+		rsi_reversal: 'btcUpdown.cfg.dirRsiReversal',
+		signal_score: 'btcUpdown.cfg.dirSignalScore',
+		ml_model: 'btcUpdown.cfg.dirMlModel',
+		post_market_inference: 'btcUpdown.cfg.dirPostMarket',
 	};
 
 	const DEFAULT_SIGNAL_PARAMS: SignalScoreParams = {
@@ -369,17 +369,17 @@
 		tradeWindowSec: 30,
 	};
 
-	const INDICATOR_LABELS: Record<IndicatorType, string> = {
-		roc: 'Rate of Change',
-		rsi: 'RSI',
-		taker_buy_ratio: 'Taker Buy Ratio',
-		body_ratio: 'Body Ratio',
-		ema_crossover: 'EMA Crossover',
-		vwap_deviation: 'VWAP Deviation',
-		volume_ratio: 'Volume Ratio',
-		bullish_candles: 'Bullish Candles',
-		candle_range_pct: 'Candle Range %',
-		volume_trend: 'Volume Trend',
+	const INDICATOR_LABEL_KEYS: Record<IndicatorType, string> = {
+		roc: 'btcUpdown.cfg.indRoc',
+		rsi: 'btcUpdown.cfg.indRsi',
+		taker_buy_ratio: 'btcUpdown.cfg.indTakerBuyRatio',
+		body_ratio: 'btcUpdown.cfg.indBodyRatio',
+		ema_crossover: 'btcUpdown.cfg.indEmaCrossover',
+		vwap_deviation: 'btcUpdown.cfg.indVwapDeviation',
+		volume_ratio: 'btcUpdown.cfg.indVolumeRatio',
+		bullish_candles: 'btcUpdown.cfg.indBullishCandles',
+		candle_range_pct: 'btcUpdown.cfg.indCandleRangePct',
+		volume_trend: 'btcUpdown.cfg.indVolumeTrend',
 	};
 
 	const ALL_INDICATORS: IndicatorType[] = ['roc', 'rsi', 'taker_buy_ratio', 'body_ratio', 'ema_crossover', 'vwap_deviation', 'volume_ratio', 'bullish_candles', 'candle_range_pct', 'volume_trend'];
@@ -436,22 +436,22 @@
 		updateSignalParams({ rules });
 	}
 
-	const METHOD_DESCRIPTIONS: Record<string, string> = {
-		market: 'Market order, immediate fill',
-		limit: 'Limit order, passive fill',
-		swing_limit: 'Wait for target price, then buy',
-		post_market_scan: 'Scan cheap asks after market close',
+	const METHOD_DESCRIPTION_KEYS: Record<string, string> = {
+		market: 'btcUpdown.cfg.methodMarket',
+		limit: 'btcUpdown.cfg.methodLimit',
+		swing_limit: 'btcUpdown.cfg.methodSwingLimit',
+		post_market_scan: 'btcUpdown.cfg.methodPostMarketScan',
 	};
 
 	function exitTypeLabel(type: string): string {
-		const labels: Record<string, string> = {
-			settlement: 'Settlement',
-			take_profit: 'Take Profit',
-			stop_loss: 'Stop Loss',
-			trailing_stop: 'Trailing Stop',
-			checkpoint: 'Checkpoint',
+		const keys: Record<string, string> = {
+			settlement: 'btcUpdown.cfg.exitSettlement',
+			take_profit: 'btcUpdown.cfg.exitTakeProfit',
+			stop_loss: 'btcUpdown.cfg.exitStopLoss',
+			trailing_stop: 'btcUpdown.cfg.exitTrailingStop',
+			checkpoint: 'btcUpdown.cfg.exitCheckpoint',
 		};
-		return labels[type] ?? type;
+		return keys[type] ? t(keys[type]) : type;
 	}
 </script>
 
@@ -467,7 +467,7 @@
 				<button class="icon-btn" onclick={handleExport} title={t('btcUpdown.instance.export')}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 				</button>
-				<button class="icon-btn" onclick={() => jsonMode ? applyJson() : switchToJson()} title="JSON">
+				<button class="icon-btn" onclick={() => jsonMode ? applyJson() : switchToJson()} title={t('btcUpdown.cfg.json')}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
 				</button>
 				<button class="close-btn" onclick={onClose}>&times;</button>
@@ -490,13 +490,13 @@
 				<div class="step-card">
 					<div class="step-header">
 						<span class="step-num">1</span>
-						<span class="step-title">Start</span>
+						<span class="step-title">{t('btcUpdown.cfg.stepStart')}</span>
 					</div>
 					<div class="step-body">
 						<div class="start-options">
 							<!-- Templates -->
 							<div class="start-group">
-								<div class="field-label">Start from template</div>
+								<div class="field-label">{t('btcUpdown.cfg.startFromTemplate')}</div>
 								<div class="template-row">
 									{#each TEMPLATES as tmpl (tmpl.id)}
 										<button class="template-chip" onclick={() => { applyTemplate(tmpl.id); revealNext(1); }}>
@@ -509,14 +509,14 @@
 							<div class="start-group">
 								<button class="start-action-btn" onclick={() => { handleImport(); revealNext(1); }}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-									Import JSON file
+									{t('btcUpdown.cfg.importJsonFile')}
 								</button>
 							</div>
 							<!-- Blank -->
 							<div class="start-group">
 								<button class="start-action-btn" onclick={() => { config = cloneConfig(BLANK_CONFIG); revealNext(1); }}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-									Start blank
+									{t('btcUpdown.cfg.startBlank')}
 								</button>
 							</div>
 						</div>
@@ -528,19 +528,19 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">2</span>
-							<span class="step-title">Gates</span>
-							<span class="step-optional">optional</span>
+							<span class="step-title">{t('btcUpdown.cfg.stepGates')}</span>
+							<span class="step-optional">{t('btcUpdown.cfg.optional')}</span>
 						</div>
 						<div class="step-body">
 							{#each config.gates ?? [] as gate, i (i)}
 								<div class="rule-card" class:rule-card-wide={gate.type === 'schedule'}>
 									<div class="rule-header">
 										<span class="rule-type">
-											{#if gate.type === 'volatility'}Volatility
-											{:else if gate.type === 'trend'}Trend
-											{:else if gate.type === 'schedule'}Schedule
-											{:else if gate.type === 'daily_loss_limit'}Daily Loss Limit
-											{:else if gate.type === 'cooldown'}Cooldown
+											{#if gate.type === 'volatility'}{t('btcUpdown.cfg.gateVolatility')}
+											{:else if gate.type === 'trend'}{t('btcUpdown.cfg.gateTrend')}
+											{:else if gate.type === 'schedule'}{t('btcUpdown.cfg.gateSchedule')}
+											{:else if gate.type === 'daily_loss_limit'}{t('btcUpdown.cfg.gateDailyLossLimit')}
+											{:else if gate.type === 'cooldown'}{t('btcUpdown.cfg.gateCooldown')}
 											{/if}
 										</span>
 										<button class="remove-btn" onclick={() => removeGate(i)}>&times;</button>
@@ -548,29 +548,29 @@
 									{#if gate.type === 'volatility'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">Max ATR %</label>
+												<label class="field-label">{t('btcUpdown.cfg.maxAtrPct')}</label>
 												<input type="number" class="field-input sm" value={gate.maxAtrPct} oninput={(e) => setGateProp(i, 'maxAtrPct', +e.currentTarget.value)} min="0" max="1" step="0.01" />
 											</div>
 											<div class="field">
-												<label class="field-label">Mode</label>
+												<label class="field-label">{t('btcUpdown.cfg.mode')}</label>
 												<select class="field-select" value={gate.mode} onchange={(e) => setGateProp(i, 'mode', e.currentTarget.value)}>
-													<option value="require_low">Low Vol</option>
-													<option value="require_high">High Vol</option>
+													<option value="require_low">{t('btcUpdown.cfg.lowVol')}</option>
+													<option value="require_high">{t('btcUpdown.cfg.highVol')}</option>
 												</select>
 											</div>
 										</div>
 									{:else if gate.type === 'trend'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">Min ER</label>
+												<label class="field-label">{t('btcUpdown.cfg.minER')}</label>
 												<input type="number" class="field-input sm" value={gate.minER} oninput={(e) => setGateProp(i, 'minER', +e.currentTarget.value)} min="0" max="1" step="0.01" />
 											</div>
 											<div class="field">
-												<label class="field-label">Body Ratio</label>
+												<label class="field-label">{t('btcUpdown.cfg.bodyRatio')}</label>
 												<input type="number" class="field-input sm" value={gate.minBodyRatio} oninput={(e) => setGateProp(i, 'minBodyRatio', +e.currentTarget.value)} min="0" max="1" step="0.01" />
 											</div>
 											<div class="field">
-												<label class="field-label">Period</label>
+												<label class="field-label">{t('btcUpdown.cfg.period')}</label>
 												<input type="number" class="field-input sm" value={gate.period} oninput={(e) => setGateProp(i, 'period', +e.currentTarget.value)} min="1" max="100" />
 											</div>
 										</div>
@@ -586,7 +586,7 @@
 												{@const activeHours = gate.grid?.[day] ?? []}
 												<div class="schedule-row">
 													<button class="schedule-day-label schedule-day-btn" onclick={() => toggleScheduleDay(i, day)}>
-														{DAY_LABELS[day]}
+														{t(DAY_LABEL_KEYS[day])}
 													</button>
 													{#each ALL_HOURS as h}
 														<button class="schedule-cell" class:schedule-cell-active={activeHours.includes(h)} onclick={() => toggleScheduleHour(i, day, h)}></button>
@@ -595,22 +595,22 @@
 											{/each}
 										</div>
 										<div class="field mt-2">
-											<label class="field-label">Timezone</label>
+											<label class="field-label">{t('btcUpdown.cfg.timezone')}</label>
 											<input type="text" class="field-input" value={gate.timezone} oninput={(e) => setGateProp(i, 'timezone', e.currentTarget.value)} />
 										</div>
 									{:else if gate.type === 'daily_loss_limit'}
 										<div class="rule-fields">
-											<label class="field-label">Limit (USD)</label>
+											<label class="field-label">{t('btcUpdown.cfg.limitUsd')}</label>
 											<input type="number" class="field-input sm" value={gate.maxLossUsd} oninput={(e) => setGateProp(i, 'maxLossUsd', +e.currentTarget.value)} min="1" step="1" />
 										</div>
 									{:else if gate.type === 'cooldown'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">After Losses</label>
+												<label class="field-label">{t('btcUpdown.cfg.afterLosses')}</label>
 												<input type="number" class="field-input sm" value={gate.afterConsecutiveLosses} oninput={(e) => setGateProp(i, 'afterConsecutiveLosses', +e.currentTarget.value)} min="1" max="20" />
 											</div>
 											<div class="field">
-												<label class="field-label">Pause (min)</label>
+												<label class="field-label">{t('btcUpdown.cfg.pauseMin')}</label>
 												<input type="number" class="field-input sm" value={gate.pauseMinutes} oninput={(e) => setGateProp(i, 'pauseMinutes', +e.currentTarget.value)} min="1" max="240" />
 											</div>
 										</div>
@@ -618,21 +618,21 @@
 								</div>
 							{/each}
 							<div class="add-row">
-								<button class="add-chip" onclick={() => addGate('volatility')}>+ Volatility</button>
-								<button class="add-chip" onclick={() => addGate('trend')}>+ Trend</button>
+								<button class="add-chip" onclick={() => addGate('volatility')}>{t('btcUpdown.cfg.addVolatility')}</button>
+								<button class="add-chip" onclick={() => addGate('trend')}>{t('btcUpdown.cfg.addTrend')}</button>
 								{#if !(config.gates ?? []).some(g => g.type === 'schedule')}
-									<button class="add-chip" onclick={() => addGate('schedule')}>+ Schedule</button>
+									<button class="add-chip" onclick={() => addGate('schedule')}>{t('btcUpdown.cfg.addSchedule')}</button>
 								{/if}
 								{#if !(config.gates ?? []).some(g => g.type === 'daily_loss_limit')}
-									<button class="add-chip" onclick={() => addGate('daily_loss_limit')}>+ Loss Limit</button>
+									<button class="add-chip" onclick={() => addGate('daily_loss_limit')}>{t('btcUpdown.cfg.addLossLimit')}</button>
 								{/if}
 								{#if !(config.gates ?? []).some(g => g.type === 'cooldown')}
-									<button class="add-chip" onclick={() => addGate('cooldown')}>+ Cooldown</button>
+									<button class="add-chip" onclick={() => addGate('cooldown')}>{t('btcUpdown.cfg.addCooldown')}</button>
 								{/if}
 							</div>
 							{#if revealedSteps <= 2}
 								<button class="continue-btn" onclick={() => revealNext(2)}>
-									Continue
+									{t('btcUpdown.cfg.continue')}
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -645,37 +645,37 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">3</span>
-							<span class="step-title">Entry</span>
+							<span class="step-title">{t('btcUpdown.cfg.stepEntry')}</span>
 						</div>
 						<div class="step-body">
 							<div class="field-grid-2">
 								<div class="field">
-									<label class="field-label">Amount (USD)</label>
+									<label class="field-label">{t('btcUpdown.cfg.amountUsd')}</label>
 									<input type="number" class="field-input" bind:value={config.entry.amount} min="0.01" max="10000" step="1" />
 								</div>
 								<div class="field">
-									<label class="field-label">Method</label>
+									<label class="field-label">{t('btcUpdown.cfg.method')}</label>
 									<select class="field-select" bind:value={config.entry.method}>
 										{#each (['market', 'limit', 'swing_limit', 'post_market_scan'] as EntryMethod[]) as m}
-											<option value={m}>{METHOD_DESCRIPTIONS[m] ?? m}</option>
+											<option value={m}>{METHOD_DESCRIPTION_KEYS[m] ? t(METHOD_DESCRIPTION_KEYS[m]) : m}</option>
 										{/each}
 									</select>
 								</div>
 							</div>
 
 							<div class="field">
-								<label class="field-label">Max Buy Price</label>
+								<label class="field-label">{t('btcUpdown.cfg.maxBuyPrice')}</label>
 								<input type="number" class="field-input" bind:value={config.entry.maxBuyPrice} min="0.01" max="0.99" step="0.01" />
 							</div>
 
 							{#if config.entry.method === 'swing_limit'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">Target Price</label>
+										<label class="field-label">{t('btcUpdown.cfg.targetPrice')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.swingTargetPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">Window (sec)</label>
+										<label class="field-label">{t('btcUpdown.cfg.windowSec')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.swingWindowSec} min="1" max="600" step="1" />
 									</div>
 								</div>
@@ -684,11 +684,11 @@
 							{#if config.entry.method === 'limit'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">Limit Price</label>
+										<label class="field-label">{t('btcUpdown.cfg.limitPrice')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.limitPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">Timeout (sec)</label>
+										<label class="field-label">{t('btcUpdown.cfg.timeoutSec')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.limitTimeoutSec} min="1" max="600" step="1" />
 									</div>
 								</div>
@@ -697,18 +697,18 @@
 							{#if config.entry.method === 'post_market_scan'}
 								<div class="field-grid-2">
 									<div class="field">
-										<label class="field-label">Scan Max Price</label>
+										<label class="field-label">{t('btcUpdown.cfg.scanMaxPrice')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.scanMaxBuyPrice} min="0.01" max="0.99" step="0.01" />
 									</div>
 									<div class="field">
-										<label class="field-label">Scan Budget</label>
+										<label class="field-label">{t('btcUpdown.cfg.scanBudget')}</label>
 										<input type="number" class="field-input" bind:value={config.entry.scanMaxSpend} min="1" max="10000" step="1" />
 									</div>
 								</div>
 							{/if}
 
 							<div class="field">
-								<label class="field-label">Entry Time Windows <span class="field-optional">00:00 - 05:00</span></label>
+								<label class="field-label">{t('btcUpdown.cfg.entryTimeWindows')} <span class="field-optional">00:00 - 05:00</span></label>
 								{#each config.entry.windows as w, i}
 									<div class="window-row">
 										<span class="window-tag">W{w.window}</span>
@@ -746,13 +746,13 @@
 									<button class="add-chip" onclick={() => {
 										const nextNum = (config.entry.windows.length + 1) as 1 | 2 | 3;
 										config.entry.windows = [...config.entry.windows, { window: nextNum, start: 160, end: 130 }];
-									}}>+ Add Window</button>
+									}}>{t('btcUpdown.cfg.addWindow')}</button>
 								{/if}
 							</div>
 
 							{#if revealedSteps <= 3}
 								<button class="continue-btn" onclick={() => revealNext(3)}>
-									Continue
+									{t('btcUpdown.cfg.continue')}
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -765,7 +765,7 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">4</span>
-							<span class="step-title">Direction</span>
+							<span class="step-title">{t('btcUpdown.cfg.stepDirection')}</span>
 						</div>
 						<div class="step-body">
 							<div class="choice-grid">
@@ -785,7 +785,7 @@
 											}
 										}}
 									>
-										<span class="choice-name">{DIR_DESCRIPTIONS[m] ?? m}</span>
+										<span class="choice-name">{DIR_DESCRIPTION_KEYS[m] ? t(DIR_DESCRIPTION_KEYS[m]) : m}</span>
 									</button>
 								{/each}
 							</div>
@@ -796,15 +796,15 @@
 								<div class="dir-params mt-3">
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">RSI Oversold</label>
+											<label class="field-label">{t('btcUpdown.cfg.rsiOversold')}</label>
 											<input type="number" class="field-input" value={rsi.thresholdLow} oninput={(e) => { config.direction.params = { ...rsi, thresholdLow: +e.currentTarget.value }; }} min="0" max="100" />
 										</div>
 										<div class="field">
-											<label class="field-label">RSI Overbought</label>
+											<label class="field-label">{t('btcUpdown.cfg.rsiOverbought')}</label>
 											<input type="number" class="field-input" value={rsi.thresholdHigh} oninput={(e) => { config.direction.params = { ...rsi, thresholdHigh: +e.currentTarget.value }; }} min="0" max="100" />
 										</div>
 									</div>
-									<div class="field-hint">Go long below oversold, short above overbought</div>
+									<div class="field-hint">{t('btcUpdown.cfg.rsiHint')}</div>
 								</div>
 							{/if}
 
@@ -814,10 +814,10 @@
 								<div class="dir-params mt-3">
 									<!-- Upload -->
 									<div class="field">
-										<label class="field-label">Model File</label>
+										<label class="field-label">{t('btcUpdown.cfg.modelFile')}</label>
 										<button class="upload-btn" onclick={handleModelUpload}>
 											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-											Upload Model (.json)
+											{t('btcUpdown.cfg.uploadModel')}
 										</button>
 										{#if modelUploadError}
 											<div class="json-error">{modelUploadError}</div>
@@ -827,26 +827,26 @@
 									{#if modelMeta}
 										<div class="model-meta">
 											<div class="model-meta-row">
-												<span class="model-meta-label">Version</span>
+												<span class="model-meta-label">{t('btcUpdown.cfg.modelVersion')}</span>
 												<span class="model-meta-value">{modelMeta.version}</span>
 											</div>
 											<div class="model-meta-row">
-												<span class="model-meta-label">Trees</span>
+												<span class="model-meta-label">{t('btcUpdown.cfg.modelTrees')}</span>
 												<span class="model-meta-value">{modelMeta.n_estimators}</span>
 											</div>
 											<div class="model-meta-row">
-												<span class="model-meta-label">Features</span>
+												<span class="model-meta-label">{t('btcUpdown.cfg.modelFeatures')}</span>
 												<span class="model-meta-value">{modelMeta.n_features}</span>
 											</div>
 											{#if modelMeta.accuracy != null}
 												<div class="model-meta-row">
-													<span class="model-meta-label">Accuracy</span>
+													<span class="model-meta-label">{t('btcUpdown.cfg.modelAccuracy')}</span>
 													<span class="model-meta-value">{(modelMeta.accuracy * 100).toFixed(1)}%</span>
 												</div>
 											{/if}
 											{#if modelMeta.training_samples != null}
 												<div class="model-meta-row">
-													<span class="model-meta-label">Samples</span>
+													<span class="model-meta-label">{t('btcUpdown.cfg.modelSamples')}</span>
 													<span class="model-meta-value">{modelMeta.training_samples.toLocaleString()}</span>
 												</div>
 											{/if}
@@ -855,25 +855,25 @@
 									<!-- Params -->
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">Model Type</label>
+											<label class="field-label">{t('btcUpdown.cfg.modelType')}</label>
 											<select class="field-select" value={ml.modelType} onchange={(e) => { config.direction.params = { ...ml, modelType: e.currentTarget.value as MlModelParams['modelType'] }; }}>
-												<option value="random_forest">Random Forest</option>
-												<option value="gradient_boosting">Gradient Boosting</option>
-												<option value="xgboost">XGBoost</option>
+												<option value="random_forest">{t('btcUpdown.cfg.modelRandomForest')}</option>
+												<option value="gradient_boosting">{t('btcUpdown.cfg.modelGradientBoosting')}</option>
+												<option value="xgboost">{t('btcUpdown.cfg.modelXgboost')}</option>
 											</select>
 										</div>
 										<div class="field">
-											<label class="field-label">Model ID</label>
+											<label class="field-label">{t('btcUpdown.cfg.modelId')}</label>
 											<input type="text" class="field-input" value={ml.modelId} oninput={(e) => { config.direction.params = { ...ml, modelId: e.currentTarget.value }; }} placeholder="rf-v5-30s" />
 										</div>
 									</div>
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">Min Confidence</label>
+											<label class="field-label">{t('btcUpdown.cfg.minConfidence')}</label>
 											<input type="number" class="field-input" value={ml.confidenceThreshold} oninput={(e) => { config.direction.params = { ...ml, confidenceThreshold: +e.currentTarget.value }; }} min="0.5" max="1" step="0.01" />
 										</div>
 										<div class="field">
-											<label class="field-label">Data Wait (sec)</label>
+											<label class="field-label">{t('btcUpdown.cfg.dataWaitSec')}</label>
 											<input type="number" class="field-input" value={ml.tradeWindowSec} oninput={(e) => { config.direction.params = { ...ml, tradeWindowSec: +e.currentTarget.value }; }} min="5" max="120" />
 										</div>
 									</div>
@@ -887,21 +887,21 @@
 									<!-- Thresholds -->
 									<div class="field-grid-2">
 										<div class="field">
-											<label class="field-label">Bet Threshold</label>
+											<label class="field-label">{t('btcUpdown.cfg.betThreshold')}</label>
 											<input type="number" class="field-input" value={sig.betThreshold} oninput={(e) => updateSignalParams({ betThreshold: +e.currentTarget.value })} />
 										</div>
 										<div class="field">
-											<label class="field-label">Reverse Threshold</label>
+											<label class="field-label">{t('btcUpdown.cfg.reverseThreshold')}</label>
 											<input type="number" class="field-input" value={sig.reverseThreshold} oninput={(e) => updateSignalParams({ reverseThreshold: +e.currentTarget.value })} />
 										</div>
 									</div>
 									<label class="toggle-label mt-2">
 										<input type="checkbox" checked={sig.reverseEnabled} onchange={(e) => updateSignalParams({ reverseEnabled: e.currentTarget.checked })} />
-										<span>Enable reverse bets</span>
+										<span>{t('btcUpdown.cfg.enableReverseBets')}</span>
 									</label>
 
 									<!-- Signal Rules -->
-									<div class="sub-header mt-3">Signal Rules ({sig.rules.length})</div>
+									<div class="sub-header mt-3">{t('btcUpdown.cfg.signalRules', { count: String(sig.rules.length) })}</div>
 									{#each sig.rules as rule, ri (ri)}
 										<div class="signal-rule-card">
 											<div class="rule-header">
@@ -910,46 +910,46 @@
 											</div>
 											<div class="field-grid-2">
 												<div class="field">
-													<label class="field-label">Indicator</label>
+													<label class="field-label">{t('btcUpdown.cfg.indicator')}</label>
 													<select class="field-select" value={rule.indicator} onchange={(e) => updateSignalRule(ri, { indicator: e.currentTarget.value as IndicatorType })}>
 														{#each ALL_INDICATORS as ind}
-															<option value={ind}>{INDICATOR_LABELS[ind]}</option>
+															<option value={ind}>{t(INDICATOR_LABEL_KEYS[ind])}</option>
 														{/each}
 													</select>
 												</div>
 												<div class="field">
-													<label class="field-label">Period</label>
+													<label class="field-label">{t('btcUpdown.cfg.period')}</label>
 													<input type="number" class="field-input" value={(rule.params as any)?.period ?? 14} oninput={(e) => updateSignalRule(ri, { params: { ...rule.params, period: +e.currentTarget.value } })} min="1" max="100" />
 												</div>
 											</div>
 											<label class="toggle-label mt-2">
 												<input type="checkbox" checked={rule.required ?? false} onchange={(e) => updateSignalRule(ri, { required: e.currentTarget.checked })} />
-												<span>Required (AND gate)</span>
+												<span>{t('btcUpdown.cfg.requiredAndGate')}</span>
 											</label>
 											<!-- Conditions -->
 											<div class="conditions-section mt-2">
-												<div class="field-label">Conditions</div>
+												<div class="field-label">{t('btcUpdown.cfg.conditions')}</div>
 												{#each rule.conditions as cond, ci (ci)}
 													<div class="condition-row">
-														<input type="number" class="field-input cond-input" value={cond.range[0]} oninput={(e) => updateCondition(ri, ci, { range: [e.currentTarget.value === '' ? null : +e.currentTarget.value, cond.range[1]] })} placeholder="min" />
+														<input type="number" class="field-input cond-input" value={cond.range[0]} oninput={(e) => updateCondition(ri, ci, { range: [e.currentTarget.value === '' ? null : +e.currentTarget.value, cond.range[1]] })} placeholder={t('btcUpdown.cfg.condMin')} />
 														<span class="range-sep">~</span>
-														<input type="number" class="field-input cond-input" value={cond.range[1]} oninput={(e) => updateCondition(ri, ci, { range: [cond.range[0], e.currentTarget.value === '' ? null : +e.currentTarget.value] })} placeholder="max" />
+														<input type="number" class="field-input cond-input" value={cond.range[1]} oninput={(e) => updateCondition(ri, ci, { range: [cond.range[0], e.currentTarget.value === '' ? null : +e.currentTarget.value] })} placeholder={t('btcUpdown.cfg.condMax')} />
 														<span class="range-sep">=</span>
-														<input type="number" class="field-input cond-input" value={cond.score ?? 0} oninput={(e) => updateCondition(ri, ci, { score: +e.currentTarget.value })} placeholder="score" />
+														<input type="number" class="field-input cond-input" value={cond.score ?? 0} oninput={(e) => updateCondition(ri, ci, { score: +e.currentTarget.value })} placeholder={t('btcUpdown.cfg.condScore')} />
 														<button class="remove-btn" onclick={() => removeCondition(ri, ci)}>&times;</button>
 													</div>
 												{/each}
-												<button class="add-chip" onclick={() => addCondition(ri)}>+ Condition</button>
+												<button class="add-chip" onclick={() => addCondition(ri)}>{t('btcUpdown.cfg.addCondition')}</button>
 											</div>
 										</div>
 									{/each}
-									<button class="add-chip" onclick={addSignalRule}>+ Add Rule</button>
+									<button class="add-chip" onclick={addSignalRule}>{t('btcUpdown.cfg.addRule')}</button>
 								</div>
 							{/if}
 
 							{#if revealedSteps <= 4}
 								<button class="continue-btn" onclick={() => revealNext(4)}>
-									Continue
+									{t('btcUpdown.cfg.continue')}
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 								</button>
 							{/if}
@@ -962,7 +962,7 @@
 					<div class="step-card">
 						<div class="step-header">
 							<span class="step-num">5</span>
-							<span class="step-title">Exit Rules</span>
+							<span class="step-title">{t('btcUpdown.cfg.stepExitRules')}</span>
 						</div>
 						<div class="step-body">
 							<!-- User-defined exit rules (reorderable) -->
@@ -970,52 +970,52 @@
 								<div class="rule-card">
 									<div class="rule-header">
 										<div class="rule-order-btns">
-											<button class="order-btn" disabled={i === 0} onclick={() => moveExitRule(i, -1)} title="Move up">&uarr;</button>
-											<button class="order-btn" disabled={i === exitUserRules.length - 1} onclick={() => moveExitRule(i, 1)} title="Move down">&darr;</button>
+											<button class="order-btn" disabled={i === 0} onclick={() => moveExitRule(i, -1)} title={t('btcUpdown.cfg.moveUp')}>&uarr;</button>
+											<button class="order-btn" disabled={i === exitUserRules.length - 1} onclick={() => moveExitRule(i, 1)} title={t('btcUpdown.cfg.moveDown')}>&darr;</button>
 										</div>
 										<span class="rule-type">{exitTypeLabel(rule.type)}</span>
 										<button class="remove-btn" onclick={() => removeExitRule(i)}>&times;</button>
 									</div>
 									{#if rule.type === 'take_profit'}
 										<div class="rule-fields">
-											<label class="field-label">Profit %</label>
+											<label class="field-label">{t('btcUpdown.cfg.profitPct')}</label>
 											<input type="number" class="field-input sm" value={rule.pct} oninput={(e) => setExitProp(i, 'pct', +e.currentTarget.value)} min="0.01" max="10" step="0.01" />
 										</div>
 									{:else if rule.type === 'stop_loss'}
 										<div class="rule-fields-row">
 											<div class="field">
-												<label class="field-label">Price</label>
+												<label class="field-label">{t('btcUpdown.cfg.price')}</label>
 												<input type="number" class="field-input sm" value={rule.price} oninput={(e) => setExitProp(i, 'price', +e.currentTarget.value)} min="0" max="1" step="0.01" />
 											</div>
 											<div class="field">
-												<label class="field-label">Min Hold (s)</label>
+												<label class="field-label">{t('btcUpdown.cfg.minHoldS')}</label>
 												<input type="number" class="field-input sm" value={rule.minHoldSec} oninput={(e) => setExitProp(i, 'minHoldSec', +e.currentTarget.value)} min="0" max="300" />
 											</div>
 										</div>
 									{:else if rule.type === 'trailing_stop'}
 										<div class="rule-fields">
-											<label class="field-label">Drawdown %</label>
+											<label class="field-label">{t('btcUpdown.cfg.drawdownPct')}</label>
 											<input type="number" class="field-input sm" value={rule.drawdownPct} oninput={(e) => setExitProp(i, 'drawdownPct', +e.currentTarget.value)} min="0.01" max="1" step="0.01" />
 										</div>
 									{:else if rule.type === 'checkpoint'}
 										<div class="rule-fields">
-											<label class="field-label">Check at (sec remaining)</label>
+											<label class="field-label">{t('btcUpdown.cfg.checkAtSec')}</label>
 											<input type="number" class="field-input sm" value={rule.remainingSec} oninput={(e) => setExitProp(i, 'remainingSec', +e.currentTarget.value)} min="1" max="300" />
 										</div>
 									{/if}
 								</div>
 							{/each}
 							<div class="add-row">
-								<button class="add-chip" onclick={() => addExitRule('take_profit')}>+ TP</button>
-								<button class="add-chip" onclick={() => addExitRule('stop_loss')}>+ SL</button>
-								<button class="add-chip" onclick={() => addExitRule('trailing_stop')}>+ Trail</button>
-								<button class="add-chip" onclick={() => addExitRule('checkpoint')}>+ Check</button>
+								<button class="add-chip" onclick={() => addExitRule('take_profit')}>{t('btcUpdown.cfg.addTP')}</button>
+								<button class="add-chip" onclick={() => addExitRule('stop_loss')}>{t('btcUpdown.cfg.addSL')}</button>
+								<button class="add-chip" onclick={() => addExitRule('trailing_stop')}>{t('btcUpdown.cfg.addTrail')}</button>
+								<button class="add-chip" onclick={() => addExitRule('checkpoint')}>{t('btcUpdown.cfg.addCheck')}</button>
 							</div>
 							<!-- Settlement (always last, non-removable) -->
 							<div class="rule-card settlement-card">
 								<div class="rule-header">
 									<span class="rule-type settlement-type">{exitTypeLabel('settlement')}</span>
-									<span class="field-optional">fallback</span>
+									<span class="field-optional">{t('btcUpdown.cfg.fallback')}</span>
 								</div>
 							</div>
 
@@ -1036,7 +1036,7 @@
 							type="text"
 							class="field-input naming-input"
 							bind:value={label}
-							placeholder="Name your strategy..."
+							placeholder={t('btcUpdown.cfg.nameYourStrategy')}
 							onkeydown={(e) => { if (e.key === 'Enter' && label.trim()) handleSave(); }}
 						/>
 						<button class="btn-primary" onclick={handleSave} disabled={!label.trim()}>

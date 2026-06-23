@@ -282,5 +282,55 @@
   "profilePage.publicKey": "公钥",
   "profilePage.credentialId": "凭证 ID",
   "profilePage.invalidLink": "无效的资料链接",
-  "profilePage.invalidLinkDesc": "此资料链接无效或已损坏。"
+  "profilePage.invalidLinkDesc": "此资料链接无效或已损坏。",
+
+  "settings.weekStart": "每周起始日",
+  "settings.weekday.mon": "周一",
+  "settings.weekday.sun": "周日",
+
+  "widgets.themeToggle.toLight": "切换到浅色模式",
+  "widgets.themeToggle.toDark": "切换到深色模式",
+  "widgets.themeToggle.textSize": "调整字号",
+
+  "widgets.networkPicker.title": "网络",
+  "widgets.networkPicker.subtitle": "按名称或链 ID 搜索任意 EVM 链。",
+  "widgets.networkPicker.searchPlaceholder": "例如 Base、Arbitrum、BNB、1、56…",
+  "widgets.networkPicker.chain": "链 {id}",
+  "widgets.networkPicker.change": "更换",
+  "widgets.networkPicker.hide": "隐藏",
+  "widgets.networkPicker.custom": "自定义",
+  "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
+  "widgets.networkPicker.apply": "应用",
+
+  "widgets.smartParam.raw": "原始值",
+  "widgets.smartParam.tokenAmount": "代币数量",
+  "widgets.smartParam.duration": "时长",
+  "widgets.smartParam.date": "日期",
+  "widgets.smartParam.decimals": "精度",
+  "widgets.smartParam.fromText": "从文本",
+  "widgets.smartParam.unit.seconds": "秒",
+  "widgets.smartParam.unit.minutes": "分钟",
+  "widgets.smartParam.unit.hours": "小时",
+  "widgets.smartParam.unit.days": "天",
+  "widgets.smartParam.unit.weeks": "周",
+  "widgets.smartParam.unit.years": "年",
+
+  "datePicker.preset.all": "全部",
+  "datePicker.preset.today": "今日",
+  "datePicker.preset.yesterday": "昨日",
+  "datePicker.preset.7d": "7 天",
+  "datePicker.preset.30d": "30 天",
+  "datePicker.preset.90d": "90 天",
+  "datePicker.dialogLabel": "日期选择器",
+  "datePicker.prevMonth": "上个月",
+  "datePicker.nextMonth": "下个月",
+  "datePicker.today": "今日",
+  "datePicker.confirm": "确认",
+
+  "scanQr.title": "扫描二维码",
+  "scanQr.cameraDenied": "相机访问被拒绝",
+  "scanQr.notSupported": "此浏览器不支持二维码识别",
+
+  "subscriptionBadge.premiumMember": "高级会员",
+  "subscriptionBadge.premium": "PREMIUM"
 }

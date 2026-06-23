@@ -5,6 +5,8 @@
   "vcs.title": "Vela Wallet Chain-Einrichtung",
   "vcs.subtitle": "Jede EVM-Chain in wenigen einfachen Schritten für Vela Wallet vorbereiten",
 
+  "vcs.chainId": "Chain-ID: {id}",
+
   "vcs.search.placeholder": "Nach Chain-Name oder Chain-ID suchen…",
   "vcs.search.hint": "z. B. Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Keine Chains gefunden. Versuche einen anderen Suchbegriff.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Einige Verträge müssen bereitgestellt werden",
   "vcs.results.deployed": "Bereitgestellt",
   "vcs.results.missing": "Nicht bereitgestellt",
+  "vcs.results.mismatch": "Abweichung",
+  "vcs.results.mismatchWarning": "Falscher Bytecode an dieser Adresse!",
   "vcs.results.recheck": "Erneut prüfen",
   "vcs.results.changeChain": "Chain ändern",
+
+  "vcs.rpc.title": "RPC-Endpunkt",
+  "vcs.rpc.customBadge": "Eigen",
+  "vcs.rpc.available": "Verfügbare RPCs",
+  "vcs.rpc.unreachable": "nicht erreichbar",
+  "vcs.rpc.customLabel": "Eigene RPC",
+  "vcs.rpc.customPlaceholder": "https://deine-rpc-url...",
+  "vcs.rpc.apply": "Anwenden",
+
+  "vcs.p256.requiredFor": "Erforderlich für passkey-Signaturen",
+  "vcs.p256.available": "Verfügbar",
+  "vcs.p256.notAvailable": "Nicht verfügbar",
+  "vcs.p256.requirementBadge": "Voraussetzung",
+  "vcs.p256.notAvailableTitle": "P256-Precompile nicht verfügbar",
+  "vcs.p256.notAvailableDesc": "Diese Chain unterstützt das RIP-7212 P256-Precompile nicht, das für die Überprüfung von passkey-Signaturen (Fingerabdruck/Face ID) erforderlich ist. Vela Wallet kann auf dieser Chain ohne dieses Precompile nicht funktionieren.",
+  "vcs.p256.notAvailableNote": "Das P256-Precompile ist eine Funktion auf Chain-Ebene, die von den Validatoren/Betreibern der Chain aktiviert werden muss. Es kann nicht als Vertrag bereitgestellt werden. Wende dich an das Chain-Team, um RIP-7212-Unterstützung anzufragen.",
+
+  "vcs.action.startSetup": "Einrichtung starten",
+  "vcs.action.copy": "Kopieren",
+  "vcs.action.copied": "Kopiert!",
+  "vcs.action.balance": "Guthaben: {balance}",
+
+  "vcs.multicall3.title": "Multicall3 bereitstellen",
+  "vcs.multicall3.description": "Multicall3 ermöglicht effizientes Batch-Lesen von On-Chain-Daten. Die Bereitstellung erfolgt über eine vorsignierte Transaktion – keine Wallet-Erweiterung nötig.",
+  "vcs.multicall3.step1.title": "Schritt 1: Deployer finanzieren",
+  "vcs.multicall3.step1.description": "Sende mindestens 0,1 {symbol} an die untenstehende Deployer-Adresse. Dies deckt die gas-Gebühr.",
+  "vcs.multicall3.step2.title": "Schritt 2: Bereitstellen",
+  "vcs.multicall3.step2.description": "Klicke, um die vorsignierte Deployment-Transaktion zu senden.",
+
+  "vcs.deployer.estimatedGas": "Geschätztes gas: ~{gas}",
+  "vcs.deployer.create": "Deployer-Wallet erstellen",
+  "vcs.deployer.title": "Deployer-Wallet",
+  "vcs.deployer.description": "Sende {symbol} an diese Adresse, um die gas-Gebühren für die Bereitstellung zu decken.",
+  "vcs.deployer.nativeTokens": "native Tokens",
+  "vcs.deployer.address": "Deployer-Adresse:",
+  "vcs.deployer.checking": "Wird geprüft...",
+  "vcs.deployer.refresh": "Aktualisieren",
+  "vcs.deployer.downloadKey": "Private Key herunterladen",
+  "vcs.deployer.funded": "Finanziert! Bereit zur Bereitstellung.",
 
   "vcs.step.title": "Nächster Schritt",
 

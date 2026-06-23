@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Public Key",
   "profilePage.credentialId": "Credential ID",
   "profilePage.invalidLink": "Invalid Profile Link",
-  "profilePage.invalidLinkDesc": "This profile link is invalid or has been corrupted."
+  "profilePage.invalidLinkDesc": "This profile link is invalid or has been corrupted.",
+
+  "settings.weekStart": "Week starts on",
+  "settings.weekday.mon": "Mon",
+  "settings.weekday.sun": "Sun",
+
+  "widgets.themeToggle.toLight": "Switch to light mode",
+  "widgets.themeToggle.toDark": "Switch to dark mode",
+  "widgets.themeToggle.textSize": "Change text size",
+
+  "widgets.networkPicker.title": "Network",
+  "widgets.networkPicker.subtitle": "Search any EVM chain by name or chain ID.",
+  "widgets.networkPicker.searchPlaceholder": "e.g. Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Chain {id}",
+  "widgets.networkPicker.change": "Change",
+  "widgets.networkPicker.hide": "Hide",
+  "widgets.networkPicker.custom": "Custom",
+  "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
+  "widgets.networkPicker.apply": "Apply",
+
+  "widgets.smartParam.raw": "raw",
+  "widgets.smartParam.tokenAmount": "token amount",
+  "widgets.smartParam.duration": "duration",
+  "widgets.smartParam.date": "date",
+  "widgets.smartParam.decimals": "decimals",
+  "widgets.smartParam.fromText": "from text",
+  "widgets.smartParam.unit.seconds": "seconds",
+  "widgets.smartParam.unit.minutes": "minutes",
+  "widgets.smartParam.unit.hours": "hours",
+  "widgets.smartParam.unit.days": "days",
+  "widgets.smartParam.unit.weeks": "weeks",
+  "widgets.smartParam.unit.years": "years",
+
+  "datePicker.preset.all": "All",
+  "datePicker.preset.today": "Today",
+  "datePicker.preset.yesterday": "Yesterday",
+  "datePicker.preset.7d": "7 Days",
+  "datePicker.preset.30d": "30 Days",
+  "datePicker.preset.90d": "90 Days",
+  "datePicker.dialogLabel": "Date picker",
+  "datePicker.prevMonth": "Previous month",
+  "datePicker.nextMonth": "Next month",
+  "datePicker.today": "Today",
+  "datePicker.confirm": "Confirm",
+
+  "scanQr.title": "Scan QR Code",
+  "scanQr.cameraDenied": "Camera access denied",
+  "scanQr.notSupported": "QR detection not supported in this browser",
+
+  "subscriptionBadge.premiumMember": "Premium Member",
+  "subscriptionBadge.premium": "PREMIUM"
 }

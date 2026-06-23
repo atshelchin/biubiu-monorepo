@@ -39,21 +39,21 @@
 </script>
 
 <section class="page-header" use:fadeInUp={{ delay: 0 }}>
-  <a class="back-link" href={routes.space(spaceId)}>&larr; Back</a>
+  <a class="back-link" href={routes.space(spaceId)}>&larr; {t('updown5m.back')}</a>
   <div class="title-row">
-    <h1 class="page-title">{member?.displayName ?? 'User'}</h1>
-    {#if member?.tier === 'pro'}<span class="premium-badge">Premium</span>{/if}
-    {#if member?.role === 'admin'}<span class="admin-badge">Admin</span>{/if}
+    <h1 class="page-title">{member?.displayName ?? t('updown5m.userFallback')}</h1>
+    {#if member?.tier === 'pro'}<span class="premium-badge">{t('updown5m.premium')}</span>{/if}
+    {#if member?.role === 'admin'}<span class="admin-badge">{t('updown5m.space.admin')}</span>{/if}
   </div>
 </section>
 
 {#if member}
   <!-- Stats cards -->
   <div class="stats-grid-4" use:fadeInUp={{ delay: 30 }}>
-    <div class="stat-card"><div class="stat-label">Profit</div><div class="stat-value {profitClass(member.totalProfit)}">{fmt(member.totalProfit)}</div></div>
-    <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value">{fmtPct(member.winRate)}</div></div>
-    <div class="stat-card"><div class="stat-label">Rounds</div><div class="stat-value">{member.totalRounds}</div></div>
-    <div class="stat-card"><div class="stat-label">Instances</div><div class="stat-value">{member.activeInstances}</div></div>
+    <div class="stat-card"><div class="stat-label">{t('updown5m.space.member.profit')}</div><div class="stat-value {profitClass(member.totalProfit)}">{fmt(member.totalProfit)}</div></div>
+    <div class="stat-card"><div class="stat-label">{t('btcUpdown.stats.winRate')}</div><div class="stat-value">{fmtPct(member.winRate)}</div></div>
+    <div class="stat-card"><div class="stat-label">{t('updown5m.space.member.rounds')}</div><div class="stat-value">{member.totalRounds}</div></div>
+    <div class="stat-card"><div class="stat-label">{t('updown5m.space.member.instances')}</div><div class="stat-value">{member.activeInstances}</div></div>
   </div>
 
   <!-- Member info section -->
@@ -61,20 +61,20 @@
     <div class="info-card">
       <div class="info-grid">
         <div class="info-item">
-          <span class="info-label">Safe Address</span>
+          <span class="info-label">{t('updown5m.member.safeAddress')}</span>
           <span class="info-value mono">{member.safeAddress}</span>
         </div>
         <div class="info-item">
-          <span class="info-label">Joined</span>
+          <span class="info-label">{t('updown5m.space.member.joined')}</span>
           <span class="info-value">{fmtDate(member.joinedAt)}</span>
         </div>
         <div class="info-item">
-          <span class="info-label">Tier</span>
+          <span class="info-label">{t('updown5m.member.tier')}</span>
           <span class="info-value">
             {#if member.tier === 'pro'}
-              <span class="tier-badge tier-pro">Pro</span>
+              <span class="tier-badge tier-pro">{t('updown5m.member.tierPro')}</span>
             {:else}
-              <span class="tier-badge tier-free">Free</span>
+              <span class="tier-badge tier-free">{t('updown5m.member.tierFree')}</span>
             {/if}
           </span>
         </div>
@@ -84,7 +84,7 @@
             class:following={isFollowing}
             onclick={() => isFollowing = !isFollowing}
           >
-            {isFollowing ? 'Following' : 'Follow'}
+            {isFollowing ? t('updown5m.space.member.following') : t('updown5m.space.member.follow')}
           </button>
         </div>
       </div>
@@ -94,7 +94,7 @@
   <!-- Running instances -->
   <section class="section-instances" use:fadeInUp={{ delay: 90 }}>
     <div class="section-row">
-      <h2 class="section-title">Running Instances</h2>
+      <h2 class="section-title">{t('updown5m.member.runningInstances')}</h2>
     </div>
     {#if memberInstances.length > 0}
       <div class="instance-list">
@@ -112,19 +112,19 @@
             </div>
             <div class="card-metrics">
               <div>
-                <span class="metric-label">Today</span>
+                <span class="metric-label">{t('updown5m.table.today')}</span>
                 <span class="metric-value {profitClass(inst.profits.day)}">{fmt(inst.profits.day)}</span>
               </div>
               <div>
-                <span class="metric-label">30d</span>
+                <span class="metric-label">{t('updown5m.table.30d')}</span>
                 <span class="metric-value {profitClass(inst.profits.thirtyDay)}">{fmt(inst.profits.thirtyDay)}</span>
               </div>
               <div>
-                <span class="metric-label">Win Rate</span>
+                <span class="metric-label">{t('btcUpdown.stats.winRate')}</span>
                 <span class="metric-value">{fmtPct(inst.stats.winRate)}</span>
               </div>
               <div>
-                <span class="metric-label">Rounds</span>
+                <span class="metric-label">{t('updown5m.space.member.rounds')}</span>
                 <span class="metric-value">{inst.stats.rounds}</span>
               </div>
             </div>
@@ -133,7 +133,7 @@
       </div>
     {:else}
       <div class="empty-inline">
-        <p>No active instances in this space.</p>
+        <p>{t('updown5m.member.noActiveInstances')}</p>
       </div>
     {/if}
   </section>
@@ -141,7 +141,7 @@
   <!-- Performance summary -->
   <section class="section-performance" use:fadeInUp={{ delay: 120 }}>
     <div class="section-row">
-      <h2 class="section-title">Performance Summary</h2>
+      <h2 class="section-title">{t('updown5m.member.performanceSummary')}</h2>
     </div>
     <StatsGrid {stats} {selectedHour} {ctx} t={sharedT} onClearHour={() => selectedHour = null} />
     <HourlyChart
@@ -155,7 +155,7 @@
     />
   </section>
 {:else}
-  <div class="empty-state"><p class="empty-title">User not found</p></div>
+  <div class="empty-state"><p class="empty-title">{t('updown5m.member.userNotFound')}</p></div>
 {/if}
 
 <style>

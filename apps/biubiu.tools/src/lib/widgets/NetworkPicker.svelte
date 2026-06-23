@@ -8,6 +8,7 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { chainLogoUrl } from '$lib/contract-caller/networks.js';
+	import { t } from '$lib/i18n';
 
 	interface RpcOpt {
 		url: string;
@@ -63,8 +64,8 @@
 		usingCustomRpc = false,
 		customRpcInput,
 		rpcError = '',
-		title = 'Network',
-		subtitle = 'Search any EVM chain by name or chain ID.',
+		title = t('widgets.networkPicker.title'),
+		subtitle = t('widgets.networkPicker.subtitle'),
 		onSearch,
 		onSelectChain,
 		onChangeNetwork,
@@ -103,7 +104,7 @@
 			<input
 				type="text"
 				class="input"
-				placeholder="e.g. Base, Arbitrum, BNB, 1, 56…"
+				placeholder={t('widgets.networkPicker.searchPlaceholder')}
 				oninput={handleSearch}
 				value={searchQuery}
 			/>
@@ -134,10 +135,10 @@
 			<img src={chainLogoUrl(selectedChain.chainId)} alt="" class="logo" onerror={hideImg} />
 			<div class="meta">
 				<span class="name">{selectedChain.name}</span>
-				<span class="sub">Chain {selectedChain.chainId}</span>
+				<span class="sub">{t('widgets.networkPicker.chain', { id: selectedChain.chainId })}</span>
 			</div>
 			{#if badge}{@render badge()}{/if}
-			<button class="link" onclick={onChangeNetwork}>Change</button>
+			<button class="link" onclick={onChangeNetwork}>{t('widgets.networkPicker.change')}</button>
 		</div>
 
 		<div class="bar-rpc">
@@ -154,7 +155,7 @@
 			{:else}
 				<code class="rpc-url">{host(rpcUrl)}{#if rpcLatency !== null} · {rpcLatency}ms{/if}</code>
 			{/if}
-			<button class="link sm" onclick={() => (showCustom = !showCustom)}>{showCustom ? 'Hide' : 'Custom'}</button>
+			<button class="link sm" onclick={() => (showCustom = !showCustom)}>{showCustom ? t('widgets.networkPicker.hide') : t('widgets.networkPicker.custom')}</button>
 		</div>
 
 		{#if showCustom}
@@ -162,12 +163,12 @@
 				<input
 					type="text"
 					class="input"
-					placeholder="https://your-rpc…"
+					placeholder={t('widgets.networkPicker.customRpcPlaceholder')}
 					value={customRpcInput}
 					oninput={(e) => onCustomRpcInput((e.target as HTMLInputElement).value)}
 					onkeydown={(e) => e.key === 'Enter' && onApplyCustomRpc()}
 				/>
-				<button class="apply" onclick={onApplyCustomRpc} disabled={!customRpcInput.trim()}>Apply</button>
+				<button class="apply" onclick={onApplyCustomRpc} disabled={!customRpcInput.trim()}>{t('widgets.networkPicker.apply')}</button>
 			</div>
 		{/if}
 		{#if rpcError}<p class="err">{rpcError}</p>{/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { preferences } from '$lib/i18n';
+	import { preferences, t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 
 	type DateRange = { from: string; to: string };
@@ -269,17 +269,18 @@
 		viewMonth = new Date();
 	}
 
-	const presetLabels: Record<string, string> = {
-		all: 'All',
-		today: 'Today',
-		yesterday: 'Yesterday',
-		'7d': '7 Days',
-		'30d': '30 Days',
-		'90d': '90 Days'
+	const presetLabelKeys: Record<string, string> = {
+		all: 'datePicker.preset.all',
+		today: 'datePicker.preset.today',
+		yesterday: 'datePicker.preset.yesterday',
+		'7d': 'datePicker.preset.7d',
+		'30d': 'datePicker.preset.30d',
+		'90d': 'datePicker.preset.90d'
 	};
 
 	function getPresetLabel(key: string): string {
-		return presetLabels[key] ?? key;
+		const msgKey = presetLabelKeys[key];
+		return msgKey ? t(msgKey as Parameters<typeof t>[0]) : key;
 	}
 
 	function isPresetActive(key: string): boolean {
@@ -402,7 +403,7 @@
 			class="dp-panel"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Date picker"
+			aria-label={t('datePicker.dialogLabel')}
 			onclick={(e) => e.stopPropagation()}
 			style={panelStyle}
 		>
@@ -410,11 +411,11 @@
 		<div class="dp-handle"></div>
 		<!-- Month nav -->
 		<div class="dp-month-nav">
-			<button class="dp-month-btn" onclick={() => shiftMonth(-1)} aria-label="Previous month">
+			<button class="dp-month-btn" onclick={() => shiftMonth(-1)} aria-label={t('datePicker.prevMonth')}>
 				<svg width="14" height="14" viewBox="0 0 10 10"><path d="M7 1L3 5L7 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 			</button>
 			<span class="dp-month-label">{monthLabel}</span>
-			<button class="dp-month-btn" onclick={() => shiftMonth(1)} aria-label="Next month">
+			<button class="dp-month-btn" onclick={() => shiftMonth(1)} aria-label={t('datePicker.nextMonth')}>
 				<svg width="14" height="14" viewBox="0 0 10 10"><path d="M3 1L7 5L3 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 			</button>
 		</div>
@@ -449,14 +450,14 @@
 		<!-- Footer: Today jump + confirm -->
 		<div class="dp-panel-footer">
 			<button class="dp-today-btn" onclick={goToToday}>
-				Today
+				{t('datePicker.today')}
 			</button>
 			{#if mode === 'range'}
 				<button
 					class="dp-confirm-btn"
 					disabled={!pendingRange.from}
 					onclick={confirmRange}
-				>Confirm</button>
+				>{t('datePicker.confirm')}</button>
 			{/if}
 		</div>
 	</div>

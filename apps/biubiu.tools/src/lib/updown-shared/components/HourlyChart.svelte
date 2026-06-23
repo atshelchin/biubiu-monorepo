@@ -28,7 +28,7 @@
 	<h3 class="section-label">{t(titleKey ?? 'btcUpdown.chart.hourlyProfit')}</h3>
 	{#each [[0, 12, 'AM'], [12, 24, 'PM']] as [start, end, label] (label)}
 		<div class="chart-row">
-			<span class="chart-row-label">{label}</span>
+			<span class="chart-row-label">{label === 'AM' ? t('btcUpdown.chart.am') : t('btcUpdown.chart.pm')}</span>
 			<div class="chart-container">
 				{#each HOURS_24.slice(start as number, end as number) as hour (hour)}
 					{@const h = hourlyMap.get(hour)}

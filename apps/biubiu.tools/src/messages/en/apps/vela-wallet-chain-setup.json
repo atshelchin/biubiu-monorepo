@@ -5,6 +5,8 @@
   "vcs.title": "Vela Wallet Chain Setup",
   "vcs.subtitle": "Prepare any EVM chain for Vela Wallet in a few simple steps",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Search by chain name or Chain ID...",
   "vcs.search.hint": "e.g. Ethereum, Polygon, 42161",
   "vcs.search.noResults": "No chains found. Try a different search term.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Some contracts need to be deployed",
   "vcs.results.deployed": "Deployed",
   "vcs.results.missing": "Not deployed",
+  "vcs.results.mismatch": "Mismatch",
+  "vcs.results.mismatchWarning": "Wrong bytecode at this address!",
   "vcs.results.recheck": "Check Again",
   "vcs.results.changeChain": "Change Chain",
+
+  "vcs.rpc.title": "RPC Endpoint",
+  "vcs.rpc.customBadge": "Custom",
+  "vcs.rpc.available": "Available RPCs",
+  "vcs.rpc.unreachable": "unreachable",
+  "vcs.rpc.customLabel": "Custom RPC",
+  "vcs.rpc.customPlaceholder": "https://your-rpc-url...",
+  "vcs.rpc.apply": "Apply",
+
+  "vcs.p256.requiredFor": "Required for passkey signatures",
+  "vcs.p256.available": "Available",
+  "vcs.p256.notAvailable": "Not available",
+  "vcs.p256.requirementBadge": "Requirement",
+  "vcs.p256.notAvailableTitle": "P256 Precompile Not Available",
+  "vcs.p256.notAvailableDesc": "This chain does not support the RIP-7212 P256 precompile, which is required for passkey (fingerprint/Face ID) signature verification. Vela Wallet cannot work on this chain without it.",
+  "vcs.p256.notAvailableNote": "The P256 precompile is a chain-level feature that must be enabled by the chain's validators/operators. It cannot be deployed as a contract. Contact the chain team to request RIP-7212 support.",
+
+  "vcs.action.startSetup": "Start Setup",
+  "vcs.action.copy": "Copy",
+  "vcs.action.copied": "Copied!",
+  "vcs.action.balance": "Balance: {balance}",
+
+  "vcs.multicall3.title": "Deploy Multicall3",
+  "vcs.multicall3.description": "Multicall3 enables efficient batch-reading of on-chain data. This is deployed using a pre-signed transaction — no wallet extension needed.",
+  "vcs.multicall3.step1.title": "Step 1: Fund the deployer",
+  "vcs.multicall3.step1.description": "Send at least 0.1 {symbol} to the deployer address below. This covers the gas fee.",
+  "vcs.multicall3.step2.title": "Step 2: Deploy",
+  "vcs.multicall3.step2.description": "Click to broadcast the pre-signed deployment transaction.",
+
+  "vcs.deployer.estimatedGas": "Estimated gas: ~{gas}",
+  "vcs.deployer.create": "Create Deployer Wallet",
+  "vcs.deployer.title": "Deployer Wallet",
+  "vcs.deployer.description": "Send {symbol} to this address to cover gas fees for deployment.",
+  "vcs.deployer.nativeTokens": "native tokens",
+  "vcs.deployer.address": "Deployer address:",
+  "vcs.deployer.checking": "Checking...",
+  "vcs.deployer.refresh": "Refresh",
+  "vcs.deployer.downloadKey": "Download Private Key",
+  "vcs.deployer.funded": "Funded! Ready to deploy.",
 
   "vcs.step.title": "Next Step",
 

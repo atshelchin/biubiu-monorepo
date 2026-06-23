@@ -5,6 +5,8 @@
 	 * Falls back to manual paste if BarcodeDetector is not available.
 	 */
 
+	import { t } from '$lib/i18n';
+
 	interface Props {
 		/** Called with the scanned QR code value */
 		onScan: (value: string) => void;
@@ -36,7 +38,7 @@
 				detectLoop();
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Camera access denied';
+			error = e instanceof Error ? e.message : t('scanQr.cameraDenied');
 			stopScan();
 		}
 	}
@@ -71,7 +73,7 @@
 			};
 			detect();
 		} catch {
-			error = 'QR detection not supported in this browser';
+			error = t('scanQr.notSupported');
 			stopScan();
 		}
 	}
@@ -83,7 +85,7 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="scan-modal" onclick={(e) => e.stopPropagation()}>
 			<div class="scan-header">
-				<span class="scan-title">Scan QR Code</span>
+				<span class="scan-title">{t('scanQr.title')}</span>
 				<button class="scan-close" onclick={stopScan}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
 				</button>
@@ -101,7 +103,7 @@
 {/if}
 
 {#if supported}
-	<button class="scan-btn" onclick={startScan} title="Scan QR Code" type="button">
+	<button class="scan-btn" onclick={startScan} title={t('scanQr.title')} type="button">
 		<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
 	</button>
 {/if}

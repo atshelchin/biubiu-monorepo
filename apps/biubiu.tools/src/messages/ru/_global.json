@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Открытый ключ",
   "profilePage.credentialId": "ID учётных данных",
   "profilePage.invalidLink": "Недействительная ссылка профиля",
-  "profilePage.invalidLinkDesc": "Эта ссылка на профиль недействительна или повреждена."
+  "profilePage.invalidLinkDesc": "Эта ссылка на профиль недействительна или повреждена.",
+
+  "settings.weekStart": "Начало недели",
+  "settings.weekday.mon": "Пн",
+  "settings.weekday.sun": "Вс",
+
+  "widgets.themeToggle.toLight": "Переключить на светлую тему",
+  "widgets.themeToggle.toDark": "Переключить на тёмную тему",
+  "widgets.themeToggle.textSize": "Изменить размер текста",
+
+  "widgets.networkPicker.title": "Сеть",
+  "widgets.networkPicker.subtitle": "Найдите любую EVM-сеть по названию или Chain ID.",
+  "widgets.networkPicker.searchPlaceholder": "например, Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Сеть {id}",
+  "widgets.networkPicker.change": "Сменить",
+  "widgets.networkPicker.hide": "Скрыть",
+  "widgets.networkPicker.custom": "Свой",
+  "widgets.networkPicker.customRpcPlaceholder": "https://ваш-rpc…",
+  "widgets.networkPicker.apply": "Применить",
+
+  "widgets.smartParam.raw": "как есть",
+  "widgets.smartParam.tokenAmount": "сумма токена",
+  "widgets.smartParam.duration": "длительность",
+  "widgets.smartParam.date": "дата",
+  "widgets.smartParam.decimals": "decimals",
+  "widgets.smartParam.fromText": "из текста",
+  "widgets.smartParam.unit.seconds": "секунды",
+  "widgets.smartParam.unit.minutes": "минуты",
+  "widgets.smartParam.unit.hours": "часы",
+  "widgets.smartParam.unit.days": "дни",
+  "widgets.smartParam.unit.weeks": "недели",
+  "widgets.smartParam.unit.years": "годы",
+
+  "datePicker.preset.all": "Всё",
+  "datePicker.preset.today": "Сегодня",
+  "datePicker.preset.yesterday": "Вчера",
+  "datePicker.preset.7d": "7 дней",
+  "datePicker.preset.30d": "30 дней",
+  "datePicker.preset.90d": "90 дней",
+  "datePicker.dialogLabel": "Выбор даты",
+  "datePicker.prevMonth": "Предыдущий месяц",
+  "datePicker.nextMonth": "Следующий месяц",
+  "datePicker.today": "Сегодня",
+  "datePicker.confirm": "Подтвердить",
+
+  "scanQr.title": "Сканировать QR-код",
+  "scanQr.cameraDenied": "Доступ к камере запрещён",
+  "scanQr.notSupported": "Распознавание QR не поддерживается в этом браузере",
+
+  "subscriptionBadge.premiumMember": "Premium-участник",
+  "subscriptionBadge.premium": "PREMIUM"
 }

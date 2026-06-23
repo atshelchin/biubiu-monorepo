@@ -282,5 +282,55 @@
   "profilePage.publicKey": "公鑰",
   "profilePage.credentialId": "憑證 ID",
   "profilePage.invalidLink": "無效的資料連結",
-  "profilePage.invalidLinkDesc": "此資料連結無效或已損毀。"
+  "profilePage.invalidLinkDesc": "此資料連結無效或已損毀。",
+
+  "settings.weekStart": "每週起始日",
+  "settings.weekday.mon": "週一",
+  "settings.weekday.sun": "週日",
+
+  "widgets.themeToggle.toLight": "切換至淺色模式",
+  "widgets.themeToggle.toDark": "切換至深色模式",
+  "widgets.themeToggle.textSize": "調整文字大小",
+
+  "widgets.networkPicker.title": "網路",
+  "widgets.networkPicker.subtitle": "依名稱或鏈 ID 搜尋任意 EVM 鏈。",
+  "widgets.networkPicker.searchPlaceholder": "例如 Base、Arbitrum、BNB、1、56…",
+  "widgets.networkPicker.chain": "鏈 {id}",
+  "widgets.networkPicker.change": "更換",
+  "widgets.networkPicker.hide": "隱藏",
+  "widgets.networkPicker.custom": "自訂",
+  "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
+  "widgets.networkPicker.apply": "套用",
+
+  "widgets.smartParam.raw": "原始值",
+  "widgets.smartParam.tokenAmount": "代幣數量",
+  "widgets.smartParam.duration": "時長",
+  "widgets.smartParam.date": "日期",
+  "widgets.smartParam.decimals": "小數位數",
+  "widgets.smartParam.fromText": "由文字轉換",
+  "widgets.smartParam.unit.seconds": "秒",
+  "widgets.smartParam.unit.minutes": "分鐘",
+  "widgets.smartParam.unit.hours": "小時",
+  "widgets.smartParam.unit.days": "天",
+  "widgets.smartParam.unit.weeks": "週",
+  "widgets.smartParam.unit.years": "年",
+
+  "datePicker.preset.all": "全部",
+  "datePicker.preset.today": "今日",
+  "datePicker.preset.yesterday": "昨日",
+  "datePicker.preset.7d": "7 天",
+  "datePicker.preset.30d": "30 天",
+  "datePicker.preset.90d": "90 天",
+  "datePicker.dialogLabel": "日期選擇器",
+  "datePicker.prevMonth": "上個月",
+  "datePicker.nextMonth": "下個月",
+  "datePicker.today": "今日",
+  "datePicker.confirm": "確認",
+
+  "scanQr.title": "掃描 QR Code",
+  "scanQr.cameraDenied": "相機存取遭拒",
+  "scanQr.notSupported": "此瀏覽器不支援 QR Code 偵測",
+
+  "subscriptionBadge.premiumMember": "進階會員",
+  "subscriptionBadge.premium": "PREMIUM"
 }

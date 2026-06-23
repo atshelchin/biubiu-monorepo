@@ -5,6 +5,8 @@
   "vcs.title": "Configuración de Cadena para Vela Wallet",
   "vcs.subtitle": "Prepara cualquier cadena EVM para Vela Wallet en unos sencillos pasos",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Busca por nombre de cadena o Chain ID…",
   "vcs.search.hint": "p. ej. Ethereum, Polygon, 42161",
   "vcs.search.noResults": "No se encontraron cadenas. Prueba con otro término de búsqueda.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Algunos contratos deben desplegarse",
   "vcs.results.deployed": "Desplegado",
   "vcs.results.missing": "No desplegado",
+  "vcs.results.mismatch": "No coincide",
+  "vcs.results.mismatchWarning": "¡Bytecode incorrecto en esta dirección!",
   "vcs.results.recheck": "Verificar de nuevo",
   "vcs.results.changeChain": "Cambiar cadena",
+
+  "vcs.rpc.title": "Endpoint de RPC",
+  "vcs.rpc.customBadge": "Personalizado",
+  "vcs.rpc.available": "RPC disponibles",
+  "vcs.rpc.unreachable": "inaccesible",
+  "vcs.rpc.customLabel": "RPC personalizado",
+  "vcs.rpc.customPlaceholder": "https://tu-rpc-url...",
+  "vcs.rpc.apply": "Aplicar",
+
+  "vcs.p256.requiredFor": "Requerido para las firmas con passkey",
+  "vcs.p256.available": "Disponible",
+  "vcs.p256.notAvailable": "No disponible",
+  "vcs.p256.requirementBadge": "Requisito",
+  "vcs.p256.notAvailableTitle": "El precompilado P256 no está disponible",
+  "vcs.p256.notAvailableDesc": "Esta cadena no admite el precompilado P256 de RIP-7212, que es necesario para verificar las firmas con passkey (huella/Face ID). Vela Wallet no puede funcionar en esta cadena sin él.",
+  "vcs.p256.notAvailableNote": "El precompilado P256 es una característica a nivel de cadena que deben habilitar los validadores/operadores de la cadena. No se puede desplegar como contrato. Contacta al equipo de la cadena para solicitar compatibilidad con RIP-7212.",
+
+  "vcs.action.startSetup": "Iniciar configuración",
+  "vcs.action.copy": "Copiar",
+  "vcs.action.copied": "¡Copiado!",
+  "vcs.action.balance": "Saldo: {balance}",
+
+  "vcs.multicall3.title": "Desplegar Multicall3",
+  "vcs.multicall3.description": "Multicall3 permite leer datos en cadena por lotes de forma eficiente. Se despliega mediante una transacción prefirmada: no se necesita extensión de billetera.",
+  "vcs.multicall3.step1.title": "Paso 1: Fondea al desplegador",
+  "vcs.multicall3.step1.description": "Envía al menos 0.1 {symbol} a la dirección del desplegador de abajo. Esto cubre la comisión de gas.",
+  "vcs.multicall3.step2.title": "Paso 2: Desplegar",
+  "vcs.multicall3.step2.description": "Haz clic para transmitir la transacción de despliegue prefirmada.",
+
+  "vcs.deployer.estimatedGas": "Gas estimado: ~{gas}",
+  "vcs.deployer.create": "Crear billetera de desplegador",
+  "vcs.deployer.title": "Billetera de desplegador",
+  "vcs.deployer.description": "Envía {symbol} a esta dirección para cubrir las comisiones de gas del despliegue.",
+  "vcs.deployer.nativeTokens": "tokens nativos",
+  "vcs.deployer.address": "Dirección del desplegador:",
+  "vcs.deployer.checking": "Verificando...",
+  "vcs.deployer.refresh": "Actualizar",
+  "vcs.deployer.downloadKey": "Descargar clave privada",
+  "vcs.deployer.funded": "¡Fondeado! Listo para desplegar.",
 
   "vcs.step.title": "Siguiente paso",
 

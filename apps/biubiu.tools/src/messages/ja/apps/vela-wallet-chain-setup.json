@@ -5,6 +5,8 @@
   "vcs.title": "Vela Wallet チェーンセットアップ",
   "vcs.subtitle": "数ステップで任意の EVM チェーンを Vela Wallet 用に準備",
 
+  "vcs.chainId": "チェーン ID：{id}",
+
   "vcs.search.placeholder": "チェーン名またはチェーン ID で検索…",
   "vcs.search.hint": "例：Ethereum、Polygon、42161",
   "vcs.search.noResults": "チェーンが見つかりません。別のキーワードでお試しください。",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "一部のコントラクトはデプロイが必要です",
   "vcs.results.deployed": "デプロイ済み",
   "vcs.results.missing": "未デプロイ",
+  "vcs.results.mismatch": "不一致",
+  "vcs.results.mismatchWarning": "このアドレスのバイトコードが正しくありません！",
   "vcs.results.recheck": "再確認",
   "vcs.results.changeChain": "チェーンを変更",
+
+  "vcs.rpc.title": "RPC エンドポイント",
+  "vcs.rpc.customBadge": "カスタム",
+  "vcs.rpc.available": "利用可能な RPC",
+  "vcs.rpc.unreachable": "接続できません",
+  "vcs.rpc.customLabel": "カスタム RPC",
+  "vcs.rpc.customPlaceholder": "https://your-rpc-url...",
+  "vcs.rpc.apply": "適用",
+
+  "vcs.p256.requiredFor": "passkey 署名に必要です",
+  "vcs.p256.available": "利用可能",
+  "vcs.p256.notAvailable": "利用できません",
+  "vcs.p256.requirementBadge": "必須要件",
+  "vcs.p256.notAvailableTitle": "P256 プリコンパイルが利用できません",
+  "vcs.p256.notAvailableDesc": "このチェーンは RIP-7212 P256 プリコンパイルに対応していません。これは passkey（指紋 / Face ID）署名の検証に必要なものです。これがないと Vela Wallet はこのチェーンで動作できません。",
+  "vcs.p256.notAvailableNote": "P256 プリコンパイルはチェーンレベルの機能で、そのチェーンのバリデーター / オペレーターが有効化する必要があります。コントラクトとしてデプロイすることはできません。RIP-7212 への対応をチェーンチームに依頼してください。",
+
+  "vcs.action.startSetup": "セットアップを開始",
+  "vcs.action.copy": "コピー",
+  "vcs.action.copied": "コピーしました！",
+  "vcs.action.balance": "残高：{balance}",
+
+  "vcs.multicall3.title": "Multicall3 をデプロイ",
+  "vcs.multicall3.description": "Multicall3 を使うと、オンチェーンデータをまとめて効率的に読み取れます。これはあらかじめ署名されたトランザクションでデプロイされ、ウォレット拡張機能は不要です。",
+  "vcs.multicall3.step1.title": "ステップ 1：デプロイヤーに資金を入れる",
+  "vcs.multicall3.step1.description": "下のデプロイヤーアドレスに少なくとも 0.1 {symbol} を送ってください。これは gas 代をまかなうものです。",
+  "vcs.multicall3.step2.title": "ステップ 2：デプロイ",
+  "vcs.multicall3.step2.description": "クリックして、あらかじめ署名されたデプロイトランザクションをブロードキャストします。",
+
+  "vcs.deployer.estimatedGas": "推定 gas：約 {gas}",
+  "vcs.deployer.create": "デプロイヤーウォレットを作成",
+  "vcs.deployer.title": "デプロイヤーウォレット",
+  "vcs.deployer.description": "デプロイの gas 代をまかなうため、このアドレスに {symbol} を送ってください。",
+  "vcs.deployer.nativeTokens": "ネイティブトークン",
+  "vcs.deployer.address": "デプロイヤーアドレス：",
+  "vcs.deployer.checking": "確認中…",
+  "vcs.deployer.refresh": "更新",
+  "vcs.deployer.downloadKey": "秘密鍵をダウンロード",
+  "vcs.deployer.funded": "資金を入れました！デプロイの準備ができました。",
 
   "vcs.step.title": "次のステップ",
 

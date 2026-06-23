@@ -185,7 +185,7 @@
 					class="dt-page-btn"
 					disabled={currentPage === 0}
 					onclick={() => (currentPage = Math.max(0, currentPage - 1))}
-					aria-label="Previous page"
+					aria-label={t('updown5m.table.prevPage')}
 				>
 					&lsaquo;
 				</button>
@@ -202,7 +202,7 @@
 					class="dt-page-btn"
 					disabled={currentPage >= totalPages - 1}
 					onclick={() => (currentPage = Math.min(totalPages - 1, currentPage + 1))}
-					aria-label="Next page"
+					aria-label={t('updown5m.table.nextPage')}
 				>
 					&rsaquo;
 				</button>

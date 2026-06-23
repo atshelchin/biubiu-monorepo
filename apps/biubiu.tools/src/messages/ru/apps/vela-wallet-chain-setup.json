@@ -5,6 +5,8 @@
   "vcs.title": "Настройка сети Vela Wallet",
   "vcs.subtitle": "Подготовьте любую EVM-сеть для Vela Wallet за несколько простых шагов",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Поиск по названию сети или Chain ID…",
   "vcs.search.hint": "например, Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Сети не найдены. Попробуйте другой запрос.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Часть контрактов нужно развернуть",
   "vcs.results.deployed": "Развёрнут",
   "vcs.results.missing": "Не развёрнут",
+  "vcs.results.mismatch": "Несоответствие",
+  "vcs.results.mismatchWarning": "Неверный байткод по этому адресу!",
   "vcs.results.recheck": "Проверить снова",
   "vcs.results.changeChain": "Сменить сеть",
+
+  "vcs.rpc.title": "RPC-эндпоинт",
+  "vcs.rpc.customBadge": "Свой",
+  "vcs.rpc.available": "Доступные RPC",
+  "vcs.rpc.unreachable": "недоступен",
+  "vcs.rpc.customLabel": "Свой RPC",
+  "vcs.rpc.customPlaceholder": "https://ваш-rpc-url...",
+  "vcs.rpc.apply": "Применить",
+
+  "vcs.p256.requiredFor": "Нужно для подписей passkey",
+  "vcs.p256.available": "Доступно",
+  "vcs.p256.notAvailable": "Недоступно",
+  "vcs.p256.requirementBadge": "Требование",
+  "vcs.p256.notAvailableTitle": "Прекомпайл P256 недоступен",
+  "vcs.p256.notAvailableDesc": "Эта сеть не поддерживает прекомпайл P256 (RIP-7212), который нужен для проверки подписей passkey (отпечаток / Face ID). Без него Vela Wallet не сможет работать в этой сети.",
+  "vcs.p256.notAvailableNote": "Прекомпайл P256 — это функция уровня сети, которую должны включить валидаторы/операторы сети. Его нельзя развернуть как контракт. Обратитесь к команде сети с запросом на поддержку RIP-7212.",
+
+  "vcs.action.startSetup": "Начать настройку",
+  "vcs.action.copy": "Копировать",
+  "vcs.action.copied": "Скопировано!",
+  "vcs.action.balance": "Баланс: {balance}",
+
+  "vcs.multicall3.title": "Развернуть Multicall3",
+  "vcs.multicall3.description": "Multicall3 обеспечивает эффективное пакетное чтение ончейн-данных. Разворачивается заранее подписанной транзакцией — расширение кошелька не нужно.",
+  "vcs.multicall3.step1.title": "Шаг 1. Пополните деплоер",
+  "vcs.multicall3.step1.description": "Отправьте минимум 0.1 {symbol} на адрес деплоера ниже. Это покроет комиссию gas.",
+  "vcs.multicall3.step2.title": "Шаг 2. Развернуть",
+  "vcs.multicall3.step2.description": "Нажмите, чтобы транслировать заранее подписанную транзакцию деплоя.",
+
+  "vcs.deployer.estimatedGas": "Оценочный gas: ~{gas}",
+  "vcs.deployer.create": "Создать кошелёк деплоера",
+  "vcs.deployer.title": "Кошелёк деплоера",
+  "vcs.deployer.description": "Отправьте {symbol} на этот адрес, чтобы покрыть комиссию gas за деплой.",
+  "vcs.deployer.nativeTokens": "нативные токены",
+  "vcs.deployer.address": "Адрес деплоера:",
+  "vcs.deployer.checking": "Проверка...",
+  "vcs.deployer.refresh": "Обновить",
+  "vcs.deployer.downloadKey": "Скачать приватный ключ",
+  "vcs.deployer.funded": "Пополнено! Можно разворачивать.",
 
   "vcs.step.title": "Следующий шаг",
 

@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Kunci Publik",
   "profilePage.credentialId": "ID Kredensial",
   "profilePage.invalidLink": "Tautan Profil Tidak Valid",
-  "profilePage.invalidLinkDesc": "Tautan profil ini tidak valid atau telah rusak."
+  "profilePage.invalidLinkDesc": "Tautan profil ini tidak valid atau telah rusak.",
+
+  "settings.weekStart": "Awal pekan",
+  "settings.weekday.mon": "Sen",
+  "settings.weekday.sun": "Min",
+
+  "widgets.themeToggle.toLight": "Beralih ke mode terang",
+  "widgets.themeToggle.toDark": "Beralih ke mode gelap",
+  "widgets.themeToggle.textSize": "Ubah ukuran teks",
+
+  "widgets.networkPicker.title": "Jaringan",
+  "widgets.networkPicker.subtitle": "Cari chain EVM mana pun berdasarkan nama atau Chain ID.",
+  "widgets.networkPicker.searchPlaceholder": "mis. Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Chain {id}",
+  "widgets.networkPicker.change": "Ganti",
+  "widgets.networkPicker.hide": "Sembunyikan",
+  "widgets.networkPicker.custom": "Kustom",
+  "widgets.networkPicker.customRpcPlaceholder": "https://rpc-kamu…",
+  "widgets.networkPicker.apply": "Terapkan",
+
+  "widgets.smartParam.raw": "mentah",
+  "widgets.smartParam.tokenAmount": "jumlah token",
+  "widgets.smartParam.duration": "durasi",
+  "widgets.smartParam.date": "tanggal",
+  "widgets.smartParam.decimals": "desimal",
+  "widgets.smartParam.fromText": "dari teks",
+  "widgets.smartParam.unit.seconds": "detik",
+  "widgets.smartParam.unit.minutes": "menit",
+  "widgets.smartParam.unit.hours": "jam",
+  "widgets.smartParam.unit.days": "hari",
+  "widgets.smartParam.unit.weeks": "pekan",
+  "widgets.smartParam.unit.years": "tahun",
+
+  "datePicker.preset.all": "Semua",
+  "datePicker.preset.today": "Hari Ini",
+  "datePicker.preset.yesterday": "Kemarin",
+  "datePicker.preset.7d": "7 Hari",
+  "datePicker.preset.30d": "30 Hari",
+  "datePicker.preset.90d": "90 Hari",
+  "datePicker.dialogLabel": "Pemilih tanggal",
+  "datePicker.prevMonth": "Bulan sebelumnya",
+  "datePicker.nextMonth": "Bulan berikutnya",
+  "datePicker.today": "Hari Ini",
+  "datePicker.confirm": "Konfirmasi",
+
+  "scanQr.title": "Pindai Kode QR",
+  "scanQr.cameraDenied": "Akses kamera ditolak",
+  "scanQr.notSupported": "Deteksi QR tidak didukung di browser ini",
+
+  "subscriptionBadge.premiumMember": "Anggota Premium",
+  "subscriptionBadge.premium": "PREMIUM"
 }

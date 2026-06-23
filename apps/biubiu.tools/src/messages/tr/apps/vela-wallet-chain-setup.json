@@ -5,6 +5,8 @@
   "vcs.title": "Vela Wallet Zincir Kurulumu",
   "vcs.subtitle": "Herhangi bir EVM zincirini birkaç basit adımda Vela Wallet için hazırlayın",
 
+  "vcs.chainId": "Zincir ID'si: {id}",
+
   "vcs.search.placeholder": "Zincir adına veya Zincir ID'sine göre arayın…",
   "vcs.search.hint": "örn. Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Zincir bulunamadı. Farklı bir arama terimi deneyin.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Bazı sözleşmelerin dağıtılması gerekiyor",
   "vcs.results.deployed": "Dağıtıldı",
   "vcs.results.missing": "Dağıtılmadı",
+  "vcs.results.mismatch": "Uyuşmazlık",
+  "vcs.results.mismatchWarning": "Bu adreste yanlış bytecode var!",
   "vcs.results.recheck": "Yeniden kontrol et",
   "vcs.results.changeChain": "Zinciri değiştir",
+
+  "vcs.rpc.title": "RPC uç noktası",
+  "vcs.rpc.customBadge": "Özel",
+  "vcs.rpc.available": "Kullanılabilir RPC'ler",
+  "vcs.rpc.unreachable": "erişilemez",
+  "vcs.rpc.customLabel": "Özel RPC",
+  "vcs.rpc.customPlaceholder": "https://kendi-rpc-adresiniz...",
+  "vcs.rpc.apply": "Uygula",
+
+  "vcs.p256.requiredFor": "Passkey imzaları için gerekli",
+  "vcs.p256.available": "Kullanılabilir",
+  "vcs.p256.notAvailable": "Kullanılamıyor",
+  "vcs.p256.requirementBadge": "Gereksinim",
+  "vcs.p256.notAvailableTitle": "P256 Precompile kullanılamıyor",
+  "vcs.p256.notAvailableDesc": "Bu zincir, passkey (parmak izi/Face ID) imza doğrulaması için gereken RIP-7212 P256 precompile'ını desteklemiyor. Vela Wallet bu zincirde onsuz çalışamaz.",
+  "vcs.p256.notAvailableNote": "P256 precompile, zincirin doğrulayıcıları/operatörleri tarafından etkinleştirilmesi gereken zincir düzeyinde bir özelliktir. Sözleşme olarak dağıtılamaz. RIP-7212 desteği istemek için zincir ekibiyle iletişime geçin.",
+
+  "vcs.action.startSetup": "Kuruluma başla",
+  "vcs.action.copy": "Kopyala",
+  "vcs.action.copied": "Kopyalandı!",
+  "vcs.action.balance": "Bakiye: {balance}",
+
+  "vcs.multicall3.title": "Multicall3 dağıt",
+  "vcs.multicall3.description": "Multicall3, zincir üstü verilerin verimli bir şekilde toplu okunmasını sağlar. Önceden imzalanmış bir işlemle dağıtılır — cüzdan eklentisi gerekmez.",
+  "vcs.multicall3.step1.title": "1. Adım: Dağıtıcıyı fonla",
+  "vcs.multicall3.step1.description": "Aşağıdaki dağıtıcı adresine en az 0,1 {symbol} gönderin. Bu, gas ücretini karşılar.",
+  "vcs.multicall3.step2.title": "2. Adım: Dağıt",
+  "vcs.multicall3.step2.description": "Önceden imzalanmış dağıtım işlemini yayınlamak için tıklayın.",
+
+  "vcs.deployer.estimatedGas": "Tahmini gas: ~{gas}",
+  "vcs.deployer.create": "Dağıtıcı cüzdanı oluştur",
+  "vcs.deployer.title": "Dağıtıcı cüzdanı",
+  "vcs.deployer.description": "Dağıtımın gas ücretlerini karşılamak için bu adrese {symbol} gönderin.",
+  "vcs.deployer.nativeTokens": "yerel token",
+  "vcs.deployer.address": "Dağıtıcı adresi:",
+  "vcs.deployer.checking": "Kontrol ediliyor...",
+  "vcs.deployer.refresh": "Yenile",
+  "vcs.deployer.downloadKey": "Özel anahtarı indir",
+  "vcs.deployer.funded": "Fonlandı! Dağıtıma hazır.",
 
   "vcs.step.title": "Sonraki adım",
 

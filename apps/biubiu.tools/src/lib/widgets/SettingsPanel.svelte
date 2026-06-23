@@ -270,21 +270,21 @@
 
 		<!-- Week Start Day -->
 		<div class="setting-row">
-			<span class="setting-label">Week starts on</span>
+			<span class="setting-label">{t('settings.weekStart')}</span>
 			<div class="format-group">
 				<button
 					class="format-btn"
 					class:active={settings.weekStartDay === 1}
 					onclick={() => handleSetWeekStartDay(1)}
 				>
-					Mon
+					{t('settings.weekday.mon')}
 				</button>
 				<button
 					class="format-btn"
 					class:active={settings.weekStartDay === 0}
 					onclick={() => handleSetWeekStartDay(0)}
 				>
-					Sun
+					{t('settings.weekday.sun')}
 				</button>
 			</div>
 		</div>

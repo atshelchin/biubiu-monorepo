@@ -282,5 +282,55 @@
   "profilePage.publicKey": "公開鍵",
   "profilePage.credentialId": "認証情報 ID",
   "profilePage.invalidLink": "無効なプロフィールリンク",
-  "profilePage.invalidLinkDesc": "このプロフィールリンクは無効か、破損しています。"
+  "profilePage.invalidLinkDesc": "このプロフィールリンクは無効か、破損しています。",
+
+  "settings.weekStart": "週の始まり",
+  "settings.weekday.mon": "月",
+  "settings.weekday.sun": "日",
+
+  "widgets.themeToggle.toLight": "ライトモードに切り替え",
+  "widgets.themeToggle.toDark": "ダークモードに切り替え",
+  "widgets.themeToggle.textSize": "文字サイズを変更",
+
+  "widgets.networkPicker.title": "ネットワーク",
+  "widgets.networkPicker.subtitle": "任意の EVM チェーンを名前またはチェーン ID で検索します。",
+  "widgets.networkPicker.searchPlaceholder": "例：Base、Arbitrum、BNB、1、56…",
+  "widgets.networkPicker.chain": "チェーン {id}",
+  "widgets.networkPicker.change": "変更",
+  "widgets.networkPicker.hide": "隠す",
+  "widgets.networkPicker.custom": "カスタム",
+  "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
+  "widgets.networkPicker.apply": "適用",
+
+  "widgets.smartParam.raw": "そのまま",
+  "widgets.smartParam.tokenAmount": "トークン量",
+  "widgets.smartParam.duration": "期間",
+  "widgets.smartParam.date": "日付",
+  "widgets.smartParam.decimals": "decimals",
+  "widgets.smartParam.fromText": "テキストから",
+  "widgets.smartParam.unit.seconds": "秒",
+  "widgets.smartParam.unit.minutes": "分",
+  "widgets.smartParam.unit.hours": "時間",
+  "widgets.smartParam.unit.days": "日",
+  "widgets.smartParam.unit.weeks": "週",
+  "widgets.smartParam.unit.years": "年",
+
+  "datePicker.preset.all": "すべて",
+  "datePicker.preset.today": "本日",
+  "datePicker.preset.yesterday": "昨日",
+  "datePicker.preset.7d": "7 日間",
+  "datePicker.preset.30d": "30 日間",
+  "datePicker.preset.90d": "90 日間",
+  "datePicker.dialogLabel": "日付ピッカー",
+  "datePicker.prevMonth": "前の月",
+  "datePicker.nextMonth": "次の月",
+  "datePicker.today": "本日",
+  "datePicker.confirm": "確定",
+
+  "scanQr.title": "QR コードをスキャン",
+  "scanQr.cameraDenied": "カメラへのアクセスが拒否されました",
+  "scanQr.notSupported": "このブラウザは QR コードの検出に対応していません",
+
+  "subscriptionBadge.premiumMember": "プレミアム会員",
+  "subscriptionBadge.premium": "PREMIUM"
 }

@@ -7,6 +7,7 @@
 		type TextScale
 	} from '$lib/theme';
 	import { browser } from '$app/environment';
+	import { t } from '$lib/i18n';
 
 	let currentTheme = $state<Theme>('dark');
 	let currentTextScale = $state<TextScale>('md');
@@ -56,8 +57,8 @@
 	<button
 		class="toggle-btn"
 		onclick={handleToggleTheme}
-		aria-label={currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-		title={currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+		aria-label={currentTheme === 'dark' ? t('widgets.themeToggle.toLight') : t('widgets.themeToggle.toDark')}
+		title={currentTheme === 'dark' ? t('widgets.themeToggle.toLight') : t('widgets.themeToggle.toDark')}
 	>
 		{#if currentTheme === 'dark'}
 			<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -76,8 +77,8 @@
 		<button
 			class="toggle-btn text-scale-btn"
 			onclick={() => (showTextScaleMenu = !showTextScaleMenu)}
-			aria-label="Change text size"
-			title="Change text size"
+			aria-label={t('widgets.themeToggle.textSize')}
+			title={t('widgets.themeToggle.textSize')}
 		>
 			<svg class="text-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M4 7V4h16v3"/>

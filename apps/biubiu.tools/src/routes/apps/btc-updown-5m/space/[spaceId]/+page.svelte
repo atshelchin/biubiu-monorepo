@@ -20,10 +20,10 @@
 </script>
 
 <section class="page-header">
-	<a class="back-link" href={routes.hub()}>&larr; Back</a>
+	<a class="back-link" href={routes.hub()}>&larr; {t('updown5m.back')}</a>
 	<div class="title-row">
-		<h1 class="page-title">{space?.name ?? 'Space'}</h1>
-		<span class="mode-badge" class:mode-live={space?.allowLiveTrading}>{space?.allowLiveTrading ? 'Live' : 'Sandbox'}</span>
+		<h1 class="page-title">{space?.name ?? t('updown5m.spaceFallback')}</h1>
+		<span class="mode-badge" class:mode-live={space?.allowLiveTrading}>{space?.allowLiveTrading ? t('updown5m.modeLive') : t('updown5m.modeSandbox')}</span>
 		{#if space?.online}<span class="dot dot-run" style="margin-left: var(--space-1);"></span>{/if}
 	</div>
 	<p class="page-desc">{space?.endpointUrl}</p>
@@ -43,7 +43,7 @@
 			<div class="stats-grid-4">
 				<div class="stat-card"><div class="stat-label">{t('updown5m.space.stats.users')}</div><div class="stat-value">{formatNumber(spaceSt.totalUsers)}</div></div>
 				<div class="stat-card"><div class="stat-label">{t('updown5m.space.stats.active')}</div><div class="stat-value">{spaceSt.activeInstances}</div></div>
-				<div class="stat-card"><div class="stat-label">{t('updown5m.space.stats.todayProfit')}</div><div class="stat-value {profitClass(spaceSt.todayProfit)}">{fmt(spaceSt.todayProfit)}</div><div class="stat-sub">{spaceSt.totalRoundsToday} rounds</div></div>
+				<div class="stat-card"><div class="stat-label">{t('updown5m.space.stats.todayProfit')}</div><div class="stat-value {profitClass(spaceSt.todayProfit)}">{fmt(spaceSt.todayProfit)}</div><div class="stat-sub">{t('updown5m.roundsCount', { count: String(spaceSt.totalRoundsToday) })}</div></div>
 				<div class="stat-card"><div class="stat-label">{t('updown5m.space.stats.avgWr')}</div><div class="stat-value">{fmtPct(spaceSt.avgWinRate)}</div><div class="stat-sub">{spaceSt.topStrategy}</div></div>
 			</div>
 		{/if}
@@ -64,7 +64,7 @@
 					<a class="inst-card" href={routes.instance(spaceId, inst.id)}>
 						<div class="inst-top">
 							<span class="inst-name">{inst.label}</span>
-							<span class="mode-badge" class:mode-live={inst.mode === 'live'}>{inst.mode === 'live' ? 'LIVE' : 'SANDBOX'}</span>
+							<span class="mode-badge" class:mode-live={inst.mode === 'live'}>{inst.mode === 'live' ? t('updown5m.modeLiveUpper') : t('updown5m.modeSandboxUpper')}</span>
 						</div>
 						<div class="inst-profit {profitClass(inst.stats.profit)}">{fmt(inst.stats.profit)}</div>
 						<div class="inst-meta">
@@ -72,9 +72,9 @@
 							{inst.status} &middot; {fmtPct(inst.stats.winRate)} &middot; {inst.stats.rounds}r
 						</div>
 						<div class="inst-periods">
-							<span class="inst-period"><span class="inst-period-label">1h</span> <span class={profitClass(inst.profits.hour)}>{fmtShort(inst.profits.hour)}</span></span>
+							<span class="inst-period"><span class="inst-period-label">{t('updown5m.table.1h')}</span> <span class={profitClass(inst.profits.hour)}>{fmtShort(inst.profits.hour)}</span></span>
 							<span class="inst-period"><span class="inst-period-label">{t('updown5m.period.today')}</span> <span class={profitClass(inst.profits.day)}>{fmtShort(inst.profits.day)}</span></span>
-							<span class="inst-period"><span class="inst-period-label">30d</span> <span class={profitClass(inst.profits.thirtyDay)}>{fmtShort(inst.profits.thirtyDay)}</span></span>
+							<span class="inst-period"><span class="inst-period-label">{t('updown5m.table.30d')}</span> <span class={profitClass(inst.profits.thirtyDay)}>{fmtShort(inst.profits.thirtyDay)}</span></span>
 						</div>
 					</a>
 				{/each}
@@ -91,8 +91,8 @@
 					<div class="member-info">
 						<div class="member-top">
 							<a class="member-name" href={routes.member(spaceId, member.userId)}>{member.displayName}</a>
-							{#if member.tier === 'pro'}<span class="premium-badge">Premium</span>{/if}
-							{#if member.role === 'admin'}<span class="admin-badge">Admin</span>{/if}
+							{#if member.tier === 'pro'}<span class="premium-badge">{t('updown5m.premium')}</span>{/if}
+							{#if member.role === 'admin'}<span class="admin-badge">{t('updown5m.space.admin')}</span>{/if}
 						</div>
 						<div class="member-stats">
 							<span class="member-stat"><span class="member-stat-label">{t('updown5m.space.member.profit')}</span> <span class={profitClass(member.totalProfit)}>{fmt(member.totalProfit)}</span></span>
@@ -117,7 +117,7 @@
 				<div class="admin-group">
 					<div class="admin-row">
 						<span class="admin-label">{t('updown5m.space.admin.live')}</span>
-						<span class="admin-value">{spaceSettings.allowLiveTrading ? 'ON' : 'OFF'}</span>
+						<span class="admin-value">{spaceSettings.allowLiveTrading ? t('updown5m.on') : t('updown5m.off')}</span>
 					</div>
 					<div class="admin-row">
 						<span class="admin-label">{t('updown5m.space.admin.maxFree')}</span>
@@ -155,7 +155,7 @@
 				<p class="admin-claim-desc">{t('updown5m.space.admin.enterCode')}</p>
 				<div class="admin-claim-row">
 					<input type="text" class="admin-claim-input" placeholder="ADM-XXX-XXXX" />
-					<button class="btn-accent btn-sm">Claim</button>
+					<button class="btn-accent btn-sm">{t('updown5m.claim')}</button>
 				</div>
 			</div>
 		</div>

@@ -67,7 +67,7 @@
 			instances = statusResult.instances;
 			baseStrategies = strategiesResult.strategies;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load';
+			error = err instanceof Error ? err.message : t('btcUpdown.control.errFailedLoad');
 		} finally {
 			loading = false;
 		}
@@ -91,7 +91,7 @@
 			await refresh();
 			onInstanceChange?.();
 		} catch (err) {
-			createError = err instanceof Error ? err.message : 'Failed';
+			createError = err instanceof Error ? err.message : t('btcUpdown.control.errFailed');
 		} finally {
 			actionLoading = null;
 		}
@@ -133,7 +133,7 @@
 			} else {
 				// Create new — use first base strategy
 				const baseId = baseStrategies[0]?.id;
-				if (!baseId) throw new Error('No base strategies available');
+				if (!baseId) throw new Error(t('btcUpdown.control.errNoBaseStrategies'));
 				await createInstance(endpoint, { baseStrategyId: baseId, label, overrides });
 			}
 
@@ -142,7 +142,7 @@
 			await refresh();
 			onInstanceChange?.();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed';
+			error = err instanceof Error ? err.message : t('btcUpdown.control.errFailed');
 		} finally {
 			actionLoading = null;
 		}
@@ -167,12 +167,12 @@
 					break;
 			}
 			if (!result.ok) {
-				error = result.error ?? 'Action failed';
+				error = result.error ?? t('btcUpdown.control.errActionFailed');
 			}
 			await refresh();
 			onInstanceChange?.();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Action failed';
+			error = err instanceof Error ? err.message : t('btcUpdown.control.errActionFailed');
 		} finally {
 			actionLoading = null;
 		}
@@ -318,7 +318,7 @@
 						<div class="instance-schedule">
 							{#each inst.schedule as rule}
 								<span class="schedule-rule">
-									{rule.days.map((d) => ['Su','Mo','Tu','We','Th','Fr','Sa'][d]).join(',')}
+									{rule.days.map((d) => t(['btcUpdown.control.weekday.su','btcUpdown.control.weekday.mo','btcUpdown.control.weekday.tu','btcUpdown.control.weekday.we','btcUpdown.control.weekday.th','btcUpdown.control.weekday.fr','btcUpdown.control.weekday.sa'][d])).join(',')}
 									{rule.startTime}–{rule.endTime}
 									{rule.timezone}
 								</span>

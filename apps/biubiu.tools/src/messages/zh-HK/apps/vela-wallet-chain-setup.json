@@ -5,6 +5,8 @@
   "vcs.title": "Vela Wallet 鏈設定",
   "vcs.subtitle": "幾步即可為 Vela Wallet 準備好任意 EVM 鏈",
 
+  "vcs.chainId": "鏈 ID：{id}",
+
   "vcs.search.placeholder": "按鏈名稱或鏈 ID 搜尋…",
   "vcs.search.hint": "例如 Ethereum、Polygon、42161",
   "vcs.search.noResults": "找不到鏈，換個關鍵字試試。",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "部分合約尚需部署",
   "vcs.results.deployed": "已部署",
   "vcs.results.missing": "未部署",
+  "vcs.results.mismatch": "不匹配",
+  "vcs.results.mismatchWarning": "此地址上的 bytecode 有誤！",
   "vcs.results.recheck": "重新偵測",
   "vcs.results.changeChain": "更換鏈",
+
+  "vcs.rpc.title": "RPC 端點",
+  "vcs.rpc.customBadge": "自訂",
+  "vcs.rpc.available": "可用的 RPC",
+  "vcs.rpc.unreachable": "無法連接",
+  "vcs.rpc.customLabel": "自訂 RPC",
+  "vcs.rpc.customPlaceholder": "https://your-rpc-url...",
+  "vcs.rpc.apply": "套用",
+
+  "vcs.p256.requiredFor": "passkey 簽名所需",
+  "vcs.p256.available": "可用",
+  "vcs.p256.notAvailable": "不可用",
+  "vcs.p256.requirementBadge": "必要條件",
+  "vcs.p256.notAvailableTitle": "P256 預編譯不可用",
+  "vcs.p256.notAvailableDesc": "這條鏈不支援 RIP-7212 P256 預編譯，而它正是 passkey（指紋 / Face ID）簽名驗證所必需的。缺少它，Vela Wallet 無法在這條鏈上運行。",
+  "vcs.p256.notAvailableNote": "P256 預編譯是鏈層級的功能，必須由該鏈的驗證者 / 營運方啟用，無法作為合約部署。請聯絡該鏈團隊，申請支援 RIP-7212。",
+
+  "vcs.action.startSetup": "開始設定",
+  "vcs.action.copy": "複製",
+  "vcs.action.copied": "已複製！",
+  "vcs.action.balance": "餘額：{balance}",
+
+  "vcs.multicall3.title": "部署 Multicall3",
+  "vcs.multicall3.description": "Multicall3 可高效批量讀取鏈上資料。這裏使用預先簽署的交易部署——無需錢包擴充功能。",
+  "vcs.multicall3.step1.title": "第 1 步：為部署者充值",
+  "vcs.multicall3.step1.description": "向下方的部署者地址至少轉入 0.1 {symbol}，用於支付 gas 費。",
+  "vcs.multicall3.step2.title": "第 2 步：部署",
+  "vcs.multicall3.step2.description": "點擊以廣播預先簽署的部署交易。",
+
+  "vcs.deployer.estimatedGas": "預計 gas：約 {gas}",
+  "vcs.deployer.create": "建立部署者錢包",
+  "vcs.deployer.title": "部署者錢包",
+  "vcs.deployer.description": "向此地址轉入 {symbol}，用於支付部署的 gas 費。",
+  "vcs.deployer.nativeTokens": "原生代幣",
+  "vcs.deployer.address": "部署者地址：",
+  "vcs.deployer.checking": "檢查中…",
+  "vcs.deployer.refresh": "重新整理",
+  "vcs.deployer.downloadKey": "下載私鑰",
+  "vcs.deployer.funded": "已充值！可以部署了。",
 
   "vcs.step.title": "下一步",
 

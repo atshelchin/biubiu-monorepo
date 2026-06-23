@@ -5,6 +5,8 @@
   "vcs.title": "Configuração de Chain da Vela Wallet",
   "vcs.subtitle": "Prepare qualquer chain EVM para a Vela Wallet em poucos passos simples",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Busque por nome da chain ou Chain ID…",
   "vcs.search.hint": "ex.: Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Nenhuma chain encontrada. Tente outro termo de busca.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Alguns contratos precisam ser implantados",
   "vcs.results.deployed": "Implantado",
   "vcs.results.missing": "Não implantado",
+  "vcs.results.mismatch": "Divergência",
+  "vcs.results.mismatchWarning": "Bytecode incorreto neste endereço!",
   "vcs.results.recheck": "Verificar de novo",
   "vcs.results.changeChain": "Trocar de chain",
+
+  "vcs.rpc.title": "Endpoint de RPC",
+  "vcs.rpc.customBadge": "Personalizado",
+  "vcs.rpc.available": "RPCs disponíveis",
+  "vcs.rpc.unreachable": "inacessível",
+  "vcs.rpc.customLabel": "RPC personalizado",
+  "vcs.rpc.customPlaceholder": "https://sua-url-de-rpc...",
+  "vcs.rpc.apply": "Aplicar",
+
+  "vcs.p256.requiredFor": "Necessário para assinaturas com passkey",
+  "vcs.p256.available": "Disponível",
+  "vcs.p256.notAvailable": "Indisponível",
+  "vcs.p256.requirementBadge": "Requisito",
+  "vcs.p256.notAvailableTitle": "Pré-compilado P256 indisponível",
+  "vcs.p256.notAvailableDesc": "Esta chain não suporta o pré-compilado P256 do RIP-7212, que é necessário para a verificação de assinaturas com passkey (impressão digital/Face ID). A Vela Wallet não pode funcionar nesta chain sem ele.",
+  "vcs.p256.notAvailableNote": "O pré-compilado P256 é um recurso de nível de chain que precisa ser habilitado pelos validadores/operadores da chain. Ele não pode ser implantado como um contrato. Entre em contato com a equipe da chain para solicitar suporte ao RIP-7212.",
+
+  "vcs.action.startSetup": "Iniciar configuração",
+  "vcs.action.copy": "Copiar",
+  "vcs.action.copied": "Copiado!",
+  "vcs.action.balance": "Saldo: {balance}",
+
+  "vcs.multicall3.title": "Implantar o Multicall3",
+  "vcs.multicall3.description": "O Multicall3 permite a leitura em lote eficiente de dados on-chain. Ele é implantado usando uma transação pré-assinada — sem necessidade de extensão de carteira.",
+  "vcs.multicall3.step1.title": "Passo 1: Abasteça o implantador",
+  "vcs.multicall3.step1.description": "Envie pelo menos 0,1 {symbol} para o endereço do implantador abaixo. Isso cobre a taxa de gas.",
+  "vcs.multicall3.step2.title": "Passo 2: Implantar",
+  "vcs.multicall3.step2.description": "Clique para transmitir a transação de implantação pré-assinada.",
+
+  "vcs.deployer.estimatedGas": "Gas estimado: ~{gas}",
+  "vcs.deployer.create": "Criar carteira do implantador",
+  "vcs.deployer.title": "Carteira do implantador",
+  "vcs.deployer.description": "Envie {symbol} para este endereço para cobrir as taxas de gas da implantação.",
+  "vcs.deployer.nativeTokens": "tokens nativos",
+  "vcs.deployer.address": "Endereço do implantador:",
+  "vcs.deployer.checking": "Verificando...",
+  "vcs.deployer.refresh": "Atualizar",
+  "vcs.deployer.downloadKey": "Baixar chave privada",
+  "vcs.deployer.funded": "Abastecido! Pronto para implantar.",
 
   "vcs.step.title": "Próximo passo",
 

@@ -126,7 +126,7 @@
 		if (!activeInst) return '';
 		const status = activeInst.status;
 		if (status === 'stopped' || status === 'error') return status;
-		if (status === 'starting') return 'starting...';
+		if (status === 'starting') return t('updown5m.starting');
 		// For running/paused, compute uptime from startedAt or createdAt
 		const ref = activeInst.startedAt ?? activeInst.createdAt;
 		const diffMs = now - new Date(ref).getTime();
@@ -216,9 +216,9 @@
 </script>
 
 <section class="page-header" style="margin-bottom: var(--space-3);">
-	<a class="back-link" href={routes.space(spaceId)}>&larr; Back</a>
+	<a class="back-link" href={routes.space(spaceId)}>&larr; {t('updown5m.back')}</a>
 	<div class="title-row">
-		<h1 class="page-title">{space?.name ?? 'Space'}</h1>
+		<h1 class="page-title">{space?.name ?? t('updown5m.spaceFallback')}</h1>
 	</div>
 </section>
 
@@ -228,13 +228,13 @@
 		{#if !isCollapsed}
 			<div class="inst-sidebar-head">
 				<span class="inst-sidebar-label">{t('updown5m.space.myInstances')} {spaceInstances.length}</span>
-				<button class="btn-accent btn-sm" onclick={() => goto(routes.hub())}>+ New</button>
+				<button class="btn-accent btn-sm" onclick={() => goto(routes.hub())}>{t('updown5m.newShort')}</button>
 			</div>
 			<div class="inst-sidebar-cols">
 				<button class="inst-col-btn" class:active={sidebarSort === 'profit'} onclick={() => toggleSidebarSort('profit')}>{t('updown5m.table.strategy')}{#if sidebarSort === 'profit'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
-				<button class="inst-col-btn" class:active={sidebarSort === '1h'} onclick={() => toggleSidebarSort('1h')}>1H{#if sidebarSort === '1h'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
+				<button class="inst-col-btn" class:active={sidebarSort === '1h'} onclick={() => toggleSidebarSort('1h')}>{t('updown5m.detail.col1h')}{#if sidebarSort === '1h'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
 				<button class="inst-col-btn" class:active={sidebarSort === 'today'} onclick={() => toggleSidebarSort('today')}>{t('updown5m.table.today')}{#if sidebarSort === 'today'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
-				<button class="inst-col-btn" class:active={sidebarSort === '30d'} onclick={() => toggleSidebarSort('30d')}>30D{#if sidebarSort === '30d'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
+				<button class="inst-col-btn" class:active={sidebarSort === '30d'} onclick={() => toggleSidebarSort('30d')}>{t('updown5m.detail.col30d')}{#if sidebarSort === '30d'}<span class="col-arrow">{sidebarSortDir === 'asc' ? '\u2191' : '\u2193'}</span>{/if}</button>
 			</div>
 			{#each sortedSpaceInstances as inst (inst.id)}
 				<button
@@ -272,7 +272,7 @@
 			class="resize-toggle"
 			class:collapsed={isCollapsed}
 			onclick={(e) => { e.stopPropagation(); toggleCollapse(); }}
-			aria-label={isCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+			aria-label={isCollapsed ? t('updown5m.detail.showSidebar') : t('updown5m.detail.hideSidebar')}
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 				{#if isCollapsed}
@@ -289,28 +289,28 @@
 		<div class="inst-main">
 			<div class="inst-toolbar">
 				<span class="inst-toolbar-name">{activeInst.label}</span>
-				<span class="mode-badge" class:mode-live={activeInst.mode === 'live'}>{activeInst.mode === 'live' ? 'LIVE' : 'SANDBOX'}</span>
+				<span class="mode-badge" class:mode-live={activeInst.mode === 'live'}>{activeInst.mode === 'live' ? t('updown5m.modeLiveUpper') : t('updown5m.modeSandboxUpper')}</span>
 				<div class="inst-toolbar-actions">
 					{#if activeInst.status === 'running'}
-						<button class="ctrl-icon ctrl-icon-active" onclick={handlePause} aria-label="Pause">&#9646;&#9646;</button>
-						<button class="ctrl-icon" onclick={handleStop} aria-label="Stop">&#9632;</button>
+						<button class="ctrl-icon ctrl-icon-active" onclick={handlePause} aria-label={t('updown5m.detail.pause')}>&#9646;&#9646;</button>
+						<button class="ctrl-icon" onclick={handleStop} aria-label={t('updown5m.detail.stop')}>&#9632;</button>
 					{:else if activeInst.status === 'paused'}
-						<button class="ctrl-icon" onclick={handleResume} aria-label="Resume">&#9654;</button>
-						<button class="ctrl-icon" onclick={handleStop} aria-label="Stop">&#9632;</button>
+						<button class="ctrl-icon" onclick={handleResume} aria-label={t('updown5m.detail.resume')}>&#9654;</button>
+						<button class="ctrl-icon" onclick={handleStop} aria-label={t('updown5m.detail.stop')}>&#9632;</button>
 					{:else if activeInst.status === 'starting'}
-						<button class="ctrl-icon ctrl-icon-active" disabled aria-label="Starting">&#9654;</button>
-						<button class="ctrl-icon" onclick={handleStop} aria-label="Stop">&#9632;</button>
+						<button class="ctrl-icon ctrl-icon-active" disabled aria-label={t('updown5m.detail.startingLabel')}>&#9654;</button>
+						<button class="ctrl-icon" onclick={handleStop} aria-label={t('updown5m.detail.stop')}>&#9632;</button>
 					{:else}
-						<button class="ctrl-icon" onclick={handleStart} aria-label="Start">&#9654;</button>
+						<button class="ctrl-icon" onclick={handleStart} aria-label={t('updown5m.detail.start')}>&#9654;</button>
 						{#if activeInst.status === 'stopped'}
 							{#if confirmingDelete}
 								<span class="delete-confirm">
-									<span class="delete-confirm-text">Delete?</span>
-									<button class="ctrl-icon ctrl-icon-danger" onclick={handleDelete} aria-label="Confirm delete">&#10003;</button>
-									<button class="ctrl-icon" onclick={() => (confirmingDelete = false)} aria-label="Cancel delete">&#10005;</button>
+									<span class="delete-confirm-text">{t('updown5m.detail.deleteConfirm')}</span>
+									<button class="ctrl-icon ctrl-icon-danger" onclick={handleDelete} aria-label={t('updown5m.detail.confirmDelete')}>&#10003;</button>
+									<button class="ctrl-icon" onclick={() => (confirmingDelete = false)} aria-label={t('updown5m.detail.cancelDelete')}>&#10005;</button>
 								</span>
 							{:else}
-								<button class="ctrl-icon ctrl-icon-dim" onclick={() => (confirmingDelete = true)} aria-label="Delete">&#128465;</button>
+								<button class="ctrl-icon ctrl-icon-dim" onclick={() => (confirmingDelete = true)} aria-label={t('updown5m.detail.delete')}>&#128465;</button>
 							{/if}
 						{/if}
 					{/if}
@@ -346,17 +346,17 @@
 				{#if instStats}
 					<div class="analytics-row">
 						<div class="analytics-card glass-card">
-							<h3 class="analytics-label">Direction Split</h3>
+							<h3 class="analytics-label">{t('updown5m.detail.directionSplit')}</h3>
 							{#if instDirStats}
 								<div class="dir-split">
 									<div class="dir-col">
-										<span class="dir-heading">UP</span>
+										<span class="dir-heading">{t('updown5m.detail.up')}</span>
 										<span class="dir-wr {instDirStats.upWr >= 0.5 ? 'positive' : 'negative'}">{fmtPct(instDirStats.upWr)}</span>
 										<span class="dir-detail">{instDirStats.upWins}W / {instDirStats.betUp - instDirStats.upWins}L</span>
 									</div>
 									<div class="dir-divider"></div>
 									<div class="dir-col">
-										<span class="dir-heading">DOWN</span>
+										<span class="dir-heading">{t('updown5m.detail.down')}</span>
 										<span class="dir-wr {instDirStats.downWr >= 0.5 ? 'positive' : 'negative'}">{fmtPct(instDirStats.downWr)}</span>
 										<span class="dir-detail">{instDirStats.downWins}W / {instDirStats.betDown - instDirStats.downWins}L</span>
 									</div>
@@ -364,20 +364,20 @@
 							{/if}
 						</div>
 						<div class="analytics-card glass-card">
-							<h3 class="analytics-label">Streaks</h3>
+							<h3 class="analytics-label">{t('updown5m.detail.streaks')}</h3>
 							<div class="streaks-list">
-								<div class="streak-row"><span class="streak-label">Max Win</span><div class="streak-bar-wrap"><div class="streak-bar streak-bar-win" style="width: {Math.min((instStats.maxWinStreak / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val positive">{instStats.maxWinStreak}</span></div>
-								<div class="streak-row"><span class="streak-label">Max Loss</span><div class="streak-bar-wrap"><div class="streak-bar streak-bar-loss" style="width: {Math.min((instStats.maxLoseStreak / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val negative">{instStats.maxLoseStreak}</span></div>
-								<div class="streak-row"><span class="streak-label">Current</span><div class="streak-bar-wrap"><div class="streak-bar {instStats.currentStreak >= 0 ? 'streak-bar-win' : 'streak-bar-loss'}" style="width: {Math.min((Math.abs(instStats.currentStreak) / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val {instStats.currentStreak >= 0 ? 'positive' : 'negative'}">{instStats.currentStreak >= 0 ? 'W' : 'L'}{Math.abs(instStats.currentStreak)}</span></div>
+								<div class="streak-row"><span class="streak-label">{t('updown5m.detail.maxWin')}</span><div class="streak-bar-wrap"><div class="streak-bar streak-bar-win" style="width: {Math.min((instStats.maxWinStreak / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val positive">{instStats.maxWinStreak}</span></div>
+								<div class="streak-row"><span class="streak-label">{t('updown5m.detail.maxLoss')}</span><div class="streak-bar-wrap"><div class="streak-bar streak-bar-loss" style="width: {Math.min((instStats.maxLoseStreak / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val negative">{instStats.maxLoseStreak}</span></div>
+								<div class="streak-row"><span class="streak-label">{t('updown5m.detail.currentStreak')}</span><div class="streak-bar-wrap"><div class="streak-bar {instStats.currentStreak >= 0 ? 'streak-bar-win' : 'streak-bar-loss'}" style="width: {Math.min((Math.abs(instStats.currentStreak) / Math.max(instStats.maxWinStreak, instStats.maxLoseStreak)) * 100, 100)}%"></div></div><span class="streak-val {instStats.currentStreak >= 0 ? 'positive' : 'negative'}">{instStats.currentStreak >= 0 ? 'W' : 'L'}{Math.abs(instStats.currentStreak)}</span></div>
 							</div>
 						</div>
 						<div class="analytics-card glass-card">
-							<h3 class="analytics-label">Hedge</h3>
+							<h3 class="analytics-label">{t('updown5m.detail.hedge')}</h3>
 							<div class="hedge-grid">
-								<div class="hedge-item"><span class="hedge-item-label">COST</span><span class="hedge-item-value negative">{fmt(instStats.totalHedgeCost)}</span><span class="hedge-item-sub">{fmt(instStats.entered > 0 ? instStats.totalHedgeCost / instStats.entered : 0)}/round</span></div>
-								<div class="hedge-item"><span class="hedge-item-label">RECOVERY</span><span class="hedge-item-value positive">{fmt(instStats.hedgeSellRevenue)}</span><span class="hedge-item-sub">{instStats.entered > 0 ? fmtPct(instStats.hedgeSellRevenue / instStats.totalHedgeCost) : '0%'}</span></div>
+								<div class="hedge-item"><span class="hedge-item-label">{t('updown5m.detail.cost')}</span><span class="hedge-item-value negative">{fmt(instStats.totalHedgeCost)}</span><span class="hedge-item-sub">{t('updown5m.detail.perRound', { value: fmt(instStats.entered > 0 ? instStats.totalHedgeCost / instStats.entered : 0) })}</span></div>
+								<div class="hedge-item"><span class="hedge-item-label">{t('updown5m.detail.recovery')}</span><span class="hedge-item-value positive">{fmt(instStats.hedgeSellRevenue)}</span><span class="hedge-item-sub">{instStats.entered > 0 ? fmtPct(instStats.hedgeSellRevenue / instStats.totalHedgeCost) : '0%'}</span></div>
 							</div>
-							<p class="hedge-summary">Net cost: <span class="negative">{fmt(-instNetHedgeCost)}</span></p>
+							<p class="hedge-summary">{t('updown5m.detail.netCost')} <span class="negative">{fmt(-instNetHedgeCost)}</span></p>
 						</div>
 					</div>
 				{/if}

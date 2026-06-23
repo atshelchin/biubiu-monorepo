@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Açık anahtar",
   "profilePage.credentialId": "Kimlik bilgisi ID'si",
   "profilePage.invalidLink": "Geçersiz profil bağlantısı",
-  "profilePage.invalidLinkDesc": "Bu profil bağlantısı geçersiz ya da bozulmuş."
+  "profilePage.invalidLinkDesc": "Bu profil bağlantısı geçersiz ya da bozulmuş.",
+
+  "settings.weekStart": "Haftanın başlangıcı",
+  "settings.weekday.mon": "Pzt",
+  "settings.weekday.sun": "Paz",
+
+  "widgets.themeToggle.toLight": "Açık moda geç",
+  "widgets.themeToggle.toDark": "Koyu moda geç",
+  "widgets.themeToggle.textSize": "Yazı boyutunu değiştir",
+
+  "widgets.networkPicker.title": "Ağ",
+  "widgets.networkPicker.subtitle": "Herhangi bir EVM zincirini ada veya zincir ID'sine göre arayın.",
+  "widgets.networkPicker.searchPlaceholder": "örn. Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Zincir {id}",
+  "widgets.networkPicker.change": "Değiştir",
+  "widgets.networkPicker.hide": "Gizle",
+  "widgets.networkPicker.custom": "Özel",
+  "widgets.networkPicker.customRpcPlaceholder": "https://kendi-rpc-adresiniz…",
+  "widgets.networkPicker.apply": "Uygula",
+
+  "widgets.smartParam.raw": "ham",
+  "widgets.smartParam.tokenAmount": "token tutarı",
+  "widgets.smartParam.duration": "süre",
+  "widgets.smartParam.date": "tarih",
+  "widgets.smartParam.decimals": "ondalık",
+  "widgets.smartParam.fromText": "metinden",
+  "widgets.smartParam.unit.seconds": "saniye",
+  "widgets.smartParam.unit.minutes": "dakika",
+  "widgets.smartParam.unit.hours": "saat",
+  "widgets.smartParam.unit.days": "gün",
+  "widgets.smartParam.unit.weeks": "hafta",
+  "widgets.smartParam.unit.years": "yıl",
+
+  "datePicker.preset.all": "Tümü",
+  "datePicker.preset.today": "Bugün",
+  "datePicker.preset.yesterday": "Dün",
+  "datePicker.preset.7d": "7 gün",
+  "datePicker.preset.30d": "30 gün",
+  "datePicker.preset.90d": "90 gün",
+  "datePicker.dialogLabel": "Tarih seçici",
+  "datePicker.prevMonth": "Önceki ay",
+  "datePicker.nextMonth": "Sonraki ay",
+  "datePicker.today": "Bugün",
+  "datePicker.confirm": "Onayla",
+
+  "scanQr.title": "QR kodu tara",
+  "scanQr.cameraDenied": "Kamera erişimi reddedildi",
+  "scanQr.notSupported": "Bu tarayıcıda QR algılama desteklenmiyor",
+
+  "subscriptionBadge.premiumMember": "Premium üye",
+  "subscriptionBadge.premium": "PREMIUM"
 }

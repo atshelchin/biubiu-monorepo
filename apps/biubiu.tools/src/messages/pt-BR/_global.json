@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Chave pública",
   "profilePage.credentialId": "ID da credencial",
   "profilePage.invalidLink": "Link de perfil inválido",
-  "profilePage.invalidLinkDesc": "Este link de perfil é inválido ou foi corrompido."
+  "profilePage.invalidLinkDesc": "Este link de perfil é inválido ou foi corrompido.",
+
+  "settings.weekStart": "A semana começa em",
+  "settings.weekday.mon": "Seg",
+  "settings.weekday.sun": "Dom",
+
+  "widgets.themeToggle.toLight": "Mudar para o modo claro",
+  "widgets.themeToggle.toDark": "Mudar para o modo escuro",
+  "widgets.themeToggle.textSize": "Alterar o tamanho do texto",
+
+  "widgets.networkPicker.title": "Rede",
+  "widgets.networkPicker.subtitle": "Busque qualquer chain EVM por nome ou Chain ID.",
+  "widgets.networkPicker.searchPlaceholder": "ex.: Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Chain {id}",
+  "widgets.networkPicker.change": "Alterar",
+  "widgets.networkPicker.hide": "Ocultar",
+  "widgets.networkPicker.custom": "Personalizada",
+  "widgets.networkPicker.customRpcPlaceholder": "https://seu-rpc…",
+  "widgets.networkPicker.apply": "Aplicar",
+
+  "widgets.smartParam.raw": "bruto",
+  "widgets.smartParam.tokenAmount": "quantia em token",
+  "widgets.smartParam.duration": "duração",
+  "widgets.smartParam.date": "data",
+  "widgets.smartParam.decimals": "decimais",
+  "widgets.smartParam.fromText": "a partir de texto",
+  "widgets.smartParam.unit.seconds": "segundos",
+  "widgets.smartParam.unit.minutes": "minutos",
+  "widgets.smartParam.unit.hours": "horas",
+  "widgets.smartParam.unit.days": "dias",
+  "widgets.smartParam.unit.weeks": "semanas",
+  "widgets.smartParam.unit.years": "anos",
+
+  "datePicker.preset.all": "Tudo",
+  "datePicker.preset.today": "Hoje",
+  "datePicker.preset.yesterday": "Ontem",
+  "datePicker.preset.7d": "7 dias",
+  "datePicker.preset.30d": "30 dias",
+  "datePicker.preset.90d": "90 dias",
+  "datePicker.dialogLabel": "Seletor de data",
+  "datePicker.prevMonth": "Mês anterior",
+  "datePicker.nextMonth": "Próximo mês",
+  "datePicker.today": "Hoje",
+  "datePicker.confirm": "Confirmar",
+
+  "scanQr.title": "Escanear QR Code",
+  "scanQr.cameraDenied": "Acesso à câmera negado",
+  "scanQr.notSupported": "Detecção de QR não suportada neste navegador",
+
+  "subscriptionBadge.premiumMember": "Membro Premium",
+  "subscriptionBadge.premium": "PREMIUM"
 }

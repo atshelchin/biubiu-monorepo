@@ -5,6 +5,8 @@
   "vcs.title": "Penyiapan Chain Vela Wallet",
   "vcs.subtitle": "Siapkan chain EVM mana pun untuk Vela Wallet dalam beberapa langkah mudah",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Cari berdasarkan nama chain atau Chain ID…",
   "vcs.search.hint": "mis. Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Tidak ada chain ditemukan. Coba kata kunci lain.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Beberapa kontrak perlu di-deploy",
   "vcs.results.deployed": "Ter-deploy",
   "vcs.results.missing": "Belum di-deploy",
+  "vcs.results.mismatch": "Tidak Cocok",
+  "vcs.results.mismatchWarning": "Bytecode salah di alamat ini!",
   "vcs.results.recheck": "Cek Lagi",
   "vcs.results.changeChain": "Ganti Chain",
+
+  "vcs.rpc.title": "Endpoint RPC",
+  "vcs.rpc.customBadge": "Kustom",
+  "vcs.rpc.available": "RPC Tersedia",
+  "vcs.rpc.unreachable": "tidak terjangkau",
+  "vcs.rpc.customLabel": "RPC Kustom",
+  "vcs.rpc.customPlaceholder": "https://url-rpc-kamu...",
+  "vcs.rpc.apply": "Terapkan",
+
+  "vcs.p256.requiredFor": "Diperlukan untuk tanda tangan passkey",
+  "vcs.p256.available": "Tersedia",
+  "vcs.p256.notAvailable": "Tidak tersedia",
+  "vcs.p256.requirementBadge": "Persyaratan",
+  "vcs.p256.notAvailableTitle": "Precompile P256 Tidak Tersedia",
+  "vcs.p256.notAvailableDesc": "Chain ini tidak mendukung precompile P256 RIP-7212, yang diperlukan untuk verifikasi tanda tangan passkey (sidik jari/Face ID). Vela Wallet tidak bisa bekerja di chain ini tanpa itu.",
+  "vcs.p256.notAvailableNote": "Precompile P256 adalah fitur tingkat-chain yang harus diaktifkan oleh validator/operator chain. Ia tidak bisa di-deploy sebagai kontrak. Hubungi tim chain untuk meminta dukungan RIP-7212.",
+
+  "vcs.action.startSetup": "Mulai Penyiapan",
+  "vcs.action.copy": "Salin",
+  "vcs.action.copied": "Tersalin!",
+  "vcs.action.balance": "Saldo: {balance}",
+
+  "vcs.multicall3.title": "Deploy Multicall3",
+  "vcs.multicall3.description": "Multicall3 memungkinkan pembacaan batch data on-chain secara efisien. Ini di-deploy menggunakan transaksi yang sudah ditandatangani — tidak perlu ekstensi dompet.",
+  "vcs.multicall3.step1.title": "Langkah 1: Danai deployer",
+  "vcs.multicall3.step1.description": "Kirim setidaknya 0.1 {symbol} ke alamat deployer di bawah. Ini menutupi biaya gas.",
+  "vcs.multicall3.step2.title": "Langkah 2: Deploy",
+  "vcs.multicall3.step2.description": "Klik untuk menyiarkan transaksi deploy yang sudah ditandatangani.",
+
+  "vcs.deployer.estimatedGas": "Perkiraan gas: ~{gas}",
+  "vcs.deployer.create": "Buat Dompet Deployer",
+  "vcs.deployer.title": "Dompet Deployer",
+  "vcs.deployer.description": "Kirim {symbol} ke alamat ini untuk menutupi biaya gas deploy.",
+  "vcs.deployer.nativeTokens": "native token",
+  "vcs.deployer.address": "Alamat deployer:",
+  "vcs.deployer.checking": "Memeriksa...",
+  "vcs.deployer.refresh": "Segarkan",
+  "vcs.deployer.downloadKey": "Unduh Private Key",
+  "vcs.deployer.funded": "Terdanai! Siap untuk deploy.",
 
   "vcs.step.title": "Langkah Berikutnya",
 

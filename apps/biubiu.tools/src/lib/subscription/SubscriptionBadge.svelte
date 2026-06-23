@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
 	import { subscriptionStore } from './subscription-store.svelte.js';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** 'sm' for header, 'md' for profile */
@@ -14,11 +15,11 @@
 </script>
 
 {#if subscriptionStore.isPremium}
-	<span class="badge badge-{size}" title="Premium Member">
+	<span class="badge badge-{size}" title={t('subscriptionBadge.premiumMember')}>
 		<svg class="badge-icon" viewBox="0 0 16 16" fill="currentColor">
 			<path d="M8 1.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.2 3.8 14.5l.8-4.7L1.2 6.5l4.7-.7z"/>
 		</svg>
-		PREMIUM
+		{t('subscriptionBadge.premium')}
 	</span>
 {/if}
 

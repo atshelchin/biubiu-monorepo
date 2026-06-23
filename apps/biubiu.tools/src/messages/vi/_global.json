@@ -282,5 +282,55 @@
   "profilePage.publicKey": "Khóa công khai",
   "profilePage.credentialId": "ID thông tin xác thực",
   "profilePage.invalidLink": "Liên kết hồ sơ không hợp lệ",
-  "profilePage.invalidLinkDesc": "Liên kết hồ sơ này không hợp lệ hoặc đã bị hỏng."
+  "profilePage.invalidLinkDesc": "Liên kết hồ sơ này không hợp lệ hoặc đã bị hỏng.",
+
+  "settings.weekStart": "Tuần bắt đầu vào",
+  "settings.weekday.mon": "T2",
+  "settings.weekday.sun": "CN",
+
+  "widgets.themeToggle.toLight": "Chuyển sang chế độ sáng",
+  "widgets.themeToggle.toDark": "Chuyển sang chế độ tối",
+  "widgets.themeToggle.textSize": "Đổi cỡ chữ",
+
+  "widgets.networkPicker.title": "Mạng",
+  "widgets.networkPicker.subtitle": "Tìm bất kỳ chuỗi EVM nào theo tên hoặc Chain ID.",
+  "widgets.networkPicker.searchPlaceholder": "ví dụ Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Chuỗi {id}",
+  "widgets.networkPicker.change": "Đổi",
+  "widgets.networkPicker.hide": "Ẩn",
+  "widgets.networkPicker.custom": "Tùy chỉnh",
+  "widgets.networkPicker.customRpcPlaceholder": "https://rpc-của-bạn…",
+  "widgets.networkPicker.apply": "Áp dụng",
+
+  "widgets.smartParam.raw": "thô",
+  "widgets.smartParam.tokenAmount": "số lượng token",
+  "widgets.smartParam.duration": "thời lượng",
+  "widgets.smartParam.date": "ngày",
+  "widgets.smartParam.decimals": "số thập phân",
+  "widgets.smartParam.fromText": "từ văn bản",
+  "widgets.smartParam.unit.seconds": "giây",
+  "widgets.smartParam.unit.minutes": "phút",
+  "widgets.smartParam.unit.hours": "giờ",
+  "widgets.smartParam.unit.days": "ngày",
+  "widgets.smartParam.unit.weeks": "tuần",
+  "widgets.smartParam.unit.years": "năm",
+
+  "datePicker.preset.all": "Tất cả",
+  "datePicker.preset.today": "Hôm nay",
+  "datePicker.preset.yesterday": "Hôm qua",
+  "datePicker.preset.7d": "7 ngày",
+  "datePicker.preset.30d": "30 ngày",
+  "datePicker.preset.90d": "90 ngày",
+  "datePicker.dialogLabel": "Bộ chọn ngày",
+  "datePicker.prevMonth": "Tháng trước",
+  "datePicker.nextMonth": "Tháng sau",
+  "datePicker.today": "Hôm nay",
+  "datePicker.confirm": "Xác nhận",
+
+  "scanQr.title": "Quét mã QR",
+  "scanQr.cameraDenied": "Quyền truy cập camera bị từ chối",
+  "scanQr.notSupported": "Trình duyệt này không hỗ trợ nhận diện QR",
+
+  "subscriptionBadge.premiumMember": "Thành viên cao cấp",
+  "subscriptionBadge.premium": "CAO CẤP"
 }

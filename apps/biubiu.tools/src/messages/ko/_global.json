@@ -282,5 +282,55 @@
   "profilePage.publicKey": "공개 키",
   "profilePage.credentialId": "자격 증명 ID",
   "profilePage.invalidLink": "유효하지 않은 프로필 링크",
-  "profilePage.invalidLinkDesc": "이 프로필 링크는 유효하지 않거나 손상되었습니다."
+  "profilePage.invalidLinkDesc": "이 프로필 링크는 유효하지 않거나 손상되었습니다.",
+
+  "settings.weekStart": "주 시작 요일",
+  "settings.weekday.mon": "월",
+  "settings.weekday.sun": "일",
+
+  "widgets.themeToggle.toLight": "라이트 모드로 전환",
+  "widgets.themeToggle.toDark": "다크 모드로 전환",
+  "widgets.themeToggle.textSize": "글자 크기 변경",
+
+  "widgets.networkPicker.title": "네트워크",
+  "widgets.networkPicker.subtitle": "이름이나 체인 ID로 EVM 체인을 검색하세요.",
+  "widgets.networkPicker.searchPlaceholder": "예: Base, Arbitrum, BNB, 1, 56…",
+  "widgets.networkPicker.chain": "Chain {id}",
+  "widgets.networkPicker.change": "변경",
+  "widgets.networkPicker.hide": "숨기기",
+  "widgets.networkPicker.custom": "사용자 지정",
+  "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
+  "widgets.networkPicker.apply": "적용",
+
+  "widgets.smartParam.raw": "원시값",
+  "widgets.smartParam.tokenAmount": "토큰 수량",
+  "widgets.smartParam.duration": "기간",
+  "widgets.smartParam.date": "날짜",
+  "widgets.smartParam.decimals": "소수 자릿수",
+  "widgets.smartParam.fromText": "텍스트에서",
+  "widgets.smartParam.unit.seconds": "초",
+  "widgets.smartParam.unit.minutes": "분",
+  "widgets.smartParam.unit.hours": "시간",
+  "widgets.smartParam.unit.days": "일",
+  "widgets.smartParam.unit.weeks": "주",
+  "widgets.smartParam.unit.years": "년",
+
+  "datePicker.preset.all": "전체",
+  "datePicker.preset.today": "오늘",
+  "datePicker.preset.yesterday": "어제",
+  "datePicker.preset.7d": "7일",
+  "datePicker.preset.30d": "30일",
+  "datePicker.preset.90d": "90일",
+  "datePicker.dialogLabel": "날짜 선택기",
+  "datePicker.prevMonth": "이전 달",
+  "datePicker.nextMonth": "다음 달",
+  "datePicker.today": "오늘",
+  "datePicker.confirm": "확인",
+
+  "scanQr.title": "QR 코드 스캔",
+  "scanQr.cameraDenied": "카메라 접근이 거부되었습니다",
+  "scanQr.notSupported": "이 브라우저에서는 QR 인식을 지원하지 않습니다",
+
+  "subscriptionBadge.premiumMember": "프리미엄 회원",
+  "subscriptionBadge.premium": "PREMIUM"
 }

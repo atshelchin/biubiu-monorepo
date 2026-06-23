@@ -30,7 +30,7 @@
 		<span
 			>{String(selectedHour).padStart(2, '0')}:00 – {String(selectedHour).padStart(2, '0')}:59</span
 		>
-		<button class="stats-hour-clear" onclick={() => onClearHour?.()} aria-label="Clear hour filter"
+		<button class="stats-hour-clear" onclick={() => onClearHour?.()} aria-label={t('btcUpdown.stats.clearHourFilter')}
 			><X size={12} /></button
 		>
 	</div>

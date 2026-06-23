@@ -145,7 +145,7 @@
 								/>
 								<div class="chain-info">
 									<span class="chain-name">{chain.name}</span>
-									<span class="chain-id">Chain ID: {chain.chainId}</span>
+									<span class="chain-id">{t('vcs.chainId', { id: String(chain.chainId) })}</span>
 								</div>
 								<span class="chain-symbol">{chain.nativeCurrencySymbol}</span>
 							</button>
@@ -212,7 +212,7 @@
 					}} />
 					<div>
 						<h2 class="chain-header-name">{store.selectedChain.name}</h2>
-						<span class="chain-header-id">Chain ID: {store.selectedChain.chainId}</span>
+						<span class="chain-header-id">{t('vcs.chainId', { id: String(store.selectedChain.chainId) })}</span>
 					</div>
 				</div>
 
@@ -230,7 +230,7 @@
 		<!-- RPC selector -->
 		<section class="card rpc-card" use:fadeInUp={{ delay: 25 }}>
 			<div class="rpc-header">
-				<h3 class="section-title">RPC Endpoint</h3>
+				<h3 class="section-title">{t('vcs.rpc.title')}</h3>
 				{#if store.rpcLatency !== null}
 					<span class="rpc-latency">{store.rpcLatency}ms</span>
 				{/if}
@@ -240,14 +240,14 @@
 			<div class="rpc-current">
 				<code class="rpc-url">{store.rpcUrl}</code>
 				{#if store.usingCustomRpc}
-					<span class="rpc-badge custom">Custom</span>
+					<span class="rpc-badge custom">{t('vcs.rpc.customBadge')}</span>
 				{/if}
 			</div>
 
 			<!-- RPC dropdown -->
 			{#if store.rpcOptions.length > 0}
 				<div class="rpc-select-group">
-					<span class="rpc-label">Available RPCs</span>
+					<span class="rpc-label">{t('vcs.rpc.available')}</span>
 					<select
 						class="rpc-select"
 						value={store.usingCustomRpc ? '__custom__' : store.rpcUrl}
@@ -257,12 +257,12 @@
 							<option value={opt.url} disabled={opt.status === 'error'}>
 								{opt.url.replace('https://', '').slice(0, 50)}{opt.url.length > 58 ? '...' : ''}
 								{#if opt.status === 'ok'} ({opt.latencyMs}ms){/if}
-								{#if opt.status === 'error'} (unreachable){/if}
+								{#if opt.status === 'error'} ({t('vcs.rpc.unreachable')}){/if}
 								{#if opt.status === 'pending'} (...){/if}
 							</option>
 						{/each}
 						{#if store.usingCustomRpc}
-							<option value="__custom__">Custom: {store.rpcUrl.replace('https://', '').slice(0, 40)}...</option>
+							<option value="__custom__">{t('vcs.rpc.customBadge')}: {store.rpcUrl.replace('https://', '').slice(0, 40)}...</option>
 						{/if}
 					</select>
 				</div>
@@ -270,12 +270,12 @@
 
 			<!-- Custom RPC input -->
 			<div class="rpc-custom">
-				<span class="rpc-label">Custom RPC</span>
+				<span class="rpc-label">{t('vcs.rpc.customLabel')}</span>
 				<div class="rpc-custom-row">
 					<input
 						type="text"
 						class="rpc-input"
-						placeholder="https://your-rpc-url..."
+						placeholder={t('vcs.rpc.customPlaceholder')}
 						bind:value={store.customRpcInput}
 						onkeydown={handleCustomRpcKeydown}
 					/>
@@ -284,7 +284,7 @@
 						onclick={handleApplyCustomRpc}
 						disabled={!store.customRpcInput.trim()}
 					>
-						Apply
+						{t('vcs.rpc.apply')}
 					</button>
 				</div>
 				{#if store.rpcError}
@@ -318,10 +318,10 @@
 				<span class="status-icon">{store.p256Available ? '\u2713' : '\u2717'}</span>
 				<div class="contract-name-group">
 					<span class="contract-name">P256 Precompile (RIP-7212)</span>
-					<span class="contract-address">Required for passkey signatures</span>
+					<span class="contract-address">{t('vcs.p256.requiredFor')}</span>
 				</div>
 				<span class="status-label">
-					{store.p256Available ? 'Available' : 'Not available'}
+					{store.p256Available ? t('vcs.p256.available') : t('vcs.p256.notAvailable')}
 				</span>
 			</div>
 
@@ -351,12 +351,12 @@
 								<code class="contract-address">{shortenAddress(cs.def.address)}</code>
 							{/if}
 							{#if cs.mismatch}
-								<span class="mismatch-warning">Wrong bytecode at this address!</span>
+								<span class="mismatch-warning">{t('vcs.results.mismatchWarning')}</span>
 							{/if}
 						</div>
 						<span class="status-label">
 							{#if cs.mismatch}
-								Mismatch
+								{t('vcs.results.mismatch')}
 							{:else if cs.deployed}
 								{t('vcs.results.deployed')}
 							{:else}
@@ -372,13 +372,13 @@
 		<!-- P256 missing warning -->
 		{#if !store.p256Available && store.contractStatuses.length > 0}
 			<section class="card action-card" use:fadeInUp={{ delay: 75 }}>
-				<div class="step-badge warning">Requirement</div>
-				<h3 class="action-title">P256 Precompile Not Available</h3>
+				<div class="step-badge warning">{t('vcs.p256.requirementBadge')}</div>
+				<h3 class="action-title">{t('vcs.p256.notAvailableTitle')}</h3>
 				<p class="action-desc">
-					This chain does not support the RIP-7212 P256 precompile, which is required for passkey (fingerprint/Face ID) signature verification. Vela Wallet cannot work on this chain without it.
+					{t('vcs.p256.notAvailableDesc')}
 				</p>
 				<p class="note">
-					The P256 precompile is a chain-level feature that must be enabled by the chain's validators/operators. It cannot be deployed as a contract. Contact the chain team to request RIP-7212 support.
+					{t('vcs.p256.notAvailableNote')}
 				</p>
 			</section>
 		{/if}
@@ -397,7 +397,7 @@
 					{#if store.deploySubStep === 'idle' || store.deploySubStep === 'fund-deployer'}
 						{#if store.deploySubStep === 'idle'}
 							<button class="btn btn-primary" onclick={() => store.startArachnidDeploy()}>
-								Start Setup
+								{t('vcs.action.startSetup')}
 							</button>
 						{:else}
 							<!-- Step 1: Fund deployer -->
@@ -431,7 +431,7 @@
 											class="btn btn-sm btn-copy"
 											onclick={() => handleCopy(ARACHNID_DEPLOYER_EOA)}
 										>
-											{copiedAddress === ARACHNID_DEPLOYER_EOA ? 'Copied!' : 'Copy'}
+											{copiedAddress === ARACHNID_DEPLOYER_EOA ? t('vcs.action.copied') : t('vcs.action.copy')}
 										</button>
 									</div>
 								</div>
@@ -503,57 +503,61 @@
 			{:else if next.key === 'multicall3'}
 				<section class="card action-card" use:fadeInUp={{ delay: 100 }}>
 					<div class="step-badge">{t('vcs.step.title')}</div>
-					<h3 class="action-title">Deploy Multicall3</h3>
+					<h3 class="action-title">{t('vcs.multicall3.title')}</h3>
 					<p class="action-desc">
-						Multicall3 enables efficient batch-reading of on-chain data. This is deployed using a pre-signed transaction — no wallet extension needed.
+						{t('vcs.multicall3.description')}
 					</p>
 
 					{#if store.deploySubStep === 'idle' || store.deploySubStep === 'fund-deployer'}
 						{#if store.deploySubStep === 'idle'}
 							<button class="btn btn-primary" onclick={() => store.startMulticall3Deploy()}>
-								Start Setup
+								{t('vcs.action.startSetup')}
 							</button>
 						{:else}
 							<div class="sub-step" use:fadeInUp={{ delay: 0 }}>
-								<h4 class="sub-step-title">Step 1: Fund the deployer</h4>
+								<h4 class="sub-step-title">{t('vcs.multicall3.step1.title')}</h4>
 								<p class="sub-step-desc">
-									Send at least 0.1 {store.selectedChain?.nativeCurrency.symbol ?? 'ETH'} to the deployer address below. This covers the gas fee.
+									{t('vcs.multicall3.step1.description', {
+										symbol: store.selectedChain?.nativeCurrency.symbol ?? 'ETH',
+									})}
 								</p>
 
 								<div class="address-box">
-									<span class="address-label">Send to this address:</span>
+									<span class="address-label">{t('vcs.arachnid.step1.address')}</span>
 									<div class="address-copy">
 										<code class="address-value">{MULTICALL3_DEPLOYER_EOA}</code>
 										<button
 											class="btn btn-sm btn-copy"
 											onclick={() => handleCopy(MULTICALL3_DEPLOYER_EOA)}
 										>
-											{copiedAddress === MULTICALL3_DEPLOYER_EOA ? 'Copied!' : 'Copy'}
+											{copiedAddress === MULTICALL3_DEPLOYER_EOA ? t('vcs.action.copied') : t('vcs.action.copy')}
 										</button>
 									</div>
 								</div>
 
 								<div class="info-row">
 									<span class="info-label">
-										Balance: {formatWei(store.multicall3DeployerBalance, store.selectedChain?.nativeCurrency.symbol ?? 'ETH')}
+										{t('vcs.action.balance', {
+											balance: formatWei(store.multicall3DeployerBalance, store.selectedChain?.nativeCurrency.symbol ?? 'ETH'),
+										})}
 									</span>
 									<button class="btn-link" onclick={() => store.refreshMulticall3Balance()}>
-										Refresh Balance
+										{t('vcs.arachnid.step1.refreshBalance')}
 									</button>
 								</div>
 
 								{#if store.multicall3Funded}
 									<div class="success-banner" use:fadeInUp={{ delay: 0 }}>
-										<span>Funded! Ready for next step.</span>
+										<span>{t('vcs.arachnid.step1.funded')}</span>
 									</div>
 
 									<div class="sub-step" use:fadeInUp={{ delay: 50 }}>
-										<h4 class="sub-step-title">Step 2: Deploy</h4>
+										<h4 class="sub-step-title">{t('vcs.multicall3.step2.title')}</h4>
 										<p class="sub-step-desc">
-											Click to broadcast the pre-signed deployment transaction.
+											{t('vcs.multicall3.step2.description')}
 										</p>
 										<button class="btn btn-primary" onclick={() => store.broadcastMulticall3()}>
-											Deploy Now
+											{t('vcs.arachnid.step2.btn')}
 										</button>
 									</div>
 								{/if}
@@ -647,19 +651,21 @@
 					{/if}
 
 					<p class="gas-estimate">
-						Estimated gas: ~{formatGasNumber(totalGas)}
+						{t('vcs.deployer.estimatedGas', { gas: formatGasNumber(totalGas) })}
 					</p>
 
 					<!-- Deployer wallet section -->
 					{#if !store.deployerWallet}
 						<button class="btn btn-primary" onclick={() => store.initDeployerWallet()}>
-							Create Deployer Wallet
+							{t('vcs.deployer.create')}
 						</button>
 					{:else}
 						<div class="deployer-wallet-card" use:fadeInUp={{ delay: 0 }}>
-							<h4 class="sub-step-title">Deployer Wallet</h4>
+							<h4 class="sub-step-title">{t('vcs.deployer.title')}</h4>
 							<p class="sub-step-desc">
-								Send {store.selectedChain?.nativeCurrency.symbol ?? 'native tokens'} to this address to cover gas fees for deployment.
+								{t('vcs.deployer.description', {
+									symbol: store.selectedChain?.nativeCurrency.symbol ?? t('vcs.deployer.nativeTokens'),
+								})}
 							</p>
 
 							<!-- QR Code -->
@@ -669,14 +675,14 @@
 
 							<!-- Address -->
 							<div class="address-box">
-								<span class="address-label">Deployer address:</span>
+								<span class="address-label">{t('vcs.deployer.address')}</span>
 								<div class="address-copy">
 									<code class="address-value">{store.deployerWallet.address}</code>
 									<button
 										class="btn btn-sm btn-copy"
 										onclick={() => handleCopy(store.deployerWallet?.address ?? '')}
 									>
-										{copiedAddress === store.deployerWallet.address ? 'Copied!' : 'Copy'}
+										{copiedAddress === store.deployerWallet.address ? t('vcs.action.copied') : t('vcs.action.copy')}
 									</button>
 								</div>
 							</div>
@@ -684,23 +690,25 @@
 							<!-- Balance -->
 							<div class="info-row">
 								<span class="info-label">
-									Balance: {formatWei(store.deployerBalance, store.selectedChain?.nativeCurrency.symbol ?? 'ETH')}
+									{t('vcs.action.balance', {
+										balance: formatWei(store.deployerBalance, store.selectedChain?.nativeCurrency.symbol ?? 'ETH'),
+									})}
 								</span>
 								<button class="btn-link" onclick={() => store.refreshDeployerBalance()}>
-									{store.deployerBalanceLoading ? 'Checking...' : 'Refresh'}
+									{store.deployerBalanceLoading ? t('vcs.deployer.checking') : t('vcs.deployer.refresh')}
 								</button>
 							</div>
 
 							<!-- Download private key -->
 							<div class="info-row">
 								<button class="btn-link" onclick={() => store.downloadDeployerKey()}>
-									Download Private Key
+									{t('vcs.deployer.downloadKey')}
 								</button>
 							</div>
 
 							{#if store.deployerHasFunds}
 								<div class="success-banner">
-									<span>Funded! Ready to deploy.</span>
+									<span>{t('vcs.deployer.funded')}</span>
 								</div>
 							{/if}
 						</div>
@@ -758,7 +766,7 @@
 							>
 								{isEntryPoint
 									? t('vcs.entrypoint.deploy')
-									: `Deploy All (${deployableContracts.length} contracts)`}
+									: t('vcs.safeContracts.deployAll', { count: String(deployableContracts.length) })}
 							</button>
 						{/if}
 					{/if}

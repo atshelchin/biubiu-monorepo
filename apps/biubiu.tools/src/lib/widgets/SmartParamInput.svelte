@@ -19,6 +19,7 @@
 		shortenAddress
 	} from '$lib/contract-caller/format.js';
 	import { Calendar, Timer } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		type: string;
@@ -163,13 +164,13 @@
 				class="chip"
 				class:active={numMode === 'raw'}
 				onclick={() => pickNumMode('raw')}
-				type="button">raw</button
+				type="button">{t('widgets.smartParam.raw')}</button
 			>
 			<button
 				class="chip"
 				class:active={numMode === 'amount'}
 				onclick={() => pickNumMode('amount')}
-				type="button">token amount</button
+				type="button">{t('widgets.smartParam.tokenAmount')}</button
 			>
 			<button
 				class="chip"
@@ -187,13 +188,13 @@
 				class="chip"
 				class:active={numMode === 'duration'}
 				onclick={() => pickNumMode('duration')}
-				type="button">duration</button
+				type="button">{t('widgets.smartParam.duration')}</button
 			>
 			<button
 				class="chip"
 				class:active={numMode === 'date'}
 				onclick={() => pickNumMode('date')}
-				type="button">date</button
+				type="button">{t('widgets.smartParam.date')}</button
 			>
 		</div>
 
@@ -207,7 +208,7 @@
 				/>
 				<span class="helper-x">×10^</span>
 				<input class="input xs" bind:value={decimals} oninput={recomputeAmount} />
-				<span class="helper-label">decimals</span>
+				<span class="helper-label">{t('widgets.smartParam.decimals')}</span>
 			</div>
 		{:else if numMode === 'ether'}
 			<div class="helper">
@@ -233,12 +234,12 @@
 			<div class="helper">
 				<input class="input sm" placeholder="7" bind:value={durValue} oninput={recomputeDuration} />
 				<select class="input sm" bind:value={durUnit} onchange={recomputeDuration}>
-					<option value="seconds">seconds</option>
-					<option value="minutes">minutes</option>
-					<option value="hours">hours</option>
-					<option value="days">days</option>
-					<option value="weeks">weeks</option>
-					<option value="years">years</option>
+					<option value="seconds">{t('widgets.smartParam.unit.seconds')}</option>
+					<option value="minutes">{t('widgets.smartParam.unit.minutes')}</option>
+					<option value="hours">{t('widgets.smartParam.unit.hours')}</option>
+					<option value="days">{t('widgets.smartParam.unit.days')}</option>
+					<option value="weeks">{t('widgets.smartParam.unit.weeks')}</option>
+					<option value="years">{t('widgets.smartParam.unit.years')}</option>
 				</select>
 			</div>
 		{:else if numMode === 'date'}
@@ -274,7 +275,7 @@
 				class="chip"
 				class:active={bytesMode === 'text'}
 				onclick={() => (bytesMode = 'text')}
-				type="button">from text</button
+				type="button">{t('widgets.smartParam.fromText')}</button
 			>
 		</div>
 		{#if bytesMode === 'hex'}

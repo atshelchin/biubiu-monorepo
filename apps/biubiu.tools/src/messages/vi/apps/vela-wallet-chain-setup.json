@@ -5,6 +5,8 @@
   "vcs.title": "Thiết Lập Chuỗi cho Vela Wallet",
   "vcs.subtitle": "Chuẩn bị bất kỳ chuỗi EVM nào cho Vela Wallet chỉ trong vài bước đơn giản",
 
+  "vcs.chainId": "Chain ID: {id}",
+
   "vcs.search.placeholder": "Tìm theo tên chuỗi hoặc Chain ID…",
   "vcs.search.hint": "ví dụ Ethereum, Polygon, 42161",
   "vcs.search.noResults": "Không tìm thấy chuỗi nào. Hãy thử từ khóa khác.",
@@ -19,8 +21,49 @@
   "vcs.results.needsSetup": "Một số hợp đồng cần được triển khai",
   "vcs.results.deployed": "Đã triển khai",
   "vcs.results.missing": "Chưa triển khai",
+  "vcs.results.mismatch": "Không khớp",
+  "vcs.results.mismatchWarning": "Sai bytecode tại địa chỉ này!",
   "vcs.results.recheck": "Kiểm tra lại",
   "vcs.results.changeChain": "Đổi chuỗi",
+
+  "vcs.rpc.title": "Điểm cuối RPC",
+  "vcs.rpc.customBadge": "Tùy chỉnh",
+  "vcs.rpc.available": "RPC khả dụng",
+  "vcs.rpc.unreachable": "không truy cập được",
+  "vcs.rpc.customLabel": "RPC tùy chỉnh",
+  "vcs.rpc.customPlaceholder": "https://url-rpc-của-bạn...",
+  "vcs.rpc.apply": "Áp dụng",
+
+  "vcs.p256.requiredFor": "Cần thiết cho chữ ký passkey",
+  "vcs.p256.available": "Khả dụng",
+  "vcs.p256.notAvailable": "Không khả dụng",
+  "vcs.p256.requirementBadge": "Yêu cầu",
+  "vcs.p256.notAvailableTitle": "Precompile P256 không khả dụng",
+  "vcs.p256.notAvailableDesc": "Chuỗi này không hỗ trợ precompile P256 RIP-7212, vốn cần thiết để xác minh chữ ký passkey (vân tay/Face ID). Vela Wallet không thể hoạt động trên chuỗi này nếu thiếu nó.",
+  "vcs.p256.notAvailableNote": "Precompile P256 là một tính năng ở cấp độ chuỗi, phải được các trình xác thực/đơn vị vận hành của chuỗi bật lên. Nó không thể được triển khai dưới dạng hợp đồng. Hãy liên hệ đội ngũ của chuỗi để yêu cầu hỗ trợ RIP-7212.",
+
+  "vcs.action.startSetup": "Bắt đầu thiết lập",
+  "vcs.action.copy": "Sao chép",
+  "vcs.action.copied": "Đã sao chép!",
+  "vcs.action.balance": "Số dư: {balance}",
+
+  "vcs.multicall3.title": "Triển khai Multicall3",
+  "vcs.multicall3.description": "Multicall3 cho phép đọc hàng loạt dữ liệu on-chain một cách hiệu quả. Nó được triển khai bằng một giao dịch đã ký sẵn — không cần tiện ích mở rộng ví.",
+  "vcs.multicall3.step1.title": "Bước 1: Nạp tiền cho trình triển khai",
+  "vcs.multicall3.step1.description": "Gửi ít nhất 0.1 {symbol} đến địa chỉ trình triển khai bên dưới. Khoản này dùng để trả phí gas.",
+  "vcs.multicall3.step2.title": "Bước 2: Triển khai",
+  "vcs.multicall3.step2.description": "Nhấp để phát đi giao dịch triển khai đã ký sẵn.",
+
+  "vcs.deployer.estimatedGas": "Gas ước tính: ~{gas}",
+  "vcs.deployer.create": "Tạo ví trình triển khai",
+  "vcs.deployer.title": "Ví trình triển khai",
+  "vcs.deployer.description": "Gửi {symbol} đến địa chỉ này để trả phí gas cho việc triển khai.",
+  "vcs.deployer.nativeTokens": "native token",
+  "vcs.deployer.address": "Địa chỉ trình triển khai:",
+  "vcs.deployer.checking": "Đang kiểm tra...",
+  "vcs.deployer.refresh": "Làm mới",
+  "vcs.deployer.downloadKey": "Tải khóa riêng tư",
+  "vcs.deployer.funded": "Đã nạp tiền! Sẵn sàng triển khai.",
 
   "vcs.step.title": "Bước tiếp theo",
 

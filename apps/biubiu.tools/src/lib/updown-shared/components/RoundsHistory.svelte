@@ -148,35 +148,35 @@
 						{/if}
 						{#if round.swing_exit_reason}
 							<div class="round-row">
-								<span class="round-label">Exit Reason</span>
+								<span class="round-label">{t('btcUpdown.round.exitReason')}</span>
 								<span class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}">
 									{getSwingExitLabel('en', round.swing_exit_reason)}
 								</span>
 							</div>
 							{#if round.swing_exit_price !== null}
 								<div class="round-row">
-									<span class="round-label">Exit Price</span>
+									<span class="round-label">{t('btcUpdown.round.exitPrice')}</span>
 									<span class="round-value mono">{fmtPrice(ctx, round.swing_exit_price)}</span>
 								</div>
 							{/if}
 							{@const exitTime = round.stop_loss_checked_at ?? round.settled_at}
 							{#if exitTime}
 								<div class="round-row">
-									<span class="round-label">Exit Time</span>
+									<span class="round-label">{t('btcUpdown.round.exitTime')}</span>
 									<span class="round-value mono">{fmtShortTime(ctx, exitTime)}</span>
 								</div>
 							{/if}
 							{#if round.real_outcome}
 								<div class="round-row">
-									<span class="round-label">Real Outcome</span>
+									<span class="round-label">{t('btcUpdown.round.realOutcome')}</span>
 									<span class="round-value exit-quality-row">
 										<span class="direction-tag direction-{round.real_outcome.toLowerCase()}">{round.real_outcome}</span>
 										{#if round.entry_direction}
 											{@const isCorrectExit = round.real_outcome !== round.entry_direction}
 											<span class="exit-quality-badge" class:exit-correct={isCorrectExit} class:exit-wrong={!isCorrectExit}>
 												{isCorrectExit
-													? 'Good Exit'
-													: 'Bad Exit'}
+													? t('btcUpdown.round.goodExit')
+													: t('btcUpdown.round.badExit')}
 											</span>
 										{/if}
 									</span>
@@ -194,42 +194,42 @@
 								<div class="pnl-divider"></div>
 								<div class="v80-details">
 									<div class="round-row">
-										<span class="round-label">Main</span>
+										<span class="round-label">{t('btcUpdown.round.v80Main')}</span>
 										<span class="round-value mono">
 											<span class="direction-tag direction-{v80.mainDirection?.toLowerCase()}">{v80.mainDirection}</span>
 											{v80.mainShares?.toFixed(1)} sh @ ${v80.mainAvgPrice?.toFixed(3)} = ${v80.mainSpent?.toFixed(2)}
 										</span>
 									</div>
 									<div class="round-row">
-										<span class="round-label">Hedge</span>
+										<span class="round-label">{t('btcUpdown.round.v80Hedge')}</span>
 										<span class="round-value mono">
 											<span class="direction-tag direction-{v80.hedgeDirection?.toLowerCase()}">{v80.hedgeDirection}</span>
 											{v80.hedgeShares?.toFixed(1)} sh @ ${v80.hedgeAvgPrice?.toFixed(3)} = ${v80.hedgeSpent?.toFixed(2)}
 										</span>
 									</div>
 									<div class="round-row">
-										<span class="round-label">P&L Estimate</span>
+										<span class="round-label">{t('btcUpdown.round.v80PnlEstimate')}</span>
 										<span class="round-value">
 											{#if mainProfit > 0 && hedgeProfit > 0}
-												<span class="arb-badge arb-yes">Win either way</span>
+												<span class="arb-badge arb-yes">{t('btcUpdown.round.v80WinEither')}</span>
 											{:else if mainProfit > 0}
-												<span class="arb-badge arb-main">Profit if main wins</span>
+												<span class="arb-badge arb-main">{t('btcUpdown.round.v80ProfitMain')}</span>
 											{:else if hedgeProfit > 0}
-												<span class="arb-badge arb-hedge">Profit if hedge wins</span>
+												<span class="arb-badge arb-hedge">{t('btcUpdown.round.v80ProfitHedge')}</span>
 											{:else}
-												<span class="arb-badge arb-no">Loss either way</span>
+												<span class="arb-badge arb-no">{t('btcUpdown.round.v80LossEither')}</span>
 											{/if}
-											<span class="mono" style="margin-left:4px">{v80.buyCount} buys</span>
+											<span class="mono" style="margin-left:4px">{t('btcUpdown.round.v80Buys', { count: String(v80.buyCount) })}</span>
 										</span>
 									</div>
 									<div class="round-row">
-										<span class="round-label">{v80.mainDirection} wins</span>
+										<span class="round-label">{t('btcUpdown.round.v80DirWins', { dir: String(v80.mainDirection) })}</span>
 										<span class="round-value mono" class:positive={mainProfit >= 0} class:negative={mainProfit < 0}>
 											{mainProfit >= 0 ? '+' : ''}{mainProfit.toFixed(2)}
 										</span>
 									</div>
 									<div class="round-row">
-										<span class="round-label">{v80.hedgeDirection} wins</span>
+										<span class="round-label">{t('btcUpdown.round.v80DirWins', { dir: String(v80.hedgeDirection) })}</span>
 										<span class="round-value mono" class:positive={hedgeProfit >= 0} class:negative={hedgeProfit < 0}>
 											{hedgeProfit >= 0 ? '+' : ''}{hedgeProfit.toFixed(2)}
 										</span>
@@ -238,7 +238,7 @@
 									{#if v80.decisionLog?.length > 0}
 										<details class="pnl-details v80-log-details">
 											<summary class="pnl-summary">
-												<span class="pnl-total-label">Action Log ({v80.decisionLog.length})</span>
+												<span class="pnl-total-label">{t('btcUpdown.round.v80ActionLog', { count: String(v80.decisionLog.length) })}</span>
 												<svg class="pnl-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
 											</summary>
 											<div class="v80-log-list">
@@ -250,15 +250,15 @@
 															<span class="direction-tag direction-{log.direction?.toLowerCase()}">{log.direction}</span>
 															<span class="mono">{log.shares?.toFixed(1)}sh @${log.price?.toFixed(3)} ${log.cost?.toFixed(2)}</span>
 														{:else if log.action === 'buy_no_fill'}
-															<span class="v80-log-skip">No fill {log.direction} (max ${log.maxPrice})</span>
+															<span class="v80-log-skip">{t('btcUpdown.round.v80LogNoFill', { direction: String(log.direction), maxPrice: String(log.maxPrice) })}</span>
 														{:else if log.action === 'skip_price_too_high'}
-															<span class="v80-log-skip">Price too high ${log.mainAsk?.toFixed(2)} > ${log.maxPrice}</span>
+															<span class="v80-log-skip">{t('btcUpdown.round.v80LogPriceTooHigh', { ask: String(log.mainAsk?.toFixed(2)), maxPrice: String(log.maxPrice) })}</span>
 														{:else if log.action === 'direction_chosen'}
-															<span class="v80-log-info">Direction: <span class="direction-tag direction-{log.direction?.toLowerCase()}">{log.direction}</span></span>
+															<span class="v80-log-info">{t('btcUpdown.round.v80LogDirection')} <span class="direction-tag direction-{log.direction?.toLowerCase()}">{log.direction}</span></span>
 														{:else if log.action === 'direction_changed'}
-															<span class="v80-log-warn">Direction changed: {log.from} → {log.to}</span>
+															<span class="v80-log-warn">{t('btcUpdown.round.v80LogDirectionChanged', { from: String(log.from), to: String(log.to) })}</span>
 														{:else if log.action === 'hedge_done'}
-															<span class="v80-log-info">Hedge done: {log.hedgeShares?.toFixed(1)}sh ${log.hedgeSpent?.toFixed(2)}</span>
+															<span class="v80-log-info">{t('btcUpdown.round.v80LogHedgeDone', { shares: String(log.hedgeShares?.toFixed(1)), spent: String(log.hedgeSpent?.toFixed(2)) })}</span>
 														{:else}
 															<span class="v80-log-info">{log.action} {log.reason ?? ''}</span>
 														{/if}

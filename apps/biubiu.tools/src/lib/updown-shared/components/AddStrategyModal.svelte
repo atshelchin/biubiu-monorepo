@@ -37,7 +37,7 @@
 	<div class="modal-overlay" onclick={handleClose}>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="modal" onclick={(e) => e.stopPropagation()}>
-			<button class="modal-close" aria-label="Close" disabled={validating} onclick={handleClose}>
+			<button class="modal-close" aria-label={t('btcUpdown.strategy.close')} disabled={validating} onclick={handleClose}>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="16"

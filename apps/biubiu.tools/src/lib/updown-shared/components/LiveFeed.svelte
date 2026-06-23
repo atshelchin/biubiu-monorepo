@@ -113,7 +113,7 @@
 		{/if}
 		{#if priceToBeat !== null}
 			<div class="round-row" style="margin-top: var(--space-2);">
-				<span class="round-label">Price to Beat</span>
+				<span class="round-label">{t('btcUpdown.live.priceToBeat')}</span>
 				<span class="round-value mono">${formatNumber(priceToBeat, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 			</div>
 		{/if}

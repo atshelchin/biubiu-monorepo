@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import { locale, localizeHref } from '$lib/i18n';
+	import { t, locale, localizeHref } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
@@ -38,9 +38,8 @@
 
 	const seoProps = $derived(
 		getBaseSEO({
-			title: 'Token Sender - BiuBiu Tools',
-			description:
-				'Batch-send native coins or ERC20 tokens to up to 100,000 addresses from your own passkey self-custodial wallet, using Safe 1.4.1 MultiSend.',
+			title: t('ts.meta.title'),
+			description: t('ts.meta.description'),
 			currentLocale: locale.value,
 		}),
 	);
@@ -73,7 +72,7 @@
 		anError = null;
 		anMsOk = null;
 		if (!anName.trim() || !Number(anChainId) || !anRpc.trim()) {
-			anError = 'Name, chain ID and RPC are required';
+			anError = t('ts.addNetwork.errorRequired');
 			return;
 		}
 		anChecking = true;
@@ -84,7 +83,7 @@
 		anError = null;
 		const id = Number(anChainId);
 		if (!anName.trim() || !id || !anRpc.trim()) {
-			anError = 'Name, chain ID and RPC are required';
+			anError = t('ts.addNetwork.errorRequired');
 			return;
 		}
 		await s.addCustomNetwork({
@@ -116,10 +115,10 @@
 	}
 
 	const feeSourceLabel: Record<string, string> = {
-		'member-free': 'Free (Premium member)',
-		config: 'Fixed (configured for this network)',
-		usd: '$5 equivalent',
-		fallback: '1 native coin (price unavailable)',
+		'member-free': t('ts.fee.memberFree'),
+		config: t('ts.fee.config'),
+		usd: t('ts.fee.usd'),
+		fallback: t('ts.fee.fallback'),
 	};
 
 	function shortHash(h: string): string {
@@ -135,8 +134,8 @@
 
 <main class="page">
 	<header class="hero" use:fadeInUp={{ delay: 0 }}>
-		<h1 class="title">Token Sender</h1>
-		<p class="subtitle">Send a coin or token to many addresses at once — from your own wallet.</p>
+		<h1 class="title">{t('ts.title')}</h1>
+		<p class="subtitle">{t('ts.subtitle')}</p>
 	</header>
 
 	<!-- Trust / safety — compact, expandable -->
@@ -144,30 +143,29 @@
 		<div class="safety-row">
 			<span class="safety-icon" aria-hidden="true"><Lock size={22} /></span>
 			<div class="safety-head">
-				<h2>Your keys, your coins</h2>
+				<h2>{t('ts.safety.heading')}</h2>
 				<div class="safety-chips">
-					<span class="chip"><Key size={13} /> Key stays on your device</span>
-					<span class="chip"><Shield size={13} /> BiuBiu can't move funds</span>
-					<span class="chip"><BookOpen size={13} /> Open source</span>
+					<span class="chip"><Key size={13} /> {t('ts.safety.chipKey')}</span>
+					<span class="chip"><Shield size={13} /> {t('ts.safety.chipNoMove')}</span>
+					<span class="chip"><BookOpen size={13} /> {t('ts.safety.chipOpenSource')}</span>
 				</div>
 			</div>
 			<button class="link-btn" onclick={() => (safetyOpen = !safetyOpen)}>
-				{safetyOpen ? 'Hide' : 'Why safe?'}
+				{safetyOpen ? t('ts.safety.hide') : t('ts.safety.whySafe')}
 			</button>
 		</div>
 		{#if safetyOpen}
 			<p class="safety-detail">
-				Funds sit in a Safe smart account whose address is derived from your passkey — the private
-				key never leaves your device, and every batch needs your fingerprint / PIN. Same design as
-				<a href="https://getvela.app" target="_blank" rel="noopener">Vela Wallet</a> (Safe 1.4.1 +
-				passkey).
+				{t('ts.safety.detailBefore')}
+				<a href="https://getvela.app" target="_blank" rel="noopener">{t('ts.safety.velaLink')}</a>
+				{t('ts.safety.detailAfter')}
 			</p>
 		{/if}
 		{#if walletStore.activeWallet}
 			<div class="safety-actions">
 				<code class="addr">{walletStore.activeWallet.address}</code>
 				{#if walletStore.kind === 'biubiu'}
-					<button class="btn ghost sm" onclick={() => (showDeposit = true)}>Deposit</button>
+					<button class="btn ghost sm" onclick={() => (showDeposit = true)}>{t('ts.safety.deposit')}</button>
 				{/if}
 			</div>
 		{/if}
@@ -177,7 +175,7 @@
 		<!-- Stepper -->
 		<div use:fadeInUp={{ delay: 80 }}>
 			<Stepper
-				steps={['Token', 'Recipients', 'Review', 'Send']}
+				steps={[t('ts.stepper.token'), t('ts.stepper.recipients'), t('ts.stepper.review'), t('ts.stepper.send')]}
 				current={s.step - 1}
 				onNavigate={(i: number) => s.goTo((i + 1) as 1 | 2 | 3 | 4)}
 			/>
@@ -186,9 +184,9 @@
 		<!-- ── Step 1: Network + Token ── -->
 		{#if s.step === 1}
 			<section class="glass panel" use:fadeInUp={{ delay: 0 }}>
-				<h3>Choose network &amp; token</h3>
+				<h3>{t('ts.step1.heading')}</h3>
 
-				<div class="field-label">Network</div>
+				<div class="field-label">{t('ts.step1.network')}</div>
 				<div class="net-grid">
 					{#each s.networks as net (net.slug)}
 						{@const v = chainVisual(net.slug)}
@@ -207,7 +205,9 @@
 							<span class="net-text">
 								<span class="net-name">{net.name}</span>
 								<span class="net-sym">
-									{net.symbol}{net.isTestnet ? ' · testnet' : ''}{net.isCustom ? ' · custom' : ''}
+									{net.symbol}{net.isTestnet ? t('ts.step1.testnetSuffix') : ''}{net.isCustom
+										? t('ts.step1.customSuffix')
+										: ''}
 								</span>
 							</span>
 						</button>
@@ -216,8 +216,8 @@
 					<button class="net-chip add-chip" onclick={() => (showAddNetwork = true)}>
 						<span class="net-badge add">+</span>
 						<span class="net-text">
-							<span class="net-name">Add network</span>
-							<span class="net-sym">custom EVM chain</span>
+							<span class="net-name">{t('ts.step1.addNetwork')}</span>
+							<span class="net-sym">{t('ts.step1.addNetworkHint')}</span>
 						</span>
 					</button>
 				</div>
@@ -225,47 +225,48 @@
 				<!-- RPC line for the selected network -->
 				<div class="net-meta">
 					<span class="rpc-info">
-						RPC: <code>{s.network.rpcs[0]}</code>
-						{#if s.rpcOverrides[s.network.slug]}<span class="tag">custom</span>{/if}
+						{t('ts.step1.rpcLabel')} <code>{s.network.rpcs[0]}</code>
+						{#if s.rpcOverrides[s.network.slug]}<span class="tag">{t('ts.step1.rpcCustomTag')}</span>{/if}
 					</span>
-					<button class="link-btn" onclick={openRpcEdit}>Edit RPC</button>
+					<button class="link-btn" onclick={openRpcEdit}>{t('ts.step1.editRpc')}</button>
 				</div>
 
 				{#if !s.sendSupported}
 					<p class="note">
-						Custom network: reading balances &amp; tokens works here, but <strong>sending</strong> needs
-						Safe infra + bundler support on this chain — set it up via
-						<a href={localizeHref('/apps/vela-wallet-chain-setup')}>Chain Setup</a>.
+						{t('ts.step1.customNetworkNoteBefore')}
+						<strong>{t('ts.step1.customNetworkNoteSending')}</strong>
+						{t('ts.step1.customNetworkNoteAfter')}
+						<a href={localizeHref('/apps/vela-wallet-chain-setup')}>{t('ts.step1.chainSetupLink')}</a>.
 					</p>
 				{/if}
 
-				<div class="field-label">Token</div>
+				<div class="field-label">{t('ts.step1.token')}</div>
 				<div class="toggle">
 					<button class:selected={s.tokenType === 'native'} onclick={() => s.setTokenType('native')}>
-						Native ({s.network.symbol})
+						{t('ts.step1.native', { symbol: s.network.symbol })}
 					</button>
 					<button class:selected={s.tokenType === 'erc20'} onclick={() => s.setTokenType('erc20')}>
-						ERC20
+						{t('ts.step1.erc20')}
 					</button>
 				</div>
 
 				{#if s.tokenType === 'erc20'}
 					<div class="erc20-row">
-						<input class="input" placeholder="0x… token contract address" bind:value={s.tokenAddress} />
+						<input class="input" placeholder={t('ts.step1.tokenAddressPlaceholder')} bind:value={s.tokenAddress} />
 						<button class="btn" onclick={() => s.loadTokenMeta()} disabled={s.tokenMetaLoading}>
-							{s.tokenMetaLoading ? 'Loading…' : 'Load token'}
+							{s.tokenMetaLoading ? t('ts.step1.loadingToken') : t('ts.step1.loadToken')}
 						</button>
 					</div>
 					{#if s.tokenMetaError}
 						<p class="err">{s.tokenMetaError}</p>
 					{:else if s.tokenMeta}
-						<p class="ok">✓ {s.tokenMeta.symbol} · {s.tokenMeta.decimals} decimals</p>
+						<p class="ok">{t('ts.step1.tokenMetaOk', { symbol: s.tokenMeta.symbol, decimals: s.tokenMeta.decimals })}</p>
 					{/if}
 				{/if}
 
 				<div class="panel-actions">
 					<button class="btn primary" disabled={!s.canProceedFromConfig} onclick={next2}>
-						Continue
+						{t('ts.step1.continue')}
 					</button>
 				</div>
 			</section>
@@ -274,7 +275,7 @@
 		<!-- ── Step 2: Recipients ── -->
 		{#if s.step === 2}
 			<section class="glass panel" use:fadeInUp={{ delay: 0 }}>
-				<h3>Add recipients</h3>
+				<h3>{t('ts.step2.heading')}</h3>
 
 				<div class="toggle">
 					<button
@@ -284,7 +285,7 @@
 							s.parse();
 						}}
 					>
-						Amount per line
+						{t('ts.step2.amountPerLine')}
 					</button>
 					<button
 						class:selected={s.distributionMode === 'equal'}
@@ -293,24 +294,26 @@
 							s.parse();
 						}}
 					>
-						Split equally
+						{t('ts.step2.splitEqually')}
 					</button>
 				</div>
 
 				{#if s.distributionMode === 'equal'}
-					<label class="field-label" for="ts-total">Total amount to split ({s.symbol})</label>
+					<label class="field-label" for="ts-total">{t('ts.step2.totalToSplit', { symbol: s.symbol })}</label>
 					<input
 						id="ts-total"
 						class="input"
-						placeholder="e.g. 100"
+						placeholder={t('ts.step2.totalPlaceholder')}
 						bind:value={s.totalAmountInput}
 						oninput={() => s.parse()}
 					/>
 				{/if}
 
 				<div class="field-label">
-					Recipients —
-					{s.distributionMode === 'specified' ? '"address,amount" per line' : 'one address per line'}
+					{t('ts.step2.recipientsLabel')}
+					{s.distributionMode === 'specified'
+						? t('ts.step2.recipientsHintSpecified')
+						: t('ts.step2.recipientsHintEqual')}
 				</div>
 				<RecipientsEditor
 					mode={s.distributionMode}
@@ -324,16 +327,16 @@
 
 				{#if s.parsed && s.parsed.validCount > 0}
 					<div class="parse-stats">
-						<span class="stat ok-stat">{s.parsed.validCount} recipients</span>
-						<span class="stat">Total: {s.fmt(s.parsed.totalAmount)} {s.symbol}</span>
-						<span class="stat">{s.totalBatches} batch(es) · {s.totalBatches} confirm(s)</span>
+						<span class="stat ok-stat">{t('ts.step2.recipientsCount', { count: s.parsed.validCount })}</span>
+						<span class="stat">{t('ts.step2.total', { amount: s.fmt(s.parsed.totalAmount), symbol: s.symbol })}</span>
+						<span class="stat">{t('ts.step2.batches', { count: s.totalBatches })}</span>
 					</div>
 				{/if}
 
 				<div class="panel-actions">
-					<button class="btn ghost" onclick={() => s.goTo(1)}>Back</button>
+					<button class="btn ghost" onclick={() => s.goTo(1)}>{t('ts.step2.back')}</button>
 					<button class="btn primary" disabled={!s.canProceedFromRecipients} onclick={next3}>
-						Continue
+						{t('ts.step2.continue')}
 					</button>
 				</div>
 			</section>
@@ -342,26 +345,26 @@
 		<!-- ── Step 3: Review + Fee ── -->
 		{#if s.step === 3}
 			<section class="glass panel" use:fadeInUp={{ delay: 0 }}>
-				<h3>Review &amp; fee</h3>
+				<h3>{t('ts.step3.heading')}</h3>
 
 				<div class="review-grid">
-					<div><span>Network</span><strong>{s.network.name}</strong></div>
-					<div><span>Token</span><strong>{s.symbol}</strong></div>
-					<div><span>Recipients</span><strong>{s.parsed?.validCount ?? 0}</strong></div>
-					<div><span>Total to send</span><strong>{s.fmt(s.parsed?.totalAmount ?? 0n)} {s.symbol}</strong></div>
-					<div><span>Batches</span><strong>{s.totalBatches}</strong></div>
-					<div><span>Confirms</span><strong>{s.totalBatches}</strong></div>
+					<div><span>{t('ts.step3.network')}</span><strong>{s.network.name}</strong></div>
+					<div><span>{t('ts.step3.token')}</span><strong>{s.symbol}</strong></div>
+					<div><span>{t('ts.step3.recipients')}</span><strong>{s.parsed?.validCount ?? 0}</strong></div>
+					<div><span>{t('ts.step3.totalToSend')}</span><strong>{s.fmt(s.parsed?.totalAmount ?? 0n)} {s.symbol}</strong></div>
+					<div><span>{t('ts.step3.batches')}</span><strong>{s.totalBatches}</strong></div>
+					<div><span>{t('ts.step3.confirms')}</span><strong>{s.totalBatches}</strong></div>
 				</div>
 
 				<div class="fee-card">
 					{#if s.feeLoading}
-						<p>Calculating fee…</p>
+						<p>{t('ts.step3.calculatingFee')}</p>
 					{:else if s.fee}
 						<div class="fee-head">
-							<span>Fee</span>
+							<span>{t('ts.step3.fee')}</span>
 							<strong>
 								{s.fee.amount === 0n
-									? 'Free'
+									? t('ts.step3.free')
 									: `${s.fmt(s.feeTotal, s.network.decimals)} ${s.network.symbol}`}
 							</strong>
 						</div>
@@ -375,19 +378,23 @@
 						</p>
 						{#if s.fee.amount > 0n}
 							<p class="fee-note muted">
-							{s.fmt(s.fee.amount, s.network.decimals)} {s.network.symbol} per transaction × {s.totalBatches} batch(es)
+							{t('ts.step3.feePerTx', {
+								fee: s.fmt(s.fee.amount, s.network.decimals),
+								symbol: s.network.symbol,
+								count: s.totalBatches,
+							})}
 						</p>
 						{/if}
 					{/if}
 				</div>
 
 				{#if s.preLoading}
-					<p class="muted">Checking your balance…</p>
+					<p class="muted">{t('ts.step3.checkingBalance')}</p>
 				{:else if s.pre}
 					{#if s.pre.ok}
 						<div class="preflight">
-							✓ Balance is sufficient
-							<span class="muted">(plus network gas, paid in {s.network.symbol})</span>
+							{t('ts.step3.balanceSufficient')}
+							<span class="muted">{t('ts.step3.plusGas', { symbol: s.network.symbol })}</span>
 						</div>
 					{:else}
 						{@const isToken = s.pre.reason === 'insufficient-token'}
@@ -398,19 +405,19 @@
 						{@const short = need > have ? need - have : 0n}
 						<div class="shortfall">
 							<div class="shortfall-rows">
-								<div><span>You have</span><b>{s.fmt(have, dec)} {sym}</b></div>
-								<div><span>Need{isToken ? '' : ' + gas'}</span><b>{s.fmt(need, dec)} {sym}</b></div>
-								<div class="gap"><span>Short by</span><b>{s.fmt(short, dec)} {sym}</b></div>
+								<div><span>{t('ts.step3.youHave')}</span><b>{s.fmt(have, dec)} {sym}</b></div>
+								<div><span>{isToken ? t('ts.step3.need') : t('ts.step3.needPlusGas')}</span><b>{s.fmt(need, dec)} {sym}</b></div>
+								<div class="gap"><span>{t('ts.step3.shortBy')}</span><b>{s.fmt(short, dec)} {sym}</b></div>
 							</div>
 							{#if walletStore.kind === 'biubiu'}
 								<button class="btn primary full" onclick={() => (showDeposit = true)}>
-									Deposit {sym} to your wallet
+									{t('ts.step3.depositToWallet', { symbol: sym })}
 								</button>
 							{:else}
-								<p class="fund-hint">Top up your wallet with {sym}, then come back.</p>
+								<p class="fund-hint">{t('ts.step3.topUpHint', { symbol: sym })}</p>
 							{/if}
 							<button class="btn ghost full" onclick={() => s.prepareReview()} disabled={s.preLoading}>
-								{s.preLoading ? 'Checking…' : "I've deposited — re-check balance"}
+								{s.preLoading ? t('ts.step3.checking') : t('ts.step3.recheckBalance')}
 							</button>
 						</div>
 					{/if}
@@ -418,8 +425,8 @@
 
 				{#if !s.sendSupported}
 					<p class="note">
-						This is a custom network — sending isn't enabled yet. Use a built-in network, or set up
-						Safe infra via <a href={localizeHref('/apps/vela-wallet-chain-setup')}>Chain Setup</a>.
+						{t('ts.step3.customNetworkNoteBefore')}
+						<a href={localizeHref('/apps/vela-wallet-chain-setup')}>{t('ts.step3.chainSetupLink')}</a>.
 					</p>
 				{/if}
 
@@ -428,16 +435,16 @@
 				{/if}
 
 				<div class="panel-actions">
-					<button class="btn ghost" onclick={() => s.goTo(2)}>Back</button>
+					<button class="btn ghost" onclick={() => s.goTo(2)}>{t('ts.step3.back')}</button>
 					{#if walletStore.kind === 'biubiu'}
-						<button class="btn ghost" onclick={() => (showDeposit = true)}>Deposit funds</button>
+						<button class="btn ghost" onclick={() => (showDeposit = true)}>{t('ts.step3.depositFunds')}</button>
 					{/if}
 					<button
 						class="btn primary"
 						disabled={s.feeLoading || s.preLoading || !s.sendSupported || !(s.pre?.ok ?? false)}
 						onclick={() => s.send()}
 					>
-						Send now
+						{t('ts.step3.sendNow')}
 					</button>
 				</div>
 			</section>
@@ -446,13 +453,15 @@
 		<!-- ── Step 4: Send / progress ── -->
 		{#if s.step === 4}
 			<section class="glass panel" use:fadeInUp={{ delay: 0 }}>
-				<h3>Sending</h3>
+				<h3>{t('ts.step4.heading')}</h3>
 
 				{#if s.execStatus === 'running'}
 					<div class="progress-head">
 						<span>
-							Batch {Math.min(s.progress.batchIndex + 1, s.progress.totalBatches)} / {s.progress
-								.totalBatches}
+							{t('ts.step4.batchProgress', {
+								current: Math.min(s.progress.batchIndex + 1, s.progress.totalBatches),
+								total: s.progress.totalBatches,
+							})}
 						</span>
 						<span class="phase">{s.progress.phase}</span>
 					</div>
@@ -464,28 +473,28 @@
 								: 0}%"
 						></div>
 					</div>
-					<p class="muted">Approve each batch in your wallet when prompted.</p>
+					<p class="muted">{t('ts.step4.approveHint')}</p>
 					<div class="panel-actions">
-						<button class="btn ghost" onclick={() => s.abort()}>Pause (after current batch)</button>
+						<button class="btn ghost" onclick={() => s.abort()}>{t('ts.step4.pause')}</button>
 					</div>
 				{:else}
 					<div class="result-summary" class:partial={s.failures.length > 0}>
 						{#if s.execStatus === 'aborted'}
-							Paused — {s.results.length} batch(es) sent, {s.failures.length} failed/skipped. You can continue below.
+							{t('ts.step4.aborted', { sent: s.results.length, failed: s.failures.length })}
 						{:else if s.failures.length === 0}
-							✓ Done — {s.results.length} batch(es) sent successfully.
+							{t('ts.step4.doneSuccess', { sent: s.results.length })}
 						{:else}
-							Completed with issues — {s.results.length} sent, {s.failures.length} failed.
+							{t('ts.step4.completedWithIssues', { sent: s.results.length, failed: s.failures.length })}
 						{/if}
 					</div>
 					<div class="panel-actions">
 						{#if s.remainingBatches > 0}
 							<button class="btn primary" onclick={() => s.resume()}>
-								Continue — send remaining {s.remainingBatches} batch(es)
+								{t('ts.step4.continueRemaining', { count: s.remainingBatches })}
 							</button>
-							<button class="btn ghost" onclick={() => s.reset()}>New send</button>
+							<button class="btn ghost" onclick={() => s.reset()}>{t('ts.step4.newSend')}</button>
 						{:else}
-							<button class="btn primary" onclick={() => s.reset()}>New send</button>
+							<button class="btn primary" onclick={() => s.reset()}>{t('ts.step4.newSend')}</button>
 						{/if}
 					</div>
 				{/if}
@@ -494,14 +503,14 @@
 					<ul class="batch-list">
 						{#each s.results as r (r.batchIndex)}
 							<li class="batch ok-row">
-								<span>Batch {r.batchIndex + 1}</span>
-								<span>{r.successCount} sent</span>
+								<span>{t('ts.step4.batch', { n: r.batchIndex + 1 })}</span>
+								<span>{t('ts.step4.batchSent', { count: r.successCount })}</span>
 								<a href={r.explorerUrl} target="_blank" rel="noopener">{shortHash(r.txHash)}</a>
 							</li>
 						{/each}
 						{#each s.failures as f (f.batchIndex)}
 							<li class="batch err-row">
-								<span>Batch {f.batchIndex + 1}</span>
+								<span>{t('ts.step4.batch', { n: f.batchIndex + 1 })}</span>
 								<span class="err">{f.error}</span>
 							</li>
 						{/each}
@@ -514,7 +523,7 @@
 	<!-- ── History ── -->
 	{#if s.history.length > 0}
 		<section class="glass panel" use:fadeInUp={{ delay: 120 }}>
-			<h3>History</h3>
+			<h3>{t('ts.history.heading')}</h3>
 			<ul class="history-list">
 				{#each s.history as h (h.id)}
 					<li class="hist">
@@ -530,15 +539,17 @@
 									<ChevronDown size={16} />
 								</span>
 							</div>
-							<div class="hist-meta muted">{h.totalRecipients} recipients · {fmtDate(h.createdAt)}</div>
+							<div class="hist-meta muted">{t('ts.history.recipientsMeta', { count: h.totalRecipients, date: fmtDate(h.createdAt) })}</div>
 						</button>
 						{#if expandedHist === h.id}
 							<ul class="hist-batches">
 								{#each h.batches as b (b.index)}
 									<li class="hist-batch {b.status}">
-										<span>Batch {b.index + 1}</span>
+										<span>{t('ts.history.batch', { n: b.index + 1 })}</span>
 										<span class="hist-batch-info">
-											{b.status === 'confirmed' ? `${b.count} sent` : (b.error ?? b.status)}
+											{b.status === 'confirmed'
+												? t('ts.history.batchSent', { count: b.count })
+												: (b.error ?? b.status)}
 										</span>
 										{#if b.explorerUrl && b.txHash}
 											<a href={b.explorerUrl} target="_blank" rel="noopener">{shortHash(b.txHash)}</a>
@@ -568,63 +579,62 @@
 {/if}
 
 <!-- Add custom network -->
-<ResponsiveModal open={showAddNetwork} onClose={() => (showAddNetwork = false)} title="Add custom network">
+<ResponsiveModal open={showAddNetwork} onClose={() => (showAddNetwork = false)} title={t('ts.addNetwork.title')}>
 	<div class="modal-body">
-		<label class="field-label" for="an-name">Network name</label>
-		<input id="an-name" class="input" bind:value={anName} placeholder="My Chain" />
+		<label class="field-label" for="an-name">{t('ts.addNetwork.name')}</label>
+		<input id="an-name" class="input" bind:value={anName} placeholder={t('ts.addNetwork.namePlaceholder')} />
 
 		<div class="two-col">
 			<div>
-				<label class="field-label" for="an-chain">Chain ID</label>
-				<input id="an-chain" class="input" bind:value={anChainId} inputmode="numeric" placeholder="1" />
+				<label class="field-label" for="an-chain">{t('ts.addNetwork.chainId')}</label>
+				<input id="an-chain" class="input" bind:value={anChainId} inputmode="numeric" placeholder={t('ts.addNetwork.chainIdPlaceholder')} />
 			</div>
 			<div>
-				<label class="field-label" for="an-sym">Native symbol</label>
-				<input id="an-sym" class="input" bind:value={anSymbol} placeholder="ETH" />
+				<label class="field-label" for="an-sym">{t('ts.addNetwork.symbol')}</label>
+				<input id="an-sym" class="input" bind:value={anSymbol} placeholder={t('ts.addNetwork.symbolPlaceholder')} />
 			</div>
 		</div>
 
-		<label class="field-label" for="an-rpc">RPC URL</label>
-		<input id="an-rpc" class="input" bind:value={anRpc} placeholder="https://…" />
+		<label class="field-label" for="an-rpc">{t('ts.addNetwork.rpc')}</label>
+		<input id="an-rpc" class="input" bind:value={anRpc} placeholder={t('ts.addNetwork.rpcPlaceholder')} />
 
-		<label class="field-label" for="an-exp">Explorer tx URL (optional)</label>
-		<input id="an-exp" class="input" bind:value={anExplorer} placeholder="https://…/tx/" />
+		<label class="field-label" for="an-exp">{t('ts.addNetwork.explorer')}</label>
+		<input id="an-exp" class="input" bind:value={anExplorer} placeholder={t('ts.addNetwork.explorerPlaceholder')} />
 
 		{#if anMsOk !== null}
 			<p class={anMsOk ? 'ok' : 'warn-text'}>
 				{anMsOk
-					? '✓ Safe MultiSend 1.4.1 found — sending may work once Safe infra is present'
-					: '⚠ MultiSend 1.4.1 not found here — reads only until Safe infra is deployed'}
+					? t('ts.addNetwork.multiSendOk')
+					: t('ts.addNetwork.multiSendMissing')}
 			</p>
 		{/if}
 		{#if anError}<p class="err">{anError}</p>{/if}
 
 		<div class="modal-actions">
 			<button class="btn ghost" onclick={checkAddNetwork} disabled={anChecking}>
-				{anChecking ? 'Checking…' : 'Check chain'}
+				{anChecking ? t('ts.addNetwork.checking') : t('ts.addNetwork.checkChain')}
 			</button>
-			<button class="btn primary" onclick={submitAddNetwork}>Add</button>
+			<button class="btn primary" onclick={submitAddNetwork}>{t('ts.addNetwork.add')}</button>
 		</div>
 		<p class="muted">
-			Custom chains are read-capable now; sending also requires Safe 1.4.1 + bundler support on that
-			chain.
+			{t('ts.addNetwork.footnote')}
 		</p>
 	</div>
 </ResponsiveModal>
 
 <!-- Edit RPC / manage network -->
-<ResponsiveModal open={showRpcEdit} onClose={() => (showRpcEdit = false)} title={`RPC · ${s.network.name}`}>
+<ResponsiveModal open={showRpcEdit} onClose={() => (showRpcEdit = false)} title={t('ts.rpc.title', { name: s.network.name })}>
 	<div class="modal-body">
-		<label class="field-label" for="rpc-edit">RPC endpoints (one per line)</label>
+		<label class="field-label" for="rpc-edit">{t('ts.rpc.endpoints')}</label>
 		<textarea id="rpc-edit" class="input textarea" rows="4" bind:value={rpcEditText}></textarea>
-		<p class="muted">Used for reading balances, token info and price. First reachable one is used.</p>
+		<p class="muted">{t('ts.rpc.note')}</p>
 		<div class="modal-actions">
 			{#if s.network.isCustom}
-				<button class="btn danger" onclick={removeCurrentNetwork}>Remove network</button>
+				<button class="btn danger" onclick={removeCurrentNetwork}>{t('ts.rpc.removeNetwork')}</button>
 			{:else}
-				<button class="btn ghost" onclick={restoreRpc}>Restore default</button>
+				<button class="btn ghost" onclick={restoreRpc}>{t('ts.rpc.restoreDefault')}</button>
 			{/if}
-			<button class="btn primary" onclick={saveRpcEdit}>Save</button>
+			<button class="btn primary" onclick={saveRpcEdit}>{t('ts.rpc.save')}</button>
 		</div>
 	</div>
 </ResponsiveModal>

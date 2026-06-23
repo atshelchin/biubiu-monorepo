@@ -2,6 +2,7 @@
 	/**
 	 * Network + RPC picker and contract (address + ABI) input for Contract Caller.
 	 */
+	import { t } from '$lib/i18n';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
 	import NetworkPicker from '$lib/widgets/NetworkPicker.svelte';
@@ -38,7 +39,7 @@
 	usingCustomRpc={store.usingCustomRpc}
 	customRpcInput={store.customRpcInput}
 	rpcError={store.rpcError}
-	subtitle="Search any EVM chain by name or chain ID. Reads work everywhere; in-app writes require a chain the built-in wallet supports."
+	subtitle={t('cc.config.networkSubtitle')}
 	onSearch={(q) => store.searchChains(q)}
 	onSelectChain={(id) => store.selectChain(id)}
 	onChangeNetwork={() => store.changeNetwork()}
@@ -48,9 +49,9 @@
 >
 	{#snippet badge()}
 		{#if store.canWrite}
-			<span class="badge write">Read + Write</span>
+			<span class="badge write">{t('cc.config.badgeReadWrite')}</span>
 		{:else}
-			<span class="badge read">Read-only</span>
+			<span class="badge read">{t('cc.config.badgeReadOnly')}</span>
 		{/if}
 	{/snippet}
 </NetworkPicker>
@@ -58,9 +59,9 @@
 {#if store.selectedChain}
 	<!-- Contract address + ABI -->
 	<section class="card">
-		<h3 class="section-title">Contract</h3>
+		<h3 class="section-title">{t('cc.config.contract')}</h3>
 
-		<label class="field-label" for="cc-address">Contract address</label>
+		<label class="field-label" for="cc-address">{t('cc.config.contractAddress')}</label>
 		<input
 			id="cc-address"
 			class="input mono"
@@ -69,7 +70,7 @@
 			bind:value={store.contractAddress}
 			oninput={handleAddressInput}
 		/>
-		{#if store.proxyChecking}<span class="muted">Checking for proxy…</span>{/if}
+		{#if store.proxyChecking}<span class="muted">{t('cc.config.checkingProxy')}</span>{/if}
 
 		<div class="autofetch-row">
 			<button
@@ -77,44 +78,48 @@
 				onclick={() => store.autoFetchAbi()}
 				disabled={!store.addressValid || store.abiFetching}
 			>
-				{store.abiFetching ? 'Fetching ABI…' : 'Auto-fetch ABI'}
+				{store.abiFetching ? t('cc.config.fetchingAbi') : t('cc.config.autoFetchAbi')}
 			</button>
-			<span class="muted">verified source or bytecode · via WhatsABI</span>
+			<span class="muted">{t('cc.config.autoFetchHint')}</span>
 		</div>
 		{#if store.abiFetchError}<p class="err">{store.abiFetchError}</p>{/if}
 		{#if store.autoFetchInfo}
 			<p class="autofetch-ok">
-				✓ Loaded from {store.autoFetchInfo.source}
+				{t('cc.config.loadedFrom', { source: store.autoFetchInfo.source })}
 				{#if store.autoFetchInfo.followedProxy}
-					· resolved proxy → <code>{shortenAddress(store.autoFetchInfo.resolvedAddress)}</code>
+					{t('cc.config.resolvedProxy')}
+					<code>{shortenAddress(store.autoFetchInfo.resolvedAddress)}</code>
 				{/if}
 				{#if store.autoFetchInfo.unresolved > 0}
-					· {store.autoFetchInfo.unresolved} unnamed selector{store.autoFetchInfo.unresolved === 1
-						? ''
-						: 's'} hidden
+					{store.autoFetchInfo.unresolved === 1
+						? t('cc.config.unnamedHiddenOne', { count: store.autoFetchInfo.unresolved })
+						: t('cc.config.unnamedHiddenMany', { count: store.autoFetchInfo.unresolved })}
 				{/if}
 			</p>
 		{/if}
 
 		<label class="field-label" for="cc-abi"
-			>ABI <span class="muted">(JSON array, Foundry/Hardhat artifact, or human-readable lines)</span
+			>{t('cc.config.abi')} <span class="muted">{t('cc.config.abiHint')}</span
 			></label
 		>
 		<textarea
 			id="cc-abi"
 			class="input mono ta"
 			rows="6"
-			placeholder={'[{"type":"function","name":"balanceOf",...}]\n\nor\n\nfunction balanceOf(address) view returns (uint256)\nfunction transfer(address to, uint256 amount) returns (bool)'}
+			placeholder={t('cc.config.abiPlaceholder')}
 			bind:value={store.abiInput}
 		></textarea>
 
 		<div class="row-between">
 			<button class="btn primary" onclick={() => store.loadAbi()} disabled={!store.abiInput.trim()}>
-				Load ABI
+				{t('cc.config.loadAbi')}
 			</button>
 			{#if store.methods.length > 0}
 				<span class="muted"
-					>{store.readMethods.length} read · {store.writeMethods.length} write</span
+					>{t('cc.config.readWriteCount', {
+						read: store.readMethods.length,
+						write: store.writeMethods.length
+					})}</span
 				>
 			{/if}
 		</div>
@@ -125,15 +130,15 @@
 	{#if store.proxyInfo}
 		<section class="card proxy-card">
 			<div class="proxy-head">
-				<span class="badge proxy">Proxy detected</span>
+				<span class="badge proxy">{t('cc.config.proxyDetected')}</span>
 				<span class="proxy-label">{store.proxyInfo.label}</span>
 			</div>
 
 			{#if store.proxyInfo.implementation}
 				<div class="proxy-impl">
-					<span class="muted">Implementation</span>
-					<button class="impl-addr" onclick={copyImpl} title="Copy">
-						{copiedImpl ? 'Copied!' : store.proxyInfo.implementation}
+					<span class="muted">{t('cc.config.implementation')}</span>
+					<button class="impl-addr" onclick={copyImpl} title={t('cc.config.copy')}>
+						{copiedImpl ? t('cc.config.copied') : store.proxyInfo.implementation}
 					</button>
 					{#if store.explorerBaseUrl}
 						<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -141,20 +146,21 @@
 							class="link"
 							href={`${store.explorerBaseUrl}/address/${store.proxyInfo.implementation}#code`}
 							target="_blank"
-							rel="noopener noreferrer">explorer <ExternalLink size={11} /></a
+							rel="noopener noreferrer">{t('cc.config.explorer')} <ExternalLink size={11} /></a
 						>
 						<!-- eslint-enable svelte/no-navigation-without-resolve -->
 					{/if}
 				</div>
 
 				<label class="field-label" for="cc-impl-abi">
-					Implementation ABI <span class="muted">paste to call the real logic methods</span>
+					{t('cc.config.implementationAbi')}
+					<span class="muted">{t('cc.config.implementationAbiHint')}</span>
 				</label>
 				<textarea
 					id="cc-impl-abi"
 					class="input mono ta"
 					rows="5"
-					placeholder="Paste the implementation contract's ABI (from its verified source on the explorer)"
+					placeholder={t('cc.config.implAbiPlaceholder')}
 					bind:value={store.implAbiInput}
 				></textarea>
 				<div class="row-between">
@@ -163,17 +169,15 @@
 						onclick={() => store.loadImplAbi()}
 						disabled={!store.implAbiInput.trim()}
 					>
-						Load implementation ABI
+						{t('cc.config.loadImplAbi')}
 					</button>
-					{#if store.hasImplAbi}<span class="muted">{store.implMethods.length} methods loaded</span
+					{#if store.hasImplAbi}<span class="muted"
+							>{t('cc.config.methodsLoaded', { count: store.implMethods.length })}</span
 						>{/if}
 				</div>
 				{#if store.implAbiError}<p class="err">{store.implAbiError}</p>{/if}
 			{:else}
-				<p class="muted">
-					Could not resolve the implementation address automatically. You can still call the proxy's
-					own ABI.
-				</p>
+				<p class="muted">{t('cc.config.proxyUnresolved')}</p>
 			{/if}
 		</section>
 	{/if}

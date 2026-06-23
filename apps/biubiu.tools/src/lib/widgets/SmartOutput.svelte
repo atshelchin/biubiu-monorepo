@@ -4,6 +4,7 @@
 	 * fallback. Numbers are grouped by default; large amounts can be viewed as
 	 * token amounts (÷10^d) and timestamps are surfaced as dates.
 	 */
+	import { t } from '$lib/i18n';
 	import { typeCategory } from '$lib/contract-caller/abi.js';
 	import { groupDigits, baseToAmount, unixToDate, hexToText } from '$lib/contract-caller/format.js';
 	import { Calendar } from '@lucide/svelte';
@@ -59,7 +60,7 @@
 		}
 		if (n >= 1_000_000_000n && n <= 4_000_000_000n) return unixToDate(value);
 		if (n >= 1_000_000_000_000n && n <= 4_000_000_000_000n)
-			return `${unixToDate((n / 1000n).toString())} (ms)`;
+			return t('cc.output.ms', { date: unixToDate((n / 1000n).toString()) });
 		return '';
 	});
 
@@ -75,38 +76,40 @@
 </script>
 
 {#if cat === 'bool'}
-	<span class="pill {value === 'true' ? 'yes' : 'no'}">{value === 'true' ? 'true' : 'false'}</span>
+	<span class="pill {value === 'true' ? 'yes' : 'no'}"
+		>{value === 'true' ? t('cc.output.true') : t('cc.output.false')}</span
+	>
 {:else if cat === 'uint' || cat === 'int'}
 	<div class="num">
-		<button class="val big" onclick={copy} title="Copy raw value"
-			>{copied ? 'Copied!' : numDisplay}</button
+		<button class="val big" onclick={copy} title={t('cc.output.copyRaw')}
+			>{copied ? t('cc.output.copied') : numDisplay}</button
 		>
 		{#if showNumTools || dateHint}
 			<div class="tools">
 				{#if showNumTools}
 					<button class="chip" class:active={numMode === 'full'} onclick={() => (numMode = 'full')}
-						>full</button
+						>{t('cc.output.full')}</button
 					>
 					<button
 						class="chip"
 						class:active={numMode === 'd18'}
 						onclick={() => (numMode = 'd18')}
-						title="÷10¹⁸ (18 decimals)">÷1e18</button
+						title={t('cc.output.d18Title')}>{t('cc.output.d18')}</button
 					>
 					<button
 						class="chip"
 						class:active={numMode === 'd6'}
 						onclick={() => (numMode = 'd6')}
-						title="÷10⁶ (6 decimals)">÷1e6</button
+						title={t('cc.output.d6Title')}>{t('cc.output.d6')}</button
 					>
 					<button
 						class="chip"
 						class:active={numMode === 'd9'}
 						onclick={() => (numMode = 'd9')}
-						title="÷10⁹ (gwei)">gwei</button
+						title={t('cc.output.gweiTitle')}>{t('cc.output.gwei')}</button
 					>
 					<button class="chip" class:active={numMode === 'raw'} onclick={() => (numMode = 'raw')}
-						>raw</button
+						>{t('cc.output.raw')}</button
 					>
 				{/if}
 				{#if dateHint}<span class="date"><Calendar size={12} /> {dateHint}</span>{/if}
@@ -114,12 +117,18 @@
 		{/if}
 	</div>
 {:else if cat === 'bytes'}
-	<button class="val mono" onclick={copy} title="Copy">{copied ? 'Copied!' : value}</button>
+	<button class="val mono" onclick={copy} title={t('cc.output.copy')}
+		>{copied ? t('cc.output.copied') : value}</button
+	>
 	{#if bytesText}<span class="sub">"{bytesText}"</span>{/if}
 {:else if cat === 'string'}
-	<button class="val str" onclick={copy} title="Copy">{copied ? 'Copied!' : value}</button>
+	<button class="val str" onclick={copy} title={t('cc.output.copy')}
+		>{copied ? t('cc.output.copied') : value}</button
+	>
 {:else}
-	<button class="val mono" onclick={copy} title="Copy">{copied ? 'Copied!' : value}</button>
+	<button class="val mono" onclick={copy} title={t('cc.output.copy')}
+		>{copied ? t('cc.output.copied') : value}</button
+	>
 {/if}
 
 <style>

@@ -4,6 +4,7 @@
 	 * (delegatecall into MultiSend 1.4.1), or exported as a Safe{Wallet}
 	 * Transaction Builder file.
 	 */
+	import { t } from '$lib/i18n';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
 	import { ArrowUp, ArrowDown, X } from '@lucide/svelte';
@@ -11,17 +12,17 @@
 	function sendingLabel(phase?: string): string {
 		switch (phase) {
 			case 'building':
-				return 'Building…';
+				return t('cc.send.building');
 			case 'estimating':
-				return 'Estimating…';
+				return t('cc.send.estimating');
 			case 'signing':
-				return 'Sign in wallet…';
+				return t('cc.send.signing');
 			case 'submitting':
-				return 'Submitting…';
+				return t('cc.send.submitting');
 			case 'waiting':
-				return 'Confirming…';
+				return t('cc.send.waiting');
 			default:
-				return 'Checking…';
+				return t('cc.send.checking');
 		}
 	}
 
@@ -31,8 +32,8 @@
 {#if store.batch.length > 0}
 	<section class="card">
 		<div class="head">
-			<h3 class="title">Batch <span class="count">{store.batch.length}</span></h3>
-			<span class="hint">One atomic Safe transaction via MultiSend</span>
+			<h3 class="title">{t('cc.batch.title')} <span class="count">{store.batch.length}</span></h3>
+			<span class="hint">{t('cc.batch.hint')}</span>
 		</div>
 
 		<ol class="queue">
@@ -50,18 +51,18 @@
 							class="icon"
 							onclick={() => store.moveBatch(call.id, 'up')}
 							disabled={i === 0}
-							title="Move up"><ArrowUp size={14} /></button
+							title={t('cc.batch.moveUp')}><ArrowUp size={14} /></button
 						>
 						<button
 							class="icon"
 							onclick={() => store.moveBatch(call.id, 'down')}
 							disabled={i === store.batch.length - 1}
-							title="Move down"><ArrowDown size={14} /></button
+							title={t('cc.batch.moveDown')}><ArrowDown size={14} /></button
 						>
 						<button
 							class="icon danger"
 							onclick={() => store.removeFromBatch(call.id)}
-							title="Remove"><X size={14} /></button
+							title={t('cc.batch.remove')}><X size={14} /></button
 						>
 					</div>
 				</li>
@@ -76,25 +77,23 @@
 						onclick={() => store.sendBatch()}
 						disabled={bs.status === 'sending'}
 					>
-						{bs.status === 'sending' ? sendingLabel(bs.phase) : 'Execute batch'}
+						{bs.status === 'sending' ? sendingLabel(bs.phase) : t('cc.batch.execute')}
 					</button>
 				{:else}
-					<button class="btn primary" disabled>Sign in to execute</button>
+					<button class="btn primary" disabled>{t('cc.batch.signInToExecute')}</button>
 				{/if}
 			{/if}
-			<button class="btn" onclick={() => store.exportSafeBatch()}>Export Safe file</button>
-			<button class="btn ghost" onclick={() => store.clearBatch()}>Clear</button>
+			<button class="btn" onclick={() => store.exportSafeBatch()}>{t('cc.batch.exportSafe')}</button>
+			<button class="btn ghost" onclick={() => store.clearBatch()}>{t('cc.batch.clear')}</button>
 		</div>
 
 		{#if !store.canWrite}
-			<p class="hint">
-				This network is read-only in-app — export the Safe file and run it from your Safe.
-			</p>
+			<p class="hint">{t('cc.batch.readOnlyHint')}</p>
 		{/if}
 
 		{#if bs.status === 'done'}
 			<div class="result ok">
-				<span class="result-name">✓ batch sent</span>
+				<span class="result-name">{t('cc.batch.sent')}</span>
 				{#if bs.explorerUrl}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a class="result-val" href={bs.explorerUrl} target="_blank" rel="noopener noreferrer"

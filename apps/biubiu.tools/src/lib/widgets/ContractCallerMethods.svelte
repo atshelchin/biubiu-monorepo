@@ -3,6 +3,7 @@
 	 * Auto-generated read/write method lists for the loaded contract.
 	 * Phase 1: reads execute over RPC; writes preview encoded calldata.
 	 */
+	import { t } from '$lib/i18n';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import type { ParsedMethod } from '$lib/contract-caller/types.js';
 	import { buildArgs, encodeCall } from '$lib/contract-caller/encode.js';
@@ -27,7 +28,7 @@
 		} catch (e) {
 			encoded[method.signature] = {
 				ok: false,
-				error: e instanceof Error ? e.message : 'Encode failed'
+				error: e instanceof Error ? e.message : t('cc.methods.encodeFailed')
 			};
 		}
 	}
@@ -42,17 +43,17 @@
 	function sendingLabel(phase?: string): string {
 		switch (phase) {
 			case 'building':
-				return 'Building…';
+				return t('cc.send.building');
 			case 'estimating':
-				return 'Estimating…';
+				return t('cc.send.estimating');
 			case 'signing':
-				return 'Sign in wallet…';
+				return t('cc.send.signing');
 			case 'submitting':
-				return 'Submitting…';
+				return t('cc.send.submitting');
 			case 'waiting':
-				return 'Confirming…';
+				return t('cc.send.waiting');
 			default:
-				return 'Checking…';
+				return t('cc.send.checking');
 		}
 	}
 </script>
@@ -69,7 +70,7 @@
 			<span class="method-args">({method.inputs.map((i) => i.type).join(', ')})</span>
 			<span class="spacer"></span>
 			<span class="badge {method.isRead ? 'read' : 'write'}"
-				>{method.isRead ? 'read' : 'write'}</span
+				>{method.isRead ? t('cc.methods.badgeRead') : t('cc.methods.badgeWrite')}</span
 			>
 			<span class="chevron" class:up={isOpen}>▾</span>
 		</button>
@@ -88,7 +89,9 @@
 
 				{#if method.payable}
 					<div class="param">
-						<span class="param-name">ETH value <span class="param-type">wei</span></span>
+						<span class="param-name"
+							>{t('cc.methods.ethValue')} <span class="param-type">{t('cc.methods.wei')}</span></span
+						>
 						<input
 							class="input mono"
 							placeholder="0"
@@ -105,15 +108,15 @@
 							onclick={() => store.callRead(method)}
 							disabled={!store.addressValid}
 						>
-							{read?.status === 'loading' ? 'Calling…' : 'Call'}
+							{read?.status === 'loading' ? t('cc.methods.calling') : t('cc.methods.call')}
 						</button>
 						<button
 							class="btn sm"
 							onclick={() => store.addToChain(method)}
 							disabled={!store.addressValid}
-							title="Use this call's result in a chain"
+							title={t('cc.methods.addChainTitle')}
 						>
-							+ Chain
+							{t('cc.methods.addChain')}
 						</button>
 					{:else}
 						{#if store.canWrite}
@@ -123,36 +126,36 @@
 									onclick={() => store.sendWrite(method)}
 									disabled={!store.addressValid || w?.status === 'sending'}
 								>
-									{w?.status === 'sending' ? sendingLabel(w.phase) : 'Send'}
+									{w?.status === 'sending' ? sendingLabel(w.phase) : t('cc.methods.send')}
 								</button>
 							{:else}
-								<button class="btn sm" disabled title="Sign in (top-right) to send"
-									>Sign in to send</button
+								<button class="btn sm" disabled title={t('cc.methods.signInToSendTitle')}
+									>{t('cc.methods.signInToSend')}</button
 								>
 							{/if}
 						{:else}
-							<span class="hint-inline">Read-only network — use the calldata</span>
+							<span class="hint-inline">{t('cc.methods.readOnlyHint')}</span>
 						{/if}
 						<button
 							class="btn sm"
 							onclick={() => store.addToBatch(method)}
 							disabled={!store.addressValid}
 						>
-							+ Batch
+							{t('cc.methods.addBatch')}
 						</button>
 						<button
 							class="btn sm"
 							onclick={() => store.addToChain(method)}
 							disabled={!store.addressValid}
 						>
-							+ Chain
+							{t('cc.methods.addChain')}
 						</button>
 						<button
 							class="btn sm"
 							onclick={() => encodeWrite(method)}
 							disabled={!store.addressValid}
 						>
-							Encode calldata
+							{t('cc.methods.encodeCalldata')}
 						</button>
 					{/if}
 				</div>
@@ -162,7 +165,7 @@
 					{@const rows = toOutputRows(method, read.decoded)}
 					<div class="result ok">
 						{#if rows.length === 0}
-							<span class="result-empty">✓ (no return value)</span>
+							<span class="result-empty">{t('cc.methods.noReturnValue')}</span>
 						{:else}
 							{#each rows as row, i (i)}
 								<div class="out-row">
@@ -180,7 +183,7 @@
 				{#if w?.status === 'done'}
 					<div class="result ok">
 						<div class="out-row">
-							<span class="out-name">✓ transaction sent</span>
+							<span class="out-name">{t('cc.methods.transactionSent')}</span>
 							{#if w.explorerUrl}
 								<!-- eslint-disable svelte/no-navigation-without-resolve -->
 								<a
@@ -204,13 +207,13 @@
 					{#if enc.ok}
 						<div class="result ok">
 							<div class="out-row">
-								<span class="out-name">calldata</span>
+								<span class="out-name">{t('cc.methods.calldata')}</span>
 								<button
 									class="out-val mono"
 									onclick={() => copy(enc.data ?? '', `${sig}-data`)}
-									title="Copy"
+									title={t('cc.methods.copy')}
 								>
-									{copied === `${sig}-data` ? 'Copied!' : enc.data}
+									{copied === `${sig}-data` ? t('cc.methods.copied') : enc.data}
 								</button>
 							</div>
 						</div>
@@ -230,14 +233,14 @@
 			class:active={store.abiSource === 'primary'}
 			onclick={() => store.setActiveSource('primary')}
 		>
-			Proxy ABI ({store.primaryMethods.length})
+			{t('cc.methods.proxyAbi', { count: store.primaryMethods.length })}
 		</button>
 		<button
 			class="src-btn"
 			class:active={store.abiSource === 'implementation'}
 			onclick={() => store.setActiveSource('implementation')}
 		>
-			Implementation ABI ({store.implMethods.length})
+			{t('cc.methods.implementationAbi', { count: store.implMethods.length })}
 		</button>
 	</div>
 {/if}
@@ -245,7 +248,9 @@
 {#if store.methods.length > 0}
 	{#if store.readMethods.length > 0}
 		<section class="card">
-			<h3 class="section-title">Read <span class="count">{store.readMethods.length}</span></h3>
+			<h3 class="section-title">
+				{t('cc.methods.read')} <span class="count">{store.readMethods.length}</span>
+			</h3>
 			<div class="method-list">
 				{#each store.readMethods as method (method.signature)}
 					{@render methodCard(method)}
@@ -256,7 +261,9 @@
 
 	{#if store.writeMethods.length > 0}
 		<section class="card">
-			<h3 class="section-title">Write <span class="count">{store.writeMethods.length}</span></h3>
+			<h3 class="section-title">
+				{t('cc.methods.write')} <span class="count">{store.writeMethods.length}</span>
+			</h3>
 			<div class="method-list">
 				{#each store.writeMethods as method (method.signature)}
 					{@render methodCard(method)}

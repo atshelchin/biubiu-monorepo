@@ -10,6 +10,7 @@
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
+	import { t } from '$lib/i18n';
 	import type { DistributionMode } from '$lib/pda-apps/token-sender/types';
 
 	interface Props {
@@ -30,11 +31,11 @@
 
 	function validate(line: string): string | null {
 		const parts = line.trim().split(/[,\t ]+/).filter(Boolean);
-		if (!ADDR.test(parts[0] ?? '')) return 'Invalid address';
+		if (!ADDR.test(parts[0] ?? '')) return t('ts.editor.invalidAddress');
 		if (mode === 'specified') {
 			const amt = parts[1];
-			if (!amt) return 'Missing amount';
-			if (!/^\d*\.?\d+$/.test(amt) || Number(amt) <= 0) return 'Invalid amount';
+			if (!amt) return t('ts.editor.missingAmount');
+			if (!/^\d*\.?\d+$/.test(amt) || Number(amt) <= 0) return t('ts.editor.invalidAmount');
 		}
 		return null;
 	}
@@ -61,16 +62,16 @@
 	});
 
 	const i18n = {
-		statusBar: { valid: 'valid' },
+		statusBar: { valid: t('ts.editor.statusValid') },
 		errorDrawer: {
-			title: 'Issues',
-			line: 'Line',
-			error: 'Error',
-			duplicate: 'Duplicate',
-			andMore: '…and {0} more',
-			close: 'Close',
+			title: t('ts.editor.issuesTitle'),
+			line: t('ts.editor.line'),
+			error: t('ts.editor.error'),
+			duplicate: t('ts.editor.duplicate'),
+			andMore: t('ts.editor.andMore'),
+			close: t('ts.editor.close'),
 		},
-		validation: { duplicate: 'Duplicate address' },
+		validation: { duplicate: t('ts.editor.duplicateAddress') },
 	};
 
 	/**
@@ -124,7 +125,9 @@
 					{onClose}
 					{onConfirm}
 					columnCount={mode === 'specified' ? 2 : 1}
-					columnLabels={mode === 'specified' ? ['Address', `Amount (${symbol})`] : ['Address']}
+					columnLabels={mode === 'specified'
+						? [t('ts.editor.address'), t('ts.editor.amount', { symbol })]
+						: [t('ts.editor.address')]}
 				/>
 			</div>
 		{/snippet}

@@ -4,6 +4,7 @@
 	 * transaction (Safe → delegatecall → ChainedMultiSend), where each call can
 	 * take a parameter from an earlier call's return value.
 	 */
+	import { t } from '$lib/i18n';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { staticOutputSlots, isStaticWordType } from '$lib/contract-caller/abi.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
@@ -17,17 +18,17 @@
 	function sendingLabel(phase?: string): string {
 		switch (phase) {
 			case 'building':
-				return 'Building…';
+				return t('cc.send.building');
 			case 'estimating':
-				return 'Estimating…';
+				return t('cc.send.estimating');
 			case 'signing':
-				return 'Sign in wallet…';
+				return t('cc.send.signing');
 			case 'submitting':
-				return 'Submitting…';
+				return t('cc.send.submitting');
 			case 'waiting':
-				return 'Confirming…';
+				return t('cc.send.waiting');
 			default:
-				return 'Checking…';
+				return t('cc.send.checking');
 		}
 	}
 
@@ -36,7 +37,10 @@
 		const opts: { value: string; label: string }[] = [];
 		for (let j = 0; j < stepPos; j++) {
 			for (const o of staticOutputSlots(store.chain[j].method)) {
-				opts.push({ value: `${j}:${o.slot}`, label: `Step ${j + 1} · ${o.label}` });
+				opts.push({
+					value: `${j}:${o.slot}`,
+					label: t('cc.chain.stepOption', { step: j + 1, label: o.label })
+				});
 			}
 		}
 		return opts;
@@ -53,10 +57,8 @@
 {#if store.chain.length > 0}
 	<section class="card">
 		<div class="head">
-			<h3 class="title">Chain <span class="count">{store.chain.length}</span></h3>
-			<span class="hint"
-				>Run these calls in one transaction. A step can reuse an earlier step's result.</span
-			>
+			<h3 class="title">{t('cc.chain.title')} <span class="count">{store.chain.length}</span></h3>
+			<span class="hint">{t('cc.chain.hint')}</span>
 		</div>
 
 		<ol class="steps">
@@ -75,18 +77,18 @@
 								class="icon"
 								onclick={() => store.moveChain(step.id, 'up')}
 								disabled={i === 0}
-								title="Move up"><ArrowUp size={14} /></button
+								title={t('cc.chain.moveUp')}><ArrowUp size={14} /></button
 							>
 							<button
 								class="icon"
 								onclick={() => store.moveChain(step.id, 'down')}
 								disabled={i === store.chain.length - 1}
-								title="Move down"><ArrowDown size={14} /></button
+								title={t('cc.chain.moveDown')}><ArrowDown size={14} /></button
 							>
 							<button
 								class="icon danger"
 								onclick={() => store.removeFromChain(step.id)}
-								title="Remove"><X size={14} /></button
+								title={t('cc.chain.remove')}><X size={14} /></button
 							>
 						</div>
 					</div>
@@ -109,14 +111,14 @@
 													class="link-btn"
 													onclick={() => store.setChainParamSource(step.id, idx, 'literal')}
 												>
-													use a value
+													{t('cc.chain.useValue')}
 												</button>
 											{:else}
 												<button
 													class="link-btn ref-btn"
 													onclick={() => store.setChainParamSource(step.id, idx, opts[0].value)}
 												>
-													<CornerDownRight size={12} /> use a previous result
+													<CornerDownRight size={12} /> {t('cc.chain.usePreviousResult')}
 												</button>
 											{/if}
 										{/if}
@@ -152,7 +154,9 @@
 
 					{#if step.method.payable}
 						<div class="param">
-							<span class="param-name">ETH value <span class="param-type">wei</span></span>
+							<span class="param-name"
+								>{t('cc.chain.ethValue')} <span class="param-type">{t('cc.chain.wei')}</span></span
+							>
 							<input
 								class="lit-input mono"
 								placeholder="0"
@@ -170,8 +174,8 @@
 		{#if store.chainHelperDeployed === false}
 			<div class="helper-box">
 				<p class="helper-text">
-					One-time setup: deploy a tiny helper on this chain (same address everywhere —
-					<code>{shortenAddress(store.chainHelperAddress)}</code>). After that, chaining just works.
+					{t('cc.chain.helperSetupPre')}
+					<code>{shortenAddress(store.chainHelperAddress)}</code>{t('cc.chain.helperSetupPost')}
 				</p>
 				{#if store.canChain && store.isLoggedIn}
 					<button
@@ -179,10 +183,10 @@
 						onclick={() => store.deployChainHelper()}
 						disabled={store.chainHelperDeploying}
 					>
-						{store.chainHelperDeploying ? sendingLabel(cs.phase) : 'Deploy chain helper'}
+						{store.chainHelperDeploying ? sendingLabel(cs.phase) : t('cc.chain.deployHelper')}
 					</button>
 				{:else if !store.isLoggedIn}
-					<span class="hint">Sign in (top-right) to deploy it.</span>
+					<span class="hint">{t('cc.chain.signInToDeploy')}</span>
 				{/if}
 			</div>
 		{/if}
@@ -195,20 +199,20 @@
 						onclick={() => store.sendChain()}
 						disabled={cs.status === 'sending' || store.chainHelperDeployed !== true}
 					>
-						{cs.status === 'sending' ? sendingLabel(cs.phase) : 'Execute chain'}
+						{cs.status === 'sending' ? sendingLabel(cs.phase) : t('cc.chain.execute')}
 					</button>
 				{:else}
-					<button class="btn primary" disabled>Sign in to execute</button>
+					<button class="btn primary" disabled>{t('cc.chain.signInToExecute')}</button>
 				{/if}
 			{:else}
-				<span class="hint">Chaining needs the built-in biubiu wallet.</span>
+				<span class="hint">{t('cc.chain.needsBiubiuWallet')}</span>
 			{/if}
-			<button class="btn ghost" onclick={() => store.clearChain()}>Clear</button>
+			<button class="btn ghost" onclick={() => store.clearChain()}>{t('cc.chain.clear')}</button>
 		</div>
 
 		{#if cs.status === 'done'}
 			<div class="result ok">
-				<span class="result-name">✓ chain executed</span>
+				<span class="result-name">{t('cc.chain.executed')}</span>
 				{#if cs.explorerUrl}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a class="result-val" href={cs.explorerUrl} target="_blank" rel="noopener noreferrer"

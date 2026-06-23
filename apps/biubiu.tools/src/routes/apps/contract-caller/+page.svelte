@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { locale } from '$lib/i18n';
+	import { t, locale } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
@@ -13,9 +13,8 @@
 
 	const seoProps = $derived(
 		getBaseSEO({
-			title: 'Contract Caller — Interact with any contract without coding',
-			description:
-				'Pick a network, paste a contract address and ABI, and call read/write methods with human-friendly inputs. Supports proxy contracts, batch calls, and atomic chained calls.',
+			title: t('cc.meta.title'),
+			description: t('cc.meta.description'),
 			currentLocale: locale.value
 		})
 	);
@@ -30,8 +29,8 @@
 
 <main class="page" class:with-trays={hasTrays}>
 	<header class="page-header" use:fadeInUp={{ delay: 0 }}>
-		<h1 class="page-title">Contract Caller</h1>
-		<p class="page-subtitle">Interact with any smart contract — no code required.</p>
+		<h1 class="page-title">{t('cc.title')}</h1>
+		<p class="page-subtitle">{t('cc.subtitle')}</p>
 	</header>
 
 	<div class="layout">

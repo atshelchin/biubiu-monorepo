@@ -1,11 +1,11 @@
 <script lang="ts">
-	import WalletGate from '$lib/auth/WalletGate.svelte';
+	import ForeverOnboard from '$lib/pda-apps/forever/ForeverOnboard.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { foreverStore, FEE_WEI } from '$lib/pda-apps/forever/store.svelte.js';
 	import { formatDate, localizeHref } from '$lib/i18n';
 	import { formatUnits } from 'viem';
-	import { Lock, KeyRound, ExternalLink, AlertTriangle } from '@lucide/svelte';
+	import { Lock, ExternalLink, AlertTriangle } from '@lucide/svelte';
 
 	const store = foreverStore;
 	let showProfile = $state(false);
@@ -75,39 +75,7 @@
 		</div>
 	</header>
 
-	<WalletGate
-		requireBuiltin
-		variant="forever"
-		title="连接你的信匣"
-		description="《致未来》需要你的 biubiu 内置钱包(passkey)——它既是你的签名,也是你的加密钥匙。"
-	>
-		{#if !store.hasKey}
-			<section class="leaf intro">
-				<div class="key-mark" aria-hidden="true"><KeyRound size={22} /></div>
-				<h2>先为你的信匣配一把钥匙</h2>
-				<p class="prose">
-					一把只属于你的加密钥匙，由你的设备保管，永不离开。<br />
-					此后写下的每一封，都只有它能开启。
-				</p>
-				<input
-					class="name-field"
-					type="text"
-					bind:value={store.keyName}
-					maxlength="40"
-					placeholder="给钥匙起个名字，例如「我的日记」"
-					disabled={busy}
-					aria-label="passkey name"
-				/>
-				<div class="actions">
-					<button class="seal-btn" onclick={() => store.setupKey()} disabled={busy}>
-						{store.status === 'setup' ? '正在备好钥匙…' : '配一把我的钥匙'}
-					</button>
-					<button class="quiet" onclick={() => store.useExistingKey()} disabled={busy}>
-						{store.status === 'unlocking' ? '开启中…' : '我已经有钥匙了'}
-					</button>
-				</div>
-			</section>
-		{:else}
+	<ForeverOnboard>
 			<!-- The writing sheet -->
 			<section class="leaf sheet">
 				<div class="modes" role="tablist" aria-label="note type">
@@ -208,8 +176,7 @@
 					<p class="empty">这条链上还没有你的信。<br />写下第一封吧。</p>
 				{/if}
 			</section>
-		{/if}
-	</WalletGate>
+	</ForeverOnboard>
 
 	{#if store.message}
 		<div class="toast" class:err={store.status === 'error'} class:ok={store.status === 'done'} role="status">
@@ -348,32 +315,6 @@
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(40, 30, 10, 0.06);
 	}
 
-	.intro {
-		text-align: center;
-		padding: var(--space-12) var(--space-8) var(--space-10);
-	}
-	.key-mark {
-		width: 52px;
-		height: 52px;
-		margin: 0 auto var(--space-5);
-		display: grid;
-		place-items: center;
-		border-radius: var(--radius-full);
-		color: var(--seal);
-		background: var(--seal-soft);
-	}
-	.intro h2 {
-		font-family: var(--serif);
-		font-size: var(--text-2xl);
-		font-weight: 600;
-		color: var(--ink);
-	}
-	.prose {
-		margin: var(--space-4) auto var(--space-8);
-		max-width: 38ch;
-		color: var(--ink-soft);
-		line-height: var(--leading-relaxed);
-	}
 	.chain-bar {
 		margin-top: var(--space-5);
 		font-size: var(--text-sm);
@@ -389,36 +330,6 @@
 		color: var(--seal);
 		cursor: pointer;
 		padding: 1px 4px;
-	}
-	.name-field {
-		width: 100%;
-		max-width: 320px;
-		margin: 0 auto var(--space-6);
-		display: block;
-		font-family: var(--serif);
-		font-size: var(--text-md);
-		text-align: center;
-		color: var(--ink);
-		background: transparent;
-		border: none;
-		border-bottom: 1px solid var(--edge);
-		padding: var(--space-2) var(--space-1);
-		outline: none;
-		transition: border-color 0.2s ease;
-	}
-	.name-field:focus {
-		border-bottom-color: var(--seal);
-	}
-	.name-field::placeholder {
-		color: var(--ink-soft);
-		font-style: italic;
-		opacity: 0.7;
-	}
-	.actions {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-3);
 	}
 
 	/* ── Writing sheet ── */

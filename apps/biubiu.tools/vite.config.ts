@@ -1,4 +1,5 @@
 import devtoolsJson from 'vite-plugin-devtools-json';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -22,6 +23,26 @@ export default defineConfig({
 		allowedHosts: true,
 	},
 	plugins: [
+		// Polyfill the Node built-in MODULES that the air-gapped QR libs
+		// (@ngraveio/bc-ur, @keystonehq/bc-ur-registry-eth and their CJS deps)
+		// import in the browser. globals are intentionally OFF — injecting
+		// Buffer/process/global app-wide rewrites unrelated workspace packages
+		// (e.g. proeditor-sveltekit) and breaks their SSR. Instead the bc-ur loader
+		// (crypto/ur.ts) sets those globals lazily, scoped to when xpub/sign runs.
+		nodePolyfills({
+			include: [
+				'buffer',
+				'process',
+				'util',
+				'stream',
+				'events',
+				'assert',
+				'path',
+				'crypto',
+				'string_decoder'
+			],
+			globals: { Buffer: false, global: false, process: false }
+		}),
 		sveltekit(),
 		devtoolsJson(),
 		i18nPlugin({

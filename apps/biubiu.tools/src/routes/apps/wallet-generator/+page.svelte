@@ -8,6 +8,8 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { walletGenerator as s, type Tab } from '$lib/pda-apps/wallet-generator/store.svelte.js';
 	import { ArrowLeft } from '@lucide/svelte';
+	import XpubPanel from './XpubPanel.svelte';
+	import SignPanel from './SignPanel.svelte';
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -51,8 +53,8 @@
 
 	const tabs: { id: Tab; soon: boolean }[] = [
 		{ id: 'generate', soon: false },
-		{ id: 'xpub', soon: true },
-		{ id: 'sign', soon: true },
+		{ id: 'xpub', soon: false },
+		{ id: 'sign', soon: false },
 	];
 
 	function short(v: string): string {
@@ -279,8 +281,10 @@
 						</div>
 					{/if}
 				{/if}
-			{:else}
-				<p class="muted empty">{t('wg.soon.body')}</p>
+			{:else if s.tab === 'xpub'}
+				<XpubPanel />
+			{:else if s.tab === 'sign'}
+				<SignPanel />
 			{/if}
 		</section>
 	{/if}

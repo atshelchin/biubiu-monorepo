@@ -16,12 +16,19 @@
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
 		"pda:balance-radar": "bun src/lib/pda-apps/balance-radar/adapters/cli.ts",
-		"build:cli:balance-radar": "bun build --compile --target bun --tsconfig-override tsconfig.cli.json --external better-sqlite3 src/lib/pda-apps/balance-radar/adapters/cli.ts --outfile dist/cli/balance-radar"
+		"build:cli:balance-radar": "bun build --compile --target bun --tsconfig-override tsconfig.cli.json --external better-sqlite3 src/lib/pda-apps/balance-radar/adapters/cli.ts --outfile dist/cli/balance-radar",
+		"pda:event-scanner": "bun src/lib/pda-apps/event-scanner/adapters/cli.ts",
+		"build:cli:event-scanner": "bun build --compile --target bun --tsconfig-override tsconfig.cli.json --external better-sqlite3 src/lib/pda-apps/event-scanner/adapters/cli.ts --outfile dist/cli/event-scanner"
 	},
 	"dependencies": {
+		"@keystonehq/bc-ur-registry-eth": "^0.22.1",
 		"@lucide/svelte": "^0.511.0",
 		"@mcp-b/global": "^2.0.9",
+		"@ngraveio/bc-ur": "^1.1.13",
+		"@noble/hashes": "^2.0.1",
 		"@resvg/resvg-wasm": "^2.6.2",
+		"@scure/bip39": "^2.0.0",
+		"@shazow/whatsabi": "^0.26.0",
 		"@shelchin/i18n-sveltekit": "workspace:*",
 		"@shelchin/pagekit": "workspace:*",
 		"@shelchin/pda": "workspace:*",
@@ -31,15 +38,16 @@
 		"@shelchin/taskhub": "workspace:*",
 		"@shelchin/vendor-pool": "workspace:*",
 		"satori": "^0.19.1",
+		"tlock-js": "^0.9.0",
 		"uqr": "^0.1.2",
-		"viem": "^2.46.0"
+		"viem": "^2.46.0",
+		"walletpair-sdk": "^1.1.0"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",
 		"@eslint/js": "^9.39.2",
 		"@mcp-b/webmcp-types": "^2.0.5",
 		"@noble/curves": "^2.0.1",
-		"@noble/hashes": "^2.0.1",
 		"@playwright/test": "^1.58.0",
 		"@shelchin/exe-sveltekit": "workspace:*",
 		"@sveltejs/adapter-auto": "^7.0.0",

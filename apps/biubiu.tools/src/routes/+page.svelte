@@ -141,24 +141,6 @@
 			nameKey: 'coming.tools.tokenSender.name',
 			descKey: 'coming.tools.tokenSender.desc',
 			icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`
-		},
-		{
-			id: 'wallet-sweep',
-			nameKey: 'coming.tools.walletSweep.name',
-			descKey: 'coming.tools.walletSweep.desc',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>`
-		},
-		{
-			id: 'event-scanner',
-			nameKey: 'coming.tools.eventScanner.name',
-			descKey: 'coming.tools.eventScanner.desc',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>`
-		},
-		{
-			id: 'contract-caller',
-			nameKey: 'coming.tools.contractCaller.name',
-			descKey: 'coming.tools.contractCaller.desc',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 4 4-4 4"/></svg>`
 		}
 	];
 </script>
@@ -280,6 +262,44 @@
 				<h2 class="section-title">{t('featured.title')}</h2>
 			</div>
 
+			<a href={localizeHref('/apps/forever')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.forever.name')}</h3>
+					<p class="tool-description">{t('featured.forever.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.forever.feature1')}</span>
+						<span class="tool-tag">{t('featured.forever.feature2')}</span>
+						<span class="tool-tag">{t('featured.forever.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.forever.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
+				</div>
+			</a>
+
+			<a href={localizeHref('/apps/wallet-generator')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.walletGenerator.name')}</h3>
+					<p class="tool-description">{t('featured.walletGenerator.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.walletGenerator.feature1')}</span>
+						<span class="tool-tag">{t('featured.walletGenerator.feature2')}</span>
+						<span class="tool-tag">{t('featured.walletGenerator.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.walletGenerator.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
+				</div>
+			</a>
+
 			<a href={localizeHref('/apps/balance-radar')} class="tool-card glass-card">
 				<div class="tool-content">
 					<h3 class="tool-name">{t('featured.balanceRadar.name')}</h3>
@@ -299,6 +319,44 @@
 				</div>
 			</a>
 
+			<a href={localizeHref('/apps/event-scanner')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.eventScanner.name')}</h3>
+					<p class="tool-description">{t('featured.eventScanner.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.eventScanner.feature1')}</span>
+						<span class="tool-tag">{t('featured.eventScanner.feature2')}</span>
+						<span class="tool-tag">{t('featured.eventScanner.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.eventScanner.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
+				</div>
+			</a>
+
+			<a href={localizeHref('/apps/wallet-sweep')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.walletSweep.name')}</h3>
+					<p class="tool-description">{t('featured.walletSweep.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.walletSweep.feature1')}</span>
+						<span class="tool-tag">{t('featured.walletSweep.feature2')}</span>
+						<span class="tool-tag">{t('featured.walletSweep.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.walletSweep.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
+				</div>
+			</a>
+
 			<a href={localizeHref('/chains')} class="tool-card glass-card">
 				<div class="tool-content">
 					<h3 class="tool-name">{t('featured.chainExplorer.name')}</h3>
@@ -311,6 +369,25 @@
 				</div>
 				<div class="tool-cta">
 					<span class="tool-cta-text">{t('featured.chainExplorer.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="5" y1="12" x2="19" y2="12"/>
+						<polyline points="12 5 19 12 12 19"/>
+					</svg>
+				</div>
+			</a>
+
+			<a href={localizeHref('/apps/contract-caller')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.contractCaller.name')}</h3>
+					<p class="tool-description">{t('featured.contractCaller.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.contractCaller.feature1')}</span>
+						<span class="tool-tag">{t('featured.contractCaller.feature2')}</span>
+						<span class="tool-tag">{t('featured.contractCaller.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.contractCaller.cta')}</span>
 					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<line x1="5" y1="12" x2="19" y2="12"/>
 						<polyline points="12 5 19 12 12 19"/>

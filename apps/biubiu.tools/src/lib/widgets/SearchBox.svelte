@@ -6,7 +6,8 @@
 	let inputRef: HTMLInputElement | undefined = $state();
 
 	const tools = [
-		{ id: 'balance-radar', keywords: ['balance', 'wallet', 'multi-chain', '余额', '钱包', '多链'] }
+		{ id: 'balance-radar', keywords: ['balance', 'wallet', 'multi-chain', '余额', '钱包', '多链'] },
+		{ id: 'event-scanner', keywords: ['event', 'events', 'logs', 'scan', 'index', 'transfer', 'getlogs', 'proxy', '事件', '日志', '索引', '扫描', '转账'] }
 	];
 
 	function handleKeydown(e: KeyboardEvent) {

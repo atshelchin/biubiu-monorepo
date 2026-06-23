@@ -1,0 +1,90 @@
+# Event Scanner
+
+> Scan and decode smart-contract event logs on any EVM chain. Proxy-aware (EIP-1967 / 1822 / Beacon / 1167 / OZ-legacy / EIP-2535 Diamond), human-friendly indexed filters, resumable chunked indexing into IndexedDB, CSV/JSON export, and live-tail.
+
+---
+
+## Overview
+
+Event Scanner queries `eth_getLogs` over a block range for a contract address, an event `topic0`, and optional indexed-topic filters; decodes the raw logs with the (implementation) ABI; and persists decoded events to the browser's IndexedDB. The user picks ANY chain (vela-style search over the public chain index), enters a contract + ABI (paste or auto-fetch from Sourcify / Etherscan V2), and selects an event.
+
+Key behaviors:
+
+- **Proxy resolution.** Events are emitted *from the proxy address* but defined in the *implementation* ABI. The scanner reads the implementation address from the proxy (storage slots / bytecode / loupe) and merges its ABI for decoding. Logs are always queried at the proxy address.
+- **Adaptive chunking.** Public RPCs cap getLogs range/result size. Jobs are pre-chunked at a fixed block size (deterministic → resumable via merkle root); within a job, a "range too large" RPC error is caught and the sub-range is binary-split until it fits.
+- **Resumable.** The scan id IS the merkle root of the job set. Re-running the same parameters resumes the TaskHub task and re-uses already-stored events (deduped by `${scanId}:${txHash}:${logIndex}`).
+- **Wallet-track.** For events with two indexed address params (e.g. `Transfer`), tracking one wallet emits two filter sets — `out` (wallet = indexed sender) and `in` (wallet = indexed recipient) — merged in the results with a direction label.
+- **Live-tail.** After the historical scan, optionally keep polling new blocks (minus a confirmation depth) and append.
+
+- **App ID**: `event-scanner`
+- **Category**: Read-only (RPC queries)
+- **Wallet required**: No
+- **Framework**: PDA (`@shelchin/pda`) — see `/llms/pda-guide.txt`
+
+---
+
+## Input
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `network` | `ScanNetwork` | — | `{ key, name, chainId, rpcs: string[], symbol, decimals, explorerUrl? }` |
+| `contract` | string | — | The (proxy) address to scan logs at |
+| `abi` | `AbiItem[]` | — | Decode ABI (merged implementation ABI for proxies) |
+| `eventName` | string | — | e.g. `Transfer` |
+| `eventSignature` | string | — | e.g. `Transfer(address,address,uint256)` |
+| `topic0` | hex | — | Event signature hash |
+| `filterSets` | `{ id, topics: (hex \| hex[] \| null)[] }[]` | — | One set, or `out`/`in` for wallet-track |
+| `fromBlock` / `toBlock` | number | — | Concrete block range (preferred — stable scan id) |
+| `range` | `{kind:'lastNDays',days}` \| `{kind:'dates',fromMs,toMs}` | — | Resolved to blocks if `fromBlock`/`toBlock` omitted |
+| `chunkSize` | number | `10000` | Block span per job |
+| `scanName` | string | — | Human label |
+| `live` / `liveIntervalMs` | boolean / number | — | Live-tail after the historical scan |
+
+`topics` follows the JSON-RPC `eth_getLogs` shape: `topics[0]` = event hash; each later slot is an exact 32-byte topic, an array (OR), or `null` (wildcard).
+
+---
+
+## Output
+
+```
+{ scanId, eventCount, scannedBlocks, totalBlocks, duration }
+```
+
+Decoded event rows live in IndexedDB (browser) under `scanId`; browse / export (CSV, JSON) from the web app. The CLI prints the summary only (Node has no IndexedDB).
+
+---
+
+## CLI
+
+```
+bun run pda:event-scanner -- --config-file scan.json --non-interactive
+```
+
+`scan.json` mirrors the Input table above. Pass concrete `fromBlock`/`toBlock` for a stable, resumable scan id. Example (USDT on BSC, all transfers):
+
+```json
+{
+  "network": { "key": "chain-56", "name": "BNB Smart Chain", "chainId": 56,
+    "rpcs": ["https://bsc-rpc.publicnode.com"], "symbol": "BNB", "decimals": 18,
+    "explorerUrl": "https://bscscan.com" },
+  "contract": "0x55d398326f99059fF775485246999027B3197955",
+  "abi": [{ "type": "event", "name": "Transfer", "anonymous": false, "inputs": [
+    {"name":"from","type":"address","indexed":true},
+    {"name":"to","type":"address","indexed":true},
+    {"name":"value","type":"uint256","indexed":false} ] }],
+  "eventName": "Transfer",
+  "eventSignature": "Transfer(address,address,uint256)",
+  "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+  "filterSets": [{ "id": "all", "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"] }],
+  "fromBlock": 105800000, "toBlock": 105800020, "chunkSize": 5000
+}
+```
+
+---
+
+## Notes & caveats
+
+- **ERC-7708** (native transfers emitting ERC-20-style `Transfer` logs) is a draft; the native-transfer log-emitter address differs by implementation. The preset's address is a placeholder — verify it for the target chain before relying on results.
+- **Single-block overflow.** If one block emits more logs than the RPC returns in a single call, the binary split bottoms out at one block and a warning is surfaced; that block's results may be truncated.
+- **Anonymous events** (no `topic0`) are not scannable.
+- **Diamonds (EIP-2535)**: facet ABIs are fetched per facet and merged for decoding.

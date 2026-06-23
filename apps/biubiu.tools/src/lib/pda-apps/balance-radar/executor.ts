@@ -2,21 +2,39 @@ import { createTaskHub, computeMerkleRoot, generateJobId, type Job } from '@shel
 import { formatUnits } from 'viem';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import { inputSchema, outputSchema } from './schema';
-import type { BalanceResult, BalanceFailure, ValidatedInput, RunResult, NetworkJob, NetworkJobResult } from './types';
-import { NETWORKS } from './infra/networks';
+import type {
+    BalanceResult,
+    BalanceFailure,
+    ValidatedInput,
+    RunResult,
+    NetworkJob,
+    NetworkJobResult,
+    NetworkConfig,
+    NetworkTokenSelection,
+    TokenSpec,
+} from './types';
+import { mergeNetworks, nativeToken } from './infra/networks';
 import { BalanceQuerySource } from './infra/source';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
 
-export type Input = { addresses: string; networks: string[] };
+export type Input = {
+    addresses: string;
+    networks: string[];
+    tokenSelections?: NetworkTokenSelection[];
+    customNetworks?: NetworkConfig[];
+};
 type Ctx = Parameters<AppConfig<typeof inputSchema, typeof outputSchema>['executor']>[1];
 
 export function validate(input: Input): ValidatedInput {
+    const customNetworks = (input.customNetworks ?? []).map((n) => ({ ...n, isCustom: true }));
+    const { networks: registry } = mergeNetworks(customNetworks);
+
     const addresses = input.addresses
         .split(/[,\n]/)
         .map((a) => a.trim())
         .filter((a) => a.startsWith('0x') && a.length === 42);
 
-    const networks = input.networks.filter((n) => NETWORKS[n]);
+    const networks = input.networks.filter((n) => registry[n]);
 
     if (addresses.length === 0) {
         throw new Error(
@@ -28,20 +46,38 @@ export function validate(input: Input): ValidatedInput {
         throw new Error('No valid networks selected.');
     }
 
+    // Resolve which tokens to query per network. Default = native coin only.
+    const selectionByNetwork = new Map<string, TokenSpec[]>();
+    for (const sel of input.tokenSelections ?? []) {
+        if (sel.tokens.length > 0) selectionByNetwork.set(sel.network, sel.tokens);
+    }
+
+    const tokensByNetwork: Record<string, TokenSpec[]> = {};
+    let totalQueries = 0;
+    for (const network of networks) {
+        const tokens = selectionByNetwork.get(network) ?? [nativeToken(registry[network])];
+        tokensByNetwork[network] = tokens;
+        totalQueries += addresses.length * tokens.length;
+    }
+
     return {
         addresses,
         networks,
-        totalQueries: addresses.length * networks.length,
+        tokensByNetwork,
+        networkConfigs: registry,
+        customNetworks,
+        totalQueries,
     };
 }
 
 function flattenJobResult(jobOutput: NetworkJobResult): BalanceResult[] {
-    const config = NETWORKS[jobOutput.network];
+    const { token } = jobOutput;
     return jobOutput.results.map(({ address, balance }) => ({
         address,
         network: jobOutput.network,
-        symbol: config.symbol,
-        balance: formatUnits(BigInt(balance), config.decimals),
+        symbol: token.symbol,
+        tokenAddress: token.kind === 'erc20' ? token.address : undefined,
+        balance: formatUnits(BigInt(balance), token.decimals),
         balanceRaw: balance,
     }));
 }
@@ -50,7 +86,7 @@ async function* run(
     validated: ValidatedInput,
     ctx: Ctx
 ): AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
-    const { addresses, networks, totalQueries } = validated;
+    const { addresses, networks, tokensByNetwork, customNetworks, totalQueries } = validated;
 
     ctx.info(
         `Starting batch query: ${addresses.length} addresses × ${networks.length} networks = ${totalQueries} queries`
@@ -59,7 +95,7 @@ async function* run(
     const startTime = Date.now();
 
     const CHUNK_SIZE = 500;
-    const source = new BalanceQuerySource(addresses, networks, CHUNK_SIZE);
+    const source = new BalanceQuerySource(addresses, tokensByNetwork, customNetworks, CHUNK_SIZE);
     const hub = await createTaskHub();
 
     // Compute merkle root from the chunked jobs for idempotent lookup
@@ -115,10 +151,13 @@ async function* run(
         for (let offset = 0; ; offset += pageSize) {
             const batch = await task.getResults({ status: 'failed', limit: pageSize, offset });
             for (const job of batch) {
+                const token = job.input.token;
                 for (const addr of job.input.addresses) {
                     failures.push({
                         address: addr,
                         network: job.input.network,
+                        symbol: token?.symbol,
+                        tokenAddress: token?.kind === 'erc20' ? token.address : undefined,
                         error: job.error ?? 'Unknown error',
                     });
                 }
@@ -151,15 +190,22 @@ async function* run(
 
     task.on('job:failed', (job: Job<NetworkJob, NetworkJobResult>, error: Error) => {
         const jobInput = job.input;
+        const token = jobInput.token;
         for (const addr of jobInput.addresses) {
-            failures.push({ address: addr, network: jobInput.network, error: error.message });
+            failures.push({
+                address: addr,
+                network: jobInput.network,
+                symbol: token?.symbol,
+                tokenAddress: token?.kind === 'erc20' ? token.address : undefined,
+                error: error.message,
+            });
         }
         completedQueries += jobInput.addresses.length;
 
         ctx.progress(
             completedQueries,
             totalQueries,
-            `Failed ${jobInput.network}: ${jobInput.addresses.length} addresses`
+            `Failed ${jobInput.network} ${token?.symbol ?? ''}: ${jobInput.addresses.length} addresses`
         );
     });
 
@@ -255,6 +301,7 @@ export function formatOutput({ results, failures, duration }: RunResult, totalQu
             address: r.address,
             network: r.network,
             symbol: r.symbol,
+            tokenAddress: r.tokenAddress,
             balance: r.balance,
         })),
         stats: {

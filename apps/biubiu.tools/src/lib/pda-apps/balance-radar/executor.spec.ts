@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { BalanceQuery, BalanceResult, RunResult } from './types';
+import type { BalanceResult, NetworkJob, NetworkJobResult, RunResult, TokenSpec } from './types';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const ADDR1 = '0x1234567890abcdef1234567890abcdef12345678';
 const ADDR2 = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+const NATIVE_ETH: TokenSpec = { kind: 'native', symbol: 'ETH', decimals: 18 };
+const USDC: TokenSpec = {
+    kind: 'erc20',
+    address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    symbol: 'USDC',
+    decimals: 6,
+};
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -41,12 +48,20 @@ const mocks = vi.hoisted(() => {
 vi.mock('@shelchin/taskhub/browser', () => ({
     Hub: vi.fn().mockImplementation(function () { return mocks.mockHub; }),
     IndexedDBAdapter: vi.fn().mockImplementation(function () { return {}; }),
+    createTaskHub: vi.fn(async () => mocks.mockHub),
     computeMerkleRoot: vi.fn().mockResolvedValue('mock-merkle-root'),
-    generateJobId: vi.fn().mockImplementation(async (q: BalanceQuery) => `job-${q.address}-${q.network}`),
+    generateJobId: vi
+        .fn()
+        .mockImplementation(
+            async (q: NetworkJob) =>
+                `job-${q.network}-${q.token?.symbol ?? 'native'}-${q.addresses?.join(',')}`,
+        ),
 }));
 
 vi.mock('./infra/source', () => ({
-    BalanceQuerySource: vi.fn().mockImplementation(function () { return {}; }),
+    BalanceQuerySource: vi.fn().mockImplementation(function () {
+        return { getData: () => [] };
+    }),
 }));
 
 vi.mock('$lib/async/interrupt-queue', () => ({
@@ -97,23 +112,36 @@ function makeBalanceResult(address: string, network: string): BalanceResult {
     return { address, network, symbol: 'ETH', balance: '1.0', balanceRaw: '1000000000000000000' };
 }
 
-function makeCompletedJob(address: string, network: string) {
+function makeJobResult(
+    address: string,
+    network: string,
+    token: TokenSpec = NATIVE_ETH,
+): NetworkJobResult {
+    return { network, token, results: [{ address, balance: '1000000000000000000' }] };
+}
+
+function makeCompletedJob(address: string, network: string, token: TokenSpec = NATIVE_ETH) {
     return {
-        id: `job-${address}-${network}`,
+        id: `job-${network}-${token.symbol}-${address}`,
         taskId: 'test-task-id',
-        input: { address, network } as BalanceQuery,
-        output: makeBalanceResult(address, network),
+        input: { network, token, addresses: [address] } as NetworkJob,
+        output: makeJobResult(address, network, token),
         status: 'completed' as const,
         attempts: 1,
         createdAt: Date.now(),
     };
 }
 
-function makeFailedJob(address: string, network: string, error: string) {
+function makeFailedJob(
+    address: string,
+    network: string,
+    error: string,
+    token: TokenSpec = NATIVE_ETH,
+) {
     return {
-        id: `job-${address}-${network}`,
+        id: `job-${network}-${token.symbol}-${address}`,
         taskId: 'test-task-id',
-        input: { address, network } as BalanceQuery,
+        input: { network, token, addresses: [address] } as NetworkJob,
         error,
         status: 'failed' as const,
         attempts: 1,
@@ -180,6 +208,48 @@ describe('validate', () => {
         const result = validate({ addresses: `${ADDR1},${ADDR2}`, networks: ['ethereum', 'polygon', 'arbitrum'] });
         expect(result.totalQueries).toBe(6);
     });
+
+    it('defaults to the native coin when no token selection is provided', () => {
+        const result = validate({ addresses: ADDR1, networks: ['ethereum'] });
+        expect(result.tokensByNetwork.ethereum).toEqual([{ kind: 'native', symbol: 'ETH', decimals: 18 }]);
+        expect(result.totalQueries).toBe(1);
+    });
+
+    it('uses provided token selections and counts each (address × token)', () => {
+        const result = validate({
+            addresses: `${ADDR1},${ADDR2}`,
+            networks: ['ethereum'],
+            tokenSelections: [{ network: 'ethereum', tokens: [NATIVE_ETH, USDC] }],
+        });
+        expect(result.tokensByNetwork.ethereum).toEqual([NATIVE_ETH, USDC]);
+        // 2 addresses × 2 tokens
+        expect(result.totalQueries).toBe(4);
+    });
+
+    it('validates and resolves a custom network by its custom-<chainId> key', () => {
+        const result = validate({
+            addresses: ADDR1,
+            networks: ['custom-56'],
+            customNetworks: [
+                { name: 'BNB Chain', chainId: 56, rpcs: ['https://bsc-rpc.publicnode.com'], symbol: 'BNB', decimals: 18 },
+            ],
+        });
+        expect(result.networks).toEqual(['custom-56']);
+        expect(result.tokensByNetwork['custom-56']).toEqual([{ kind: 'native', symbol: 'BNB', decimals: 18 }]);
+        expect(result.totalQueries).toBe(1);
+    });
+
+    it('falls back to native for a selected network with no matching selection entry', () => {
+        const result = validate({
+            addresses: ADDR1,
+            networks: ['ethereum', 'polygon'],
+            tokenSelections: [{ network: 'ethereum', tokens: [USDC] }],
+        });
+        expect(result.tokensByNetwork.ethereum).toEqual([USDC]);
+        expect(result.tokensByNetwork.polygon).toEqual([{ kind: 'native', symbol: 'MATIC', decimals: 18 }]);
+        // ethereum: 1×1 + polygon: 1×1
+        expect(result.totalQueries).toBe(2);
+    });
 });
 
 // ============================================================================
@@ -213,6 +283,31 @@ describe('formatOutput', () => {
         expect(output.stats.success).toBe(0);
         expect(output.stats.failed).toBe(0);
     });
+
+    it('includes tokenAddress for ERC20 results', () => {
+        const runResult: RunResult = {
+            results: [
+                {
+                    address: ADDR1,
+                    network: 'ethereum',
+                    symbol: 'USDC',
+                    tokenAddress: USDC.address,
+                    balance: '5.0',
+                    balanceRaw: '5000000',
+                },
+            ],
+            failures: [],
+            duration: 100,
+        };
+        const output = formatOutput(runResult, 1);
+        expect(output.results[0]).toEqual({
+            address: ADDR1,
+            network: 'ethereum',
+            symbol: 'USDC',
+            tokenAddress: USDC.address,
+            balance: '5.0',
+        });
+    });
 });
 
 // ============================================================================
@@ -235,6 +330,27 @@ describe('executor', () => {
         expect(mocks.mockHub.createTask).toHaveBeenCalled();
         expect(output.results).toHaveLength(2);
         expect(output.stats).toMatchObject({ total: 2, success: 2, failed: 0 });
+    });
+
+    it('flattens ERC20 job results with the token symbol and contract address', async () => {
+        const job = makeCompletedJob(ADDR1, 'ethereum', USDC);
+
+        mocks.mockTask.start.mockImplementation(async () => {
+            mocks.mockTask._emit('job:complete', job);
+        });
+
+        const ctx = createMockCtx();
+        const output = await driveExecutor(
+            {
+                addresses: ADDR1,
+                networks: ['ethereum'],
+                tokenSelections: [{ network: 'ethereum', tokens: [USDC] }],
+            },
+            ctx,
+        );
+
+        expect(output.results).toHaveLength(1);
+        expect(output.results[0]).toMatchObject({ symbol: 'USDC', tokenAddress: USDC.address });
     });
 
     it('collects failures and offers to show details', async () => {

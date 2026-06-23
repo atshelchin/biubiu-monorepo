@@ -1,8 +1,9 @@
 import { defineModule } from '@shelchin/pagekit';
 import { z } from '@shelchin/pda';
 import { balanceRadarApp } from '../index.js';
+import { tokenSpecSchema, networkConfigSchema } from '../schema.js';
 import type { Adapter, InteractionRequest, InteractionResponse, Manifest } from '@shelchin/pda';
-import type { BalanceFailure } from '../types.js';
+import type { BalanceFailure, NetworkTokenSelection, NetworkConfig } from '../types.js';
 
 export type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
 
@@ -23,15 +24,21 @@ export interface ResultEntry {
 	address: string;
 	network: string;
 	symbol: string;
+	tokenAddress?: string;
 	balance: string;
 }
 
-export type SortField = 'address' | 'network' | 'balance';
+export type SortField = 'address' | 'network' | 'symbol' | 'balance';
 export type SortDirection = 'asc' | 'desc';
 
-type PDAInput = { addresses: string; networks: string[] };
+type PDAInput = {
+	addresses: string;
+	networks: string[];
+	tokenSelections?: NetworkTokenSelection[];
+	customNetworks?: NetworkConfig[];
+};
 type PDAOutput = {
-	results: { address: string; network: string; symbol: string; balance: string }[];
+	results: { address: string; network: string; symbol: string; tokenAddress?: string; balance: string }[];
 	stats: { total: number; success: number; failed: number; duration: number };
 };
 
@@ -64,6 +71,14 @@ export const executionModule = defineModule({
 				networks: z
 					.array(z.string())
 					.describe('Network keys to query (e.g. ["ethereum", "polygon"])'),
+				tokenSelections: z
+					.array(z.object({ network: z.string(), tokens: z.array(tokenSpecSchema) }))
+					.optional()
+					.describe('Per-network token selection; omit to query native coins only'),
+				customNetworks: z
+					.array(networkConfigSchema)
+					.optional()
+					.describe('User-defined EVM networks to merge into the registry'),
 			}),
 			output: z.object({
 				success: z.boolean(),
@@ -165,7 +180,7 @@ export const executionModule = defineModule({
 		setSortField: {
 			description: 'Change sort field for results table',
 			input: z.object({
-				field: z.enum(['address', 'network', 'balance']).describe('Field to sort by'),
+				field: z.enum(['address', 'network', 'symbol', 'balance']).describe('Field to sort by'),
 			}),
 			execute({ input, ctx }) {
 				if (ctx.sortField === input.field) {
@@ -211,9 +226,9 @@ export const executionModule = defineModule({
 			output: z.object({ rowCount: z.number() }),
 			execute({ ctx }) {
 				const rows = [
-					['Address', 'Network', 'Symbol', 'Balance'].join(','),
+					['Address', 'Network', 'Token', 'Contract', 'Balance'].join(','),
 					...ctx.results.map((r) =>
-						[r.address, r.network, r.symbol, r.balance].join(','),
+						[r.address, r.network, r.symbol, r.tokenAddress ?? 'native', r.balance].join(','),
 					),
 				];
 				const csv = rows.join('\n');

@@ -2,13 +2,17 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
-	import type { AddressEntry, NetworkInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
+	import type { AddressEntry, NetworkInfo, TokenInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
+	import AddNetworkModal from './AddNetworkModal.svelte';
+	import AddTokenModal from './AddTokenModal.svelte';
 
 	interface Props {
 		addresses: AddressEntry[];
 		addressInput: string;
 		selectedNetworks: string[];
 		availableNetworks: NetworkInfo[];
+		availableTokens: Record<string, TokenInfo[]>;
+		selectedTokens: Record<string, string[]>;
 		validAddressCount: number;
 		invalidAddressCount: number;
 		totalQueries: number;
@@ -22,6 +26,24 @@
 		onToggleNetwork: (network: string) => void;
 		onSelectAll: () => void;
 		onDeselectAll: () => void;
+		onToggleToken: (network: string, tokenId: string) => void;
+		onAddCustomNetwork: (data: {
+			name: string;
+			chainId: number;
+			rpcs: string[];
+			symbol: string;
+			decimals: number;
+		}) => Promise<void> | void;
+		onRemoveCustomNetwork: (chainId: number) => void;
+		onFetchTokenMetadata: (
+			network: string,
+			address: string,
+		) => Promise<{ symbol: string; decimals: number }>;
+		onAddCustomToken: (
+			network: string,
+			data: { address: string; symbol: string; decimals: number },
+		) => Promise<void> | void;
+		onRemoveCustomToken: (network: string, address: string) => void;
 		onStartQuery: () => void;
 	}
 
@@ -30,6 +52,8 @@
 		addressInput,
 		selectedNetworks,
 		availableNetworks,
+		availableTokens,
+		selectedTokens,
 		validAddressCount,
 		invalidAddressCount,
 		totalQueries,
@@ -43,6 +67,12 @@
 		onToggleNetwork,
 		onSelectAll,
 		onDeselectAll,
+		onToggleToken,
+		onAddCustomNetwork,
+		onRemoveCustomNetwork,
+		onFetchTokenMetadata,
+		onAddCustomToken,
+		onRemoveCustomToken,
 		onStartQuery,
 	}: Props = $props();
 
@@ -57,6 +87,10 @@
 	let lastSyncedLines = '';
 	let lastSyncedInput = '';
 	let syncTimer: ReturnType<typeof setTimeout> | undefined;
+
+	// Modal state
+	let showAddNetwork = $state(false);
+	let addTokenForNetwork = $state<string | null>(null);
 
 	onDestroy(() => {
 		if (syncTimer) clearTimeout(syncTimer);
@@ -85,10 +119,28 @@
 	});
 
 	// Derived: local summary (immediate, no module round-trip)
-	const localTotalQueries = $derived(editorValidCount * selectedNetworks.length);
-	const localCanExecute = $derived(editorValidCount > 0 && selectedNetworks.length > 0);
+	const localTotalQueries = $derived(
+		editorValidCount *
+			selectedNetworks.reduce((sum, n) => sum + (selectedTokens[n]?.length ?? 0), 0),
+	);
+	const localCanExecute = $derived(localTotalQueries > 0);
 
-	// User → Module: debounced sync of validLines only (O(n) array, no full-text parse)
+	// Lookup helpers
+	const networkByKey = $derived(
+		new Map(availableNetworks.map((n) => [n.key, n] as const)),
+	);
+	const existingChainIds = $derived(availableNetworks.map((n) => n.chainId));
+
+	function tokensFor(network: string): TokenInfo[] {
+		return availableTokens[network] ?? [];
+	}
+	function existingTokenAddresses(network: string): string[] {
+		return tokensFor(network)
+			.filter((tk) => tk.kind === 'erc20')
+			.map((tk) => tk.id);
+	}
+
+	// User → Module: debounced sync of validLines only
 	$effect(() => {
 		const lines = validLines;
 		const key = lines.join('\n');
@@ -167,6 +219,10 @@
 			<div class="field-header">
 				<span class="field-label">{t('br.networks.label')}</span>
 				<div class="network-actions">
+					<button class="link-button" onclick={() => (showAddNetwork = true)}>
+						{t('br.networks.addCustom')}
+					</button>
+					<span class="separator">|</span>
 					<button class="link-button" onclick={onSelectAll}>
 						{t('br.networks.selectAll')}
 					</button>
@@ -178,19 +234,83 @@
 			</div>
 
 			<div class="network-chips">
-				{#each availableNetworks as network}
+				{#each availableNetworks as network (network.key)}
 					{@const selected = selectedNetworks.includes(network.key)}
-					<button
-						class="chip"
-						class:chip-selected={selected}
-						onclick={() => onToggleNetwork(network.key)}
-					>
-						{network.name}
-						<span class="chip-symbol">({network.symbol})</span>
-					</button>
+					<div class="chip-wrap">
+						<button
+							class="chip"
+							class:chip-selected={selected}
+							onclick={() => onToggleNetwork(network.key)}
+						>
+							{network.name}
+							<span class="chip-symbol">({network.symbol})</span>
+							{#if network.isCustom}
+								<span class="badge">{t('br.networks.customBadge')}</span>
+							{/if}
+						</button>
+						{#if network.isCustom}
+							<button
+								class="chip-remove"
+								title={t('br.networks.remove')}
+								aria-label={t('br.networks.remove')}
+								onclick={() => onRemoveCustomNetwork(network.chainId)}
+							>
+								×
+							</button>
+						{/if}
+					</div>
 				{/each}
 			</div>
 		</div>
+
+		<!-- Per-network Token Selectors -->
+		{#each selectedNetworks as networkKey (networkKey)}
+			{@const net = networkByKey.get(networkKey)}
+			{#if net}
+				<div class="field-group token-group">
+					<div class="field-header">
+						<span class="field-label token-label">
+							{net.name}
+							<span class="token-label-sub">· {t('br.tokens.label')}</span>
+						</span>
+						<button class="link-button" onclick={() => (addTokenForNetwork = networkKey)}>
+							{t('br.tokens.addCustom')}
+						</button>
+					</div>
+
+					<div class="network-chips">
+						{#each tokensFor(networkKey) as tk (tk.id)}
+							{@const tokenSelected = (selectedTokens[networkKey] ?? []).includes(tk.id)}
+							<div class="chip-wrap">
+								<button
+									class="chip chip-token"
+									class:chip-selected={tokenSelected}
+									onclick={() => onToggleToken(networkKey, tk.id)}
+								>
+									{tk.symbol}
+									{#if tk.kind === 'native'}
+										<span class="chip-symbol">({t('br.tokens.native')})</span>
+									{/if}
+									{#if tk.isCustom}
+										<span class="badge">{t('br.tokens.customBadge')}</span>
+									{/if}
+								</button>
+								{#if tk.isCustom && tk.address}
+									<button
+										class="chip-remove"
+										title={t('br.tokens.remove')}
+										aria-label={t('br.tokens.remove')}
+										onclick={() => onRemoveCustomToken(networkKey, tk.address!)}
+									>
+										×
+									</button>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
+		{/each}
 
 		<!-- Error from previous run -->
 		{#if executionStatus === 'error' && errorMessage}
@@ -204,11 +324,7 @@
 		<div class="summary-bar">
 			{#if localCanExecute}
 				<span class="summary-text">
-					{t('br.summary.queries', {
-						addresses: editorValidCount,
-						networks: selectedNetworks.length,
-						total: localTotalQueries,
-					})}
+					{t('br.summary.totalQueries', { total: localTotalQueries })}
 				</span>
 			{:else}
 				<span></span>
@@ -223,6 +339,26 @@
 			</button>
 		</div>
 	</section>
+
+	<AddNetworkModal
+		open={showAddNetwork}
+		onClose={() => (showAddNetwork = false)}
+		{existingChainIds}
+		onSubmit={onAddCustomNetwork}
+	/>
+
+	{#if addTokenForNetwork}
+		{@const net = networkByKey.get(addTokenForNetwork)}
+		<AddTokenModal
+			open={true}
+			onClose={() => (addTokenForNetwork = null)}
+			networkKey={addTokenForNetwork}
+			networkName={net?.name ?? addTokenForNetwork}
+			existingAddresses={existingTokenAddresses(addTokenForNetwork)}
+			onFetchMetadata={(address) => onFetchTokenMetadata(addTokenForNetwork!, address)}
+			onSubmit={(data) => onAddCustomToken(addTokenForNetwork!, data)}
+		/>
+	{/if}
 {/if}
 
 <style>
@@ -242,6 +378,12 @@
 		margin-bottom: 0;
 	}
 
+	.token-group {
+		margin-bottom: var(--space-4);
+		padding-left: var(--space-3);
+		border-left: 2px solid var(--border-subtle);
+	}
+
 	.field-header {
 		display: flex;
 		justify-content: space-between;
@@ -255,12 +397,17 @@
 		color: var(--fg-base);
 	}
 
+	.token-label-sub {
+		color: var(--fg-subtle);
+		font-weight: var(--weight-normal);
+	}
+
 	.editor-wrapper {
 		border-radius: var(--radius-md);
 		overflow: hidden;
 	}
 
-	/* Network Chips */
+	/* Network / Token Chips */
 	.network-actions {
 		display: flex;
 		align-items: center;
@@ -278,6 +425,12 @@
 		gap: var(--space-2);
 	}
 
+	.chip-wrap {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+	}
+
 	.chip {
 		display: inline-flex;
 		align-items: center;
@@ -292,6 +445,10 @@
 		cursor: pointer;
 		transition: all var(--motion-fast) var(--easing);
 		user-select: none;
+	}
+
+	.chip-token {
+		font-size: var(--text-xs);
 	}
 
 	.chip:hover {
@@ -312,6 +469,40 @@
 	.chip-symbol {
 		font-size: var(--text-xs);
 		opacity: 0.7;
+	}
+
+	.badge {
+		font-size: 9px;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		padding: 1px 4px;
+		border-radius: var(--radius-sm);
+		background: var(--bg-raised);
+		color: var(--fg-subtle);
+		border: 1px solid var(--border-subtle);
+	}
+
+	.chip-remove {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		margin-left: -6px;
+		margin-right: 2px;
+		border: none;
+		border-radius: var(--radius-full);
+		background: var(--bg-elevated, var(--bg-raised));
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		line-height: 1;
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+
+	.chip-remove:hover {
+		background: var(--error-subtle);
+		color: var(--error);
 	}
 
 	/* Link Button */

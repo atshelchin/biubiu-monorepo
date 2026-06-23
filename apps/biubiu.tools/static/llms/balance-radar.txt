@@ -1,12 +1,14 @@
 # Balance Radar
 
-> Query native token balances for multiple wallet addresses across multiple EVM chains simultaneously.
+> Query native and ERC20 token balances for multiple wallet addresses across multiple EVM chains simultaneously, with support for custom networks and custom tokens.
 
 ---
 
 ## Overview
 
-Balance Radar takes a list of wallet addresses and a set of networks, queries the native balance of each address on each network in parallel, and returns a structured result table. It handles RPC rate limiting with adaptive concurrency (AIMD) and supports resume from interrupted sessions.
+Balance Radar takes a list of wallet addresses, a set of networks, and (optionally) tokens per network, queries the balance of each address for each selected token in parallel, and returns a structured result table. Each query targets either the network's native coin or an ERC20 contract via Multicall3 (`balanceOf`). It handles RPC rate limiting with adaptive concurrency (AIMD) and supports resume from interrupted sessions.
+
+Users can also define **custom EVM networks** (name, chainId, RPCs, native symbol/decimals) and **custom ERC20 tokens** (auto-fetching `symbol()`/`decimals()` over RPC); both persist in the browser via IndexedDB.
 
 - **App ID**: `balance-radar`
 - **Category**: Read-only (RPC queries)
@@ -21,6 +23,12 @@ Balance Radar takes a list of wallet addresses and a set of networks, queries th
 |-------|------|---------|-------------|
 | `addresses` | string | — | Wallet addresses, comma or newline separated |
 | `networks` | string[] | `['ethereum']` | Networks to query balances on |
+| `tokenSelections` | `{network, tokens: TokenSpec[]}[]` | — | Tokens to query per network; omit to query native coins only |
+| `customNetworks` | `NetworkConfig[]` | — | User-defined EVM networks, merged in under key `custom-<chainId>` |
+
+`TokenSpec` = `{ kind: 'native' | 'erc20', address?: string, symbol: string, decimals: number }` (self-contained — `address` required only for ERC20).
+
+`NetworkConfig` = `{ name, chainId, rpcs: string[], symbol, decimals }`.
 
 ### Addresses format
 
@@ -32,15 +40,15 @@ Or one per line. Addresses must start with `0x` and be 42 characters long.
 
 ### Supported networks
 
-Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE).
+Built-in: Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE). Each built-in chain ships curated preset ERC20s (USDC/USDT/DAI/WETH). Additional chains can be added via `customNetworks`.
 
 ---
 
 ## How It Works
 
-1. **Validate** — Parse addresses (split by comma/newline), validate format, filter valid networks
-2. **Generate queries** — Cross-product: `addresses × networks` = total jobs
-3. **TaskHub setup** — Create or resume task (merkle root idempotency)
+1. **Validate** — Parse addresses (split by comma/newline), validate format, filter valid networks (against built-in + custom registry), resolve tokens per network (default = native coin)
+2. **Generate queries** — Cross-product: `addresses × Σ(tokens per network)` = total queries; each job is one `(network, token, address-chunk)`
+3. **TaskHub setup** — Create or resume task (merkle root idempotency; the token is part of each job id)
 4. **Execute** — Query balances via RPC vendor pool, concurrency 5-10 (AIMD adaptive)
 5. **Handle rate limits** — When all RPCs throttled, prompt user: wait or return partial results
 6. **Resume** — On resume, load previously completed/failed results, continue remaining jobs
@@ -48,7 +56,7 @@ Ethereum, Polygon, Arbitrum, Optimism, Base, Endurance (ACE).
 
 ### Query execution
 
-Each job is one RPC call: `eth_getBalance(address)` on the target network. The vendor pool (`$lib/evm/network-pool`) manages multiple RPC endpoints per network and rotates on failure.
+Each job is one Multicall3 call across the address-chunk: `getEthBalance(address)` for the native coin, or `balanceOf(address)` on the token contract for ERC20. Chains without Multicall3 fall back to sequential per-address reads. The vendor pool (`$lib/evm/network-pool`) manages multiple RPC endpoints per network and rotates on failure.
 
 ### Concurrency
 
@@ -71,8 +79,9 @@ Each job is one RPC call: `eth_getBalance(address)` on the target network. The v
     },
     {
       "address": "0xAbc...123",
-      "network": "polygon",
-      "symbol": "MATIC",
+      "network": "ethereum",
+      "symbol": "USDC",
+      "tokenAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
       "balance": "500.0"
     }
   ],
@@ -85,7 +94,7 @@ Each job is one RPC call: `eth_getBalance(address)` on the target network. The v
 }
 ```
 
-Balances are formatted with `viem.formatUnits()` using the network's native decimal precision (18 for all currently supported networks).
+Each result row carries the token `symbol` and, for ERC20s, the `tokenAddress` (omitted for the native coin). Balances are formatted with `viem.formatUnits()` using the token's decimals (18 for native coins, 6 for USDC/USDT, etc.).
 
 ---
 
@@ -176,8 +185,10 @@ chmod +x /tmp/balance-radar
 |------|-------------|
 | `--addresses <addrs>` | Comma-separated 0x wallet addresses (42 chars each) |
 | `--networks <json>` | JSON array of network names (default: `["ethereum"]`) |
+| `--tokens <json>` | Per-network token selection (alias of `--tokenSelections`); omit for native only |
+| `--custom-networks <json>` | JSON array of user-defined `NetworkConfig` objects |
 | `--non-interactive` | Skip all prompts, use defaults (required for AI agents) |
-| `--config-file <path>` | JSON file with all parameters |
+| `--config-file <path>` | JSON file with all parameters (`tokenSelections`/`customNetworks` keys) |
 | `--addresses-file <path>` | Text file with one address per line (`#` comments supported) |
 
 ### Output (JSON to stdout)

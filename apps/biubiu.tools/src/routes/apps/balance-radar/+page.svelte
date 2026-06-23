@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { usePage } from '@shelchin/pagekit/svelte';
 	import { ActionBusyError } from '@shelchin/pagekit';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
@@ -11,8 +12,14 @@
 	import BalanceRadarExecution from '$lib/widgets/BalanceRadarExecution.svelte';
 	import BalanceRadarResults from '$lib/widgets/BalanceRadarResults.svelte';
 	import { balanceRadarPage } from '$lib/pda-apps/balance-radar/page.js';
+	import { buildTokenSelections } from '$lib/pda-apps/balance-radar/modules/config.js';
 
 	const page = usePage(balanceRadarPage);
+
+	// Load user-defined networks & tokens from IndexedDB
+	onMount(() => {
+		page.config.hydrateCustom({});
+	});
 
 	// SEO
 	const seoProps = $derived(
@@ -42,10 +49,18 @@
 			.map((a) => a.value)
 			.join(',');
 
+		const tokenSelections = buildTokenSelections(
+			page.config.ctx.selectedNetworks,
+			page.config.ctx.selectedTokens,
+			page.config.ctx.availableTokens,
+		);
+
 		try {
 			await page.execution.run({
 				addresses,
 				networks: page.config.ctx.selectedNetworks,
+				tokenSelections,
+				customNetworks: page.config.ctx.customNetworks,
 			});
 		} catch (e) {
 			if (e instanceof ActionBusyError) return;
@@ -72,6 +87,8 @@
 			addressInput={page.config.ctx.addressInput}
 			selectedNetworks={page.config.ctx.selectedNetworks}
 			availableNetworks={page.config.ctx.availableNetworks}
+			availableTokens={page.config.ctx.availableTokens}
+			selectedTokens={page.config.ctx.selectedTokens}
 			validAddressCount={page.config.ctx.validAddressCount}
 			invalidAddressCount={page.config.ctx.invalidAddressCount}
 			totalQueries={page.config.ctx.totalQueries}
@@ -85,6 +102,21 @@
 			onToggleNetwork={(network) => page.config.toggleNetwork({ network })}
 			onSelectAll={() => page.config.selectAllNetworks({})}
 			onDeselectAll={() => page.config.deselectAllNetworks({})}
+			onToggleToken={(network, tokenId) => page.config.toggleToken({ network, tokenId })}
+			onAddCustomNetwork={async (data) => {
+				await page.config.addCustomNetwork(data);
+			}}
+			onRemoveCustomNetwork={(chainId) => page.config.removeCustomNetwork({ chainId })}
+			onFetchTokenMetadata={async (network, address) => {
+				const meta = await page.config.fetchTokenMetadata({ network, address });
+				if (!meta) throw new Error('Failed to read token metadata');
+				return meta;
+			}}
+			onAddCustomToken={async (network, data) => {
+				await page.config.addCustomToken({ network, ...data });
+			}}
+			onRemoveCustomToken={(network, address) =>
+				page.config.removeCustomToken({ network, address })}
 			onStartQuery={handleStartQuery}
 		/>
 	</div>

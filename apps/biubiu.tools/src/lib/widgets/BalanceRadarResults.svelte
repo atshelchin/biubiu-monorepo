@@ -176,7 +176,9 @@
 					<th class="th-sortable" onclick={() => onSetSortField('network')}>
 						{t('br.results.table.network')}{getSortIndicator('network')}
 					</th>
-					<th>{t('br.results.table.symbol')}</th>
+					<th class="th-sortable" onclick={() => onSetSortField('symbol')}>
+						{t('br.results.table.token')}{getSortIndicator('symbol')}
+					</th>
 					<th class="th-sortable th-balance" onclick={() => onSetSortField('balance')}>
 						{t('br.results.table.balance')}{getSortIndicator('balance')}
 					</th>
@@ -195,7 +197,9 @@
 							</button>
 						</td>
 						<td>{row.network}</td>
-						<td>{row.symbol}</td>
+						<td class="cell-token" title={row.tokenAddress ?? ''}>
+							{row.symbol}
+						</td>
 						<td class="cell-balance" class:cell-zero={parseFloat(row.balance) === 0}>
 							{row.balance}
 						</td>
@@ -431,6 +435,10 @@
 
 	.address-copy:hover {
 		opacity: 0.7;
+	}
+
+	.cell-token {
+		font-weight: var(--weight-medium);
 	}
 
 	.cell-balance {

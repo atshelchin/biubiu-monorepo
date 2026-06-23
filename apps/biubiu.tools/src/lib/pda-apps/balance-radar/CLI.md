@@ -1,6 +1,6 @@
 # Balance Radar CLI
 
-批量查询多个钱包地址在不同 EVM 链上的原生代币余额。
+批量查询多个钱包地址在不同 EVM 链上的**原生代币和 ERC20 代币**余额，并支持**自定义网络**与**自定义 ERC20 代币**。
 
 ## 运行方式
 
@@ -16,8 +16,12 @@ bun run pda:balance-radar -- [options]
 |------|------|------|
 | `--addresses <addrs>` | 逗号分隔的钱包地址 | `"0xABC...,0xDEF..."` |
 | `--networks <json>` | JSON 数组，指定查询的网络 | `'["ethereum","base"]'` |
+| `--tokens <json>` | 每个网络要查询的代币（不传则只查原生币） | 见下方示例 |
+| `--custom-networks <json>` | 自定义 EVM 网络数组 | 见下方示例 |
 | `--addresses-file <path>` | 从文本文件读取地址（一行一个） | `wallets.txt` |
 | `--config-file <path>` | 从 JSON 文件读取全部参数 | `config.json` |
+
+> `--tokens` 是 `--tokenSelections` 的别名；`--custom-networks` 对应 schema 字段 `customNetworks`。
 
 ## 三种使用方式
 
@@ -29,6 +33,33 @@ bun run pda:balance-radar -- [options]
 bun run pda:balance-radar -- \
   --addresses "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,0x1234567890abcdef1234567890abcdef12345678" \
   --networks '["ethereum","base"]'
+```
+
+#### 查询 ERC20 代币
+
+`--tokens` 是一个数组，为每个网络指定要查询的代币列表。每个代币是自包含的 `TokenSpec`（`kind` + `symbol` + `decimals`，ERC20 还需 `address`）：
+
+```bash
+bun run pda:balance-radar -- \
+  --addresses "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" \
+  --networks '["ethereum"]' \
+  --tokens '[{"network":"ethereum","tokens":[
+    {"kind":"native","symbol":"ETH","decimals":18},
+    {"kind":"erc20","address":"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48","symbol":"USDC","decimals":6}
+  ]}]'
+```
+
+> 不传 `--tokens` 时，每个选中的网络默认只查询其原生币（向后兼容）。
+
+#### 自定义网络
+
+通过 `--custom-networks` 合并用户自定义链，合并后用 `custom-<chainId>` 作为网络键引用：
+
+```bash
+bun run pda:balance-radar -- \
+  --addresses "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" \
+  --networks '["custom-56"]' \
+  --custom-networks '[{"name":"BNB Chain","chainId":56,"rpcs":["https://bsc-rpc.publicnode.com"],"symbol":"BNB","decimals":18}]'
 ```
 
 ### 2. 地址文件 + 参数
@@ -69,11 +100,23 @@ bun run pda:balance-radar -- --config-file config.json
 ```json
 {
   "addresses": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,0x1234567890abcdef1234567890abcdef12345678",
-  "networks": ["ethereum", "base", "polygon"]
+  "networks": ["ethereum", "base", "polygon"],
+  "tokenSelections": [
+    {
+      "network": "ethereum",
+      "tokens": [
+        { "kind": "native", "symbol": "ETH", "decimals": 18 },
+        { "kind": "erc20", "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "symbol": "USDC", "decimals": 6 }
+      ]
+    }
+  ],
+  "customNetworks": [
+    { "name": "BNB Chain", "chainId": 56, "rpcs": ["https://bsc-rpc.publicnode.com"], "symbol": "BNB", "decimals": 18 }
+  ]
 }
 ```
 
-> `--config-file` 会覆盖所有其他参数。
+> `--config-file` 会覆盖所有其他参数。`config.json` 中直接使用 schema 字段名 `tokenSelections` / `customNetworks`。
 
 ## 支持的网络
 

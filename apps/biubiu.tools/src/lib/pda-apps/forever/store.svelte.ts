@@ -69,8 +69,6 @@ class ForeverStore {
 	mode = $state<'private' | 'capsule'>('private');
 	/** datetime-local string for capsule unlock (local time). */
 	unlockDate = $state('');
-	/** User-chosen name for the encryption passkey (shown in the OS passkey manager). */
-	keyName = $state('');
 
 	status = $state<Status>('idle');
 	message = $state('');
@@ -159,54 +157,83 @@ class ForeverStore {
 		return this.status === 'setup' || this.status === 'unlocking' || this.status === 'sealing';
 	}
 
-	/** One-time: create the encryption passkey, generate + publish the wrapped-DEK envelope. */
+	/**
+	 * Ensure this account has an encryption key, then recover or create its on-chain envelope.
+	 *
+	 * Derives the KEK from the WALLET passkey's PRF — one passkey is both your identity AND your
+	 * encryption key. Wallets created before PRF (no `prf.enabled`) fall back to a dedicated
+	 * encryption passkey. Then opens an existing on-chain envelope, or publishes a new one.
+	 */
 	async setupKey(): Promise<boolean> {
 		if (this.busy) return false; // re-entry guard: only one WebAuthn request at a time
 		const user = authStore.user;
 		if (!user) return this.fail('Please sign in first.');
 		if (!isWebAuthnAvailable()) return this.fail('WebAuthn is not available in this browser.');
 
-		// Go busy immediately (disables buttons) BEFORE any await, so a slow funding check can't
-		// leave a window for a second click → "A request is already pending".
 		this.status = 'setup';
 		this.message = '检查钱包…';
-
-		// First-time setup deploys the Safe AND publishes the key on the SELECTED network — both
-		// cost gas, paid from the Safe.
 		if (await this.isUnfunded(user.safeAddress)) return this.fail(this.friendlyError('AA21'));
 
-		this.message = 'Creating your encryption passkey…';
 		try {
-			const { credential, prfEnabled, prf: createPrf } = await createEncryptionPasskey(
-				user.rpId,
-				this.keyName.trim() || 'Forever'
-			);
-			if (!prfEnabled && !createPrf) {
-				return this.fail('This authenticator does not support PRF encryption.');
-			}
-
-			// Prefer the PRF returned by create() (single ceremony); else evaluate via a get().
-			const prf = createPrf ?? (await evaluatePrf(credential)).prf;
-			const kek = await deriveKEK(prf);
-			const { rawDek, envelope } = await createEnvelope(kek);
-
-			this.message = 'Publishing your encrypted key on-chain…';
-			const res = await sendContractCall({
-				safeAddress: user.safeAddress as Address,
-				publicKeyHex: user.publicKey,
+			// 1) Derive the KEK — prefer the wallet passkey itself (no second passkey).
+			const walletCred: EncryptionCredential = {
 				credentialId: user.credentialId,
 				rpId: user.rpId,
-				to: FOREVER_ADDRESS,
-				value: 0n,
-				data: encodeSetKey(envelope),
-				network: this.networkSlug,
-				onStatus: (s) => (this.message = `Key setup: ${s}…`)
-			});
-			if (!res.success) return this.fail(this.friendlyError(res.error ?? 'Key setup failed.'));
+				createdAt: user.createdAt
+			};
+			let cred = walletCred;
+			let prf: Uint8Array;
+			this.message = '用你的账号 passkey 准备加密…';
+			try {
+				prf = (await evaluatePrf(walletCred)).prf;
+			} catch {
+				// Old wallet without PRF → fall back to a dedicated encryption passkey.
+				this.message = '你的账号较早、不支持加密，正在创建一把专用加密钥匙…';
+				const r = await createEncryptionPasskey(user.rpId);
+				if (!r.prfEnabled && !r.prf) return this.fail('此设备 / 账号不支持 PRF 加密。');
+				cred = r.credential;
+				prf = r.prf ?? (await evaluatePrf(r.credential)).prf;
+			}
+			const kek = await deriveKEK(prf);
 
-			this.credential = credential;
-			this.envelopeHex = toHex(envelope);
+			// 2) Recover an existing envelope, or create + publish a new one.
+			let rawDek: Uint8Array | null = null;
+			let envelope: Uint8Array | null = null;
+			try {
+				for (const env of await fetchKeys(this.networkSlug, user.safeAddress as Address)) {
+					try {
+						rawDek = await openEnvelope(kek, env);
+						envelope = env;
+						break;
+					} catch {
+						/* not ours — try next */
+					}
+				}
+			} catch {
+				/* on-chain fetch best-effort */
+			}
+			if (!rawDek || !envelope) {
+				const created = await createEnvelope(kek);
+				this.message = '把加密钥匙发布上链…';
+				const res = await sendContractCall({
+					safeAddress: user.safeAddress as Address,
+					publicKeyHex: user.publicKey,
+					credentialId: user.credentialId,
+					rpId: user.rpId,
+					to: FOREVER_ADDRESS,
+					value: 0n,
+					data: encodeSetKey(created.envelope),
+					network: this.networkSlug,
+					onStatus: (s) => (this.message = `Key setup: ${s}…`)
+				});
+				if (!res.success) return this.fail(this.friendlyError(res.error ?? 'Key setup failed.'));
+				rawDek = created.rawDek;
+				envelope = created.envelope;
+			}
+
+			this.credential = cred;
 			this.rawDek = rawDek;
+			this.envelopeHex = toHex(envelope);
 			this.unlocked = true;
 			this.persist();
 			this.status = 'idle';
@@ -218,74 +245,37 @@ class ForeverStore {
 	}
 
 	/**
-	 * Sign in with an EXISTING Forever passkey (discoverable prompt — no new passkey created).
-	 * Recovers the data key by opening an on-chain envelope this passkey can unwrap.
-	 */
-	async useExistingKey(): Promise<boolean> {
-		if (this.busy) return false; // re-entry guard
-		const user = authStore.user;
-		if (!user) return this.fail('Please sign in first.');
-		if (!isWebAuthnAvailable()) return this.fail('WebAuthn is not available in this browser.');
-
-		this.status = 'unlocking';
-		this.message = 'Choose your Forever passkey…';
-		try {
-			const { prf, credentialId } = await evaluatePrf(); // discoverable: user picks an existing passkey
-			const kek = await deriveKEK(prf);
-			const envelopes = await fetchKeys(this.networkSlug, user.safeAddress as Address);
-			for (const env of envelopes) {
-				try {
-					this.rawDek = await openEnvelope(kek, env);
-					this.credential = { credentialId, rpId: user.rpId, createdAt: Date.now() };
-					this.envelopeHex = toHex(env);
-					this.unlocked = true;
-					this.persist();
-					this.status = 'idle';
-					this.message = '';
-					return true;
-				} catch {
-					/* this passkey doesn't open that envelope — try the next */
-				}
-			}
-			return this.fail(
-				`No Forever key found on ${this.network?.name ?? 'this network'} for that passkey. Create one, or switch to the network where you set it up.`
-			);
-		} catch (e) {
-			return this.fail((e as Error).message);
-		}
-	}
-
-	/**
-	 * Unlock the in-memory DEK: evaluate PRF, then open whichever envelope this passkey can.
-	 * Tries the locally-cached envelope first, then any on-chain envelopes (multi-backup / recovery).
+	 * Unlock the in-memory DEK: evaluate PRF on the wallet passkey (or the stored dedicated key
+	 * for old wallets), then open the locally-cached or an on-chain envelope.
 	 */
 	async unlock(): Promise<boolean> {
-		if (!this.credential) return this.fail('No encryption key set up yet.');
+		const user = authStore.user;
+		if (!user) return this.fail('Please sign in first.');
+		// PRF credential: the stored one (wallet or dedicated), else the wallet passkey itself.
+		const cred: EncryptionCredential =
+			this.credential ?? { credentialId: user.credentialId, rpId: user.rpId, createdAt: user.createdAt };
+
 		this.status = 'unlocking';
-		this.message = 'Unlocking with your passkey…';
+		this.message = '用你的 passkey 开启…';
 		try {
-			const { prf } = await evaluatePrf(this.credential);
+			const { prf } = await evaluatePrf(cred);
 			const kek = await deriveKEK(prf);
 
 			const candidates: Uint8Array[] = [];
 			if (this.envelopeHex) candidates.push(fromHex(this.envelopeHex));
-			const user = authStore.user;
-			if (user) {
-				try {
-					candidates.push(...(await fetchKeys(this.networkSlug, user.safeAddress as Address)));
-				} catch {
-					/* on-chain key fetch is best-effort */
-				}
+			try {
+				candidates.push(...(await fetchKeys(this.networkSlug, user.safeAddress as Address)));
+			} catch {
+				/* on-chain key fetch is best-effort */
 			}
 
 			for (const env of candidates) {
 				try {
 					this.rawDek = await openEnvelope(kek, env);
+					this.credential = cred;
 					this.unlocked = true;
-					if (!this.envelopeHex) {
-						this.envelopeHex = toHex(env);
-						this.persist();
-					}
+					if (!this.envelopeHex) this.envelopeHex = toHex(env);
+					this.persist();
 					this.status = 'idle';
 					this.message = '';
 					return true;

@@ -111,21 +111,13 @@
 	<!-- ② Encryption key -->
 	<section class="leaf">
 		<div class="mark"><KeyRound size={22} /></div>
-		<h2>再为信匣配一把钥匙</h2>
-		<p class="prose">一把只属于你的加密钥匙，由你的设备保管、永不离开。此后写下的每一封，都只有它能开启。</p>
-		<span class="steps">第二步 / 共两步 · 钥匙</span>
-		<input
-			class="field"
-			bind:value={store.keyName}
-			maxlength="40"
-			placeholder="给钥匙起个名字（可选）"
-			disabled={keyBusy}
-		/>
+		<h2>开启你的信匣加密</h2>
+		<p class="prose">
+			用你刚才那把账号 passkey 派生一把加密钥匙——<strong>不另建 passkey</strong>、永不离开你的设备。此后每一封都只有它能开启。
+		</p>
+		<span class="steps">第二步 / 共两步 · 加密</span>
 		<button class="seal-btn" onclick={() => store.setupKey()} disabled={keyBusy}>
-			{store.status === 'setup' ? '正在备好钥匙…' : '配一把我的钥匙'}
-		</button>
-		<button class="quiet" onclick={() => store.useExistingKey()} disabled={keyBusy}>
-			{store.status === 'unlocking' ? '开启中…' : '我已经有钥匙了'}
+			{keyBusy ? '准备中…' : '进入信匣'}
 		</button>
 		{#if store.status === 'error' && store.message}<p class="err">{store.message}</p>{/if}
 	</section>

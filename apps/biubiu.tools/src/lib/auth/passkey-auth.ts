@@ -208,6 +208,10 @@ export async function registerPasskey(name: string): Promise<RegisterResult> {
 					requireResidentKey: true,
 					userVerification: 'required'
 				},
+				// Enable the PRF extension so this passkey can ALSO derive encryption keys
+				// (apps like Forever use it). Harmless for wallets that never need it; older
+				// passkeys created without this simply fall back to a dedicated key.
+				extensions: { prf: {} } as AuthenticationExtensionsClientInputs,
 				timeout: 120_000
 			}
 		});

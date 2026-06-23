@@ -6,6 +6,7 @@
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import PageFooter from '$lib/ui/PageFooter.svelte';
+	import Stepper from '$lib/ui/Stepper.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import WalletGate from '$lib/auth/WalletGate.svelte';
 	import DepositModal from '$lib/auth/DepositModal.svelte';
@@ -13,13 +14,14 @@
 	import { walletStore } from '$lib/wallet';
 	import { tokenSender as s } from '$lib/pda-apps/token-sender/store.svelte.js';
 	import { chainVisual, chainInitials } from '$lib/pda-apps/token-sender/infra/chain-visuals.js';
-	import { Lock, Key, Shield, BookOpen } from '@lucide/svelte';
+	import { Lock, Key, Shield, BookOpen, ChevronDown } from '@lucide/svelte';
 	import RecipientsEditor from './RecipientsEditor.svelte';
 
 	let showDeposit = $state(false);
 	let showAddNetwork = $state(false);
 	let showRpcEdit = $state(false);
 	let safetyOpen = $state(false);
+	let expandedHist = $state<string | null>(null);
 
 	// Add-network form
 	let anName = $state('');
@@ -173,20 +175,13 @@
 
 	<WalletGate>
 		<!-- Stepper -->
-		<nav class="stepper" use:fadeInUp={{ delay: 80 }}>
-			{#each [{ n: 1, label: 'Token' }, { n: 2, label: 'Recipients' }, { n: 3, label: 'Review' }, { n: 4, label: 'Send' }] as st (st.n)}
-				<button
-					class="step"
-					class:active={s.step === st.n}
-					class:done={s.step > st.n}
-					disabled={st.n > s.step}
-					onclick={() => st.n <= s.step && s.goTo(st.n as 1 | 2 | 3 | 4)}
-				>
-					<span class="step-num">{st.n}</span>
-					<span class="step-label">{st.label}</span>
-				</button>
-			{/each}
-		</nav>
+		<div use:fadeInUp={{ delay: 80 }}>
+			<Stepper
+				steps={['Token', 'Recipients', 'Review', 'Send']}
+				current={s.step - 1}
+				onNavigate={(i: number) => s.goTo((i + 1) as 1 | 2 | 3 | 4)}
+			/>
+		</div>
 
 		<!-- ── Step 1: Network + Token ── -->
 		{#if s.step === 1}
@@ -414,6 +409,9 @@
 							{:else}
 								<p class="fund-hint">Top up your wallet with {sym}, then come back.</p>
 							{/if}
+							<button class="btn ghost full" onclick={() => s.prepareReview()} disabled={s.preLoading}>
+								{s.preLoading ? 'Checking…' : "I've deposited — re-check balance"}
+							</button>
 						</div>
 					{/if}
 				{/if}
@@ -520,12 +518,35 @@
 			<ul class="history-list">
 				{#each s.history as h (h.id)}
 					<li class="hist">
-						<div class="hist-main">
-							<strong>{h.tokenSymbol}</strong>
-							<span class="muted">{h.networkName}</span>
-							<span class="badge {h.status}">{h.status}</span>
-						</div>
-						<div class="hist-meta muted">{h.totalRecipients} recipients · {fmtDate(h.createdAt)}</div>
+						<button
+							class="hist-head"
+							onclick={() => (expandedHist = expandedHist === h.id ? null : h.id)}
+						>
+							<div class="hist-main">
+								<strong>{h.tokenSymbol}</strong>
+								<span class="muted">{h.networkName}</span>
+								<span class="badge {h.status}">{h.status}</span>
+								<span class="hist-chevron" class:open={expandedHist === h.id}>
+									<ChevronDown size={16} />
+								</span>
+							</div>
+							<div class="hist-meta muted">{h.totalRecipients} recipients · {fmtDate(h.createdAt)}</div>
+						</button>
+						{#if expandedHist === h.id}
+							<ul class="hist-batches">
+								{#each h.batches as b (b.index)}
+									<li class="hist-batch {b.status}">
+										<span>Batch {b.index + 1}</span>
+										<span class="hist-batch-info">
+											{b.status === 'confirmed' ? `${b.count} sent` : (b.error ?? b.status)}
+										</span>
+										{#if b.explorerUrl && b.txHash}
+											<a href={b.explorerUrl} target="_blank" rel="noopener">{shortHash(b.txHash)}</a>
+										{/if}
+									</li>
+								{/each}
+							</ul>
+						{/if}
 					</li>
 				{/each}
 			</ul>
@@ -538,7 +559,10 @@
 {#if walletStore.kind === 'biubiu' && authStore.user}
 	<DepositModal
 		open={showDeposit}
-		onClose={() => (showDeposit = false)}
+		onClose={() => {
+			showDeposit = false;
+			if (s.step === 3) s.prepareReview();
+		}}
 		address={authStore.user.safeAddress}
 	/>
 {/if}
@@ -719,57 +743,6 @@
 
 	.gate {
 		text-align: center;
-	}
-
-	/* Stepper */
-	.stepper {
-		display: flex;
-		gap: var(--space-2);
-	}
-	.step {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-3);
-		border-radius: var(--radius-lg);
-		border: 1px solid var(--border-base);
-		background: var(--bg-raised);
-		color: var(--fg-muted);
-		cursor: pointer;
-		transition: all var(--motion-normal) var(--easing);
-	}
-	.step:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	.step.active {
-		border-color: var(--accent);
-		color: var(--fg-base);
-		background: var(--accent-subtle);
-	}
-	.step.done {
-		color: var(--fg-base);
-	}
-	.step-num {
-		width: 22px;
-		height: 22px;
-		border-radius: var(--radius-full);
-		background: var(--bg-elevated);
-		display: grid;
-		place-items: center;
-		font-size: var(--text-xs);
-		font-weight: 700;
-		flex-shrink: 0;
-	}
-	.step.active .step-num {
-		background: var(--accent);
-		color: var(--accent-fg);
-	}
-	.step-label {
-		font-size: var(--text-sm);
-		font-weight: 600;
 	}
 
 	.panel h3 {
@@ -1128,6 +1101,58 @@
 		font-size: var(--text-xs);
 		margin-top: 2px;
 	}
+	.hist-head {
+		width: 100%;
+		text-align: left;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		color: inherit;
+		font: inherit;
+	}
+	.hist-chevron {
+		margin-left: auto;
+		display: inline-flex;
+		color: var(--fg-subtle);
+		transition: transform var(--motion-normal) var(--easing);
+	}
+	.hist-chevron.open {
+		transform: rotate(180deg);
+	}
+	.hist-batches {
+		list-style: none;
+		padding: 0;
+		margin: var(--space-3) 0 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+	.hist-batch {
+		display: flex;
+		gap: var(--space-3);
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-sm);
+		background: var(--bg-raised);
+		font-size: var(--text-xs);
+		border-left: 2px solid var(--border-base);
+	}
+	.hist-batch.confirmed {
+		border-left-color: var(--success);
+	}
+	.hist-batch.failed {
+		border-left-color: var(--error);
+	}
+	.hist-batch-info {
+		flex: 1;
+		color: var(--fg-muted);
+	}
+	.hist-batch a {
+		font-family: var(--font-mono);
+		color: var(--accent);
+	}
 	.badge {
 		font-size: var(--text-xs);
 		padding: 1px var(--space-2);
@@ -1230,9 +1255,6 @@
 	@media (max-width: 640px) {
 		.title {
 			font-size: var(--text-3xl);
-		}
-		.step:not(.active) .step-label {
-			display: none;
 		}
 		.two-col {
 			grid-template-columns: 1fr;

@@ -104,12 +104,12 @@ export async function getGasPrices(network: string): Promise<{
 	]);
 
 	if (pimlicoResult) {
-		// Use Pimlico's fast tier — this is the bundler's required minimum
-		// The deploy UI separately fetches cheaper prices for display,
-		// but sendContractCall must respect bundler minimums
+		// Use Pimlico's "standard" tier (recommended baseline, still bundler-accepted).
+		// "fast" overpays ~1.5–2x vs the chain's actual gas; "standard" tracks the
+		// network price while meeting bundler minimums for timely inclusion.
 		return {
-			maxFeePerGas: BigInt(pimlicoResult.fast.maxFeePerGas),
-			maxPriorityFeePerGas: BigInt(pimlicoResult.fast.maxPriorityFeePerGas)
+			maxFeePerGas: BigInt(pimlicoResult.standard.maxFeePerGas),
+			maxPriorityFeePerGas: BigInt(pimlicoResult.standard.maxPriorityFeePerGas)
 		};
 	}
 

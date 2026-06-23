@@ -47,6 +47,11 @@ export interface ContractCallParams {
 	value: bigint;
 	/** 编码后的合约调用 data */
 	data: Hex;
+	/**
+	 * Safe 执行类型：0 = CALL（默认），1 = DELEGATECALL。
+	 * 批量发送经 MultiSend 1.4.1 时必须传 1（Safe delegatecall 进 MultiSend）。
+	 */
+	operation?: number;
 	/** 网络标识（如 'arb-mainnet'） */
 	network: string;
 	onStatus: (status: SendStatus) => void;
@@ -55,7 +60,7 @@ export interface ContractCallParams {
 }
 
 export async function sendContractCall(params: ContractCallParams): Promise<SendResult> {
-	const { safeAddress, publicKeyHex, credentialId, rpId, to, value, data, network, onStatus, gasOverrides } =
+	const { safeAddress, publicKeyHex, credentialId, rpId, to, value, data, operation, network, onStatus, gasOverrides } =
 		params;
 
 	const chainCfg = CHAIN_CONFIG[network];
@@ -67,7 +72,7 @@ export async function sendContractCall(params: ContractCallParams): Promise<Send
 		const nonce = deployed ? await getNonce(safeAddress, network) : 0n;
 
 		onStatus('building');
-		const callData = buildCallData(to, value, data);
+		const callData = buildCallData(to, value, data, operation ?? 0);
 		const initCode: Hex = !deployed ? buildInitCode(publicKeyHex) : '0x';
 		const gasPrices = await getGasPrices(network);
 

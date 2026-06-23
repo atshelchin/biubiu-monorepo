@@ -135,14 +135,8 @@
 		}
 	}));
 
-	const comingTools: { id: string; nameKey: TranslationKey; descKey: TranslationKey; icon: string }[] = [
-		{
-			id: 'token-sender',
-			nameKey: 'coming.tools.tokenSender.name',
-			descKey: 'coming.tools.tokenSender.desc',
-			icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`
-		}
-	];
+	// token-sender 已上线（见上方 tools 网格），coming 列表暂空
+	const comingTools: { id: string; nameKey: TranslationKey; descKey: TranslationKey; icon: string }[] = [];
 </script>
 
 <SEO {...seoProps} />
@@ -300,6 +294,22 @@
 				</div>
 			</a>
 
+			<a href={localizeHref('/apps/token-sender')} class="tool-card glass-card">
+				<div class="tool-content">
+					<h3 class="tool-name">{t('featured.tokenSender.name')}</h3>
+					<p class="tool-description">{t('featured.tokenSender.description')}</p>
+					<div class="tool-tags">
+						<span class="tool-tag">{t('featured.tokenSender.feature1')}</span>
+						<span class="tool-tag">{t('featured.tokenSender.feature2')}</span>
+						<span class="tool-tag">{t('featured.tokenSender.feature3')}</span>
+					</div>
+				</div>
+				<div class="tool-cta">
+					<span class="tool-cta-text">{t('featured.tokenSender.cta')}</span>
+					<svg class="tool-cta-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+				</div>
+			</a>
+
 			<a href={localizeHref('/apps/balance-radar')} class="tool-card glass-card">
 				<div class="tool-content">
 					<h3 class="tool-name">{t('featured.balanceRadar.name')}</h3>
@@ -417,6 +427,7 @@
 		</section>
 
 		<!-- Coming Soon Section -->
+		{#if comingTools.length > 0}
 		<section class="coming-tools" use:fadeInUp={{ delay: 100 }}>
 			<div class="section-header">
 				<h2 class="section-title">{t('coming.title')}</h2>
@@ -431,6 +442,7 @@
 				{/each}
 			</div>
 		</section>
+		{/if}
 	</main>
 
 	<!-- Footer -->

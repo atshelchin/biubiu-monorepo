@@ -72,6 +72,20 @@
 		},
 		validation: { duplicate: 'Duplicate address' },
 	};
+
+	/**
+	 * 把上传弹窗 portal 到 <body>。Step2 在 .glass 卡片里，其 backdrop-filter 会成为
+	 * position:fixed 的包含块，导致弹窗遮罩只盖住卡片、盖不住整页（层次错乱）。
+	 * 移到 body 即可逃出该包含块，遮罩恢复覆盖视口。
+	 */
+	function portal(node: HTMLElement) {
+		if (typeof document !== 'undefined') document.body.appendChild(node);
+		return {
+			destroy() {
+				node.remove();
+			},
+		};
+	}
 </script>
 
 <div
@@ -104,18 +118,33 @@
 		bind:duplicateCount
 	>
 		{#snippet fileUploadModal({ open, onClose, onConfirm })}
-			<FileUploadModal
-				{open}
-				{onClose}
-				{onConfirm}
-				columnCount={mode === 'specified' ? 2 : 1}
-				columnLabels={mode === 'specified' ? ['Address', `Amount (${symbol})`] : ['Address']}
-			/>
+			<div use:portal class="ts-upload-portal">
+				<FileUploadModal
+					{open}
+					{onClose}
+					{onConfirm}
+					columnCount={mode === 'specified' ? 2 : 1}
+					columnLabels={mode === 'specified' ? ['Address', `Amount (${symbol})`] : ['Address']}
+				/>
+			</div>
 		{/snippet}
 	</LineEditor>
 </div>
 
 <style>
+	/* 弹窗被 portal 到 <body>，需在此带上 proeditor 主题变量，否则会回退到它的暗色默认 */
+	:global(.ts-upload-portal) {
+		--pe-bg: var(--bg-sunken);
+		--pe-bg2: var(--bg-base);
+		--pe-bg3: var(--bg-elevated);
+		--pe-border: var(--border-base);
+		--pe-text: var(--fg-base);
+		--pe-muted: var(--fg-muted);
+		--pe-accent: var(--accent);
+		--pe-success: var(--success);
+		--pe-error: var(--error);
+		--pe-font: var(--font-sans);
+	}
 	.editor-wrapper {
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);

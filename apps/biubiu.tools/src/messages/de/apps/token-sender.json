@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Token-Sender – BiuBiu Tools",
-	"ts.meta.description": "Coins oder ERC20-Token stapelweise an bis zu 100.000 Adressen aus deinem eigenen selbstverwahrten passkey-Wallet senden – per Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Coins oder ERC20-Token stapelweise an viele Adressen auf einmal senden – aus deinem eigenen selbstverwahrten passkey-Wallet, per Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Token-Sender",
 	"ts.subtitle": "Coin oder Token in einem Durchgang an viele Adressen senden – aus deinem eigenen Wallet.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Wird gesendet…",
 	"ts.phase.waiting": "Warte auf Bestätigung…",
 	"ts.phase.confirmed": "Bestätigt",
-	"ts.phase.failed": "Fehlgeschlagen"
+	"ts.phase.failed": "Fehlgeschlagen",
+
+	"ts.gate.title": "Wallet verbinden, um zu starten",
+	"ts.gate.desc": "Du sendest aus deinem eigenen selbstverwahrten Wallet – einem passkey-Wallet, einem Browser-Wallet oder per QR gekoppelt. Deine Mittel bleiben bei dir, und jede Charge bestätigst du selbst.",
+	"ts.step2.largeWarning": "Das sind etwa {batches} Wallet-Bestätigungen (eine pro 100 Empfänger). Für einen reibungslosen Versand halte jede Runde bei ~1.000 Adressen und teile längere Listen auf mehrere Sendungen auf.",
+	"ts.step3.approvalsNote": "Du bestätigst {count}-mal in deinem Wallet – einmal pro Charge. Lass diesen Tab offen, bis es fertig ist."
 }

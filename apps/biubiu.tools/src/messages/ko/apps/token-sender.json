@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "토큰 전송기 - BiuBiu Tools",
-	"ts.meta.description": "Safe 1.4.1 MultiSend을 사용해 본인의 passkey 자가 수탁 지갑에서 네이티브 코인이나 ERC20 토큰을 최대 10만 개 주소로 일괄 전송하세요.",
+	"ts.meta.description": "자신의 passkey 자가수탁 지갑에서 Safe 1.4.1 MultiSend로 네이티브 코인 또는 ERC20 토큰을 한 번에 여러 주소로 일괄 전송합니다.",
 
 	"ts.title": "토큰 전송기",
 	"ts.subtitle": "코인이나 토큰을 여러 주소로 한 번에 보내세요 — 본인의 지갑에서.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "전송 중…",
 	"ts.phase.waiting": "확인을 기다리는 중…",
 	"ts.phase.confirmed": "확인됨",
-	"ts.phase.failed": "실패"
+	"ts.phase.failed": "실패",
+
+	"ts.gate.title": "지갑을 연결하여 시작하세요",
+	"ts.gate.desc": "본인의 자가수탁 지갑에서 전송합니다 — passkey 지갑, 브라우저 지갑 또는 QR 페어링. 자금은 항상 본인이 보유하며, 각 배치를 직접 승인합니다.",
+	"ts.step2.largeWarning": "지갑 승인이 약 {batches}회 필요합니다(수신자 100명당 1회). 원활한 전송을 위해 한 번에 1,000개 정도로 유지하고, 더 긴 목록은 여러 번에 나눠 보내세요.",
+	"ts.step3.approvalsNote": "지갑에서 {count}회 승인합니다(배치당 1회). 완료될 때까지 이 탭을 열어 두세요."
 }

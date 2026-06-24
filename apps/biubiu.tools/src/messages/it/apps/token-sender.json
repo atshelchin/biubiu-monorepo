@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Invio Token - BiuBiu Tools",
-	"ts.meta.description": "Invia in blocco coin native o token ERC20 fino a 100.000 indirizzi dal tuo wallet self-custodial con passkey, usando Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Invia in blocco coin native o token ERC20 a molti indirizzi in una volta, dal tuo wallet self-custodial con passkey, usando Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Invio Token",
 	"ts.subtitle": "Invia una coin o un token a molti indirizzi in una sola volta — dal tuo wallet.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Invio in corso…",
 	"ts.phase.waiting": "In attesa di conferma…",
 	"ts.phase.confirmed": "Confermata",
-	"ts.phase.failed": "Non riuscita"
+	"ts.phase.failed": "Non riuscita",
+
+	"ts.gate.title": "Connetti un wallet per iniziare",
+	"ts.gate.desc": "Invii dal tuo wallet self-custodial — un wallet passkey, un wallet del browser o accoppiato via QR. I tuoi fondi restano nelle tue mani e approvi tu stesso ogni lotto.",
+	"ts.step2.largeWarning": "Sono circa {batches} approvazioni nel wallet (una ogni 100 destinatari). Per un invio fluido, mantieni ogni invio a ~1.000 indirizzi e suddividi le liste più lunghe in più invii.",
+	"ts.step3.approvalsNote": "Confermerai {count} volta/e nel wallet — una per lotto. Tieni aperta questa scheda fino al termine."
 }

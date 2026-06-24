@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Trình Gửi Token - BiuBiu Tools",
-	"ts.meta.description": "Gửi hàng loạt native coin hoặc token ERC20 đến tối đa 100.000 địa chỉ từ chính ví passkey tự quản lý của bạn, dùng Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Gửi hàng loạt native coin hoặc token ERC20 đến nhiều địa chỉ cùng lúc từ chính ví passkey tự quản lý của bạn, dùng Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Trình Gửi Token",
 	"ts.subtitle": "Gửi một coin hoặc token đến nhiều địa chỉ cùng lúc — từ chính ví của bạn.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Đang gửi…",
 	"ts.phase.waiting": "Đang chờ xác nhận…",
 	"ts.phase.confirmed": "Đã xác nhận",
-	"ts.phase.failed": "Thất bại"
+	"ts.phase.failed": "Thất bại",
+
+	"ts.gate.title": "Kết nối ví để bắt đầu",
+	"ts.gate.desc": "Bạn gửi từ chính ví tự quản lý của mình — ví passkey, ví trình duyệt hoặc ghép nối bằng QR. Tiền của bạn luôn nằm trong tay bạn, và bạn tự phê duyệt từng đợt.",
+	"ts.step2.largeWarning": "Tức là khoảng {batches} lần phê duyệt trong ví (mỗi 100 người nhận một lần). Để gửi mượt mà, hãy giữ mỗi lần ~1.000 địa chỉ và chia danh sách dài thành vài lần gửi.",
+	"ts.step3.approvalsNote": "Bạn sẽ phê duyệt {count} lần trong ví — mỗi đợt một lần. Hãy giữ tab này mở cho đến khi hoàn tất."
 }

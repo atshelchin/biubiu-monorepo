@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Envío de Tokens - BiuBiu Tools",
-	"ts.meta.description": "Envía en masa monedas nativas o tokens ERC20 a hasta 100,000 direcciones desde tu propia billetera de autocustodia con passkey, usando Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Envía en masa monedas nativas o tokens ERC20 a muchas direcciones a la vez, desde tu propia billetera de autocustodia con passkey, usando Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Envío de Tokens",
 	"ts.subtitle": "Envía una moneda o token a muchas direcciones de una sola vez, desde tu propia billetera.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Enviando…",
 	"ts.phase.waiting": "Esperando confirmación…",
 	"ts.phase.confirmed": "Confirmada",
-	"ts.phase.failed": "Falló"
+	"ts.phase.failed": "Falló",
+
+	"ts.gate.title": "Conecta una billetera para empezar",
+	"ts.gate.desc": "Envías desde tu propia billetera de autocustodia: una billetera con passkey, una billetera de navegador o vinculada por QR. Tus fondos siguen en tus manos y tú apruebas cada lote.",
+	"ts.step2.largeWarning": "Eso son unas {batches} aprobaciones en la billetera (una por cada 100 destinatarios). Para un envío fluido, limita cada envío a ~1,000 direcciones y divide las listas más largas en varios envíos.",
+	"ts.step3.approvalsNote": "Aprobarás {count} vez(ces) en tu billetera, una por lote. Mantén esta pestaña abierta hasta que termine."
 }

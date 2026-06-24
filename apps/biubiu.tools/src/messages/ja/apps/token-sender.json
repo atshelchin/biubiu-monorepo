@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "トークン送信 - BiuBiu Tools",
-	"ts.meta.description": "自分の passkey によるセルフカストディウォレットから、Safe 1.4.1 MultiSend を使って、ネイティブコインや ERC20 トークンを最大 100,000 件のアドレスへ一括送信します。",
+	"ts.meta.description": "自分の passkey によるセルフカストディウォレットから、Safe 1.4.1 MultiSend を使って、ネイティブコインや ERC20 トークンを一度に多数のアドレスへ一括送信します。",
 
 	"ts.title": "トークン送信",
 	"ts.subtitle": "コインやトークンを、自分のウォレットから多数のアドレスへ一度に送ります。",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "送信中…",
 	"ts.phase.waiting": "確認を待っています…",
 	"ts.phase.confirmed": "確認済み",
-	"ts.phase.failed": "失敗"
+	"ts.phase.failed": "失敗",
+
+	"ts.gate.title": "ウォレットを接続して開始",
+	"ts.gate.desc": "送信はあなた自身のセルフカストディウォレットから行います — passkey ウォレット、ブラウザウォレット、または QR ペアリング。資産は常にあなたの手元にあり、各バッチはあなた自身が承認します。",
+	"ts.step2.largeWarning": "ウォレットでの承認が約 {batches} 回必要です（100 件ごとに 1 回）。スムーズに送るため、1 回あたり 1,000 件程度に抑え、長いリストは数回に分けて送信してください。",
+	"ts.step3.approvalsNote": "送信時にウォレットで {count} 回承認します（バッチごとに 1 回）。完了するまでこのタブを開いたままにしてください。"
 }

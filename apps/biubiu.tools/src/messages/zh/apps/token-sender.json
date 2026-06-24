@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "代币发送器 - BiuBiu Tools",
-	"ts.meta.description": "用你自己的 passkey 自托管钱包，基于 Safe 1.4.1 MultiSend，把原生币或 ERC20 代币批量发送给最多 10 万个地址。",
+	"ts.meta.description": "用你自己的 passkey 自托管钱包，基于 Safe 1.4.1 MultiSend，一次把原生币或 ERC20 代币批量发送给多个地址。",
 
 	"ts.title": "代币发送器",
 	"ts.subtitle": "一次性把币或代币发给多个地址 —— 用你自己的钱包。",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "提交中…",
 	"ts.phase.waiting": "等待确认中…",
 	"ts.phase.confirmed": "已确认",
-	"ts.phase.failed": "失败"
+	"ts.phase.failed": "失败",
+
+	"ts.gate.title": "连接钱包即可开始",
+	"ts.gate.desc": "用你自己的自托管钱包发送 —— passkey 钱包、浏览器钱包，或扫码配对。资产始终在你手里，每一批都由你亲自确认。",
+	"ts.step2.largeWarning": "这大约需要 {batches} 次钱包确认（每 100 个一批）。为了顺畅，建议单次控制在 1000 个地址以内，更长的列表请分几次发送。",
+	"ts.step3.approvalsNote": "发送时你需要在钱包里确认 {count} 次（每批一次）。请保持此页面打开直到完成。"
 }

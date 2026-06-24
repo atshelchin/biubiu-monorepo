@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Token Sender - BiuBiu Tools",
-	"ts.meta.description": "Batch-send native coins or ERC20 tokens to up to 100,000 addresses from your own passkey self-custodial wallet, using Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Batch-send native coins or ERC20 tokens to many addresses at once — from your own passkey self-custodial wallet, using Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Token Sender",
 	"ts.subtitle": "Send a coin or token to many addresses at once — from your own wallet.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Submitting…",
 	"ts.phase.waiting": "Waiting for confirmation…",
 	"ts.phase.confirmed": "Confirmed",
-	"ts.phase.failed": "Failed"
+	"ts.phase.failed": "Failed",
+
+	"ts.gate.title": "Connect a wallet to start",
+	"ts.gate.desc": "You send from your own self-custodial wallet — a passkey wallet, a browser wallet, or paired by QR. Your funds stay in your hands, and you approve every batch yourself.",
+	"ts.step2.largeWarning": "That's about {batches} wallet approvals (one per 100 recipients). For a smooth send, keep each run to ~1,000 addresses and split longer lists into a few sends.",
+	"ts.step3.approvalsNote": "You'll approve {count} time(s) in your wallet — one per batch. Keep this tab open until it finishes."
 }

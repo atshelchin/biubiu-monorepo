@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Envoi de tokens - BiuBiu Tools",
-	"ts.meta.description": "Envoyez en masse des pièces natives ou des tokens ERC20 à jusqu'à 100 000 adresses depuis votre propre wallet passkey auto-conservé, via Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Envoyez en masse des pièces natives ou des tokens ERC20 à de nombreuses adresses à la fois, depuis votre propre wallet passkey auto-conservé, via Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Envoi de tokens",
 	"ts.subtitle": "Envoyez une pièce ou un token à de nombreuses adresses d'un coup — depuis votre propre wallet.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Envoi…",
 	"ts.phase.waiting": "En attente de confirmation…",
 	"ts.phase.confirmed": "Confirmée",
-	"ts.phase.failed": "Échec"
+	"ts.phase.failed": "Échec",
+
+	"ts.gate.title": "Connectez un wallet pour commencer",
+	"ts.gate.desc": "Vous envoyez depuis votre propre wallet auto-conservé — un wallet passkey, un wallet de navigateur ou appairé par QR. Vos fonds restent entre vos mains et vous approuvez chaque lot vous-même.",
+	"ts.step2.largeWarning": "Cela représente environ {batches} approbations dans le wallet (une par 100 destinataires). Pour un envoi fluide, limitez chaque envoi à ~1 000 adresses et divisez les listes plus longues en plusieurs envois.",
+	"ts.step3.approvalsNote": "Vous validerez {count} fois dans votre wallet — une par lot. Gardez cet onglet ouvert jusqu’à la fin."
 }

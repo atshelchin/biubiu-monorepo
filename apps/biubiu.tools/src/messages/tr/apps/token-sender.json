@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Token Gönderici - BiuBiu Tools",
-	"ts.meta.description": "Kendi passkey kendinden saklamalı cüzdanınızdan, Safe 1.4.1 MultiSend ile yerel coin veya ERC20 token'ları 100.000'e kadar adrese toplu gönderin.",
+	"ts.meta.description": "Kendi passkey kendinden saklamalı cüzdanınızdan, Safe 1.4.1 MultiSend ile yerel coin veya ERC20 token'larını tek seferde birçok adrese toplu gönderin.",
 
 	"ts.title": "Token Gönderici",
 	"ts.subtitle": "Bir coin veya token'ı tek seferde birçok adrese gönderin — kendi cüzdanınızdan.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Gönderiliyor…",
 	"ts.phase.waiting": "Onay bekleniyor…",
 	"ts.phase.confirmed": "Onaylandı",
-	"ts.phase.failed": "Başarısız"
+	"ts.phase.failed": "Başarısız",
+
+	"ts.gate.title": "Başlamak için bir cüzdan bağlayın",
+	"ts.gate.desc": "Kendi kendinden saklamalı cüzdanınızdan gönderirsiniz — passkey cüzdanı, tarayıcı cüzdanı veya QR ile eşleştirilmiş. Paranız sizde kalır ve her grubu kendiniz onaylarsınız.",
+	"ts.step2.largeWarning": "Bu yaklaşık {batches} cüzdan onayı demek (her 100 alıcı için bir tane). Sorunsuz bir gönderim için her seferinde ~1.000 adresle sınırlı kalın ve daha uzun listeleri birkaç gönderime bölün.",
+	"ts.step3.approvalsNote": "Cüzdanınızda {count} kez onaylayacaksınız — her grup için bir kez. İşlem bitene kadar bu sekmeyi açık tutun."
 }

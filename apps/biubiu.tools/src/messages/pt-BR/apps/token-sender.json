@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Token Sender - BiuBiu Tools",
-	"ts.meta.description": "Envie em lote moedas nativas ou tokens ERC20 para até 100.000 endereços a partir da sua própria carteira de autocustódia com passkey, usando o MultiSend do Safe 1.4.1.",
+	"ts.meta.description": "Envie em lote moedas nativas ou tokens ERC20 para muitos endereços de uma vez, a partir da sua própria carteira de autocustódia com passkey, usando o MultiSend do Safe 1.4.1.",
 
 	"ts.title": "Token Sender",
 	"ts.subtitle": "Envie uma moeda ou token para muitos endereços de uma só vez — a partir da sua própria carteira.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Enviando…",
 	"ts.phase.waiting": "Aguardando confirmação…",
 	"ts.phase.confirmed": "Confirmada",
-	"ts.phase.failed": "Falhou"
+	"ts.phase.failed": "Falhou",
+
+	"ts.gate.title": "Conecte uma carteira para começar",
+	"ts.gate.desc": "Você envia da sua própria carteira de autocustódia — uma carteira passkey, uma carteira de navegador ou pareada por QR. Seus fundos ficam com você, e você aprova cada lote.",
+	"ts.step2.largeWarning": "São cerca de {batches} aprovações na carteira (uma a cada 100 destinatários). Para um envio tranquilo, mantenha cada envio em ~1.000 endereços e divida listas maiores em vários envios.",
+	"ts.step3.approvalsNote": "Você aprovará {count} vez(es) na carteira — uma por lote. Mantenha esta aba aberta até terminar."
 }

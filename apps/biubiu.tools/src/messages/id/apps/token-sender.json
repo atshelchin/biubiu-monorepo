@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "Pengirim Token - BiuBiu Tools",
-	"ts.meta.description": "Kirim koin native atau token ERC20 secara massal ke hingga 100.000 alamat dari dompet swakelola passkey milikmu sendiri, menggunakan Safe 1.4.1 MultiSend.",
+	"ts.meta.description": "Kirim koin native atau token ERC20 secara massal ke banyak alamat sekaligus dari dompet swakelola passkey milikmu sendiri, menggunakan Safe 1.4.1 MultiSend.",
 
 	"ts.title": "Pengirim Token",
 	"ts.subtitle": "Kirim koin atau token ke banyak alamat sekaligus — dari dompetmu sendiri.",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "Mengirim…",
 	"ts.phase.waiting": "Menunggu konfirmasi…",
 	"ts.phase.confirmed": "Terkonfirmasi",
-	"ts.phase.failed": "Gagal"
+	"ts.phase.failed": "Gagal",
+
+	"ts.gate.title": "Hubungkan dompet untuk memulai",
+	"ts.gate.desc": "Anda mengirim dari dompet swakelola Anda sendiri — dompet passkey, dompet browser, atau dipasangkan via QR. Dana tetap di tangan Anda, dan Anda menyetujui setiap batch sendiri.",
+	"ts.step2.largeWarning": "Itu sekitar {batches} persetujuan dompet (satu per 100 penerima). Agar lancar, batasi setiap pengiriman ~1.000 alamat dan bagi daftar yang lebih panjang menjadi beberapa pengiriman.",
+	"ts.step3.approvalsNote": "Anda akan menyetujui {count} kali di dompet — satu per batch. Biarkan tab ini terbuka sampai selesai."
 }

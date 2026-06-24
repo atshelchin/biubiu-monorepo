@@ -16,7 +16,7 @@
 	import type { TokenMetaError } from '$lib/pda-apps/token-sender/store.svelte.js';
 	import NetworkGrid from '$lib/widgets/NetworkGrid.svelte';
 	import MemberFeeWaiver from '$lib/subscription/MemberFeeWaiver.svelte';
-	import { Lock, Key, Shield, BookOpen, ChevronDown, TriangleAlert, X } from '@lucide/svelte';
+	import { Lock, Key, Shield, BookOpen, ChevronDown, TriangleAlert, X, Info } from '@lucide/svelte';
 	import RecipientsEditor from './RecipientsEditor.svelte';
 
 	let showDeposit = $state(false);
@@ -196,7 +196,7 @@
 		{/if}
 	</section>
 
-	<WalletGate>
+	<WalletGate title={t('ts.gate.title')} description={t('ts.gate.desc')}>
 		<!-- Stepper -->
 		<div use:fadeInUp={{ delay: 80 }}>
 			<Stepper
@@ -366,6 +366,13 @@
 					</div>
 				{/if}
 
+				{#if (s.parsed?.validCount ?? 0) > 1000}
+					<p class="note">
+						<span class="note-ic" aria-hidden="true"><TriangleAlert size={15} /></span>
+						<span>{t('ts.step2.largeWarning', { batches: s.totalBatches })}</span>
+					</p>
+				{/if}
+
 				<div class="panel-actions">
 					<button class="btn ghost" onclick={() => s.goTo(1)}>{t('ts.step2.back')}</button>
 					<button class="btn primary" disabled={!s.canProceedFromRecipients} onclick={next3}>
@@ -497,6 +504,13 @@
 						>
 							<X size={14} />
 						</button>
+					</div>
+				{/if}
+
+				{#if s.totalBatches > 0 && s.sendSupported}
+					<div class="info-note">
+						<span class="info-ic" aria-hidden="true"><Info size={15} /></span>
+						<p>{t('ts.step3.approvalsNote', { count: s.totalBatches })}</p>
 					</div>
 				{/if}
 
@@ -919,6 +933,30 @@
 		color: var(--accent);
 		text-decoration: underline;
 		text-underline-offset: 2px;
+	}
+
+	/* Calm informational callout (sets expectations, not an error). */
+	.info-note {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-2);
+		padding: var(--space-3);
+		margin-bottom: var(--space-4);
+		border-radius: var(--radius-md);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+	}
+	.info-note .info-ic {
+		display: inline-flex;
+		flex-shrink: 0;
+		margin-top: 1px;
+		color: var(--fg-subtle);
+	}
+	.info-note p {
+		margin: 0;
+		font-size: var(--text-xs);
+		line-height: var(--leading-relaxed);
+		color: var(--fg-muted);
 	}
 
 	.toggle {

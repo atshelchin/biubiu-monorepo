@@ -1,6 +1,6 @@
 {
 	"ts.meta.title": "代幣群發 - BiuBiu Tools",
-	"ts.meta.description": "用 Safe 1.4.1 MultiSend，從你自己的 passkey 自託管錢包向最多 100,000 個地址批量發送原生幣或 ERC20 代幣。",
+	"ts.meta.description": "用 Safe 1.4.1 MultiSend，從你自己的 passkey 自託管錢包，一次把原生幣或 ERC20 代幣批量發送給多個地址。",
 
 	"ts.title": "代幣群發",
 	"ts.subtitle": "一次過向多個地址發送一種幣或代幣 —— 全部從你自己的錢包出。",
@@ -160,5 +160,10 @@
 	"ts.phase.submitting": "提交中…",
 	"ts.phase.waiting": "等待確認中…",
 	"ts.phase.confirmed": "已確認",
-	"ts.phase.failed": "失敗"
+	"ts.phase.failed": "失敗",
+
+	"ts.gate.title": "連接錢包即可開始",
+	"ts.gate.desc": "用你自己的自託管錢包發送 —— passkey 錢包、瀏覽器錢包，或掃碼配對。資產一直在你手裡，每一批都由你親自確認。",
+	"ts.step2.largeWarning": "這大約需要 {batches} 次錢包確認（每 100 個一批）。為了順暢，建議單次控制在 1000 個地址以內，較長的清單請分幾次發送。",
+	"ts.step3.approvalsNote": "發送時你需要在錢包裡確認 {count} 次（每批一次）。請保持此頁面開啟直到完成。"
 }

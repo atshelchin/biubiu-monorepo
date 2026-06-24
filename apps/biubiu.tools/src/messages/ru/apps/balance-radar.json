@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Радар балансов",
-	"br.meta.description": "Массовая проверка балансов нативных токенов для множества адресов кошельков в Ethereum, Polygon, Arbitrum, Optimism, Base и Endurance.",
+	"br.meta.description": "Массовая проверка балансов нативных токенов и ERC-20 для нескольких адресов кошельков в сетях Ethereum, Polygon, Arbitrum, Optimism, Base и Endurance.",
 
 	"br.title": "Радар балансов",
-	"br.subtitle": "Запрос балансов нативных токенов в нескольких EVM-сетях",
+	"br.subtitle": "Проверяйте балансы нативных токенов и ERC-20 в нескольких EVM-сетях",
 
 	"br.config.title": "Настройка",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "ещё {0}…",
 	"br.lineEditor.errorDrawer.close": "Закрыть",
 	"br.lineEditor.validation.duplicate": "Повторяющийся адрес",
-	"br.lineEditor.validation.invalidAddress": "Неверный адрес Ethereum"
+	"br.lineEditor.validation.invalidAddress": "Неверный адрес Ethereum",
+	"br.summary.hint": "Добавьте хотя бы один адрес и токен, чтобы начать",
+	"br.results.table.copied": "Скопировано",
+	"br.lineEditor.upload": "Загрузить",
+	"br.lineEditor.statusBar.clear": "Очистить"
 }

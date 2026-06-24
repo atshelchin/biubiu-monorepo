@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Radar de soldes",
-	"br.meta.description": "Vérifiez en masse les soldes de tokens natifs de plusieurs adresses de wallet sur Ethereum, Polygon, Arbitrum, Optimism, Base et Endurance.",
+	"br.meta.description": "Vérifiez en masse les soldes de tokens natifs et ERC-20 de plusieurs adresses de portefeuille sur Ethereum, Polygon, Arbitrum, Optimism, Base et Endurance.",
 
 	"br.title": "Radar de soldes",
-	"br.subtitle": "Interrogez les soldes de tokens natifs sur plusieurs chaînes EVM",
+	"br.subtitle": "Consultez les soldes de tokens natifs et ERC-20 sur plusieurs chaînes EVM",
 
 	"br.config.title": "Configuration",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} de plus…",
 	"br.lineEditor.errorDrawer.close": "Fermer",
 	"br.lineEditor.validation.duplicate": "Adresse en double",
-	"br.lineEditor.validation.invalidAddress": "Adresse Ethereum invalide"
+	"br.lineEditor.validation.invalidAddress": "Adresse Ethereum invalide",
+	"br.summary.hint": "Ajoutez au moins une adresse et un token pour commencer",
+	"br.results.table.copied": "Copié",
+	"br.lineEditor.upload": "Importer",
+	"br.lineEditor.statusBar.clear": "Effacer"
 }

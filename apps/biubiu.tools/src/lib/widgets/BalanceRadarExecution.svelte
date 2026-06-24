@@ -29,7 +29,7 @@
 		<div class="log-feed">
 			<h3 class="log-title">{t('br.logs.title')}</h3>
 			<div class="log-entries">
-				{#each logs as log}
+				{#each logs as log, i (i)}
 					<div class="log-entry log-{log.level}">
 						<span class="log-time">
 							{new Date(log.timestamp).toLocaleTimeString()}
@@ -44,7 +44,7 @@
 
 <style>
 	.card {
-		background: var(--bg-raised);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		padding: var(--space-6);

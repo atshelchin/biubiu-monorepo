@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Radar Saldi",
-	"br.meta.description": "Controlla in blocco i saldi dei token nativi per più indirizzi wallet su Ethereum, Polygon, Arbitrum, Optimism, Base ed Endurance.",
+	"br.meta.description": "Controlla in blocco i saldi di token nativi ed ERC-20 per più indirizzi wallet su Ethereum, Polygon, Arbitrum, Optimism, Base ed Endurance.",
 
 	"br.title": "Radar Saldi",
-	"br.subtitle": "Interroga i saldi dei token nativi su più chain EVM",
+	"br.subtitle": "Controlla i saldi di token nativi ed ERC-20 su più chain EVM",
 
 	"br.config.title": "Configurazione",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "altri {0}…",
 	"br.lineEditor.errorDrawer.close": "Chiudi",
 	"br.lineEditor.validation.duplicate": "Indirizzo duplicato",
-	"br.lineEditor.validation.invalidAddress": "Indirizzo Ethereum non valido"
+	"br.lineEditor.validation.invalidAddress": "Indirizzo Ethereum non valido",
+	"br.summary.hint": "Aggiungi almeno un indirizzo e un token per iniziare",
+	"br.results.table.copied": "Copiato",
+	"br.lineEditor.upload": "Carica",
+	"br.lineEditor.statusBar.clear": "Svuota"
 }

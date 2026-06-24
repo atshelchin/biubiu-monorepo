@@ -2,7 +2,7 @@ import { defineModule } from '@shelchin/pagekit';
 import { z } from '@shelchin/pda';
 import { balanceRadarApp } from '../index.js';
 import { tokenSpecSchema, networkConfigSchema } from '../schema.js';
-import type { Adapter, InteractionRequest, InteractionResponse, Manifest } from '@shelchin/pda';
+import type { Adapter, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import type { BalanceFailure, NetworkTokenSelection, NetworkConfig } from '../types.js';
 
 export type ExecutionStatus = 'idle' | 'running' | 'success' | 'error';
@@ -39,6 +39,7 @@ type PDAInput = {
 };
 type PDAOutput = {
 	results: { address: string; network: string; symbol: string; tokenAddress?: string; balance: string }[];
+	failures?: BalanceFailure[];
 	stats: { total: number; success: number; failed: number; duration: number };
 };
 
@@ -148,6 +149,7 @@ export const executionModule = defineModule({
 				if (executionResult.success && executionResult.data) {
 					const data = executionResult.data;
 					ctx.results = data.results;
+					ctx.failures = data.failures ?? [];
 					ctx.duration = data.stats.duration;
 					ctx.status = 'success';
 					ctx.progress = {

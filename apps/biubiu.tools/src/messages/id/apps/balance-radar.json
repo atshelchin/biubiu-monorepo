@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Radar Saldo",
-	"br.meta.description": "Cek saldo native token untuk banyak alamat dompet sekaligus di Ethereum, Polygon, Arbitrum, Optimism, Base, dan Endurance.",
+	"br.meta.description": "Cek massal saldo token native dan ERC-20 untuk banyak alamat wallet di Ethereum, Polygon, Arbitrum, Optimism, Base, dan Endurance.",
 
 	"br.title": "Radar Saldo",
-	"br.subtitle": "Kueri saldo native token di berbagai chain EVM",
+	"br.subtitle": "Cek saldo token native dan ERC-20 di berbagai chain EVM",
 
 	"br.config.title": "Konfigurasi",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} lainnya…",
 	"br.lineEditor.errorDrawer.close": "Tutup",
 	"br.lineEditor.validation.duplicate": "Alamat duplikat",
-	"br.lineEditor.validation.invalidAddress": "Alamat Ethereum tidak valid"
+	"br.lineEditor.validation.invalidAddress": "Alamat Ethereum tidak valid",
+	"br.summary.hint": "Tambahkan minimal satu alamat dan token untuk memulai",
+	"br.results.table.copied": "Tersalin",
+	"br.lineEditor.upload": "Unggah",
+	"br.lineEditor.statusBar.clear": "Bersihkan"
 }

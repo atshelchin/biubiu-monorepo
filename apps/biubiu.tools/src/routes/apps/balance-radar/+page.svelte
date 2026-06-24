@@ -16,6 +16,12 @@
 
 	const page = usePage(balanceRadarPage);
 
+	// Map network key → display name for the results table (keys like
+	// "ethereum" / "custom-56" become "Ethereum" / "BNB Chain").
+	const networkNames = $derived(
+		Object.fromEntries(page.config.ctx.availableNetworks.map((n) => [n.key, n.name])),
+	);
+
 	// Load user-defined networks & tokens from IndexedDB
 	onMount(() => {
 		page.config.hydrateCustom({});
@@ -83,22 +89,15 @@
 	<!-- Config Section -->
 	<div use:fadeInUp={{ delay: 50 }}>
 		<BalanceRadarConfig
-			addresses={page.config.ctx.addresses}
 			addressInput={page.config.ctx.addressInput}
 			selectedNetworks={page.config.ctx.selectedNetworks}
 			availableNetworks={page.config.ctx.availableNetworks}
 			availableTokens={page.config.ctx.availableTokens}
 			selectedTokens={page.config.ctx.selectedTokens}
-			validAddressCount={page.config.ctx.validAddressCount}
-			invalidAddressCount={page.config.ctx.invalidAddressCount}
-			totalQueries={page.config.ctx.totalQueries}
-			canExecute={page.config.ctx.canExecute}
 			executionStatus={page.execution.ctx.status}
 			errorMessage={page.execution.ctx.errorMessage}
 			isRunning={page.execution.pending.run}
 			onSetValidAddresses={(addresses) => page.config.setValidAddresses({ addresses })}
-			onAddressInput={(text) => page.config.setAddresses({ text })}
-			onClearAddresses={() => page.config.clearAddresses({})}
 			onToggleNetwork={(network) => page.config.toggleNetwork({ network })}
 			onSelectAll={() => page.config.selectAllNetworks({})}
 			onDeselectAll={() => page.config.deselectAllNetworks({})}
@@ -143,6 +142,7 @@
 				filterNetwork={page.execution.ctx.filterNetwork}
 				searchQuery={page.execution.ctx.searchQuery}
 				showFailures={page.execution.ctx.showFailures}
+				{networkNames}
 				onSetSortField={(field) => page.execution.setSortField({ field })}
 				onSetFilterNetwork={(network) => page.execution.setFilterNetwork({ network })}
 				onSetSearchQuery={(query) => page.execution.setSearchQuery({ query })}

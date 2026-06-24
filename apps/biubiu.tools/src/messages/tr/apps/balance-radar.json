@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Bakiye Radarı",
-	"br.meta.description": "Ethereum, Polygon, Arbitrum, Optimism, Base ve Endurance üzerinde birden çok cüzdan adresinin yerel token bakiyelerini toplu sorgulayın.",
+	"br.meta.description": "Ethereum, Polygon, Arbitrum, Optimism, Base ve Endurance üzerinde birden fazla cüzdan adresi için yerel ve ERC-20 token bakiyelerini toplu kontrol edin.",
 
 	"br.title": "Bakiye Radarı",
-	"br.subtitle": "Birden çok EVM zincirinde yerel token bakiyelerini sorgulayın",
+	"br.subtitle": "Birden fazla EVM zincirinde yerel ve ERC-20 token bakiyelerini sorgulayın",
 
 	"br.config.title": "Yapılandırma",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} tane daha…",
 	"br.lineEditor.errorDrawer.close": "Kapat",
 	"br.lineEditor.validation.duplicate": "Yinelenen adres",
-	"br.lineEditor.validation.invalidAddress": "Geçersiz Ethereum adresi"
+	"br.lineEditor.validation.invalidAddress": "Geçersiz Ethereum adresi",
+	"br.summary.hint": "Başlamak için en az bir adres ve token ekleyin",
+	"br.results.table.copied": "Kopyalandı",
+	"br.lineEditor.upload": "Yükle",
+	"br.lineEditor.statusBar.clear": "Temizle"
 }

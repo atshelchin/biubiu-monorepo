@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "残高レーダー",
-	"br.meta.description": "イーサリアム、Polygon、Arbitrum、Optimism、Base、Endurance にまたがって、複数のウォレットアドレスのネイティブトークン残高を一括チェック。",
+	"br.meta.description": "イーサリアム、Polygon、Arbitrum、Optimism、Base、Endurance にまたがって、複数のウォレットアドレスのネイティブ通貨と ERC-20 トークンの残高を一括チェック。",
 
 	"br.title": "残高レーダー",
-	"br.subtitle": "複数の EVM チェーンにまたがってネイティブトークンの残高を照会",
+	"br.subtitle": "複数の EVM チェーンでネイティブ通貨と ERC-20 トークンの残高を照会",
 
 	"br.config.title": "設定",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "他 {0} 件…",
 	"br.lineEditor.errorDrawer.close": "閉じる",
 	"br.lineEditor.validation.duplicate": "重複したアドレス",
-	"br.lineEditor.validation.invalidAddress": "無効なイーサリアムアドレス"
+	"br.lineEditor.validation.invalidAddress": "無効なイーサリアムアドレス",
+	"br.summary.hint": "開始するにはアドレスとトークンを 1 つ以上追加してください",
+	"br.results.table.copied": "コピーしました",
+	"br.lineEditor.upload": "アップロード",
+	"br.lineEditor.statusBar.clear": "クリア"
 }

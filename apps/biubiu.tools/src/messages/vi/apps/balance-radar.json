@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Radar Số Dư",
-	"br.meta.description": "Kiểm tra hàng loạt số dư native token cho nhiều địa chỉ ví trên Ethereum, Polygon, Arbitrum, Optimism, Base và Endurance.",
+	"br.meta.description": "Kiểm tra hàng loạt số dư token gốc và ERC-20 cho nhiều địa chỉ ví trên Ethereum, Polygon, Arbitrum, Optimism, Base và Endurance.",
 
 	"br.title": "Radar Số Dư",
-	"br.subtitle": "Truy vấn số dư native token trên nhiều chuỗi EVM",
+	"br.subtitle": "Kiểm tra số dư token gốc và ERC-20 trên nhiều chuỗi EVM",
 
 	"br.config.title": "Cấu hình",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "Còn {0} lỗi nữa…",
 	"br.lineEditor.errorDrawer.close": "Đóng",
 	"br.lineEditor.validation.duplicate": "Địa chỉ trùng lặp",
-	"br.lineEditor.validation.invalidAddress": "Địa chỉ Ethereum không hợp lệ"
+	"br.lineEditor.validation.invalidAddress": "Địa chỉ Ethereum không hợp lệ",
+	"br.summary.hint": "Thêm ít nhất một địa chỉ và token để bắt đầu",
+	"br.results.table.copied": "Đã sao chép",
+	"br.lineEditor.upload": "Tải lên",
+	"br.lineEditor.statusBar.clear": "Xóa"
 }

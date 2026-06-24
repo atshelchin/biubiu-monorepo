@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "余额雷达",
-	"br.meta.description": "在以太坊、Polygon、Arbitrum、Optimism、Base 与 Endurance 上批量查询多个钱包地址的原生代币余额。",
+	"br.meta.description": "在以太坊、Polygon、Arbitrum、Optimism、Base 与 Endurance 上批量查询多个钱包地址的原生代币与 ERC-20 代币余额。",
 
 	"br.title": "余额雷达",
-	"br.subtitle": "跨多条 EVM 链查询原生代币余额",
+	"br.subtitle": "跨多条 EVM 链查询原生代币与 ERC-20 代币余额",
 
 	"br.config.title": "配置",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "还有 {0} 个…",
 	"br.lineEditor.errorDrawer.close": "关闭",
 	"br.lineEditor.validation.duplicate": "重复地址",
-	"br.lineEditor.validation.invalidAddress": "无效的以太坊地址"
+	"br.lineEditor.validation.invalidAddress": "无效的以太坊地址",
+	"br.summary.hint": "输入至少一个地址并选择代币后即可开始查询",
+	"br.results.table.copied": "已复制",
+	"br.lineEditor.upload": "上传",
+	"br.lineEditor.statusBar.clear": "清空"
 }

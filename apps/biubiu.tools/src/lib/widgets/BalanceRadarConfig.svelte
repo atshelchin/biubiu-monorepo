@@ -2,27 +2,21 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
-	import type { AddressEntry, NetworkInfo, TokenInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
+	import type { NetworkInfo, TokenInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
 	import AddNetworkModal from './AddNetworkModal.svelte';
 	import AddTokenModal from './AddTokenModal.svelte';
 
 	interface Props {
-		addresses: AddressEntry[];
+		/** Current editor content, mirrored back into the LineEditor when set externally. */
 		addressInput: string;
 		selectedNetworks: string[];
 		availableNetworks: NetworkInfo[];
 		availableTokens: Record<string, TokenInfo[]>;
 		selectedTokens: Record<string, string[]>;
-		validAddressCount: number;
-		invalidAddressCount: number;
-		totalQueries: number;
-		canExecute: boolean;
 		executionStatus: string;
 		errorMessage: string;
 		isRunning: boolean;
 		onSetValidAddresses: (addresses: string[]) => void;
-		onAddressInput: (text: string) => void;
-		onClearAddresses: () => void;
 		onToggleNetwork: (network: string) => void;
 		onSelectAll: () => void;
 		onDeselectAll: () => void;
@@ -48,22 +42,15 @@
 	}
 
 	let {
-		addresses,
 		addressInput,
 		selectedNetworks,
 		availableNetworks,
 		availableTokens,
 		selectedTokens,
-		validAddressCount,
-		invalidAddressCount,
-		totalQueries,
-		canExecute,
 		executionStatus,
 		errorMessage,
 		isRunning,
 		onSetValidAddresses,
-		onAddressInput,
-		onClearAddresses,
 		onToggleNetwork,
 		onSelectAll,
 		onDeselectAll,
@@ -77,7 +64,7 @@
 	}: Props = $props();
 
 	// LineEditor ref and bindable outputs
-	let editorRef: ReturnType<typeof LineEditor>;
+	let editorRef = $state<ReturnType<typeof LineEditor>>();
 	let validLines = $state<string[]>([]);
 	let editorValidCount = $state(0);
 	let editorErrorCount = $state(0);
@@ -102,8 +89,10 @@
 
 	// LineEditor i18n from app translations
 	const lineEditorI18n = $derived({
+		upload: t('br.lineEditor.upload'),
 		statusBar: {
 			valid: t('br.lineEditor.statusBar.valid'),
+			clear: t('br.lineEditor.statusBar.clear'),
 		},
 		errorDrawer: {
 			title: t('br.lineEditor.errorDrawer.title'),
@@ -170,12 +159,7 @@
 		<!-- Address Input -->
 		<div class="field-group">
 			<div class="field-header">
-				<label class="field-label">{t('br.addresses.label')}</label>
-				{#if addresses.length > 0}
-					<button class="link-button" onclick={onClearAddresses}>
-						{t('br.addresses.clearAll')}
-					</button>
-				{/if}
+				<span class="field-label">{t('br.addresses.label')}</span>
 			</div>
 
 			<div
@@ -327,7 +311,7 @@
 					{t('br.summary.totalQueries', { total: localTotalQueries })}
 				</span>
 			{:else}
-				<span></span>
+				<span class="summary-hint">{t('br.summary.hint')}</span>
 			{/if}
 
 			<button
@@ -363,7 +347,7 @@
 
 <style>
 	.card {
-		background: var(--bg-raised);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		padding: var(--space-6);
@@ -380,8 +364,6 @@
 
 	.token-group {
 		margin-bottom: var(--space-4);
-		padding-left: var(--space-3);
-		border-left: 2px solid var(--border-subtle);
 	}
 
 	.field-header {
@@ -466,6 +448,12 @@
 		background: var(--accent-subtle);
 	}
 
+	.chip:focus-visible,
+	.chip-remove:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+
 	.chip-symbol {
 		font-size: var(--text-xs);
 		opacity: 0.7;
@@ -520,6 +508,12 @@
 		opacity: 0.8;
 	}
 
+	.link-button:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+		border-radius: var(--radius-sm);
+	}
+
 	/* Error Banner */
 	.error-banner {
 		padding: var(--space-3) var(--space-4);
@@ -554,6 +548,11 @@
 		color: var(--fg-muted);
 	}
 
+	.summary-hint {
+		font-size: var(--text-sm);
+		color: var(--fg-subtle);
+	}
+
 	/* Button */
 	.btn {
 		display: inline-flex;
@@ -575,6 +574,11 @@
 
 	.btn:not(:disabled):hover {
 		transform: translateY(-1px);
+	}
+
+	.btn:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
 	}
 
 	.btn-primary {

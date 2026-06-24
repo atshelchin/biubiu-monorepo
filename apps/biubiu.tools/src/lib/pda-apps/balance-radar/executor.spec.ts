@@ -275,6 +275,8 @@ describe('formatOutput', () => {
         };
         const output = formatOutput(runResult, 10);
         expect(output.stats).toEqual({ total: 10, success: 2, failed: 1, duration: 2500 });
+        // Failures must survive into the output so the UI can surface them.
+        expect(output.failures).toEqual([{ address: ADDR2, network: 'polygon', error: 'timeout' }]);
     });
 
     it('handles empty results', () => {

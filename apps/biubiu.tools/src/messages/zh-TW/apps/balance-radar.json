@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "餘額雷達",
-	"br.meta.description": "在 Ethereum、Polygon、Arbitrum、Optimism、Base 與 Endurance 上批次查詢多個錢包地址的原生代幣餘額。",
+	"br.meta.description": "在以太坊、Polygon、Arbitrum、Optimism、Base 與 Endurance 上批次查詢多個錢包地址的原生代幣與 ERC-20 代幣餘額。",
 
 	"br.title": "餘額雷達",
-	"br.subtitle": "跨多條 EVM 鏈查詢原生代幣餘額",
+	"br.subtitle": "跨多條 EVM 鏈查詢原生代幣與 ERC-20 代幣餘額",
 
 	"br.config.title": "設定",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "還有 {0} 個…",
 	"br.lineEditor.errorDrawer.close": "關閉",
 	"br.lineEditor.validation.duplicate": "重複地址",
-	"br.lineEditor.validation.invalidAddress": "無效的 Ethereum 地址"
+	"br.lineEditor.validation.invalidAddress": "無效的 Ethereum 地址",
+	"br.summary.hint": "輸入至少一個地址並選擇代幣即可開始查詢",
+	"br.results.table.copied": "已複製",
+	"br.lineEditor.upload": "上傳",
+	"br.lineEditor.statusBar.clear": "清空"
 }

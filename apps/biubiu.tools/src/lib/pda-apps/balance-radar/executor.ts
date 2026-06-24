@@ -304,6 +304,13 @@ export function formatOutput({ results, failures, duration }: RunResult, totalQu
             tokenAddress: r.tokenAddress,
             balance: r.balance,
         })),
+        failures: failures.map((f) => ({
+            address: f.address,
+            network: f.network,
+            symbol: f.symbol,
+            tokenAddress: f.tokenAddress,
+            error: f.error,
+        })),
         stats: {
             total: totalQueries,
             success: results.length,

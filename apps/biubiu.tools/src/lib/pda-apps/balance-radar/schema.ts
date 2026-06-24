@@ -47,6 +47,17 @@ export const outputSchema = z.object({
             balance: z.string(),
         })
     ),
+    failures: z
+        .array(
+            z.object({
+                address: z.string(),
+                network: z.string(),
+                symbol: z.string().optional(),
+                tokenAddress: z.string().optional(),
+                error: z.string(),
+            })
+        )
+        .default([]),
     stats: z.object({
         total: z.number(),
         success: z.number(),

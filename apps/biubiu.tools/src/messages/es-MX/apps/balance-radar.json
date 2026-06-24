@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Radar de Saldos",
-	"br.meta.description": "Consulta en masa los saldos de moneda nativa de varias direcciones de billetera en Ethereum, Polygon, Arbitrum, Optimism, Base y Endurance.",
+	"br.meta.description": "Consulta por lotes los saldos de tokens nativos y ERC-20 de varias direcciones de wallet en Ethereum, Polygon, Arbitrum, Optimism, Base y Endurance.",
 
 	"br.title": "Radar de Saldos",
-	"br.subtitle": "Consulta saldos de moneda nativa en varias cadenas EVM",
+	"br.subtitle": "Consulta saldos de tokens nativos y ERC-20 en varias cadenas EVM",
 
 	"br.config.title": "Configuración",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} más…",
 	"br.lineEditor.errorDrawer.close": "Cerrar",
 	"br.lineEditor.validation.duplicate": "Dirección duplicada",
-	"br.lineEditor.validation.invalidAddress": "Dirección de Ethereum inválida"
+	"br.lineEditor.validation.invalidAddress": "Dirección de Ethereum inválida",
+	"br.summary.hint": "Agrega al menos una dirección y un token para comenzar",
+	"br.results.table.copied": "Copiado",
+	"br.lineEditor.upload": "Subir",
+	"br.lineEditor.statusBar.clear": "Limpiar"
 }

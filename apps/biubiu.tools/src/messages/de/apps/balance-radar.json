@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Guthaben-Radar",
-	"br.meta.description": "Native-Token-Guthaben für mehrere Wallet-Adressen auf Ethereum, Polygon, Arbitrum, Optimism, Base und Endurance stapelweise prüfen.",
+	"br.meta.description": "Native- und ERC-20-Token-Guthaben für mehrere Wallet-Adressen über Ethereum, Polygon, Arbitrum, Optimism, Base und Endurance hinweg per Stapelabfrage prüfen.",
 
 	"br.title": "Guthaben-Radar",
-	"br.subtitle": "Native-Token-Guthaben über mehrere EVM-Chains abfragen",
+	"br.subtitle": "Native- und ERC-20-Token-Guthaben über mehrere EVM-Chains abfragen",
 
 	"br.config.title": "Konfiguration",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} weitere…",
 	"br.lineEditor.errorDrawer.close": "Schließen",
 	"br.lineEditor.validation.duplicate": "Doppelte Adresse",
-	"br.lineEditor.validation.invalidAddress": "Ungültige Ethereum-Adresse"
+	"br.lineEditor.validation.invalidAddress": "Ungültige Ethereum-Adresse",
+	"br.summary.hint": "Füge mindestens eine Adresse und ein Token hinzu, um zu starten",
+	"br.results.table.copied": "Kopiert",
+	"br.lineEditor.upload": "Hochladen",
+	"br.lineEditor.statusBar.clear": "Leeren"
 }

@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "Balance Radar",
-	"br.meta.description": "Bulk-check native token balances for multiple wallet addresses across Ethereum, Polygon, Arbitrum, Optimism, Base, and Endurance.",
+	"br.meta.description": "Bulk-check native and ERC-20 token balances for multiple wallet addresses across Ethereum, Polygon, Arbitrum, Optimism, Base, and Endurance.",
 
 	"br.title": "Balance Radar",
-	"br.subtitle": "Query native token balances across multiple EVM chains",
+	"br.subtitle": "Check native and ERC-20 token balances across multiple EVM chains",
 
 	"br.config.title": "Configuration",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0} more...",
 	"br.lineEditor.errorDrawer.close": "Close",
 	"br.lineEditor.validation.duplicate": "Duplicate address",
-	"br.lineEditor.validation.invalidAddress": "Invalid Ethereum address"
+	"br.lineEditor.validation.invalidAddress": "Invalid Ethereum address",
+	"br.summary.hint": "Add at least one address and token to start",
+	"br.results.table.copied": "Copied",
+	"br.lineEditor.upload": "Upload",
+	"br.lineEditor.statusBar.clear": "Clear"
 }

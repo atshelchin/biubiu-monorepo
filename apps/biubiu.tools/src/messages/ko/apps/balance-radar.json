@@ -1,9 +1,9 @@
 {
 	"br.meta.title": "잔액 레이더",
-	"br.meta.description": "이더리움, Polygon, Arbitrum, Optimism, Base, Endurance에 걸쳐 여러 지갑 주소의 네이티브 토큰 잔액을 일괄 조회합니다.",
+	"br.meta.description": "이더리움, Polygon, Arbitrum, Optimism, Base, Endurance에서 여러 지갑 주소의 네이티브 및 ERC-20 토큰 잔액을 일괄 조회.",
 
 	"br.title": "잔액 레이더",
-	"br.subtitle": "여러 EVM 체인에 걸쳐 네이티브 토큰 잔액을 조회",
+	"br.subtitle": "여러 EVM 체인에서 네이티브 및 ERC-20 토큰 잔액 조회",
 
 	"br.config.title": "설정",
 
@@ -87,5 +87,9 @@
 	"br.lineEditor.errorDrawer.andMore": "{0}개 더…",
 	"br.lineEditor.errorDrawer.close": "닫기",
 	"br.lineEditor.validation.duplicate": "중복된 주소",
-	"br.lineEditor.validation.invalidAddress": "유효하지 않은 이더리움 주소"
+	"br.lineEditor.validation.invalidAddress": "유효하지 않은 이더리움 주소",
+	"br.summary.hint": "시작하려면 주소와 토큰을 하나 이상 추가하세요",
+	"br.results.table.copied": "복사됨",
+	"br.lineEditor.upload": "업로드",
+	"br.lineEditor.statusBar.clear": "지우기"
 }

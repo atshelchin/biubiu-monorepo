@@ -5,13 +5,26 @@
  * `ConnectedWallet` 接口。passkey 发送路径逐字节不变——多条批量内部走 MultiSend
  * delegatecall，与 contract-caller 原先的 sendBatch 完全一致。
  */
-import { type Address, type Hex, encodeFunctionData, concat } from 'viem';
+import { type Address, type Hex, encodeFunctionData, concat, numberToHex } from 'viem';
 import type { AuthUser } from '$lib/auth';
 import { CONTRACTS } from '$lib/auth/compute-safe-address.js';
 import { slugForChainId } from '$lib/wallet/infra/chains.js';
 import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
+import {
+	signSafeMessageWithPasskey,
+	signSafeTypedDataWithPasskey,
+	verifySafeMessageSignature,
+	verifySafeTypedDataSignature
+} from '$lib/auth/safe-tx/sign-message.js';
 import type { SendResult } from '$lib/auth/safe-tx/send-token.js';
-import type { Call, ConnectedWallet, SendCallsOptions } from '../types.js';
+import type {
+	Call,
+	ConnectedWallet,
+	SendCallsOptions,
+	SignOptions,
+	SignResult,
+	VerifyResult
+} from '../types.js';
 
 const MULTISEND_ADDRESS = CONTRACTS.multiSend as Address;
 
@@ -123,6 +136,75 @@ export class BiubiuWallet implements ConnectedWallet {
 			network,
 			onStatus: opts.onPhase ?? (() => {})
 		});
+	}
+
+	/** Safe ERC-1271 消息签名（passkey）。返回 Safe 合约签名字节。 */
+	async signMessage(message: string, opts: SignOptions): Promise<SignResult> {
+		const res = await signSafeMessageWithPasskey({
+			safeAddress: this.creds.safeAddress,
+			credentialId: this.creds.credentialId,
+			rpId: this.creds.rpId,
+			chainId: opts.chainId,
+			message
+		});
+		return res.ok ? { ok: true, signature: res.signature } : { ok: false, error: res.error };
+	}
+
+	/** Safe ERC-1271 typed-data 签名（passkey）。入参为 EIP-712 JSON 字符串。 */
+	async signTypedData(typedDataJson: string, opts: SignOptions): Promise<SignResult> {
+		let parsed: Parameters<typeof signSafeTypedDataWithPasskey>[0]['typedData'];
+		try {
+			parsed = JSON.parse(typedDataJson);
+		} catch {
+			return { ok: false, error: 'Invalid typed-data JSON' };
+		}
+		const res = await signSafeTypedDataWithPasskey({
+			safeAddress: this.creds.safeAddress,
+			credentialId: this.creds.credentialId,
+			rpId: this.creds.rpId,
+			chainId: opts.chainId,
+			typedData: parsed
+		});
+		return res.ok ? { ok: true, signature: res.signature } : { ok: false, error: res.error };
+	}
+
+	/**
+	 * 内置能力描述：biubiu 始终通过 MultiSend 支持原子批量（无论链是否支持 EIP-5792），
+	 * 形状与 wallet_getCapabilities 一致，供 UI 统一渲染。
+	 */
+	async getCapabilities(chainId: number): Promise<Record<string, unknown>> {
+		return { [numberToHex(chainId)]: { atomicBatch: { supported: true } } };
+	}
+
+	/** 本地 WebAuthn P-256 验签（biubiu Safe 不暴露链上 isValidSignature）。 */
+	async verifyMessage(message: string, signature: Hex, opts: SignOptions): Promise<VerifyResult> {
+		try {
+			const valid = await verifySafeMessageSignature(
+				this.creds.publicKeyHex,
+				this.creds.safeAddress,
+				opts.chainId,
+				message,
+				signature
+			);
+			return { ok: true, valid, method: 'webauthn-p256' };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
+	}
+
+	async verifyTypedData(typedDataJson: string, signature: Hex, opts: SignOptions): Promise<VerifyResult> {
+		try {
+			const valid = await verifySafeTypedDataSignature(
+				this.creds.publicKeyHex,
+				this.creds.safeAddress,
+				opts.chainId,
+				typedDataJson,
+				signature
+			);
+			return { ok: true, valid, method: 'webauthn-p256' };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
 	}
 
 	disconnect(): void {

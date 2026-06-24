@@ -9,17 +9,44 @@
  *
  * 不提供 `sendDelegateCall`：delegatecall 只有账户自身执行逻辑能做，外部 dApp 无法表达。
  */
-import { type Address, type Hex, numberToHex } from 'viem';
+import {
+	type Address,
+	type Hex,
+	numberToHex,
+	stringToHex,
+	hashMessage,
+	hashTypedData,
+	encodeFunctionData
+} from 'viem';
 import type {
 	AccountType,
 	Call,
 	ConnectedWallet,
 	SendCallsOptions,
 	SendResult,
+	SignOptions,
+	SignResult,
+	VerifyResult,
 	WalletKind
 } from '../types.js';
 import type { Eip1193Provider } from '../eip1193.js';
 import { isSmartAccountOnChain } from '../gate.js';
+import { rpcCall, RpcError } from '../infra/rpc-client.js';
+
+/** ERC-1271 magic value returned by isValidSignature(bytes32,bytes) for a valid sig. */
+const ERC1271_MAGIC = '0x1626ba7e';
+const IS_VALID_SIGNATURE_ABI = [
+	{
+		type: 'function',
+		name: 'isValidSignature',
+		stateMutability: 'view',
+		inputs: [
+			{ name: 'hash', type: 'bytes32' },
+			{ name: 'signature', type: 'bytes' }
+		],
+		outputs: [{ type: 'bytes4' }]
+	}
+] as const;
 
 const RECEIPT_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2_000;
@@ -41,6 +68,11 @@ export abstract class Eip1193Wallet implements ConnectedWallet {
 		/** provider 当前所在链，ensureChain 时更新。 */
 		protected currentChainId: number
 	) {}
+
+	/** provider 当前所在链（供调试/演示 UI 读取）。 */
+	get chainId(): number {
+		return this.currentChainId;
+	}
 
 	/** 把外部钱包切到目标链（已在则跳过）。 */
 	async ensureChain(chainId: number): Promise<void> {
@@ -178,9 +210,95 @@ export abstract class Eip1193Wallet implements ConnectedWallet {
 		throw new Error('Transaction confirmation timed out');
 	}
 
+	/** personal_sign：消息转 hex 后交给钱包签名。 */
+	async signMessage(message: string, opts: SignOptions): Promise<SignResult> {
+		try {
+			await this.ensureChain(opts.chainId);
+			const signature = (await this.provider.request({
+				method: 'personal_sign',
+				params: [stringToHex(message), this.address]
+			})) as Hex;
+			return { ok: true, signature };
+		} catch (err) {
+			return { ok: false, error: errorMessage(err) };
+		}
+	}
+
+	/** eth_signTypedData_v4：直接把 JSON 字符串交给钱包。 */
+	async signTypedData(typedDataJson: string, opts: SignOptions): Promise<SignResult> {
+		try {
+			JSON.parse(typedDataJson); // 早失败，给出清晰的「不是合法 JSON」错误
+			await this.ensureChain(opts.chainId);
+			const signature = (await this.provider.request({
+				method: 'eth_signTypedData_v4',
+				params: [this.address, typedDataJson]
+			})) as Hex;
+			return { ok: true, signature };
+		} catch (err) {
+			return { ok: false, error: errorMessage(err) };
+		}
+	}
+
+	/** EIP-5792 wallet_getCapabilities。钱包不支持/拒绝则返回空对象。 */
+	async getCapabilities(chainId: number): Promise<Record<string, unknown>> {
+		try {
+			const caps = (await this.provider.request({
+				method: 'wallet_getCapabilities',
+				params: [this.address, [numberToHex(chainId)]]
+			})) as Record<string, unknown> | null;
+			return caps ?? {};
+		} catch {
+			return {};
+		}
+	}
+
+	/** 链上 ERC-1271 验签（读路径，不需钱包交互）。 */
+	private async verifyErc1271(hash: Hex, signature: Hex, chainId: number): Promise<VerifyResult> {
+		const data = encodeFunctionData({
+			abi: IS_VALID_SIGNATURE_ABI,
+			functionName: 'isValidSignature',
+			args: [hash, signature]
+		});
+		try {
+			const result = (await rpcCall<Hex>(
+				'eth_call',
+				[{ to: this.address, data }, 'latest'],
+				chainId
+			)) as Hex;
+			const valid = result.toLowerCase().startsWith(ERC1271_MAGIC);
+			return { ok: true, valid, method: 'erc1271', detail: result };
+		} catch (err) {
+			// A revert / missing method means the account didn't validate it.
+			if (err instanceof RpcError) {
+				return { ok: true, valid: false, method: 'erc1271', detail: err.message };
+			}
+			return { ok: false, error: errorMessage(err) };
+		}
+	}
+
+	verifyMessage(message: string, signature: Hex, opts: SignOptions): Promise<VerifyResult> {
+		return this.verifyErc1271(hashMessage(message), signature, opts.chainId);
+	}
+
+	verifyTypedData(typedDataJson: string, signature: Hex, opts: SignOptions): Promise<VerifyResult> {
+		let hash: Hex;
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			hash = hashTypedData(JSON.parse(typedDataJson) as any);
+		} catch {
+			return Promise.resolve({ ok: false, error: 'Invalid typed-data JSON' });
+		}
+		return this.verifyErc1271(hash, signature, opts.chainId);
+	}
+
 	disconnect(): void {
 		// 子类如有需要可覆写（移除监听 / 关闭会话）。
 	}
+}
+
+function errorMessage(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	return String(err);
 }
 
 /** receipt.status 兼容 '0x1' / 1 / 'success'。 */

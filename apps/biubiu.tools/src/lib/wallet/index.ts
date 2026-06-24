@@ -20,5 +20,8 @@ export type {
 	AccountType,
 	SendCallsOptions,
 	SendStatus,
-	SendResult
+	SendResult,
+	SignOptions,
+	SignResult,
+	VerifyResult
 } from './types.js';

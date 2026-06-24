@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Volumes/data/production -type d -name \"contract-deployer\" 2>/dev/null)",
+      "Read(//Volumes/data/production/**)"
+    ]
+  }
+}

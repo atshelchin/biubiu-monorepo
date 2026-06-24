@@ -11,7 +11,9 @@
         "predev:biubiu": "node apps/biubiu.tools/scripts/fix-tlock.mjs",
         "preview:biubiu": "bun run build:biubiu && ./apps/biubiu.tools/dist/biubiu --env-file envs/biubiu.env",
         "pda:balance-radar": "bun apps/biubiu.tools/src/lib/pda-apps/balance-radar/adapters/cli.ts",
-        "build:cli:balance-radar": "cd apps/biubiu.tools && bun run build:cli:balance-radar"
+        "build:cli:balance-radar": "cd apps/biubiu.tools && bun run build:cli:balance-radar",
+        "dev:chat": "cd apps/chat.biubiu.tools && bun run dev",
+        "deploy:chat": "cd apps/chat.biubiu.tools && bun run deploy"
     },
     "workspaces": [
         "packages/*",

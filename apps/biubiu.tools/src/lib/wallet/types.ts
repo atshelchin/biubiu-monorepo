@@ -35,6 +35,32 @@ export interface Call {
 	data: Hex;
 }
 
+/** 签名结果。失败时带 error 文案（已就绪供 UI 展示）。 */
+export interface SignResult {
+	ok: boolean;
+	signature?: Hex;
+	error?: string;
+}
+
+/** 签名所需上下文。biubiu 是无链账户，签名要显式带 chainId（SafeMessage EIP-712 域）。 */
+export interface SignOptions {
+	chainId: number;
+}
+
+/**
+ * 验签结果。
+ * - `ok`：验签流程本身是否正常执行（未抛错）。
+ * - `valid`：签名对该账户是否有效。
+ * - `method`：验签方式——外部钱包走链上 ERC-1271，biubiu 走本地 WebAuthn P-256。
+ */
+export interface VerifyResult {
+	ok: boolean;
+	valid?: boolean;
+	method?: 'erc1271' | 'webauthn-p256';
+	detail?: string;
+	error?: string;
+}
+
 export interface SendCallsOptions {
 	/** 目标链 chainId。biubiu 内部映射到 Alchemy network key；外部钱包据此切链。 */
 	chainId: number;
@@ -81,6 +107,33 @@ export interface ConnectedWallet {
 	 * 调用方据此判断是否支持「链式调用」功能。
 	 */
 	sendDelegateCall?(call: Call, opts: SendCallsOptions): Promise<SendResult>;
+
+	/**
+	 * 可选：签名一段任意消息（biubiu = Safe ERC-1271 合约签名；外部钱包 = personal_sign）。
+	 * 由调试/演示页使用，功能页可忽略。所有后端均实现。
+	 */
+	signMessage?(message: string, opts: SignOptions): Promise<SignResult>;
+
+	/**
+	 * 可选：签名 EIP-712 typed data（JSON 字符串）。biubiu = 对 typed-data 摘要做 Safe
+	 * ERC-1271 签名；外部钱包 = eth_signTypedData_v4。
+	 */
+	signTypedData?(typedDataJson: string, opts: SignOptions): Promise<SignResult>;
+
+	/**
+	 * 可选：查询账户在目标链上的能力（EIP-5792 wallet_getCapabilities）。外部钱包透传
+	 * provider 结果；biubiu 返回内置能力描述（始终支持原子批量）。
+	 */
+	getCapabilities?(chainId: number): Promise<Record<string, unknown>>;
+
+	/**
+	 * 可选：验证一段消息签名是否对本账户有效。biubiu = 本地 WebAuthn P-256 验签；
+	 * 外部钱包 = 链上 ERC-1271 isValidSignature。
+	 */
+	verifyMessage?(message: string, signature: Hex, opts: SignOptions): Promise<VerifyResult>;
+
+	/** 可选：验证 EIP-712 typed data 签名（验签方式同 verifyMessage）。 */
+	verifyTypedData?(typedDataJson: string, signature: Hex, opts: SignOptions): Promise<VerifyResult>;
 
 	/** 断开连接（biubiu = 登出 passkey；外部钱包 = 关闭会话）。 */
 	disconnect(): void;

@@ -34,9 +34,11 @@
 		onClose: () => void;
 		/** 初始模式 */
 		mode?: 'subscribe' | 'renew' | 'transfer';
+		/** 配色主题。'default' = app 绿；'forever' = 暖金（与 Capsule 一致）。 */
+		variant?: 'default' | 'forever';
 	}
 
-	let { open, onClose, mode: initialMode = 'subscribe' }: Props = $props();
+	let { open, onClose, mode: initialMode = 'subscribe', variant = 'default' }: Props = $props();
 
 	// ─── State ───
 	let mode = $state<'subscribe' | 'renew' | 'transfer'>('subscribe');
@@ -253,6 +255,7 @@
 </script>
 
 <ResponsiveModal {open} onClose={handleClose} {title}>
+	<div class="sub-content" class:forever-theme={variant === 'forever'}>
 	{#if contractDeployed === null}
 		<!-- Checking deployment -->
 		<div class="tx-status">
@@ -419,9 +422,19 @@
 			</button>
 		</div>
 	{/if}
+	</div>
 </ResponsiveModal>
 
 <style>
+	/* 'forever' theme: re-tint the accent tokens warm gold (scoped to this modal instance). */
+	.sub-content.forever-theme {
+		--accent: #b8862f;
+		--accent-hover: #a9781f;
+		--accent-muted: rgba(184, 134, 47, 0.12);
+		--accent-subtle: rgba(184, 134, 47, 0.08);
+		--accent-fg: #ffffff;
+	}
+
 	.modal-body {
 		display: flex;
 		flex-direction: column;

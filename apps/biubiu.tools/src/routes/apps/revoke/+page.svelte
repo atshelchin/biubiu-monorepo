@@ -883,6 +883,7 @@
 	}
 	.search-wrap {
 		position: relative;
+		margin-bottom: var(--space-3);
 	}
 	.search-wrap .search-ic {
 		position: absolute;
@@ -895,7 +896,7 @@
 	}
 	.search-input {
 		padding-left: var(--space-8);
-		margin-bottom: var(--space-3);
+		margin-bottom: 0;
 	}
 	.chain-results {
 		display: flex;

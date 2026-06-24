@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Una lettera al te del futuro — cifrata on-chain, leggibile solo da te.",
+  "capsule.permanence": "Una volta sigillato, non si può modificare o cancellare —— le tue parole vivono quanto questa catena.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Sigilla fino a una data",
   "capsule.lock.until": "Apri il",
+  "capsule.picker.pick": "Scegli un giorno",
   "capsule.lock.hint": "Fino a quel momento, nemmeno tu potrai aprirla.",
 
   "capsule.meta.network": "Su {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Cifratura…",
   "capsule.status.timelocking": "Blocco temporale (fino ad allora nemmeno tu potrai leggerla)…",
   "capsule.status.sealing": "Sigillatura: {step}…",
+  "capsule.status.signing": "Sigillo on-chain — firma con la tua passkey",
   "capsule.status.sealed": "Sigillata per sempre.",
 
   "capsule.error.signIn": "Accedi prima.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Impossibile caricare altre — {error}",
   "capsule.error.cooldown": "Hai già sigillato una lettera su questa catena oggi — potrai scrivere di nuovo {when}.",
   "capsule.error.txReverted": "Non è andata a buon fine. Riprova tra un momento.",
+  "capsule.error.bundlerGas": "Il conto gas del relayer è esaurito. Deposita circa {amount} {symbol} su {address} e riprova.",
 
   "capsule.gate.title": "Scegli una catena",
   "capsule.gate.subtitle": "È qui che vivranno le tue lettere. Una volta entrato vi resti legato — esci per cambiarla.",

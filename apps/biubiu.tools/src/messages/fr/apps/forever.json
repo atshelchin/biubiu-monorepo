@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Une lettre à votre futur vous — chiffrée sur la blockchain, lisible par vous seul.",
+  "capsule.permanence": "Une fois scellé, impossible de modifier ou supprimer —— vos mots vivent aussi longtemps que cette chaîne.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Compte",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Verrouiller jusqu'à une date",
   "capsule.lock.until": "Ouvrir le",
+  "capsule.picker.pick": "Choisir un jour",
   "capsule.lock.hint": "Jusqu'à cet instant, vous-même ne pourrez pas l'ouvrir.",
 
   "capsule.meta.network": "Sur {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Chiffrement…",
   "capsule.status.timelocking": "Verrouillage temporel (même vous ne pourrez pas la lire avant)…",
   "capsule.status.sealing": "Scellage : {step}…",
+  "capsule.status.signing": "Scellement on-chain — signez avec votre passkey",
   "capsule.status.sealed": "Scellée pour toujours.",
 
   "capsule.error.signIn": "Veuillez d'abord vous connecter.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Impossible de charger davantage — {error}",
   "capsule.error.cooldown": "Vous avez déjà scellé une lettre sur cette chaîne aujourd'hui — vous pourrez écrire à nouveau {when}.",
   "capsule.error.txReverted": "Ça n'a pas abouti. Veuillez réessayer dans un instant.",
+  "capsule.error.bundlerGas": "Le compte de gas du relayeur est vide. Déposez environ {amount} {symbol} sur {address}, puis réessayez.",
 
   "capsule.gate.title": "Choisissez une chaîne",
   "capsule.gate.subtitle": "C'est là que vivront vos lettres. Vous y êtes fixé dès que vous entrez — sortez pour en changer.",

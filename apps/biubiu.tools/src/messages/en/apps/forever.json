@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "A letter to your future self — encrypted on-chain, readable only by you.",
+  "capsule.permanence": "Once sealed, it can't be edited or deleted — your words live as long as this chain does.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Lock until a date",
   "capsule.lock.until": "Open on",
+  "capsule.picker.pick": "Pick a day",
   "capsule.lock.hint": "Until that moment, not even you can open it.",
 
   "capsule.meta.network": "On {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Encrypting…",
   "capsule.status.timelocking": "Time-locking (even you can't read it until then)…",
   "capsule.status.sealing": "Sealing: {step}…",
+  "capsule.status.signing": "Sealing on-chain — sign with your passkey",
   "capsule.status.sealed": "Sealed forever.",
 
   "capsule.error.signIn": "Please sign in first.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Could not load more — {error}",
   "capsule.error.cooldown": "You've already sealed a letter on this chain today — you can write again {when}.",
   "capsule.error.txReverted": "That didn't go through. Please try again in a moment.",
+  "capsule.error.bundlerGas": "The gas relayer's account is out of funds. Deposit about {amount} {symbol} to {address}, then try again.",
 
   "capsule.gate.title": "Choose a chain",
   "capsule.gate.subtitle": "This is where your letters will live. You're fixed to it once you enter — exit to switch.",

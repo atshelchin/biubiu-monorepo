@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Uma carta para o seu eu do futuro — criptografada on-chain, legível só por você.",
+  "capsule.permanence": "Depois de selado, não dá para editar ou apagar —— suas palavras vivem enquanto esta rede existir.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Conta",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Trancar até uma data",
   "capsule.lock.until": "Abrir em",
+  "capsule.picker.pick": "Escolha um dia",
   "capsule.lock.hint": "Até aquele momento, nem você poderá abri-la.",
 
   "capsule.meta.network": "Na {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Criptografando…",
   "capsule.status.timelocking": "Aplicando trava de tempo (nem você poderá ler até lá)…",
   "capsule.status.sealing": "Selando: {step}…",
+  "capsule.status.signing": "Selando on-chain — assine com sua passkey",
   "capsule.status.sealed": "Selada para sempre.",
 
   "capsule.error.signIn": "Faça login primeiro.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Não foi possível carregar mais — {error}",
   "capsule.error.cooldown": "Você já selou uma carta nesta rede hoje — pode escrever de novo {when}.",
   "capsule.error.txReverted": "Não deu certo. Tente de novo em instantes.",
+  "capsule.error.bundlerGas": "A conta de gás do retransmissor está sem saldo. Deposite cerca de {amount} {symbol} em {address} e tente novamente.",
 
   "capsule.gate.title": "Escolha uma rede",
   "capsule.gate.subtitle": "É aqui que suas cartas vão viver. Você fica fixado nela assim que entra — saia para trocar.",

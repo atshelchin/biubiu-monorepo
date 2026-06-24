@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Gelecekteki kendine bir mektup — zincirde şifreli, yalnızca senin okuyabileceğin.",
+  "capsule.permanence": "Mühürlendikten sonra düzenlenemez ya da silinemez —— yazdıkların bu zincir yaşadıkça yaşar.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Hesap",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Bir tarihe kadar kilitle",
   "capsule.lock.until": "Açılış",
+  "capsule.picker.pick": "Bir gün seç",
   "capsule.lock.hint": "O ana kadar onu sen bile açamazsın.",
 
   "capsule.meta.network": "{network} üzerinde",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Şifreleniyor…",
   "capsule.status.timelocking": "Zaman kilidi uygulanıyor (o ana kadar onu sen bile okuyamazsın)…",
   "capsule.status.sealing": "Mühürleniyor: {step}…",
+  "capsule.status.signing": "Zincire mühürleniyor — passkey ile imzalayın",
   "capsule.status.sealed": "Sonsuza dek mühürlendi.",
 
   "capsule.error.signIn": "Lütfen önce oturum aç.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Daha fazlası yüklenemedi — {error}",
   "capsule.error.cooldown": "Bugün bu zincirde zaten bir mektup mühürledin — {when} yeniden yazabilirsin.",
   "capsule.error.txReverted": "Bu işlem gerçekleşmedi. Lütfen birazdan tekrar dene.",
+  "capsule.error.bundlerGas": "Gas aktarıcı hesabının bakiyesi bitti. {address} adresine yaklaşık {amount} {symbol} yatırıp tekrar deneyin.",
 
   "capsule.gate.title": "Bir zincir seç",
   "capsule.gate.subtitle": "Mektupların burada yaşayacak. Girdiğin an ona bağlanırsın — değiştirmek için çık.",

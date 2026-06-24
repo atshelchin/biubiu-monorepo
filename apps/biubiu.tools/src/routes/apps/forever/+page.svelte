@@ -1,6 +1,8 @@
 <script lang="ts">
 	import ForeverOnboard from '$lib/pda-apps/forever/ForeverOnboard.svelte';
+	import CapsuleDatePicker from '$lib/pda-apps/forever/CapsuleDatePicker.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
+	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
@@ -14,6 +16,14 @@
 	const store = foreverStore;
 	let showProfile = $state(false);
 	let showSettings = $state(false);
+
+	// Subscription modal state (opened from the profile's "Upgrade Pro" CTA)
+	let showSubscription = $state(false);
+	let subscriptionMode = $state<'subscribe' | 'renew' | 'transfer'>('subscribe');
+	function openSubscription(mode: 'subscribe' | 'renew' | 'transfer') {
+		subscriptionMode = mode;
+		showSubscription = true;
+	}
 
 	// One focused state at a time: compose ('write') OR look back ('past') — never both.
 	let view = $state<'write' | 'past'>('write');
@@ -170,7 +180,7 @@
 					{#if store.locked}
 						<label class="lock-detail">
 							<span>{t('capsule.lock.until')}</span>
-							<input type="datetime-local" bind:value={store.unlockDate} disabled={busy} />
+							<CapsuleDatePicker bind:value={store.unlockDate} disabled={busy} placeholder={t('capsule.picker.pick')} />
 						</label>
 					{/if}
 				</div>
@@ -178,7 +188,9 @@
 					<p class="lock-hint">{t('capsule.lock.hint')}</p>
 				{/if}
 
-				<footer class="sheet-foot">
+				<p class="permanence">{t('capsule.permanence')}</p>
+
+					<footer class="sheet-foot">
 					<div class="meta">
 						<span>{t('capsule.meta.network', { network: store.network?.name ?? '' })}</span>
 						<span class="dot">·</span>
@@ -285,7 +297,19 @@
 		</div>
 	{/if}
 
-	<ProfileModal open={showProfile} onClose={() => (showProfile = false)} variant="forever" />
+	<ProfileModal
+		open={showProfile}
+		onClose={() => (showProfile = false)}
+		onSubscription={openSubscription}
+		variant="forever"
+	/>
+
+	<SubscriptionModal
+		open={showSubscription}
+		onClose={() => (showSubscription = false)}
+		mode={subscriptionMode}
+		variant="forever"
+	/>
 
 	<ResponsiveModal open={showSettings} onClose={() => (showSettings = false)} title={t('settings.title')}>
 		<div class="capsule-settings">
@@ -655,6 +679,16 @@
 		font-size: var(--text-sm);
 		font-style: italic;
 		color: var(--ink-soft);
+	}
+
+	.permanence {
+		margin: var(--space-5) 0 0;
+		font-size: var(--text-xs);
+		font-style: italic;
+		letter-spacing: 0.02em;
+		line-height: var(--leading-relaxed);
+		text-align: center;
+		color: color-mix(in srgb, var(--seal) 80%, var(--ink-soft));
 	}
 
 	.sheet-foot {

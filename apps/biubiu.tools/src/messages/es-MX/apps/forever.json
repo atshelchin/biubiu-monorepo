@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Una carta a tu yo del futuro: cifrada en la cadena, solo tú puedes leerla.",
+  "capsule.permanence": "Una vez sellado, no se puede editar ni borrar —— tus palabras viven tanto como esta cadena.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Cuenta",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Sellar hasta una fecha",
   "capsule.lock.until": "Se abre el",
+  "capsule.picker.pick": "Elige un día",
   "capsule.lock.hint": "Hasta ese momento, ni siquiera tú podrás abrirla.",
 
   "capsule.meta.network": "En {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Cifrando…",
   "capsule.status.timelocking": "Sellando con candado de tiempo (ni tú podrás leerla hasta entonces)…",
   "capsule.status.sealing": "Sellando: {step}…",
+  "capsule.status.signing": "Sellando on-chain — firma con tu passkey",
   "capsule.status.sealed": "Sellada para siempre.",
 
   "capsule.error.signIn": "Inicia sesión primero.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "No se pudieron cargar más — {error}",
   "capsule.error.cooldown": "Ya sellaste una carta en esta cadena hoy — podrás escribir de nuevo {when}.",
   "capsule.error.txReverted": "No se completó. Inténtalo de nuevo en un momento.",
+  "capsule.error.bundlerGas": "La cuenta de gas del retransmisor se quedó sin fondos. Deposita ~{amount} {symbol} en {address} y vuelve a intentarlo.",
 
   "capsule.gate.title": "Elige una cadena",
   "capsule.gate.subtitle": "Aquí vivirán tus cartas. Quedas ligado a ella en cuanto entras — sal para cambiarla.",

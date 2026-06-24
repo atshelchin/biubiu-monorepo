@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Một lá thư gửi chính mình mai sau — mã hóa trên chuỗi, chỉ mình bạn đọc được.",
+  "capsule.permanence": "Một khi đã niêm phong, không thể sửa hay xóa —— những dòng bạn viết sống lâu như chính chuỗi này.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Tài khoản",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Khóa đến một ngày",
   "capsule.lock.until": "Mở vào",
+  "capsule.picker.pick": "Chọn ngày",
   "capsule.lock.hint": "Cho đến khoảnh khắc ấy, ngay cả bạn cũng không thể mở.",
 
   "capsule.meta.network": "Trên {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Đang mã hóa…",
   "capsule.status.timelocking": "Đang khóa theo thời gian (đến lúc đó ngay cả bạn cũng không đọc được)…",
   "capsule.status.sealing": "Đang niêm phong: {step}…",
+  "capsule.status.signing": "Niêm phong lên chain — ký bằng passkey",
   "capsule.status.sealed": "Đã niêm phong mãi mãi.",
 
   "capsule.error.signIn": "Vui lòng đăng nhập trước.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Không thể tải thêm — {error}",
   "capsule.error.cooldown": "Hôm nay bạn đã niêm phong một lá thư trên chuỗi này rồi — bạn có thể viết tiếp {when}.",
   "capsule.error.txReverted": "Giao dịch chưa thành công. Vui lòng thử lại sau giây lát.",
+  "capsule.error.bundlerGas": "Tài khoản gas của bộ chuyển tiếp đã hết. Hãy nạp khoảng {amount} {symbol} vào {address} rồi thử lại.",
 
   "capsule.gate.title": "Chọn một chuỗi",
   "capsule.gate.subtitle": "Đây là nơi những lá thư của bạn sẽ an cư. Khi đã bước vào, bạn gắn chặt với nó — hãy thoát ra để đổi chuỗi.",

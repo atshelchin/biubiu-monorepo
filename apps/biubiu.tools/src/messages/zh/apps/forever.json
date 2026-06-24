@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "写给未来的自己。加密上链，只有你能再次开启。",
+  "capsule.permanence": "一旦封存，无法删改，无法撤回 —— 你写下的，会和这条链活得一样久。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "账户",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "封存到某一天",
   "capsule.lock.until": "封存至",
+  "capsule.picker.pick": "选择日期",
   "capsule.lock.hint": "在那一刻之前，连你也打不开。",
 
   "capsule.meta.network": "在 {network} 上",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "加密中…",
   "capsule.status.timelocking": "时间锁封存中（在那之前连你也读不到）…",
   "capsule.status.sealing": "封缄中：{step}…",
+  "capsule.status.signing": "封存上链 —— 请用 passkey 签名",
   "capsule.status.sealed": "已永久封存。",
 
   "capsule.error.signIn": "请先登录。",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "无法加载更多 — {error}",
   "capsule.error.cooldown": "今天在这条链上已经封存过一封了 —— {when}可再写。",
   "capsule.error.txReverted": "这次没能完成，请稍后再试。",
+  "capsule.error.bundlerGas": "Gas 中转账户余额不足。请向 {address} 充值约 {amount} {symbol}，再重试。",
 
   "capsule.gate.title": "选择落笔的链",
   "capsule.gate.subtitle": "这是你信件的所在。进入后将固定在这条链——要换，先退出。",

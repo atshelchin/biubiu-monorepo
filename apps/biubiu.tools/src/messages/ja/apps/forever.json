@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "未来の自分への手紙。オンチェーンで暗号化され、開けるのはあなただけ。",
+  "capsule.permanence": "封印したら編集も削除もできません —— あなたの言葉は、このチェーンと同じだけ生き続けます。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "アカウント",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "ある日まで封じる",
   "capsule.lock.until": "開封日",
+  "capsule.picker.pick": "日付を選ぶ",
   "capsule.lock.hint": "その時が来るまで、あなた自身でも開けません。",
 
   "capsule.meta.network": "{network} 上",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "暗号化しています…",
   "capsule.status.timelocking": "タイムロックで封じています（その時までは、あなたにも読めません）…",
   "capsule.status.sealing": "封をしています：{step}…",
+  "capsule.status.signing": "オンチェーンに封印 — passkey で署名してください",
   "capsule.status.sealed": "永遠に封じました。",
 
   "capsule.error.signIn": "まずサインインしてください。",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "さらに読み込めませんでした — {error}",
   "capsule.error.cooldown": "このチェーンでは今日すでに手紙を封じています。{when} にまた書けます。",
   "capsule.error.txReverted": "うまくいきませんでした。少し時間をおいて、もう一度お試しください。",
+  "capsule.error.bundlerGas": "ガス代行アカウントの残高が不足しています。{address} に約 {amount} {symbol} を入金してから、もう一度お試しください。",
 
   "capsule.gate.title": "チェーンを選ぶ",
   "capsule.gate.subtitle": "ここがあなたの手紙の住まいになります。一度入ると、このチェーンに固定されます——切り替えるには、いったん出てください。",

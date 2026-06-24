@@ -18,17 +18,16 @@ export interface ForeverNetwork {
 	isTestnet?: boolean;
 }
 
-/** Friendly display names + ordering (Base first: cheapest UX, public-beta default). */
+/** Friendly display names + ordering (roughly by scale / prominence). Testnets are omitted. */
 const META: Record<string, { name: string; order: number; isTestnet?: boolean }> = {
-	'base-mainnet': { name: 'Base', order: 0 },
-	'arb-mainnet': { name: 'Arbitrum', order: 1 },
-	'opt-mainnet': { name: 'Optimism', order: 2 },
-	'matic-mainnet': { name: 'Polygon', order: 3 },
-	'bnb-mainnet': { name: 'BNB Chain', order: 4 },
-	'avax-mainnet': { name: 'Avalanche', order: 5 },
-	'gnosis-mainnet': { name: 'Gnosis', order: 6 },
-	'eth-mainnet': { name: 'Ethereum', order: 7 },
-	'polygon-amoy': { name: 'Polygon Amoy', order: 8, isTestnet: true }
+	'eth-mainnet': { name: 'Ethereum', order: 0 },
+	'base-mainnet': { name: 'Base', order: 1 },
+	'bnb-mainnet': { name: 'BNB Chain', order: 2 },
+	'arb-mainnet': { name: 'Arbitrum', order: 3 },
+	'matic-mainnet': { name: 'Polygon', order: 4 },
+	'opt-mainnet': { name: 'Optimism', order: 5 },
+	'avax-mainnet': { name: 'Avalanche', order: 6 },
+	'gnosis-mainnet': { name: 'Gnosis', order: 7 }
 };
 
 // Forever 只在 META 显式列出的链上可用（笔记合约 + 读路径已验证）。CHAIN_CONFIG

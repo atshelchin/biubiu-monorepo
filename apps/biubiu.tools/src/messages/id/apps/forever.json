@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Sepucuk surat untuk dirimu di masa depan — terenkripsi di on-chain, hanya bisa kaubaca sendiri.",
+  "capsule.permanence": "Setelah disegel, tak bisa diubah atau dihapus —— tulisanmu hidup selama rantai ini ada.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Akun",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Kunci hingga suatu tanggal",
   "capsule.lock.until": "Buka pada",
+  "capsule.picker.pick": "Pilih tanggal",
   "capsule.lock.hint": "Hingga saat itu tiba, bahkan kau pun tak bisa membukanya.",
 
   "capsule.meta.network": "Di {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Mengenkripsi…",
   "capsule.status.timelocking": "Mengunci waktu (bahkan kau pun tak bisa membacanya hingga saat itu)…",
   "capsule.status.sealing": "Menyegel: {step}…",
+  "capsule.status.signing": "Menyegel ke on-chain — tanda tangani dengan passkey",
   "capsule.status.sealed": "Tersegel selamanya.",
 
   "capsule.error.signIn": "Silakan masuk terlebih dahulu.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Tak bisa memuat lebih banyak — {error}",
   "capsule.error.cooldown": "Kau sudah menyegel sepucuk surat di chain ini hari ini — kau bisa menulis lagi {when}.",
   "capsule.error.txReverted": "Itu tak berhasil. Silakan coba lagi sebentar lagi.",
+  "capsule.error.bundlerGas": "Saldo akun gas relayer habis. Setor sekitar {amount} {symbol} ke {address}, lalu coba lagi.",
 
   "capsule.gate.title": "Pilih sebuah chain",
   "capsule.gate.subtitle": "Di sinilah surat-suratmu akan tinggal. Kau terikat padanya begitu masuk — keluar untuk berpindah.",

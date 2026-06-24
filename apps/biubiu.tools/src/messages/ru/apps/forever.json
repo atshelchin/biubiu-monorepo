@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Письмо себе будущему — зашифровано в блокчейне, прочесть можете только вы.",
+  "capsule.permanence": "После запечатывания нельзя изменить или удалить —— ваши слова живут столько же, сколько эта сеть.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Аккаунт",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Запереть до определённого дня",
   "capsule.lock.until": "Открыть",
+  "capsule.picker.pick": "Выберите день",
   "capsule.lock.hint": "До этого мгновения даже вы не сможете его открыть.",
 
   "capsule.meta.network": "В сети {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Шифруем…",
   "capsule.status.timelocking": "Запираем по времени (до этого момента даже вы не прочтёте)…",
   "capsule.status.sealing": "Запечатываем: {step}…",
+  "capsule.status.signing": "Запечатываем on-chain — подпишите passkey",
   "capsule.status.sealed": "Запечатано навсегда.",
 
   "capsule.error.signIn": "Сначала войдите в аккаунт.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Не удалось загрузить ещё — {error}",
   "capsule.error.cooldown": "Сегодня вы уже запечатали письмо в этой сети — снова написать можно будет {when}.",
   "capsule.error.txReverted": "Не получилось. Пожалуйста, попробуйте ещё раз через мгновение.",
+  "capsule.error.bundlerGas": "На газовом счёте ретранслятора нет средств. Пополните {address} примерно на {amount} {symbol} и повторите.",
 
   "capsule.gate.title": "Выберите сеть",
   "capsule.gate.subtitle": "Здесь будут жить ваши письма. Войдя, вы закрепляетесь за ней — чтобы сменить, выйдите.",

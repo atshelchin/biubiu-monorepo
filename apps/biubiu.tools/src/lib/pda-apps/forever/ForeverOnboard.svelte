@@ -75,7 +75,7 @@
 	}
 </script>
 
-{#if loggedIn && store.hasKey}
+{#if loggedIn && store.unlocked}
 	{@render children()}
 {:else if !loggedIn}
 	<!-- ① Identity -->
@@ -114,7 +114,7 @@
 		<div class="mark"><KeyRound size={22} /></div>
 		<h2>{t('capsule.onboard.keyTitle')}</h2>
 		<p class="prose">{@html t('capsule.onboard.keyProse')}</p>
-		<span class="steps">{t('capsule.onboard.step2')}</span>
+		{#if !store.hasKey}<span class="steps">{t('capsule.onboard.step2')}</span>{/if}
 		<button class="seal-btn" onclick={() => store.setupKey()} disabled={keyBusy}>
 			{keyBusy ? t('capsule.status.preparing') : t('capsule.onboard.enter')}
 		</button>

@@ -4,6 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "Ein Brief an dein zukünftiges Ich — verschlüsselt on-chain, lesbar nur für dich.",
+  "capsule.permanence": "Einmal versiegelt, nicht mehr änderbar oder löschbar —— deine Worte leben so lange wie diese Chain.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Konto",
@@ -17,6 +18,7 @@
 
   "capsule.lock.toggle": "Bis zu einem Datum verschließen",
   "capsule.lock.until": "Öffnen am",
+  "capsule.picker.pick": "Tag wählen",
   "capsule.lock.hint": "Bis zu diesem Moment kann nicht einmal du ihn öffnen.",
 
   "capsule.meta.network": "Auf {network}",
@@ -56,6 +58,7 @@
   "capsule.status.encrypting": "Wird verschlüsselt …",
   "capsule.status.timelocking": "Zeitsperre wird gesetzt (bis dahin kann nicht einmal du ihn lesen) …",
   "capsule.status.sealing": "Wird versiegelt: {step} …",
+  "capsule.status.signing": "On-Chain versiegeln — mit deinem Passkey signieren",
   "capsule.status.sealed": "Für immer versiegelt.",
 
   "capsule.error.signIn": "Bitte melde dich zuerst an.",
@@ -74,6 +77,7 @@
   "capsule.error.loadMoreFailed": "Weitere konnten nicht geladen werden — {error}",
   "capsule.error.cooldown": "Du hast heute auf dieser Chain bereits einen Brief versiegelt — du kannst {when} wieder schreiben.",
   "capsule.error.txReverted": "Das hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+  "capsule.error.bundlerGas": "Das Gas-Konto des Relayers ist leer. Zahle etwa {amount} {symbol} an {address} ein und versuche es erneut.",
 
   "capsule.gate.title": "Wähle eine Chain",
   "capsule.gate.subtitle": "Hier werden deine Briefe leben. Sobald du eintrittst, bist du an sie gebunden — verlasse sie, um zu wechseln.",

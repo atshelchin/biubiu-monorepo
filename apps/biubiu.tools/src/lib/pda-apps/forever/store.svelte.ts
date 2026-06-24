@@ -8,7 +8,7 @@
  * Nothing on-chain is required to start: the Safe deploys lazily on the first seal.
  */
 import { browser } from '$app/environment';
-import type { Address } from 'viem';
+import { formatUnits, type Address } from 'viem';
 import { t, formatRelativeTime } from '$lib/i18n';
 import { authStore } from '$lib/auth/auth-store.svelte.js';
 import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
@@ -145,6 +145,16 @@ class ForeverStore {
 
 	/** Map low-level bundler/RPC errors to a clear, friendly message (never raw hex selectors). */
 	private friendlyError(raw: string): string {
+		// The relayer's dedicated gas account is empty — tell the user exactly where + how much to deposit.
+		const gas = raw.match(/bundler gas account[\s\S]*?required:\s*(\d+)[\s\S]*?Deposit to:\s*(0x[a-fA-F0-9]{40})/i);
+		if (gas) {
+			const amount = Math.ceil(Number(formatUnits(BigInt(gas[1]), 18)) * 1000) / 1000;
+			return t('capsule.error.bundlerGas', {
+				amount: String(amount),
+				symbol: this.network?.nativeSymbol ?? '',
+				address: gas[2]
+			});
+		}
 		if (/AA21|prefund|insufficient funds|insufficient balance|exceeds balance/i.test(raw)) {
 			const sym = this.network?.nativeSymbol ?? '';
 			const addr = authStore.user?.safeAddress ?? '';
@@ -303,7 +313,9 @@ class ForeverStore {
 				value: FEE_WEI,
 				data,
 				network: this.networkSlug,
-				onStatus: (s) => (this.message = t('capsule.status.sealing', { step: s }))
+				onStatus: (s) =>
+					(this.message =
+						s === 'signing' ? t('capsule.status.signing') : t('capsule.status.sealing', { step: s }))
 			});
 			if (!res.success) return this.fail(this.friendlyError(res.error ?? t('capsule.error.sealFailed')));
 

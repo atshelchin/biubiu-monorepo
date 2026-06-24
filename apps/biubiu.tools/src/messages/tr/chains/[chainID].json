@@ -26,5 +26,12 @@
   "chains.defi": "DeFi bilgisi",
   "chains.defi.stablecoins": "Stablecoin'ler",
   "chains.defi.wrappedNative": "Sarmalı yerel token",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "Cüzdana ekle",
+  "chains.addToWallet.added": "Eklendi",
+  "chains.addToWallet.noWallet": "Cüzdan bulunamadı",
+  "chains.addToWallet.failed": "Eklenemedi",
+  "chains.rpc.fastest": "En hızlı",
+  "chains.rpc.unreachable": "Erişilemiyor",
+  "chains.addToWallet.dismiss": "Kapat"
 }

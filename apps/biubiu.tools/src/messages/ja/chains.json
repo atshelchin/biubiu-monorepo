@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} 件のチェーン",
   "chainsList.viewDetails": "詳細を見る",
   "chains.search.placeholder": "名前、シンボル、またはチェーン ID でチェーンを検索…",
-  "chains.search.noResults": "チェーンが見つかりません"
+  "chains.search.noResults": "チェーンが見つかりません",
+  "chainsList.loadMore": "もっと見る",
+  "chainsList.showing": "{total} 件中 {shown} 件を表示"
 }

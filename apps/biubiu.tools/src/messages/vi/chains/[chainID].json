@@ -26,5 +26,12 @@
   "chains.defi": "Thông tin DeFi",
   "chains.defi.stablecoins": "Stablecoin",
   "chains.defi.wrappedNative": "Native token được bọc",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "Thêm vào ví",
+  "chains.addToWallet.added": "Đã thêm",
+  "chains.addToWallet.noWallet": "Không tìm thấy ví",
+  "chains.addToWallet.failed": "Không thể thêm",
+  "chains.rpc.fastest": "Nhanh nhất",
+  "chains.rpc.unreachable": "Không thể kết nối",
+  "chains.addToWallet.dismiss": "Đóng"
 }

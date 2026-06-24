@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} zincir",
   "chainsList.viewDetails": "Ayrıntıları gör",
   "chains.search.placeholder": "Zincirleri ada, sembole veya zincir ID'sine göre arayın…",
-  "chains.search.noResults": "Zincir bulunamadı"
+  "chains.search.noResults": "Zincir bulunamadı",
+  "chainsList.loadMore": "Daha fazla yükle",
+  "chainsList.showing": "{total} öğeden {shown} tanesi"
 }

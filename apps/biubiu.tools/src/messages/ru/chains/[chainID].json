@@ -26,5 +26,12 @@
   "chains.defi": "Информация о DeFi",
   "chains.defi.stablecoins": "Стейблкоины",
   "chains.defi.wrappedNative": "Обёрнутый нативный токен",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "Добавить в кошелёк",
+  "chains.addToWallet.added": "Добавлено",
+  "chains.addToWallet.noWallet": "Кошелёк не найден",
+  "chains.addToWallet.failed": "Не удалось добавить",
+  "chains.rpc.fastest": "Самый быстрый",
+  "chains.rpc.unreachable": "Недоступен",
+  "chains.addToWallet.dismiss": "Закрыть"
 }

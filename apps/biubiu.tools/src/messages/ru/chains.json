@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} сетей",
   "chainsList.viewDetails": "Подробнее",
   "chains.search.placeholder": "Поиск сетей по названию, символу или Chain ID…",
-  "chains.search.noResults": "Сети не найдены"
+  "chains.search.noResults": "Сети не найдены",
+  "chainsList.loadMore": "Показать ещё",
+  "chainsList.showing": "Показано {shown} из {total}"
 }

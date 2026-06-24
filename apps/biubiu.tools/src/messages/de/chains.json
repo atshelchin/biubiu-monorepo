@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} Chains",
   "chainsList.viewDetails": "Details ansehen",
   "chains.search.placeholder": "Chains nach Name, Symbol oder Chain-ID suchen…",
-  "chains.search.noResults": "Keine Chains gefunden"
+  "chains.search.noResults": "Keine Chains gefunden",
+  "chainsList.loadMore": "Mehr laden",
+  "chainsList.showing": "{shown} von {total} angezeigt"
 }

@@ -26,5 +26,12 @@
   "chains.defi": "DeFi 信息",
   "chains.defi.stablecoins": "稳定币",
   "chains.defi.wrappedNative": "封装原生代币",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "添加到钱包",
+  "chains.addToWallet.added": "已添加",
+  "chains.addToWallet.noWallet": "未找到钱包",
+  "chains.addToWallet.failed": "添加失败",
+  "chains.rpc.fastest": "最快",
+  "chains.rpc.unreachable": "无法连接",
+  "chains.addToWallet.dismiss": "关闭"
 }

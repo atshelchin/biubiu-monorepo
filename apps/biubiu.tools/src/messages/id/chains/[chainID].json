@@ -26,5 +26,12 @@
   "chains.defi": "Info DeFi",
   "chains.defi.stablecoins": "Stablecoin",
   "chains.defi.wrappedNative": "Token Native Terbungkus",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "Tambahkan ke dompet",
+  "chains.addToWallet.added": "Ditambahkan",
+  "chains.addToWallet.noWallet": "Dompet tidak ditemukan",
+  "chains.addToWallet.failed": "Gagal menambahkan",
+  "chains.rpc.fastest": "Tercepat",
+  "chains.rpc.unreachable": "Tidak terjangkau",
+  "chains.addToWallet.dismiss": "Tutup"
 }

@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} chain",
   "chainsList.viewDetails": "Lihat Detail",
   "chains.search.placeholder": "Cari chain berdasarkan nama, simbol, atau chain ID…",
-  "chains.search.noResults": "Tidak ada chain ditemukan"
+  "chains.search.noResults": "Tidak ada chain ditemukan",
+  "chainsList.loadMore": "Muat lebih banyak",
+  "chainsList.showing": "Menampilkan {shown} dari {total}"
 }

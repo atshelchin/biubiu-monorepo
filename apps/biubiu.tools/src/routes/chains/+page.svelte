@@ -6,30 +6,28 @@
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import ChainSearch from '$lib/widgets/ChainSearch.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
-	import { browser } from '$app/environment';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { loadAllChains, getChainLogoUrl, DEFAULT_CHAIN_LOGO, type ChainListItem } from '$lib/chains';
 
-	const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
-
-	interface ChainItem {
-		chainId: number;
-		name: string;
-		shortName: string;
-		nativeCurrencySymbol: string;
-		hasLogo?: boolean;
-	}
-
-	// Popular chain IDs to feature
+	// Popular chain IDs to feature, in display order.
 	const POPULAR_CHAIN_IDS = [1, 56, 137, 42161, 10, 43114, 8453, 324, 250, 1101, 59144, 534352];
+	const PAGE_SIZE = 60;
 
-	let allChains = $state<ChainItem[]>([]);
+	const popularSkeletons = [...Array(POPULAR_CHAIN_IDS.length).keys()];
+	const rowSkeletons = [...Array(24).keys()];
+
+	let allChains = $state<ChainListItem[]>([]);
 	let isLoading = $state(true);
-	let logoErrors = $state<Set<number>>(new Set());
+	const logoErrors = new SvelteSet<number>();
+	let visibleCount = $state(PAGE_SIZE);
 
 	const popularChains = $derived(
-		POPULAR_CHAIN_IDS
-			.map((id) => allChains.find((c) => c.chainId === id))
-			.filter((c): c is ChainItem => c !== undefined)
+		POPULAR_CHAIN_IDS.map((id) => allChains.find((c) => c.chainId === id)).filter(
+			(c): c is ChainListItem => c !== undefined
+		)
 	);
+	const visibleChains = $derived(allChains.slice(0, visibleCount));
+	const hasMore = $derived(visibleCount < allChains.length);
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -40,37 +38,35 @@
 	);
 
 	$effect(() => {
-		if (browser) {
-			loadChains();
-		}
+		isLoading = true;
+		loadAllChains()
+			.then((chains) => (allChains = chains))
+			.finally(() => (isLoading = false));
 	});
 
-	async function loadChains() {
-		try {
-			isLoading = true;
-			const response = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-chains.json`);
-			const json = await response.json();
-			allChains = json.data || [];
-		} catch {
-			// silent fail
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	function getLogoUrl(chainId: number): string {
-		return `${ETHEREUM_DATA_BASE_URL}/chainlogos/eip155-${chainId}.png`;
+	function logoSrc(chainId: number): string {
+		return logoErrors.has(chainId) ? DEFAULT_CHAIN_LOGO : getChainLogoUrl(chainId);
 	}
 
 	function handleLogoError(chainId: number) {
-		logoErrors = new Set(logoErrors).add(chainId);
+		logoErrors.add(chainId);
 	}
 
-	const defaultLogoUrl =
-		'data:image/svg+xml,' +
-		encodeURIComponent(
-			`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#2d3748"/><path d="M16 6L22 16L16 22L10 16L16 6Z" fill="#a0aec0"/><path d="M16 24L22 18L16 22L10 18L16 24Z" fill="#718096"/></svg>`
+	function loadMore() {
+		visibleCount = Math.min(visibleCount + PAGE_SIZE, allChains.length);
+	}
+
+	// Auto-load the next page when the sentinel scrolls into view.
+	function infiniteScroll(node: HTMLElement) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) loadMore();
+			},
+			{ rootMargin: '600px' }
 		);
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
 </script>
 
 <SEO {...seoProps} />
@@ -78,7 +74,6 @@
 <PageHeader />
 
 <main class="page">
-	<!-- Header -->
 	<section class="page-header" use:fadeInUp={{ delay: 0 }}>
 		<h1 class="page-title">{t('chainsList.title')}</h1>
 		<p class="page-description">{t('chainsList.description')}</p>
@@ -90,17 +85,24 @@
 	</div>
 
 	<!-- Popular Chains -->
-	{#if popularChains.length > 0}
-		<section class="popular-section" use:fadeInUp={{ delay: 50 }}>
-			<h2 class="section-title">{t('chainsList.popularChains')}</h2>
-			<div class="chains-grid">
-				{#each popularChains as chain}
-					<a
-						href={localizeHref(`/chains/${chain.chainId}`)}
-						class="chain-card glass-card"
-					>
+	<section class="popular-section" use:fadeInUp={{ delay: 50 }}>
+		<h2 class="section-title">{t('chainsList.popularChains')}</h2>
+		<div class="chains-grid">
+			{#if isLoading}
+				{#each popularSkeletons as i (i)}
+					<div class="chain-card skeleton-card">
+						<div class="skeleton skeleton-logo"></div>
+						<div class="skeleton-lines">
+							<div class="skeleton skeleton-line lg"></div>
+							<div class="skeleton skeleton-line sm"></div>
+						</div>
+					</div>
+				{/each}
+			{:else}
+				{#each popularChains as chain (chain.chainId)}
+					<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-card">
 						<img
-							src={logoErrors.has(chain.chainId) ? defaultLogoUrl : getLogoUrl(chain.chainId)}
+							src={logoSrc(chain.chainId)}
 							alt={chain.name}
 							class="chain-logo"
 							onerror={() => handleLogoError(chain.chainId)}
@@ -112,34 +114,37 @@
 						<span class="chain-id">#{chain.chainId}</span>
 					</a>
 				{/each}
-			</div>
-		</section>
-	{/if}
+			{/if}
+		</div>
+	</section>
 
 	<!-- All Chains -->
 	<section class="all-section" use:fadeInUp={{ delay: 100 }}>
 		<div class="section-header-row">
 			<h2 class="section-title">{t('chainsList.allChains')}</h2>
 			{#if !isLoading}
-				<span class="chain-count">{t('chainsList.totalChains', { count: allChains.length.toString() })}</span>
+				<span class="chain-count"
+					>{t('chainsList.totalChains', { count: allChains.length.toString() })}</span
+				>
 			{/if}
 		</div>
 
 		{#if isLoading}
-			<div class="loading-state">
-				<div class="loading-spinner"></div>
-				<span>{t('common.loading')}</span>
+			<div class="all-chains-grid">
+				{#each rowSkeletons as i (i)}
+					<div class="chain-row skeleton-row">
+						<div class="skeleton skeleton-logo sm"></div>
+						<div class="skeleton skeleton-line"></div>
+					</div>
+				{/each}
 			</div>
 		{:else}
 			<div class="all-chains-grid">
-				{#each allChains as chain}
-					<a
-						href={localizeHref(`/chains/${chain.chainId}`)}
-						class="chain-row glass-card"
-					>
+				{#each visibleChains as chain (chain.chainId)}
+					<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-row">
 						<img
-							src={logoErrors.has(chain.chainId) ? defaultLogoUrl : getLogoUrl(chain.chainId)}
-							alt={chain.name}
+							src={logoSrc(chain.chainId)}
+							alt=""
 							class="chain-row-logo"
 							loading="lazy"
 							onerror={() => handleLogoError(chain.chainId)}
@@ -150,6 +155,20 @@
 					</a>
 				{/each}
 			</div>
+
+			{#if hasMore}
+				<div class="load-more" use:infiniteScroll>
+					<span class="showing-count"
+						>{t('chainsList.showing', {
+							shown: visibleChains.length.toString(),
+							total: allChains.length.toString()
+						})}</span
+					>
+					<button type="button" class="load-more-btn" onclick={loadMore}>
+						{t('chainsList.loadMore')}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</section>
 </main>
@@ -167,21 +186,24 @@
 	/* Header */
 	.page-header {
 		text-align: center;
-		margin-bottom: var(--space-10);
+		margin-bottom: var(--space-8);
 	}
 
 	.page-title {
-		font-size: var(--text-3xl);
+		font-size: var(--text-4xl);
 		font-weight: var(--weight-bold);
+		letter-spacing: -0.025em;
 		color: var(--fg-base);
-		margin: 0 0 var(--space-2);
-		line-height: 1.2;
+		margin: 0 0 var(--space-3);
+		line-height: 1.1;
 	}
 
 	.page-description {
-		font-size: var(--text-base);
+		font-size: var(--text-lg);
 		color: var(--fg-muted);
-		margin: 0;
+		max-width: 540px;
+		margin: 0 auto;
+		line-height: var(--leading-snug);
 	}
 
 	.search-wrapper {
@@ -189,7 +211,7 @@
 		justify-content: center;
 		position: relative;
 		z-index: 200;
-		margin-bottom: var(--space-10);
+		margin-bottom: var(--space-12);
 	}
 
 	/* Section */
@@ -202,7 +224,7 @@
 
 	.section-header-row {
 		display: flex;
-		align-items: center;
+		align-items: baseline;
 		justify-content: space-between;
 		margin-bottom: var(--space-4);
 	}
@@ -210,11 +232,12 @@
 	.chain-count {
 		font-size: var(--text-sm);
 		color: var(--fg-subtle);
+		font-variant-numeric: tabular-nums;
 	}
 
-	/* Popular Chains Grid */
+	/* Popular Chains */
 	.popular-section {
-		margin-bottom: var(--space-10);
+		margin-bottom: var(--space-12);
 	}
 
 	.popular-section .section-title {
@@ -232,22 +255,27 @@
 		align-items: center;
 		gap: var(--space-3);
 		padding: var(--space-4);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-base);
 		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
 		text-decoration: none;
-		transition: all var(--motion-fast) var(--easing);
+		transition:
+			transform var(--motion-fast) var(--easing),
+			border-color var(--motion-fast) var(--easing),
+			box-shadow var(--motion-fast) var(--easing);
 	}
 
 	.chain-card:hover {
 		transform: translateY(-2px);
-		background: rgba(255, 255, 255, 0.08);
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+		border-color: var(--border-strong);
+		box-shadow: var(--shadow-md);
 	}
 
 	.chain-logo {
-		width: 36px;
-		height: 36px;
+		width: 40px;
+		height: 40px;
 		border-radius: var(--radius-md);
-		background: var(--bg-raised);
 		object-fit: contain;
 		flex-shrink: 0;
 	}
@@ -262,7 +290,7 @@
 
 	.chain-name {
 		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
+		font-weight: var(--weight-semibold);
 		color: var(--fg-base);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -283,7 +311,7 @@
 
 	/* All Chains */
 	.all-section {
-		margin-bottom: var(--space-8);
+		margin-bottom: var(--space-10);
 	}
 
 	.all-chains-grid {
@@ -297,26 +325,34 @@
 		align-items: center;
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-sm);
 		text-decoration: none;
-		transition: background var(--motion-fast) var(--easing);
+		transition:
+			transform var(--motion-fast) var(--easing),
+			border-color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
 	}
 
 	.chain-row:hover {
-		background: rgba(255, 255, 255, 0.08);
+		transform: translateY(-1px);
+		border-color: var(--border-strong);
+		background: var(--bg-raised);
 	}
 
 	.chain-row-logo {
 		width: 24px;
 		height: 24px;
 		border-radius: var(--radius-sm);
-		background: var(--bg-raised);
 		object-fit: contain;
 		flex-shrink: 0;
 	}
 
 	.chain-row-name {
 		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
 		color: var(--fg-base);
 		flex: 1;
 		min-width: 0;
@@ -336,39 +372,108 @@
 		color: var(--fg-subtle);
 		font-family: var(--font-mono, ui-monospace, monospace);
 		flex-shrink: 0;
+		font-variant-numeric: tabular-nums;
 	}
 
-	/* Loading */
-	.loading-state {
+	/* Load more */
+	.load-more {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
 		gap: var(--space-3);
-		padding: var(--space-12);
-		color: var(--fg-muted);
+		padding: var(--space-8) 0 var(--space-2);
+	}
+
+	.showing-count {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.load-more-btn {
+		padding: var(--space-2) var(--space-6);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-full);
+		color: var(--fg-base);
 		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		box-shadow: var(--shadow-sm);
+		transition:
+			border-color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
 	}
 
-	.loading-spinner {
-		width: 20px;
-		height: 20px;
-		border: 2px solid var(--border-subtle);
-		border-top-color: var(--accent);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
+	.load-more-btn:hover {
+		border-color: var(--border-strong);
+		background: var(--bg-raised);
 	}
 
-	@keyframes spin {
+	/* Skeletons */
+	.skeleton-card,
+	.skeleton-row {
+		pointer-events: none;
+	}
+
+	.skeleton-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		flex: 1;
+	}
+
+	.skeleton {
+		background: var(--bg-sunken);
+		border-radius: var(--radius-sm);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.skeleton::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		transform: translateX(-100%);
+		background: linear-gradient(
+			90deg,
+			transparent,
+			color-mix(in srgb, var(--fg-faint) 18%, transparent),
+			transparent
+		);
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
+
+	.skeleton-logo {
+		width: 40px;
+		height: 40px;
+		border-radius: var(--radius-md);
+		flex-shrink: 0;
+	}
+
+	.skeleton-logo.sm {
+		width: 24px;
+		height: 24px;
+	}
+
+	.skeleton-line {
+		height: 12px;
+		width: 100%;
+	}
+
+	.skeleton-line.lg {
+		width: 60%;
+		height: 13px;
+	}
+
+	.skeleton-line.sm {
+		width: 40%;
+		height: 11px;
+	}
+
+	@keyframes shimmer {
 		to {
-			transform: rotate(360deg);
+			transform: translateX(100%);
 		}
-	}
-
-	/* Glass Card */
-	.glass-card {
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
 
 	/* Responsive */
@@ -378,15 +483,27 @@
 		}
 
 		.page-title {
-			font-size: var(--text-2xl);
+			font-size: var(--text-3xl);
 		}
 
-		.chains-grid {
-			grid-template-columns: 1fr;
+		.page-description {
+			font-size: var(--text-base);
 		}
 
+		.chains-grid,
 		.all-chains-grid {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.chain-card,
+		.chain-row,
+		.load-more-btn {
+			transition: none;
+		}
+		.skeleton::after {
+			animation: none;
 		}
 	}
 </style>

@@ -26,5 +26,12 @@
   "chains.defi": "DeFi 정보",
   "chains.defi.stablecoins": "스테이블코인",
   "chains.defi.wrappedNative": "래핑된 네이티브 토큰",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "지갑에 추가",
+  "chains.addToWallet.added": "추가됨",
+  "chains.addToWallet.noWallet": "지갑을 찾을 수 없음",
+  "chains.addToWallet.failed": "추가하지 못했습니다",
+  "chains.rpc.fastest": "가장 빠름",
+  "chains.rpc.unreachable": "연결할 수 없음",
+  "chains.addToWallet.dismiss": "닫기"
 }

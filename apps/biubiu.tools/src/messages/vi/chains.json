@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} chuỗi",
   "chainsList.viewDetails": "Xem chi tiết",
   "chains.search.placeholder": "Tìm chuỗi theo tên, ký hiệu hoặc Chain ID…",
-  "chains.search.noResults": "Không tìm thấy chuỗi nào"
+  "chains.search.noResults": "Không tìm thấy chuỗi nào",
+  "chainsList.loadMore": "Tải thêm",
+  "chainsList.showing": "Hiển thị {shown}/{total}"
 }

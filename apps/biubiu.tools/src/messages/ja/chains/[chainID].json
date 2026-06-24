@@ -26,5 +26,12 @@
   "chains.defi": "DeFi 情報",
   "chains.defi.stablecoins": "ステーブルコイン",
   "chains.defi.wrappedNative": "ラップドネイティブトークン",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "ウォレットに追加",
+  "chains.addToWallet.added": "追加しました",
+  "chains.addToWallet.noWallet": "ウォレットが見つかりません",
+  "chains.addToWallet.failed": "追加できませんでした",
+  "chains.rpc.fastest": "最速",
+  "chains.rpc.unreachable": "接続できません",
+  "chains.addToWallet.dismiss": "閉じる"
 }

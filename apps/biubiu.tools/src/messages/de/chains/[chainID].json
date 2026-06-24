@@ -26,5 +26,12 @@
   "chains.defi": "DeFi-Info",
   "chains.defi.stablecoins": "Stablecoins",
   "chains.defi.wrappedNative": "Wrapped Native Token",
-  "chains.defi.dex": "DEX"
+  "chains.defi.dex": "DEX",
+  "chains.addToWallet": "Zur Wallet hinzufügen",
+  "chains.addToWallet.added": "Hinzugefügt",
+  "chains.addToWallet.noWallet": "Keine Wallet gefunden",
+  "chains.addToWallet.failed": "Hinzufügen fehlgeschlagen",
+  "chains.rpc.fastest": "Schnellste",
+  "chains.rpc.unreachable": "Nicht erreichbar",
+  "chains.addToWallet.dismiss": "Schließen"
 }

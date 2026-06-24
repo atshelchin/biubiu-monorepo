@@ -6,5 +6,7 @@
   "chainsList.totalChains": "{count} 條鏈",
   "chainsList.viewDetails": "查看詳情",
   "chains.search.placeholder": "依名稱、符號或鏈 ID 搜尋…",
-  "chains.search.noResults": "找不到鏈"
+  "chains.search.noResults": "找不到鏈",
+  "chainsList.loadMore": "載入更多",
+  "chainsList.showing": "顯示 {shown} / {total}"
 }

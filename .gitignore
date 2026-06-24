@@ -9,3 +9,5 @@ biubiu.env
 *.db
 *.db-shm
 *.db-wal
+apps/chat.biubiu.tools/.wrangler/state/v3/cache/miniflare-CacheObject/metadata.sqlite-shm
+apps/chat.biubiu.tools/.wrangler/state/v3/do/chat-biubiu-tools-RoomDO/metadata.sqlite-shm

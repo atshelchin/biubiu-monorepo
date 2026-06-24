@@ -87,7 +87,7 @@
 						{store.serverStatus === 'connecting' ? t('deploy.server.connecting') : t('deploy.server.reconnect')}
 					</button>
 				</div>
-				<code class="cmd">deno run jsr:@command/foundry-contract-deployer-server</code>
+				<code class="cmd">deno run -A jsr:@command/foundry-contract-deployer-server</code>
 			{/if}
 		</div>
 	</div>

@@ -1,14 +1,39 @@
 <script lang="ts">
 	import ForeverOnboard from '$lib/pda-apps/forever/ForeverOnboard.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
+	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
+	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { foreverStore, FEE_WEI } from '$lib/pda-apps/forever/store.svelte.js';
-	import { formatDate, localizeHref } from '$lib/i18n';
+	import { t, locale, formatDate, localizeHref } from '$lib/i18n';
+	import { getBaseSEO } from '$lib/seo';
+	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import { formatUnits } from 'viem';
-	import { Lock, ExternalLink, AlertTriangle } from '@lucide/svelte';
+	import { Lock, ExternalLink, AlertTriangle, Settings } from '@lucide/svelte';
 
 	const store = foreverStore;
 	let showProfile = $state(false);
+	let showSettings = $state(false);
+
+	// One focused state at a time: compose ('write') OR look back ('past') — never both.
+	let view = $state<'write' | 'past'>('write');
+	function enterPast() {
+		view = 'past';
+		if (!store.entries.length && !store.loadingEntries) store.loadEntries();
+	}
+
+	// Chain is chosen at the gate before entering, then shown read-only inside.
+	const chainLabel = $derived(
+		store.network ? store.network.name + (store.network.isTestnet ? t('capsule.chain.testnet') : '') : ''
+	);
+
+	const seoProps = $derived(
+		getBaseSEO({
+			title: t('capsule.meta.title'),
+			description: t('capsule.meta.description'),
+			currentLocale: locale.value
+		})
+	);
 
 	const busy = $derived(
 		store.status === 'setup' || store.status === 'unlocking' || store.status === 'sealing'
@@ -16,13 +41,13 @@
 
 	const feeText = $derived(`${formatUnits(FEE_WEI, 18)} ${store.network?.nativeSymbol ?? ''}`);
 
+	// One writing surface; the placeholder and seal label only shift once you opt into a time-lock.
 	const placeholder = $derived(
-		store.mode === 'capsule'
-			? '写给未来的自己……到那一天，才会重见。'
-			: '写下此刻。只有你，能再次读到它。'
+		store.locked ? t('capsule.write.placeholderLocked') : t('capsule.write.placeholder')
 	);
-
-	const sealLabel = $derived(store.mode === 'capsule' ? '封存 · 寄往未来' : '封缄 · 永久写下');
+	const sealLabel = $derived(
+		store.locked ? t('capsule.seal.buttonLocked') : t('capsule.seal.button')
+	);
 
 	// Live tick for capsule countdowns (only while locked notes are shown).
 	let now = $state(Math.floor(Date.now() / 1000));
@@ -39,86 +64,127 @@
 		const m = Math.floor((s % 3600) / 60);
 		const sec = s % 60;
 		const pad = (n: number) => String(n).padStart(2, '0');
-		if (d > 0) return `还有 ${d} 天 ${h} 小时`;
-		return `还有 ${pad(h)}:${pad(m)}:${pad(sec)}`;
+		if (d > 0) return t('capsule.countdown.days', { days: d, hours: h });
+		return t('capsule.countdown.hms', { time: `${pad(h)}:${pad(m)}:${pad(sec)}` });
 	}
 
 	const longDate = (sec: number) => formatDate(new Date(sec * 1000), { dateStyle: 'long' });
 </script>
 
-<svelte:head><title>致未来 · Forever</title></svelte:head>
+<SEO {...seoProps} />
 
 <div class="forever">
 	<div class="topbar">
-		<a class="home" href={localizeHref('/')}>← biubiu.tools</a>
-		{#if authStore.isLoggedIn}
-			<button class="account" onclick={() => (showProfile = true)} aria-label="账户">
-				<span class="avatar">{(authStore.user?.name ?? '·').charAt(0).toUpperCase()}</span>
-				<span class="acct-name">{authStore.user?.name}</span>
+		<a class="home" href={localizeHref('/')}>← {t('capsule.home')}</a>
+		<div class="topbar-actions">
+			<button
+				class="icon-pill"
+				onclick={() => (showSettings = true)}
+				aria-label={t('capsule.settings.aria')}
+				title={t('capsule.settings.aria')}
+			>
+				<Settings size={16} />
 			</button>
-		{/if}
+			{#if authStore.isLoggedIn}
+				<button class="account" onclick={() => (showProfile = true)} aria-label={t('capsule.account.aria')}>
+					<span class="avatar">{(authStore.user?.name ?? '·').charAt(0).toUpperCase()}</span>
+					<span class="acct-name">{authStore.user?.name}</span>
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<header class="masthead">
-		<div class="seal-mark" aria-hidden="true"><Lock size={18} /></div>
-		<h1>致未来 · Forever</h1>
-		<div class="rule" aria-hidden="true"></div>
-		<p class="lead">写给未来的自己。加密上链，永不遗失，只有你能读。</p>
-		<p class="lead-en">A letter to your future self — sealed on-chain, readable only by you.</p>
-		<div class="chain-bar">
-			<span>落笔于</span>
-			<select bind:value={store.networkSlug} disabled={busy} aria-label="network">
-				{#each store.networks as n (n.slug)}
-					<option value={n.slug}>{n.name}{n.isTestnet ? '（测试网）' : ''}</option>
-				{/each}
-			</select>
+		<div class="seal-mark" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+				<rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-45 12 12)" />
+				<line x1="8.5" y1="8.5" x2="15.5" y2="15.5" />
+			</svg>
 		</div>
+		<h1>{t('capsule.brand')}</h1>
+		<div class="rule" aria-hidden="true"></div>
+		<p class="lead">{t('capsule.tagline')}</p>
+		{#if store.chainEntered}
+			<div class="chain-bar">
+				<span>{t('capsule.chain.on')}</span>
+				<strong class="chain-current">{chainLabel}</strong>
+				<button class="chain-switch" onclick={() => store.exitChain()} disabled={busy}>
+					{t('capsule.chain.switch')}
+				</button>
+			</div>
+		{/if}
 	</header>
 
+	{#if !store.chainEntered}
+		<!-- Region gate: choose a chain before entering; it stays fixed until you exit. -->
+		<section class="leaf gate">
+			<h2>{t('capsule.gate.title')}</h2>
+			<p class="gate-sub">{t('capsule.gate.subtitle')}</p>
+			<div class="gate-grid">
+				{#each store.networks as n (n.slug)}
+					<button class="gate-chain" class:testnet={n.isTestnet} onclick={() => store.enterChain(n.slug)}>
+						<span class="gate-name">{n.name}</span>
+						{#if n.isTestnet}<span class="gate-tag">{t('capsule.chain.testnet')}</span>{/if}
+					</button>
+				{/each}
+			</div>
+		</section>
+	{:else}
+
 	<ForeverOnboard>
+			<!-- One focus at a time: write the present, or look back. Never both. -->
+			<div class="view-switch" role="tablist" aria-label="view">
+				<button
+					role="tab"
+					aria-selected={view === 'write'}
+					class:on={view === 'write'}
+					onclick={() => (view = 'write')}>{t('capsule.view.write')}</button
+				>
+				<button
+					role="tab"
+					aria-selected={view === 'past'}
+					class:on={view === 'past'}
+					onclick={enterPast}>{t('capsule.archive.title')}</button
+				>
+			</div>
+
+		{#if view === 'write'}
 			<!-- The writing sheet -->
 			<section class="leaf sheet">
-				<div class="modes" role="tablist" aria-label="note type">
-					<button
-						role="tab"
-						aria-selected={store.mode === 'private'}
-						class:on={store.mode === 'private'}
-						onclick={() => (store.mode = 'private')}
-						disabled={busy}>写给现在 · 私密</button
-					>
-					<button
-						role="tab"
-						aria-selected={store.mode === 'capsule'}
-						class:on={store.mode === 'capsule'}
-						onclick={() => (store.mode = 'capsule')}
-						disabled={busy}>寄往未来 · 胶囊</button
-					>
-				</div>
-
-				{#if store.mode === 'capsule'}
-					<label class="capsule-line">
-						<span>封存至</span>
-						<input type="datetime-local" bind:value={store.unlockDate} disabled={busy} />
-						<span class="hint">在那一刻之前，连你也打不开。</span>
-					</label>
-				{/if}
-
 				<textarea
 					class="paper"
 					bind:value={store.text}
 					rows="6"
 					{placeholder}
 					disabled={busy}
-					aria-label="your note"
+					aria-label="your letter"
 				></textarea>
+
+				<!-- Optional time-lock — the only decision, made right before sealing. -->
+				<div class="lock-bar">
+					<label class="lock-switch">
+						<input type="checkbox" bind:checked={store.locked} disabled={busy} />
+						<span class="track" aria-hidden="true"></span>
+						<span>{t('capsule.lock.toggle')}</span>
+					</label>
+					{#if store.locked}
+						<label class="lock-detail">
+							<span>{t('capsule.lock.until')}</span>
+							<input type="datetime-local" bind:value={store.unlockDate} disabled={busy} />
+						</label>
+					{/if}
+				</div>
+				{#if store.locked}
+					<p class="lock-hint">{t('capsule.lock.hint')}</p>
+				{/if}
 
 				<footer class="sheet-foot">
 					<div class="meta">
-						<span>在 {store.network?.name} 上</span>
+						<span>{t('capsule.meta.network', { network: store.network?.name ?? '' })}</span>
 						<span class="dot">·</span>
-						<span class:over={store.overLimit}>{store.byteLength} 字节</span>
+						<span class:over={store.overLimit}>{t('capsule.meta.bytes', { count: store.byteLength })}</span>
 						<span class="dot">·</span>
-						<span>每条链每天一封</span>
+						<span>{t('capsule.meta.oneADay')}</span>
 					</div>
 
 					<div class="commit">
@@ -128,20 +194,42 @@
 							disabled={busy || !store.text.trim() || store.overLimit}
 						>
 							<Lock size={15} />
-							{store.status === 'sealing' ? '封缄中…' : sealLabel}
+							{store.status === 'sealing' ? t('capsule.seal.sealing') : sealLabel}
 						</button>
-						<span class="price">付 {feeText}</span>
+						<span class="price">{t('capsule.seal.fee', { fee: feeText })}</span>
 					</div>
 				</footer>
 			</section>
-
+		{:else}
 			<!-- Past letters -->
 			<section class="archive">
-				<div class="archive-head">
-					<h2>往昔</h2>
-					<button class="quiet sm" onclick={() => store.loadEntries()} disabled={store.loadingEntries || busy}>
-						{store.loadingEntries ? '取信中…' : store.entries.length ? '刷新' : '取回我的信'}
-					</button>
+				<div class="archive-tools">
+					<span class="archive-count">
+						{store.entriesTotal ? t('capsule.archive.count', { count: store.entriesTotal }) : ''}
+					</span>
+					<div class="archive-actions">
+						{#if store.entries.length}
+							<div class="sort-toggle" role="group" aria-label="sort">
+								<button
+									class:on={store.sortDir === 'desc'}
+									onclick={() => store.setSort('desc')}
+									disabled={store.loadingEntries}>{t('capsule.sort.newest')}</button
+								>
+								<button
+									class:on={store.sortDir === 'asc'}
+									onclick={() => store.setSort('asc')}
+									disabled={store.loadingEntries}>{t('capsule.sort.oldest')}</button
+								>
+							</div>
+						{/if}
+						<button class="quiet sm" onclick={() => store.loadEntries()} disabled={store.loadingEntries}>
+							{store.loadingEntries
+								? t('capsule.archive.loading')
+								: store.entries.length
+									? t('capsule.archive.refresh')
+									: t('capsule.archive.fetch')}
+						</button>
+					</div>
 				</div>
 
 				{#if store.entries.length}
@@ -153,14 +241,17 @@
 									<div class="sealed-body">
 										<span class="wax" aria-hidden="true"><Lock size={16} /></span>
 										<div>
-											<div class="sealed-title">尚未开启 · 寄往未来的信</div>
+											<div class="sealed-title">{t('capsule.letter.lockedTitle')}</div>
 											<div class="sealed-meta">
-												将于 {longDate(e.unlockAt)} 开启 — {countdown(e.unlockAt)}
+												{t('capsule.letter.lockedMeta', {
+													date: longDate(e.unlockAt),
+													countdown: countdown(e.unlockAt)
+												})}
 											</div>
 										</div>
 									</div>
 								{:else if e.failed}
-									<div class="bad"><AlertTriangle size={14} /> 无法解密这封信</div>
+									<div class="bad"><AlertTriangle size={14} /> {t('capsule.letter.failed')}</div>
 								{:else}
 									<p class="text">{e.text}</p>
 								{/if}
@@ -169,28 +260,38 @@
 					</ul>
 					{#if store.hasMore}
 						<button class="quiet sm more" onclick={() => store.loadMore()} disabled={store.loadingEntries}>
-							{store.loadingEntries ? '取信中…' : `读更早的（还有 ${store.entriesTotal - store.entries.length} 封）`}
+							{store.loadingEntries
+								? t('capsule.archive.loading')
+								: t('capsule.archive.more', { count: store.entriesTotal - store.entries.length })}
 						</button>
 					{/if}
 				{:else if !store.loadingEntries}
-					<p class="empty">这条链上还没有你的信。<br />写下第一封吧。</p>
+					<p class="empty">{t('capsule.archive.empty')}</p>
 				{/if}
 			</section>
+		{/if}
 	</ForeverOnboard>
+	{/if}
 
 	{#if store.message}
 		<div class="toast" class:err={store.status === 'error'} class:ok={store.status === 'done'} role="status">
 			<span>{store.message}</span>
 			{#if store.explorerTxUrl}
-				<a href={store.explorerTxUrl} target="_blank" rel="noreferrer">查看交易 <ExternalLink size={12} /></a>
+				<a href={store.explorerTxUrl} target="_blank" rel="noreferrer">{t('capsule.toast.viewTx')} <ExternalLink size={12} /></a>
 			{/if}
 			{#if store.status === 'error' || store.status === 'done'}
-				<button class="x" onclick={() => store.clearStatus()}>关闭</button>
+				<button class="x" onclick={() => store.clearStatus()}>{t('capsule.toast.close')}</button>
 			{/if}
 		</div>
 	{/if}
 
 	<ProfileModal open={showProfile} onClose={() => (showProfile = false)} variant="forever" />
+
+	<ResponsiveModal open={showSettings} onClose={() => (showSettings = false)} title={t('settings.title')}>
+		<div class="capsule-settings">
+			<SettingsPanel />
+		</div>
+	</ResponsiveModal>
 </div>
 
 <style>
@@ -227,6 +328,28 @@
 	}
 	.home:hover {
 		color: var(--seal);
+	}
+	.topbar-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.icon-pill {
+		display: inline-grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		border-radius: var(--radius-full);
+		background: transparent;
+		border: 1px solid var(--edge);
+		color: var(--ink-soft);
+		cursor: pointer;
+		transition: border-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+	}
+	.icon-pill:hover {
+		border-color: var(--seal);
+		color: var(--seal);
+		transform: translateY(-1px);
 	}
 	.account {
 		display: inline-flex;
@@ -300,12 +423,6 @@
 		color: var(--ink);
 		line-height: var(--leading-relaxed);
 	}
-	.lead-en {
-		margin-top: var(--space-1);
-		font-size: var(--text-sm);
-		font-style: italic;
-		color: var(--ink-soft);
-	}
 
 	/* ── Leaf cards (paper) ── */
 	.leaf {
@@ -321,71 +438,116 @@
 		color: var(--ink-soft);
 		letter-spacing: 0.02em;
 	}
-	.chain-bar select {
+	.chain-current {
 		font-family: var(--serif);
-		font-size: var(--text-sm);
-		background: transparent;
-		border: none;
-		border-bottom: 1px dashed var(--seal);
+		font-weight: 600;
 		color: var(--seal);
+		letter-spacing: 0.02em;
+	}
+	.chain-switch {
+		margin-left: var(--space-2);
+		font-family: var(--serif);
+		font-size: var(--text-xs);
+		color: var(--ink-soft);
+		background: none;
+		border: none;
 		cursor: pointer;
-		padding: 1px 4px;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		text-decoration-color: var(--edge);
+		transition: color 0.2s ease;
+	}
+	.chain-switch:hover:not(:disabled) {
+		color: var(--seal);
+	}
+	.chain-switch:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 
-	/* ── Writing sheet ── */
-	.sheet {
-		padding: var(--space-5) var(--space-6) var(--space-6);
+	/* ── Region gate (choose your chain before entering) ── */
+	.gate {
+		padding: var(--space-10) var(--space-8) var(--space-8);
+		text-align: center;
 	}
-	.modes {
+	.gate h2 {
+		font-family: var(--serif);
+		font-size: var(--text-2xl);
+		font-weight: 600;
+		color: var(--ink);
+		margin: 0 0 var(--space-2);
+	}
+	.gate-sub {
+		font-size: var(--text-sm);
+		color: var(--ink-soft);
+		line-height: var(--leading-relaxed);
+		max-width: 42ch;
+		margin: 0 auto var(--space-8);
+	}
+	.gate-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-3);
+	}
+	.gate-chain {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: var(--space-2);
+		font-family: var(--serif);
+		font-size: var(--text-md);
+		color: var(--ink);
+		background: color-mix(in srgb, var(--bg-base) 40%, transparent);
+		border: 1px solid var(--edge);
+		border-radius: var(--radius-lg);
+		padding: var(--space-4) var(--space-3);
+		cursor: pointer;
+		transition: border-color 0.16s ease, transform 0.12s ease, color 0.16s ease, background 0.16s ease;
+	}
+	.gate-chain:hover {
+		border-color: var(--seal);
+		color: var(--seal);
+		transform: translateY(-2px);
+		background: var(--seal-soft);
+	}
+	.gate-tag {
+		font-size: var(--text-xs);
+		color: var(--ink-soft);
+	}
+	.gate-chain.testnet {
+		grid-column: 1 / -1;
+	}
+
+	/* ── View switch (Now / The past — one focus at a time) ── */
+	.view-switch {
 		display: flex;
 		gap: var(--space-6);
 		justify-content: center;
-		border-bottom: 1px solid var(--edge);
-		margin-bottom: var(--space-5);
+		margin-bottom: var(--space-6);
 	}
-	.modes button {
+	.view-switch button {
 		background: none;
 		border: none;
 		font-family: var(--serif);
 		font-size: var(--text-md);
 		color: var(--ink-soft);
-		padding: 0 0 var(--space-3);
-		margin-bottom: -1px;
+		padding: 0 0 var(--space-2);
 		border-bottom: 2px solid transparent;
 		cursor: pointer;
-		transition: color 0.2s ease;
+		letter-spacing: 0.06em;
+		transition: color 0.2s ease, border-color 0.2s ease;
 	}
-	.modes button.on {
+	.view-switch button.on {
 		color: var(--seal);
 		border-bottom-color: var(--seal);
 	}
-	.modes button:disabled {
-		opacity: 0.5;
-		cursor: default;
+	.view-switch button:hover:not(.on) {
+		color: var(--ink);
 	}
 
-	.capsule-line {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		font-size: var(--text-md);
-		color: var(--ink);
-		margin-bottom: var(--space-4);
-	}
-	.capsule-line input {
-		font-family: var(--serif);
-		background: transparent;
-		border: none;
-		border-bottom: 1px dashed var(--seal);
-		color: var(--ink);
-		padding: 2px 4px;
-	}
-	.capsule-line .hint {
-		flex-basis: 100%;
-		font-size: var(--text-sm);
-		font-style: italic;
-		color: var(--ink-soft);
+	/* ── Writing sheet ── */
+	.sheet {
+		padding: var(--space-6);
 	}
 
 	.paper {
@@ -411,6 +573,88 @@
 		color: var(--ink-soft);
 		font-style: italic;
 		opacity: 0.7;
+	}
+
+	/* ── Optional time-lock control ── */
+	.lock-bar {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-3) var(--space-5);
+		margin-top: var(--space-4);
+	}
+	.lock-switch {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		cursor: pointer;
+		font-size: var(--text-sm);
+		color: var(--ink-soft);
+		user-select: none;
+	}
+	.lock-switch input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.lock-switch .track {
+		position: relative;
+		flex: none;
+		width: 34px;
+		height: 20px;
+		border-radius: var(--radius-full);
+		background: color-mix(in srgb, var(--ink-soft) 26%, transparent);
+		border: 1px solid var(--edge);
+		transition: background 0.2s ease, border-color 0.2s ease;
+	}
+	.lock-switch .track::after {
+		content: '';
+		position: absolute;
+		top: 1px;
+		left: 1px;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: #fff;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+		transition: transform 0.2s ease;
+	}
+	.lock-switch input:checked + .track {
+		background: var(--seal);
+		border-color: var(--seal);
+	}
+	.lock-switch input:checked + .track::after {
+		transform: translateX(14px);
+	}
+	.lock-switch input:focus-visible + .track {
+		outline: 2px solid var(--seal);
+		outline-offset: 2px;
+	}
+	.lock-switch:has(input:checked) {
+		color: var(--ink);
+	}
+	.lock-detail {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+		color: var(--ink);
+	}
+	.lock-detail input {
+		font-family: var(--serif);
+		background: transparent;
+		border: none;
+		border-bottom: 1px dashed var(--seal);
+		color: var(--ink);
+		padding: 2px 4px;
+	}
+	.lock-hint {
+		margin-top: var(--space-2);
+		font-size: var(--text-sm);
+		font-style: italic;
+		color: var(--ink-soft);
 	}
 
 	.sheet-foot {
@@ -497,22 +741,57 @@
 
 	/* ── Archive ── */
 	.archive {
-		margin-top: var(--space-12);
+		margin-top: var(--space-2);
 	}
-	.archive-head {
+	.archive-tools {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
-		margin-bottom: var(--space-5);
-		padding-bottom: var(--space-2);
+		gap: var(--space-3);
+		margin-bottom: var(--space-6);
+		padding-bottom: var(--space-3);
 		border-bottom: 1px solid var(--edge);
+		flex-wrap: wrap;
 	}
-	.archive-head h2 {
+	.archive-count {
 		font-family: var(--serif);
-		font-size: var(--text-xl);
-		font-weight: 600;
+		font-size: var(--text-sm);
+		color: var(--ink-soft);
+		letter-spacing: 0.03em;
+	}
+	.archive-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+	}
+	.sort-toggle {
+		display: inline-flex;
+		gap: var(--space-1);
+		padding: 2px;
+		border: 1px solid var(--edge);
+		border-radius: var(--radius-full);
+	}
+	.sort-toggle button {
+		font-family: var(--serif);
+		font-size: var(--text-xs);
+		color: var(--ink-soft);
+		background: none;
+		border: none;
+		border-radius: var(--radius-full);
+		padding: 3px 12px;
+		cursor: pointer;
+		transition: background 0.16s ease, color 0.16s ease;
+	}
+	.sort-toggle button.on {
+		background: var(--seal-soft);
+		color: var(--seal);
+	}
+	.sort-toggle button:hover:not(.on):not(:disabled) {
 		color: var(--ink);
-		letter-spacing: 0.04em;
+	}
+	.sort-toggle button:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 	.letters {
 		list-style: none;
@@ -585,6 +864,7 @@
 		text-align: center;
 		color: var(--ink-soft);
 		line-height: var(--leading-relaxed);
+		white-space: pre-line;
 		padding: var(--space-10) 0;
 	}
 
@@ -625,6 +905,13 @@
 		font-family: var(--serif);
 	}
 
+	/* ── Settings (reuse the shared panel, re-tinted to the seal palette) ── */
+	.capsule-settings {
+		--accent: var(--seal);
+		--accent-hover: #a9781f;
+		--accent-muted: var(--seal-soft);
+	}
+
 	@media (max-width: 560px) {
 		.sheet-foot {
 			flex-direction: column;
@@ -639,7 +926,10 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.seal-btn {
+		.seal-btn,
+		.icon-pill,
+		.lock-switch .track,
+		.lock-switch .track::after {
 			transition: none;
 		}
 	}

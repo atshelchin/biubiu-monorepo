@@ -16,13 +16,27 @@
  *
  * The KEK is never extractable; an attacker reading the chain sees only ciphertext.
  */
-import { aesOpen, aesSeal, concat, fromUtf8, hkdfAesKey, importAesKey, randomBytes, utf8 } from './core.js';
+import { aesOpen, aesSeal, concat, fromUtf8, hkdfAesKey, hkdfBytes, importAesKey, randomBytes, utf8 } from './core.js';
 
 const KEK_SALT = utf8('forever.biubiu.tools/kek/v1'); // fixed application salt
 const KEK_INFO = 'forever-kek-v1';
+const CONTENT_KEY_SALT = utf8('forever.biubiu.tools/content-key/v1');
+const CONTENT_KEY_INFO = 'forever-content-key-v1';
 const ENVELOPE_VERSION = 1;
 const CONTENT_VERSION = 1;
 const DEK_LEN = 32;
+
+/**
+ * Derive the deterministic 32-byte content key directly from a 32-byte WebAuthn PRF output.
+ *
+ * PRF is a pseudo-random *function*: the same passkey + same salt always returns the same bytes,
+ * so this key is identical on every browser and device the passkey is available on — a letter
+ * sealed anywhere decrypts everywhere. No random DEK, no envelope, nothing published on-chain,
+ * and no second passkey to drift out of sync. This is the whole encryption root.
+ */
+export function deriveContentKey(prfOutput: Uint8Array): Promise<Uint8Array> {
+	return hkdfBytes(prfOutput, CONTENT_KEY_SALT, CONTENT_KEY_INFO, DEK_LEN);
+}
 
 /** Derive the key-encryption key (KEK) from a 32-byte WebAuthn PRF output. */
 export function deriveKEK(prfOutput: Uint8Array): Promise<CryptoKey> {

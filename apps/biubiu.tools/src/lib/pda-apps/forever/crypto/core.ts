@@ -45,6 +45,22 @@ export function fromHex(h: string): Uint8Array {
 	return a;
 }
 
+/** Derive `length` deterministic raw bytes from high-entropy input via HKDF-SHA256. */
+export async function hkdfBytes(
+	ikm: Uint8Array,
+	salt: Uint8Array,
+	info: string,
+	length = 32
+): Promise<Uint8Array> {
+	const base = await crypto.subtle.importKey('raw', ikm as BufferSource, 'HKDF', false, ['deriveBits']);
+	const bits = await crypto.subtle.deriveBits(
+		{ name: 'HKDF', hash: 'SHA-256', salt: salt as BufferSource, info: utf8(info) as BufferSource },
+		base,
+		length * 8
+	);
+	return new Uint8Array(bits);
+}
+
 /** Derive a non-extractable AES-GCM-256 key from high-entropy input via HKDF-SHA256. */
 export async function hkdfAesKey(ikm: Uint8Array, salt: Uint8Array, info: string): Promise<CryptoKey> {
 	const base = await crypto.subtle.importKey('raw', ikm as BufferSource, 'HKDF', false, ['deriveKey']);

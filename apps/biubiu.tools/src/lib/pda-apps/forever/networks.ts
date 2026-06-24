@@ -28,10 +28,13 @@ const META: Record<string, { name: string; order: number; isTestnet?: boolean }>
 	'avax-mainnet': { name: 'Avalanche', order: 5 },
 	'gnosis-mainnet': { name: 'Gnosis', order: 6 },
 	'eth-mainnet': { name: 'Ethereum', order: 7 },
-	'polygon-amoy': { name: 'Polygon Amoy (testnet)', order: 8, isTestnet: true }
+	'polygon-amoy': { name: 'Polygon Amoy', order: 8, isTestnet: true }
 };
 
+// Forever 只在 META 显式列出的链上可用（笔记合约 + 读路径已验证）。CHAIN_CONFIG
+// 现含 12 链（钱包支持），但 forever 不自动吸收新增链——只取 META 已知的子集。
 export const WRITE_NETWORKS: ForeverNetwork[] = Object.entries(CHAIN_CONFIG)
+	.filter(([slug]) => slug in META)
 	.map(([slug, cfg]) => ({
 		slug,
 		chainId: Number(cfg.chainId),

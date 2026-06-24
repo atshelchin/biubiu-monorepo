@@ -5,7 +5,6 @@
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import ChainLogos from '$lib/ui/ChainLogos.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
-	import ResponsiveDrawer from '$lib/ui/ResponsiveDrawer.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import logo from '$lib/assets/logo.svg';
@@ -116,14 +115,6 @@
 	// Settings modal state
 	let showSettings = $state(false);
 
-	// Mobile drawer state
-	let showMobileDrawer = $state(false);
-
-	function openSettings() {
-		showMobileDrawer = false;
-		showSettings = true;
-	}
-
 	const seoProps = $derived(getBaseSEO({
 		title: t('meta.title'),
 		description: t('meta.description'),
@@ -153,9 +144,9 @@
 
 			<!-- Header Actions -->
 			<div class="header-actions">
-				<!-- Settings Button (Desktop) -->
+				<!-- Settings Button -->
 				<button
-					class="settings-btn desktop-only"
+					class="settings-btn"
 					onclick={() => (showSettings = true)}
 					aria-label={t('settings.title')}
 					title={t('settings.title')}
@@ -163,19 +154,6 @@
 					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<circle cx="12" cy="12" r="3"/>
 						<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-					</svg>
-				</button>
-
-				<!-- Mobile Menu Button -->
-				<button
-					class="menu-btn mobile-only"
-					onclick={() => (showMobileDrawer = true)}
-					aria-label={t('nav.menu')}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="3" y1="12" x2="21" y2="12"/>
-						<line x1="3" y1="6" x2="21" y2="6"/>
-						<line x1="3" y1="18" x2="21" y2="18"/>
 					</svg>
 				</button>
 			</div>
@@ -187,23 +165,6 @@
 	<ResponsiveModal open={showSettings} onClose={() => (showSettings = false)} title={t('settings.title')}>
 		<SettingsPanel />
 	</ResponsiveModal>
-
-	<!-- Mobile Drawer -->
-	<ResponsiveDrawer open={showMobileDrawer} onClose={() => (showMobileDrawer = false)} title={t('nav.menu')}>
-		<div class="drawer-nav">
-			<!-- Settings Button -->
-			<button class="drawer-settings-btn" onclick={openSettings}>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<circle cx="12" cy="12" r="3"/>
-					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-				</svg>
-				<span>{t('settings.title')}</span>
-				<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="9 18 15 12 9 6"/>
-				</svg>
-			</button>
-		</div>
-	</ResponsiveDrawer>
 
 	<main class="main">
 		<!-- Hero Section -->
@@ -558,44 +519,6 @@
 
 	.settings-btn:hover {
 		color: var(--fg-base);
-	}
-
-	/* Mobile Menu Button */
-	.menu-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		border: none;
-		border-radius: var(--radius-md);
-		background: transparent;
-		color: var(--fg-muted);
-		cursor: pointer;
-		transition: color var(--motion-fast) var(--easing);
-	}
-
-	.menu-btn:hover {
-		color: var(--fg-base);
-	}
-
-	/* Desktop/Mobile visibility */
-	.desktop-only {
-		display: flex;
-	}
-
-	.mobile-only {
-		display: none;
-	}
-
-	@media (max-width: 768px) {
-		.desktop-only {
-			display: none;
-		}
-
-		.mobile-only {
-			display: flex;
-		}
 	}
 
 	/* Main */
@@ -1018,43 +941,6 @@
 
 	.commit-link:hover {
 		color: var(--fg-muted);
-	}
-
-	/* Drawer Content */
-	.drawer-nav {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.drawer-settings-btn {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		width: 100%;
-		padding: var(--space-3) var(--space-4);
-		border: none;
-		background: transparent;
-		color: var(--fg-base);
-		font-size: var(--text-base);
-		font-weight: var(--weight-medium);
-		text-align: left;
-		border-radius: var(--radius-lg);
-		cursor: pointer;
-		transition: all var(--motion-fast) var(--easing);
-	}
-
-	.drawer-settings-btn:hover {
-		background: var(--bg-raised);
-	}
-
-	.drawer-settings-btn:active {
-		background: var(--accent-muted);
-	}
-
-	.drawer-settings-btn .chevron-icon {
-		margin-left: auto;
-		color: var(--fg-faint);
 	}
 
 	/* Responsive */

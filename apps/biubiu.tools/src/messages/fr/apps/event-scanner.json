@@ -64,5 +64,29 @@
 	"es.results.direction": "Sens",
 	"es.results.tx": "Tx",
 	"es.results.in": "ENTRÉE",
-	"es.results.out": "SORTIE"
+	"es.results.out": "SORTIE",
+
+	"es.cfg.need.chain": "Sélectionnez d’abord une chaîne.",
+	"es.cfg.need.contract": "Saisissez l’adresse du contrat à scanner.",
+	"es.cfg.need.contractInvalid": "Cette adresse ne semble pas valide (0x + 40 caractères hexadécimaux).",
+	"es.cfg.need.abi": "Ajoutez l’ABI — collez-la, ou utilisez « Récupérer l’ABI / Détecter le proxy » ci-dessus.",
+	"es.cfg.need.walletUnsupported": "Le suivi de portefeuille requiert un événement avec deux champs d’adresse indexés, comme Transfer.",
+	"es.cfg.need.wallet": "Saisissez l’adresse du portefeuille à suivre.",
+	"es.cfg.need.walletInvalid": "Cette adresse de portefeuille semble invalide.",
+	"es.cfg.need.range": "Définissez une plage de scan.",
+	"es.cfg.ready": "Prêt à scanner.",
+	"es.cfg.fixConfig": "Veuillez compléter la configuration avant de scanner.",
+	"es.exec.preparingHint": "Connexion au RPC et localisation de la plage de blocs — cela peut prendre un instant.",
+	"es.exec.showLog": "Afficher le journal technique",
+	"es.exec.hideLog": "Masquer le journal technique",
+	"es.exec.logWarnings": "{count} avertissement(s)",
+	"es.results.copied": "Copié",
+	"es.results.emptyHint": "Essayez d’élargir la plage de blocs ou de dates, ou vérifiez vos filtres.",
+	"es.alert.scanFailed": "Échec du scan",
+	"es.alert.dismiss": "Fermer",
+
+	"es.results.complete": "Complet — chaque bloc de cette plage a été scanné.",
+	"es.results.gapsWarn": "{blocks} bloc(s) dans {ranges} plage(s) n'ont pu être récupérés depuis aucun RPC — les résultats peuvent être incomplets.",
+	"es.results.rescanGaps": "Rescanner les lacunes",
+	"es.results.interrupted": "Le scan a été interrompu avant la fin."
 }

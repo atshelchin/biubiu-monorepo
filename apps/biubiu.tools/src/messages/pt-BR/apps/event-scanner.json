@@ -64,5 +64,29 @@
 	"es.results.direction": "Sentido",
 	"es.results.tx": "Tx",
 	"es.results.in": "ENTRADA",
-	"es.results.out": "SAÍDA"
+	"es.results.out": "SAÍDA",
+
+	"es.cfg.need.chain": "Selecione uma rede para começar.",
+	"es.cfg.need.contract": "Insira o endereço do contrato que deseja escanear.",
+	"es.cfg.need.contractInvalid": "Esse endereço não parece válido (0x + 40 caracteres hexadecimais).",
+	"es.cfg.need.abi": "Adicione a ABI — cole-a ou use “Buscar ABI / Detectar proxy” acima.",
+	"es.cfg.need.walletUnsupported": "O rastreamento de carteira precisa de um evento com dois campos de endereço indexados, como Transfer.",
+	"es.cfg.need.wallet": "Insira o endereço da carteira que deseja rastrear.",
+	"es.cfg.need.walletInvalid": "Esse endereço de carteira parece inválido.",
+	"es.cfg.need.range": "Defina um intervalo de varredura.",
+	"es.cfg.ready": "Pronto para escanear.",
+	"es.cfg.fixConfig": "Conclua a configuração antes de escanear.",
+	"es.exec.preparingHint": "Conectando ao RPC e localizando o intervalo de blocos — isso pode levar um momento.",
+	"es.exec.showLog": "Mostrar log técnico",
+	"es.exec.hideLog": "Ocultar log técnico",
+	"es.exec.logWarnings": "{count} aviso(s)",
+	"es.results.copied": "Copiado",
+	"es.results.emptyHint": "Tente ampliar o intervalo de blocos ou de datas, ou verifique seus filtros.",
+	"es.alert.scanFailed": "Falha na varredura",
+	"es.alert.dismiss": "Fechar",
+
+	"es.results.complete": "Completo — cada bloco deste intervalo foi varrido.",
+	"es.results.gapsWarn": "{blocks} bloco(s) em {ranges} intervalo(s) não puderam ser obtidos de nenhum RPC — os resultados podem estar incompletos.",
+	"es.results.rescanGaps": "Reescanear lacunas",
+	"es.results.interrupted": "A varredura foi interrompida antes de concluir."
 }

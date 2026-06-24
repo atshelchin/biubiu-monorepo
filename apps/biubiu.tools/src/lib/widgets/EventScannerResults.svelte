@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { t, formatDateTime, formatRelativeTime } from '$lib/i18n';
-	import { groupDigits, baseToAmount, unixToDate, shortenAddress } from '$lib/contract-caller/format.js';
+	import {
+		groupDigits,
+		baseToAmount,
+		unixToDate,
+		shortenAddress
+	} from '$lib/contract-caller/format.js';
 	import { rpcCall } from '$lib/contract-caller/networks.js';
 	import { extractEvents } from '$lib/pda-apps/event-scanner/infra/events.js';
 	import type { DecodedEvent, ScanMeta } from '$lib/pda-apps/event-scanner/types.js';
+	import { totalBlocks } from '$lib/pda-apps/event-scanner/infra/ranges.js';
 	import type { Abi } from 'viem';
-	import { RotateCw, X } from '@lucide/svelte';
+	import { Check, RotateCw, TriangleAlert, X } from '@lucide/svelte';
 
 	interface Props {
 		currentScan: ScanMeta | null;
@@ -21,6 +27,7 @@
 		onExportJSON: () => void;
 		onLoadScan: (scanId: string) => void;
 		onResumeScan: (scanId: string) => void;
+		onFillGaps: (scanId: string) => void;
 		onDeleteScan: (scanId: string) => void;
 		onStopLive: () => void;
 		onRunAgain: () => void;
@@ -40,9 +47,10 @@
 		onExportJSON,
 		onLoadScan,
 		onResumeScan,
+		onFillGaps,
 		onDeleteScan,
 		onStopLive,
-		onRunAgain,
+		onRunAgain
 	}: Props = $props();
 
 	const PAGE_SIZE = 100;
@@ -61,7 +69,18 @@
 	});
 
 	const hasDirection = $derived((currentScan?.filterSets.length ?? 0) > 1);
-	const incomplete = $derived(!!currentScan && (currentScan.lastScannedBlock || 0) < currentScan.toBlock);
+	const incomplete = $derived(
+		!!currentScan && (currentScan.lastScannedBlock || 0) < currentScan.toBlock
+	);
+	// Auditable coverage: data gaps no RPC could serve. Empty + not interrupted = proven complete.
+	const gaps = $derived(currentScan?.gaps ?? []);
+	const gapBlocks = $derived(totalBlocks(gaps));
+	const gapPreview = $derived(
+		gaps
+			.slice(0, 4)
+			.map(([a, b]) => (a === b ? `#${a}` : `#${a}–${b}`))
+			.join(', ') + (gaps.length > 4 ? ' …' : '')
+	);
 
 	// Per-column display mode for numeric columns, with smart defaults so amounts
 	// and timestamps read human-friendly out of the box.
@@ -79,10 +98,13 @@
 		return 'raw';
 	}
 	const modeOf = (name: string, type: string): Mode => colMode[name] ?? defaultMode(name, type);
-	const decimalsOf = (name: string): number => colDecimals[name] ?? currentScan?.tokenDecimals ?? 18;
+	const decimalsOf = (name: string): number =>
+		colDecimals[name] ?? currentScan?.tokenDecimals ?? 18;
 
 	function explorer(path: string): string | null {
-		return currentScan?.explorerUrl ? `${currentScan.explorerUrl.replace(/\/$/, '')}/${path}` : null;
+		return currentScan?.explorerUrl
+			? `${currentScan.explorerUrl.replace(/\/$/, '')}/${path}`
+			: null;
 	}
 
 	function renderValue(name: string, type: string, raw: string): string {
@@ -113,14 +135,19 @@
 				await Promise.all(
 					uniq.slice(i, i + 8).map(async (b) => {
 						try {
-							const blk = (await rpcCall(rpc, 'eth_getBlockByNumber', ['0x' + b.toString(16), false], 8000)) as {
+							const blk = (await rpcCall(
+								rpc,
+								'eth_getBlockByNumber',
+								['0x' + b.toString(16), false],
+								8000
+							)) as {
 								timestamp?: string;
 							};
 							if (blk?.timestamp) next[b] = parseInt(blk.timestamp, 16);
 						} catch {
 							/* leave undefined */
 						}
-					}),
+					})
 				);
 			}
 			if (Object.keys(next).length) blockTimes = { ...blockTimes, ...next };
@@ -132,8 +159,19 @@
 		if (events.length) loadTimes(events.map((e) => e.blockNumber));
 	});
 
+	// Copy-to-clipboard with a brief, in-place "copied" confirmation.
+	let copied = $state('');
+	let copiedTimer: ReturnType<typeof setTimeout>;
 	function copy(text: string) {
-		if (typeof navigator !== 'undefined') navigator.clipboard?.writeText(text);
+		if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+		navigator.clipboard
+			.writeText(text)
+			.then(() => {
+				copied = text;
+				clearTimeout(copiedTimer);
+				copiedTimer = setTimeout(() => (copied = ''), 1400);
+			})
+			.catch(() => {});
 	}
 
 	function fmtRange(s: ScanMeta): string {
@@ -149,12 +187,25 @@
 			<div class="saved-list">
 				{#each savedScans as scan (scan.scanId)}
 					<div class="saved-chip" class:active={scan.scanId === currentScan?.scanId}>
-						<button class="saved-main" onclick={() => onLoadScan(scan.scanId)} title={scan.contract}>
+						<button
+							class="saved-main"
+							onclick={() => onLoadScan(scan.scanId)}
+							title={scan.contract}
+						>
 							<span class="saved-name">{scan.name}</span>
 							<span class="saved-meta">#{scan.chainId} · {scan.eventName} · {scan.eventCount}</span>
 						</button>
-						<button class="saved-act" onclick={() => onResumeScan(scan.scanId)} aria-label={t('es.results.resume')} title={t('es.results.resume')}><RotateCw size={14} /></button>
-						<button class="saved-del" onclick={() => onDeleteScan(scan.scanId)} aria-label={t('es.results.delete')}><X size={15} /></button>
+						<button
+							class="saved-act"
+							onclick={() => onResumeScan(scan.scanId)}
+							aria-label={t('es.results.resume')}
+							title={t('es.results.resume')}><RotateCw size={14} /></button
+						>
+						<button
+							class="saved-del"
+							onclick={() => onDeleteScan(scan.scanId)}
+							aria-label={t('es.results.delete')}><X size={15} /></button
+						>
 					</div>
 				{/each}
 			</div>
@@ -179,22 +230,71 @@
 			</div>
 		</div>
 
+		<!-- Completeness / audit trust signal -->
+		{#if incomplete}
+			<div class="audit warn">
+				<TriangleAlert size={16} />
+				<span class="audit-text">{t('es.results.interrupted')}</span>
+				<button
+					class="btn-sm btn-accent"
+					onclick={() => currentScan && onResumeScan(currentScan.scanId)}
+				>
+					<RotateCw size={14} />
+					{t('es.results.resume')}
+				</button>
+			</div>
+		{:else if gaps.length > 0}
+			<div class="audit warn">
+				<TriangleAlert size={16} />
+				<span class="audit-text">
+					{t('es.results.gapsWarn', {
+						blocks: groupDigits(String(gapBlocks)),
+						ranges: gaps.length
+					})}
+					<span class="audit-ranges mono">{gapPreview}</span>
+				</span>
+				<button
+					class="btn-sm btn-accent"
+					onclick={() => currentScan && onFillGaps(currentScan.scanId)}
+				>
+					<RotateCw size={14} />
+					{t('es.results.rescanGaps')}
+				</button>
+			</div>
+		{:else if currentScan.gaps !== undefined}
+			<div class="audit ok">
+				<Check size={15} />
+				<span class="audit-text">{t('es.results.complete')}</span>
+			</div>
+		{/if}
+
 		<!-- Controls -->
 		<div class="controls">
 			<button class="btn-sm" onclick={() => onSetOrder(order === 'desc' ? 'asc' : 'desc')}>
 				{order === 'desc' ? t('es.results.newest') : t('es.results.oldest')}
 			</button>
 			{#if incomplete}
-				<button class="btn-sm btn-accent" onclick={() => currentScan && onResumeScan(currentScan.scanId)}><RotateCw size={14} /> {t('es.results.resume')}</button>
+				<button
+					class="btn-sm btn-accent"
+					onclick={() => currentScan && onResumeScan(currentScan.scanId)}
+					><RotateCw size={14} /> {t('es.results.resume')}</button
+				>
 			{/if}
 			<div class="spacer"></div>
-			<button class="btn-sm" onclick={onExportCSV} disabled={eventTotal === 0}>{t('es.results.exportCsv')}</button>
-			<button class="btn-sm" onclick={onExportJSON} disabled={eventTotal === 0}>{t('es.results.exportJson')}</button>
+			<button class="btn-sm" onclick={onExportCSV} disabled={eventTotal === 0}
+				>{t('es.results.exportCsv')}</button
+			>
+			<button class="btn-sm" onclick={onExportJSON} disabled={eventTotal === 0}
+				>{t('es.results.exportJson')}</button
+			>
 			<button class="btn-sm btn-primary" onclick={onRunAgain}>{t('es.results.newScan')}</button>
 		</div>
 
 		{#if eventTotal === 0}
-			<p class="empty">{t('es.results.empty')}</p>
+			<div class="empty">
+				<p class="empty-title">{t('es.results.empty')}</p>
+				<p class="empty-hint">{t('es.results.emptyHint')}</p>
+			</div>
 		{:else}
 			<div class="table-wrap">
 				<table class="tbl">
@@ -211,7 +311,11 @@
 											<select
 												class="th-mode"
 												value={modeOf(p.name, p.type)}
-												onchange={(e) => (colMode = { ...colMode, [p.name]: (e.target as HTMLSelectElement).value as Mode })}
+												onchange={(e) =>
+													(colMode = {
+														...colMode,
+														[p.name]: (e.target as HTMLSelectElement).value as Mode
+													})}
 											>
 												<option value="raw">raw</option>
 												<option value="amount">amount</option>
@@ -224,7 +328,11 @@
 													min="0"
 													max="36"
 													value={decimalsOf(p.name)}
-													oninput={(e) => (colDecimals = { ...colDecimals, [p.name]: Number((e.target as HTMLInputElement).value) })}
+													oninput={(e) =>
+														(colDecimals = {
+															...colDecimals,
+															[p.name]: Number((e.target as HTMLInputElement).value)
+														})}
 												/>
 											{/if}
 										{/if}
@@ -240,25 +348,42 @@
 								<td class="mono">{ev.blockNumber}</td>
 								<td class="time">
 									{#if blockTimes[ev.blockNumber]}
-										<span title={formatDateTime(new Date(blockTimes[ev.blockNumber] * 1000))}>{formatRelativeTime(blockTimes[ev.blockNumber] * 1000)}</span>
+										<span title={formatDateTime(new Date(blockTimes[ev.blockNumber] * 1000))}
+											>{formatRelativeTime(blockTimes[ev.blockNumber] * 1000)}</span
+										>
 									{:else}
 										<span class="faint">…</span>
 									{/if}
 								</td>
 								{#if hasDirection}
 									<td>
-										<span class="dir dir-{ev.filterSetId}">{ev.filterSetId === 'in' ? t('es.results.in') : ev.filterSetId === 'out' ? t('es.results.out') : ev.filterSetId}</span>
+										<span class="dir dir-{ev.filterSetId}"
+											>{ev.filterSetId === 'in'
+												? t('es.results.in')
+												: ev.filterSetId === 'out'
+													? t('es.results.out')
+													: ev.filterSetId}</span
+										>
 									</td>
 								{/if}
 								{#each params as p (p.name)}
 									{@const val = ev.args[p.name] ?? ev.args[`arg${params.indexOf(p)}`] ?? ''}
-									<td class="mono">
+									<td class="mono" title={val}>
 										{#if p.type === 'address' && val}
-											{#if explorer(`address/${val}`)}
+											{@const addrHref = explorer(`address/${val}`)}
+											{#if addrHref}
 												<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-												<a class="lnk" href={explorer(`address/${val}`)} target="_blank" rel="noopener" title={val}>{shortenAddress(val)}</a>
+												<a class="lnk" href={addrHref} target="_blank" rel="noopener"
+													>{shortenAddress(val)}</a
+												>
 											{:else}
-												<button class="copyable" onclick={() => copy(val)} title={val}>{shortenAddress(val)}</button>
+												<button
+													class="copyable"
+													class:copied={copied === val}
+													onclick={() => copy(val)}
+													title={val}
+													>{copied === val ? t('es.results.copied') : shortenAddress(val)}</button
+												>
 											{/if}
 										{:else}
 											<span title={val}>{renderValue(p.name, p.type, val)}</span>
@@ -268,9 +393,18 @@
 								<td>
 									{#if explorer(`tx/${ev.txHash}`)}
 										<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-										<a class="lnk" href={explorer(`tx/${ev.txHash}`)} target="_blank" rel="noopener">{shortenAddress(ev.txHash)}</a>
+										<a class="lnk" href={explorer(`tx/${ev.txHash}`)} target="_blank" rel="noopener"
+											>{shortenAddress(ev.txHash)}</a
+										>
 									{:else}
-										<button class="copyable" onclick={() => copy(ev.txHash)}>{shortenAddress(ev.txHash)}</button>
+										<button
+											class="copyable"
+											class:copied={copied === ev.txHash}
+											onclick={() => copy(ev.txHash)}
+											>{copied === ev.txHash
+												? t('es.results.copied')
+												: shortenAddress(ev.txHash)}</button
+										>
 									{/if}
 								</td>
 							</tr>
@@ -282,8 +416,16 @@
 			{#if totalPages > 1}
 				<div class="pager">
 					<button class="btn-sm" disabled={page <= 0} onclick={() => onSetPage(page - 1)}>‹</button>
-					<span class="page-info">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, eventTotal)} / {groupDigits(String(eventTotal))}</span>
-					<button class="btn-sm" disabled={page >= totalPages - 1} onclick={() => onSetPage(page + 1)}>›</button>
+					<span class="page-info"
+						>{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, eventTotal)} / {groupDigits(
+							String(eventTotal)
+						)}</span
+					>
+					<button
+						class="btn-sm"
+						disabled={page >= totalPages - 1}
+						onclick={() => onSetPage(page + 1)}>›</button
+					>
 				</div>
 			{/if}
 		{/if}
@@ -292,7 +434,7 @@
 
 <style>
 	.card {
-		background: var(--bg-raised);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		padding: var(--space-6);
@@ -381,6 +523,40 @@
 		border-color: var(--accent);
 		color: var(--accent);
 	}
+	.audit {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-md);
+		font-size: var(--text-sm);
+	}
+	.audit :global(svg) {
+		flex: 0 0 auto;
+	}
+	.audit.warn {
+		background: var(--warning-subtle);
+		border: 1px solid var(--warning-muted);
+		color: var(--warning);
+	}
+	.audit.ok {
+		background: var(--success-subtle);
+		border: 1px solid var(--success-muted);
+		color: var(--success);
+	}
+	.audit-text {
+		flex: 1;
+		min-width: 0;
+		color: var(--fg-muted);
+	}
+	.audit.ok .audit-text {
+		color: var(--fg-base);
+	}
+	.audit-ranges {
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		margin-left: var(--space-2);
+	}
 	.time {
 		color: var(--fg-muted);
 		font-size: var(--text-xs);
@@ -409,7 +585,7 @@
 		gap: var(--space-2);
 		font-size: var(--text-xs);
 		color: var(--success);
-		background: var(--success-muted, rgba(52, 211, 153, 0.12));
+		background: var(--success-muted);
 		padding: 2px var(--space-2);
 		border-radius: var(--radius-full);
 	}
@@ -534,6 +710,13 @@
 		font-size: var(--text-xs);
 		cursor: pointer;
 		padding: 0;
+		transition: color var(--motion-fast) var(--easing);
+	}
+	.copyable:hover {
+		color: var(--accent);
+	}
+	.copyable.copied {
+		color: var(--success);
 	}
 	.dir {
 		font-size: var(--text-xs);
@@ -542,11 +725,11 @@
 	}
 	.dir-in {
 		color: var(--success);
-		background: var(--success-muted, rgba(52, 211, 153, 0.12));
+		background: var(--success-muted);
 	}
 	.dir-out {
 		color: var(--warning);
-		background: var(--warning-muted, rgba(251, 191, 36, 0.12));
+		background: var(--warning-muted);
 	}
 	.pager {
 		display: flex;
@@ -559,9 +742,20 @@
 		color: var(--fg-muted);
 	}
 	.empty {
-		color: var(--fg-subtle);
-		font-size: var(--text-sm);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
 		text-align: center;
 		padding: var(--space-8) 0;
+	}
+	.empty-title {
+		color: var(--fg-muted);
+		font-size: var(--text-sm);
+		margin: 0;
+	}
+	.empty-hint {
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+		margin: 0;
 	}
 </style>

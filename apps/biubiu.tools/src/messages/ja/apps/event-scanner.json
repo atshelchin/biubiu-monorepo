@@ -64,5 +64,29 @@
 	"es.results.direction": "方向",
 	"es.results.tx": "Tx",
 	"es.results.in": "入",
-	"es.results.out": "出"
+	"es.results.out": "出",
+
+	"es.cfg.need.chain": "まずチェーンを選択してください。",
+	"es.cfg.need.contract": "スキャンするコントラクトアドレスを入力してください。",
+	"es.cfg.need.contractInvalid": "アドレスの形式が正しくありません（0x で始まる 40 桁の 16 進数）。",
+	"es.cfg.need.abi": "ABI を指定してください。貼り付けるか、上の「ABI 取得 / プロキシ検出」を使用します。",
+	"es.cfg.need.walletUnsupported": "ウォレット追跡には、Transfer のように indexed なアドレス引数が 2 つあるイベントが必要です。",
+	"es.cfg.need.wallet": "追跡するウォレットアドレスを入力してください。",
+	"es.cfg.need.walletInvalid": "ウォレットアドレスが無効のようです。",
+	"es.cfg.need.range": "スキャン範囲を設定してください。",
+	"es.cfg.ready": "設定完了。スキャンできます。",
+	"es.cfg.fixConfig": "スキャンの前に設定を完了してください。",
+	"es.exec.preparingHint": "RPC に接続してブロック範囲を特定しています。少々お待ちください…",
+	"es.exec.showLog": "技術ログを表示",
+	"es.exec.hideLog": "技術ログを隠す",
+	"es.exec.logWarnings": "警告 {count} 件",
+	"es.results.copied": "コピーしました",
+	"es.results.emptyHint": "ブロックや期間の範囲を広げるか、フィルターを確認してみてください。",
+	"es.alert.scanFailed": "スキャンに失敗しました",
+	"es.alert.dismiss": "閉じる",
+
+	"es.results.complete": "完全 — この範囲のすべてのブロックをスキャンしました。",
+	"es.results.gapsWarn": "{ranges} 範囲の {blocks} ブロックをどの RPC からも取得できませんでした。結果が不完全な可能性があります。",
+	"es.results.rescanGaps": "欠落を再スキャン",
+	"es.results.interrupted": "スキャンは完了前に中断されました。"
 }

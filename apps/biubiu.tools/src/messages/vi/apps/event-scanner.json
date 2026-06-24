@@ -64,5 +64,29 @@
 	"es.results.direction": "Hướng",
 	"es.results.tx": "Tx",
 	"es.results.in": "VÀO",
-	"es.results.out": "RA"
+	"es.results.out": "RA",
+
+	"es.cfg.need.chain": "Hãy chọn một chain để bắt đầu.",
+	"es.cfg.need.contract": "Nhập địa chỉ hợp đồng bạn muốn quét.",
+	"es.cfg.need.contractInvalid": "Địa chỉ đó có vẻ không hợp lệ (0x + 40 ký tự thập lục phân).",
+	"es.cfg.need.abi": "Thêm ABI — dán vào, hoặc dùng “Lấy ABI / Phát hiện proxy” ở trên.",
+	"es.cfg.need.walletUnsupported": "Theo dõi ví cần một sự kiện có hai tham số địa chỉ indexed, như Transfer.",
+	"es.cfg.need.wallet": "Nhập địa chỉ ví bạn muốn theo dõi.",
+	"es.cfg.need.walletInvalid": "Địa chỉ ví đó có vẻ không hợp lệ.",
+	"es.cfg.need.range": "Đặt phạm vi quét.",
+	"es.cfg.ready": "Sẵn sàng quét.",
+	"es.cfg.fixConfig": "Vui lòng hoàn tất cấu hình trước khi quét.",
+	"es.exec.preparingHint": "Đang kết nối RPC và xác định phạm vi khối — có thể mất một lát.",
+	"es.exec.showLog": "Hiện nhật ký kỹ thuật",
+	"es.exec.hideLog": "Ẩn nhật ký kỹ thuật",
+	"es.exec.logWarnings": "{count} cảnh báo",
+	"es.results.copied": "Đã sao chép",
+	"es.results.emptyHint": "Thử mở rộng phạm vi khối hoặc thời gian, hoặc kiểm tra bộ lọc của bạn.",
+	"es.alert.scanFailed": "Quét thất bại",
+	"es.alert.dismiss": "Đóng",
+
+	"es.results.complete": "Hoàn chỉnh — mọi khối trong phạm vi này đã được quét.",
+	"es.results.gapsWarn": "{blocks} khối trong {ranges} phạm vi không thể lấy từ bất kỳ RPC nào — kết quả có thể chưa đầy đủ.",
+	"es.results.rescanGaps": "Quét lại chỗ thiếu",
+	"es.results.interrupted": "Quá trình quét bị gián đoạn trước khi hoàn tất."
 }

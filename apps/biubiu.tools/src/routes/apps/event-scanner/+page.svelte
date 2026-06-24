@@ -3,6 +3,7 @@
 	import { usePage } from '@shelchin/pagekit/svelte';
 	import { ActionBusyError } from '@shelchin/pagekit';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
+	import { TriangleAlert, X } from '@lucide/svelte';
 	import { t, locale } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
@@ -16,9 +17,41 @@
 
 	const page = usePage(eventScannerPage);
 
+	let execEl = $state<HTMLElement>();
+	let resultsEl = $state<HTMLElement>();
+	let startError = $state('');
+
 	onMount(() => {
 		page.config.hydrate({});
 		page.execution.refreshScans({});
+	});
+
+	// Surface either a failed scan or a config that couldn't be built — never a
+	// silently dead button.
+	const alertMessage = $derived(
+		startError || (page.execution.ctx.status === 'error' ? page.execution.ctx.errorMessage : '')
+	);
+
+	function dismissAlert() {
+		startError = '';
+		if (page.execution.ctx.status === 'error') page.execution.reset({});
+	}
+
+	// Bring the progress (on start) and results (on completion) into view so the
+	// feedback is never stranded below the fold.
+	let prevStatus = 'idle';
+	$effect(() => {
+		const status = page.execution.ctx.status;
+		if (status === prevStatus) return;
+		const reduce =
+			typeof window !== 'undefined' &&
+			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+		const behavior: ScrollBehavior = reduce ? 'auto' : 'smooth';
+		if (status === 'running')
+			requestAnimationFrame(() => execEl?.scrollIntoView({ behavior, block: 'start' }));
+		else if (status === 'success' && prevStatus === 'running')
+			requestAnimationFrame(() => resultsEl?.scrollIntoView({ behavior, block: 'start' }));
+		prevStatus = status;
 	});
 
 	const seoProps = $derived(
@@ -33,10 +66,10 @@
 					description: t('es.meta.description'),
 					applicationCategory: 'WebApplication',
 					operatingSystem: 'Web Browser',
-					offers: { price: 0, priceCurrency: 'USD' },
-				},
-			},
-		}),
+					offers: { price: 0, priceCurrency: 'USD' }
+				}
+			}
+		})
 	);
 
 	async function handleApplyPreset(id: string) {
@@ -47,8 +80,12 @@
 	}
 
 	async function handleStart() {
+		startError = '';
 		const built = buildScanInput(page.config.ctx);
-		if (!built.ok || !built.input) return;
+		if (!built.ok || !built.input) {
+			startError = t('es.cfg.fixConfig');
+			return;
+		}
 		try {
 			await page.execution.run(built.input);
 		} catch (e) {
@@ -95,17 +132,29 @@
 	</div>
 
 	{#if page.execution.ctx.status === 'running'}
-		<div use:fadeInUp={{ delay: 0 }}>
-			<EventScannerExecution progress={page.execution.ctx.progress} logs={page.execution.ctx.logs} />
+		<div bind:this={execEl} use:fadeInUp={{ delay: 0 }}>
+			<EventScannerExecution
+				progress={page.execution.ctx.progress}
+				logs={page.execution.ctx.logs}
+			/>
 		</div>
 	{/if}
 
-	{#if page.execution.ctx.status === 'error'}
-		<p class="error-banner">{page.execution.ctx.errorMessage}</p>
+	{#if alertMessage}
+		<div class="alert" role="alert">
+			<TriangleAlert size={18} class="alert-icon" />
+			<div class="alert-body">
+				<span class="alert-title">{t('es.alert.scanFailed')}</span>
+				<span class="alert-detail">{alertMessage}</span>
+			</div>
+			<button class="alert-dismiss" onclick={dismissAlert} aria-label={t('es.alert.dismiss')}>
+				<X size={16} />
+			</button>
+		</div>
 	{/if}
 
 	{#if page.execution.ctx.status === 'success' || page.execution.ctx.savedScans.length > 0}
-		<div use:fadeInUp={{ delay: 0 }}>
+		<div bind:this={resultsEl} use:fadeInUp={{ delay: 0 }}>
 			<EventScannerResults
 				currentScan={page.execution.ctx.currentScan}
 				events={page.execution.ctx.events}
@@ -120,6 +169,7 @@
 				onExportJSON={() => page.execution.exportJSON({})}
 				onLoadScan={(scanId) => page.execution.loadScan({ scanId })}
 				onResumeScan={(scanId) => page.execution.resumeScan({ scanId })}
+				onFillGaps={(scanId) => page.execution.fillGaps({ scanId })}
 				onDeleteScan={(scanId) => page.execution.deleteScan({ scanId })}
 				onStopLive={() => page.execution.stopLive({})}
 				onRunAgain={() => page.execution.reset({})}
@@ -156,13 +206,49 @@
 		margin: var(--space-2) 0 0;
 		line-height: var(--leading-normal);
 	}
-	.error-banner {
-		background: var(--error-muted, rgba(248, 113, 113, 0.12));
-		color: var(--error);
+	.alert {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
+		background: var(--error-subtle);
+		border: 1px solid var(--error-muted);
+		border-radius: var(--radius-lg);
 		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-md);
+	}
+	.alert :global(.alert-icon) {
+		flex: 0 0 auto;
+		margin-top: 1px;
+		color: var(--error);
+	}
+	.alert-body {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		flex: 1;
+		min-width: 0;
+	}
+	.alert-title {
 		font-size: var(--text-sm);
-		margin: 0;
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+	}
+	.alert-detail {
+		font-size: var(--text-sm);
+		color: var(--fg-muted);
+		word-break: break-word;
+	}
+	.alert-dismiss {
+		flex: 0 0 auto;
+		display: inline-flex;
+		padding: 2px;
+		background: transparent;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+	}
+	.alert-dismiss:hover {
+		color: var(--fg-base);
 	}
 	@media (max-width: 640px) {
 		main.page {

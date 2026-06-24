@@ -64,5 +64,29 @@
 	"es.results.direction": "方向",
 	"es.results.tx": "交易",
 	"es.results.in": "轉入",
-	"es.results.out": "轉出"
+	"es.results.out": "轉出",
+
+	"es.cfg.need.chain": "請先揀一條鏈。",
+	"es.cfg.need.contract": "請填寫要掃描嘅合約地址。",
+	"es.cfg.need.contractInvalid": "地址格式唔正確（應為 0x 開頭嘅 40 位十六進位字元）。",
+	"es.cfg.need.abi": "請提供 ABI —— 直接貼上，或者用上面嘅「拉取 ABI / 偵測代理」。",
+	"es.cfg.need.walletUnsupported": "追蹤錢包需要事件包含兩個 indexed 地址參數（例如 Transfer）。",
+	"es.cfg.need.wallet": "請填寫要追蹤嘅錢包地址。",
+	"es.cfg.need.walletInvalid": "錢包地址格式唔正確。",
+	"es.cfg.need.range": "請設定掃描範圍。",
+	"es.cfg.ready": "設定完成，可以開始掃描。",
+	"es.cfg.fixConfig": "請先完善設定先開始掃描。",
+	"es.exec.preparingHint": "正在連線 RPC 並定位區塊範圍，請稍候…",
+	"es.exec.showLog": "查看技術日誌",
+	"es.exec.hideLog": "收起技術日誌",
+	"es.exec.logWarnings": "{count} 條警告",
+	"es.results.copied": "已複製",
+	"es.results.emptyHint": "試吓擴大區塊或時間範圍，或者檢查篩選條件。",
+	"es.alert.scanFailed": "掃描失敗",
+	"es.alert.dismiss": "關閉",
+
+	"es.results.complete": "資料完整 —— 此範圍內每個區塊都已掃描。",
+	"es.results.gapsWarn": "{ranges} 段共 {blocks} 個區塊未能從任何 RPC 取得，結果可能唔完整。",
+	"es.results.rescanGaps": "重掃缺口",
+	"es.results.interrupted": "掃描未完成 —— 上次喺呢度中斷。"
 }

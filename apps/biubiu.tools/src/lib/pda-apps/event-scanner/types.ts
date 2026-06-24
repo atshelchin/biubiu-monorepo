@@ -103,6 +103,13 @@ export interface ScanMeta {
 	lastScannedBlock: number;
 	chunkSize: number;
 	eventCount: number;
+	/**
+	 * Auditable data gaps: inclusive block ranges `[from,to]` that no RPC could
+	 * serve. Empty = every block in the range was queried. Persisted so the user
+	 * can see, re-scan, and prove completeness — critical when the output is the
+	 * basis for accounting/tax. Undefined on scans saved before this was tracked.
+	 */
+	gaps?: [number, number][];
 	createdAt: number;
 	updatedAt: number;
 	live: boolean;

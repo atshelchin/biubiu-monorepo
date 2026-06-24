@@ -64,5 +64,29 @@
 	"es.results.direction": "Dir",
 	"es.results.tx": "Tx",
 	"es.results.in": "IN",
-	"es.results.out": "OUT"
+	"es.results.out": "OUT",
+
+	"es.cfg.need.chain": "Seleziona una chain per iniziare.",
+	"es.cfg.need.contract": "Inserisci l’indirizzo del contratto da scansionare.",
+	"es.cfg.need.contractInvalid": "Questo indirizzo non sembra valido (0x + 40 caratteri esadecimali).",
+	"es.cfg.need.abi": "Aggiungi l’ABI: incollala o usa «Recupera ABI / Rileva proxy» qui sopra.",
+	"es.cfg.need.walletUnsupported": "Il tracciamento del wallet richiede un evento con due campi indirizzo indicizzati, come Transfer.",
+	"es.cfg.need.wallet": "Inserisci l’indirizzo del wallet da tracciare.",
+	"es.cfg.need.walletInvalid": "Questo indirizzo del wallet sembra non valido.",
+	"es.cfg.need.range": "Imposta un intervallo di scansione.",
+	"es.cfg.ready": "Pronto per la scansione.",
+	"es.cfg.fixConfig": "Completa la configurazione prima di scansionare.",
+	"es.exec.preparingHint": "Connessione all’RPC e individuazione dell’intervallo di blocchi — può richiedere un momento.",
+	"es.exec.showLog": "Mostra log tecnico",
+	"es.exec.hideLog": "Nascondi log tecnico",
+	"es.exec.logWarnings": "{count} avviso/i",
+	"es.results.copied": "Copiato",
+	"es.results.emptyHint": "Prova ad ampliare l’intervallo di blocchi o di date, o controlla i filtri.",
+	"es.alert.scanFailed": "Scansione non riuscita",
+	"es.alert.dismiss": "Chiudi",
+
+	"es.results.complete": "Completo — ogni blocco di questo intervallo è stato scansionato.",
+	"es.results.gapsWarn": "{blocks} blocco/i in {ranges} intervallo/i non è stato possibile recuperarli da alcun RPC — i risultati potrebbero essere incompleti.",
+	"es.results.rescanGaps": "Riscansiona le lacune",
+	"es.results.interrupted": "La scansione è stata interrotta prima del completamento."
 }

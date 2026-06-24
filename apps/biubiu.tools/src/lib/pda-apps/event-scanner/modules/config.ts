@@ -63,6 +63,12 @@ interface ConfigCtx {
 	etherscanKey: string;
 	scanName: string;
 	canExecute: boolean;
+	/**
+	 * Why `canExecute` is false — the single unmet requirement, as an i18n key
+	 * suffix under `es.cfg.need.*` ('' when ready). Lets the UI tell the user
+	 * exactly what to do next instead of leaving a dead, unexplained button.
+	 */
+	blockReason: string;
 	// internal: merged decode ABI (primary + implementation/facets)
 	decodeAbi: unknown[];
 }
@@ -80,12 +86,17 @@ function effectiveKey(ctx: { etherscanKey: string }): string {
 }
 
 /** The currently selected event (or undefined). */
-export function selectedEvent(ctx: { events: ParsedEvent[]; selectedEventSig: string }): ParsedEvent | undefined {
+export function selectedEvent(ctx: {
+	events: ParsedEvent[];
+	selectedEventSig: string;
+}): ParsedEvent | undefined {
 	return ctx.events.find((e) => e.signature === ctx.selectedEventSig);
 }
 
 /** Indexed inputs of an event, paired with their topic slot (1-based). */
-export function indexedSlots(ev: ParsedEvent): { paramIndex: number; topicIndex: number; name: string; type: string }[] {
+export function indexedSlots(
+	ev: ParsedEvent
+): { paramIndex: number; topicIndex: number; name: string; type: string }[] {
 	const out: { paramIndex: number; topicIndex: number; name: string; type: string }[] = [];
 	let order = 0;
 	ev.inputs.forEach((p, i) => {
@@ -105,14 +116,39 @@ function addressIndexedSlots(ev: ParsedEvent) {
 function recompute(ctx: ConfigCtx) {
 	const ev = selectedEvent(ctx);
 	const hasChain = !!ctx.chain && !!ctx.rpcUrl;
-	const hasContract = /^0x[a-fA-F0-9]{40}$/.test(ctx.contract.trim());
+	const contract = ctx.contract.trim();
+	const hasContract = /^0x[a-fA-F0-9]{40}$/.test(contract);
 	const hasEvent = !!ev;
 	let rangeOk = false;
 	if (ctx.rangeKind === 'lastNDays') rangeOk = ctx.days > 0;
 	else if (ctx.rangeKind === 'dates') rangeOk = !!ctx.fromDate && !!ctx.toDate;
-	else rangeOk = ctx.fromBlock !== '' && ctx.toBlock !== '' && Number(ctx.toBlock) >= Number(ctx.fromBlock);
-	const walletOk = !ctx.walletTrackEnabled || /^0x[a-fA-F0-9]{40}$/.test(ctx.walletAddress.trim());
+	else
+		rangeOk =
+			ctx.fromBlock !== '' && ctx.toBlock !== '' && Number(ctx.toBlock) >= Number(ctx.fromBlock);
+	const walletAddrOk = /^0x[a-fA-F0-9]{40}$/.test(ctx.walletAddress.trim());
+	// Wallet-track needs an event with two indexed address params (a from/to pair).
+	const walletSupported = !ctx.walletTrackEnabled || (!!ev && addressIndexedSlots(ev).length >= 2);
+	const walletOk = !ctx.walletTrackEnabled || (walletSupported && walletAddrOk);
 	ctx.canExecute = hasChain && hasContract && hasEvent && rangeOk && walletOk;
+
+	// First unmet requirement, ordered the way a user fills the form top-down.
+	ctx.blockReason = !hasChain
+		? 'chain'
+		: !contract
+			? 'contract'
+			: !hasContract
+				? 'contractInvalid'
+				: !hasEvent
+					? 'abi'
+					: ctx.walletTrackEnabled && !walletSupported
+						? 'walletUnsupported'
+						: ctx.walletTrackEnabled && !ctx.walletAddress.trim()
+							? 'wallet'
+							: ctx.walletTrackEnabled && !walletAddrOk
+								? 'walletInvalid'
+								: !rangeOk
+									? 'range'
+									: '';
 }
 
 function setActiveAbi(ctx: ConfigCtx, abi: Abi) {
@@ -145,7 +181,8 @@ function mergeAbis(a: Abi, b: Abi): Abi {
 
 export const configModule = defineModule({
 	name: 'config',
-	description: 'Configure the chain, contract, ABI (with proxy resolution), event filters and block range',
+	description:
+		'Configure the chain, contract, ABI (with proxy resolution), event filters and block range',
 
 	context: {
 		chainQuery: '',
@@ -183,7 +220,8 @@ export const configModule = defineModule({
 		etherscanKey: '',
 		scanName: '',
 		canExecute: false,
-		decodeAbi: [] as unknown[],
+		blockReason: 'chain',
+		decodeAbi: [] as unknown[]
 	},
 
 	actions: {
@@ -192,7 +230,7 @@ export const configModule = defineModule({
 			input: z.object({}),
 			execute({ ctx }) {
 				ctx.etherscanKey = readEtherscanKey();
-			},
+			}
 		},
 
 		searchChains: {
@@ -210,7 +248,7 @@ export const configModule = defineModule({
 				} finally {
 					ctx.searching = false;
 				}
-			},
+			}
 		},
 
 		selectChain: {
@@ -228,17 +266,25 @@ export const configModule = defineModule({
 						rpcs: info.rpcUrls,
 						symbol: info.nativeCurrency.symbol,
 						decimals: info.nativeCurrency.decimals,
-						explorerUrl: info.explorerUrl,
+						explorerUrl: info.explorerUrl
 					};
 					ctx.chain = net;
 					ctx.chainResults = [];
 					ctx.chainQuery = `${info.name} (${info.chainId})`;
 					ctx.rpcUrl = info.rpcUrls[0] ?? '';
-					ctx.rpcOptions = info.rpcUrls.map((url) => ({ url, latencyMs: null, status: 'pending' as const }));
+					ctx.rpcOptions = info.rpcUrls.map((url) => ({
+						url,
+						latencyMs: null,
+						status: 'pending' as const
+					}));
 					recompute(ctx);
 					// Probe in the background; pick the fastest.
 					const probed = await probeRpcs(info.rpcUrls);
-					ctx.rpcOptions = probed.map((p) => ({ url: p.url, latencyMs: p.latencyMs, status: p.status }));
+					ctx.rpcOptions = probed.map((p) => ({
+						url: p.url,
+						latencyMs: p.latencyMs,
+						status: p.status
+					}));
 					const fastest = probed
 						.filter((p) => p.status === 'ok' && p.latencyMs !== null)
 						.sort((a, b) => (a.latencyMs ?? 1e9) - (b.latencyMs ?? 1e9))[0];
@@ -251,7 +297,7 @@ export const configModule = defineModule({
 					ctx.chainError = e instanceof Error ? e.message : 'Failed to load chain';
 				}
 				recompute(ctx);
-			},
+			}
 		},
 
 		clearChain: {
@@ -267,7 +313,7 @@ export const configModule = defineModule({
 				ctx.chainQuery = '';
 				ctx.chainResults = [];
 				recompute(ctx);
-			},
+			}
 		},
 
 		switchRpc: {
@@ -279,7 +325,7 @@ export const configModule = defineModule({
 				ctx.rpcLatency = ctx.rpcOptions.find((r) => r.url === input.url)?.latencyMs ?? null;
 				if (ctx.chain) ctx.chain = { ...ctx.chain, rpcs: dedupeRpcs(input.url, ctx.rpcOptions) };
 				recompute(ctx);
-			},
+			}
 		},
 
 		setCustomRpcInput: {
@@ -287,7 +333,7 @@ export const configModule = defineModule({
 			input: z.object({ value: z.string() }),
 			execute({ input, ctx }) {
 				ctx.customRpcInput = input.value;
-			},
+			}
 		},
 
 		applyCustomRpc: {
@@ -314,7 +360,7 @@ export const configModule = defineModule({
 				ctx.chain = { ...ctx.chain, rpcs: [url, ...ctx.chain.rpcs.filter((r) => r !== url)] };
 				ctx.rpcOptions = [{ url, latencyMs: null, status: 'ok' }, ...ctx.rpcOptions];
 				recompute(ctx);
-			},
+			}
 		},
 
 		setContract: {
@@ -325,7 +371,7 @@ export const configModule = defineModule({
 				ctx.proxy = null;
 				ctx.implNote = '';
 				recompute(ctx);
-			},
+			}
 		},
 
 		loadAbi: {
@@ -342,7 +388,7 @@ export const configModule = defineModule({
 				ctx.abiSourceLabel = 'pasted';
 				setActiveAbi(ctx, result.abi);
 				recompute(ctx);
-			},
+			}
 		},
 
 		autoFetchAbi: {
@@ -360,7 +406,7 @@ export const configModule = defineModule({
 						ctx.chain,
 						ctx.rpcUrl,
 						getAddress(ctx.contract.trim()),
-						effectiveKey(ctx),
+						effectiveKey(ctx)
 					);
 					ctx.proxy = res.proxy;
 					if (res.abi.length > 0) {
@@ -381,7 +427,7 @@ export const configModule = defineModule({
 					ctx.fetchingAbi = false;
 				}
 				recompute(ctx);
-			},
+			}
 		},
 
 		detectProxy: {
@@ -423,7 +469,7 @@ export const configModule = defineModule({
 					ctx.detecting = false;
 				}
 				recompute(ctx);
-			},
+			}
 		},
 
 		selectEvent: {
@@ -434,7 +480,7 @@ export const configModule = defineModule({
 				ctx.indexedValues = {};
 				ctx.walletTrackEnabled = false;
 				recompute(ctx);
-			},
+			}
 		},
 
 		setIndexedValue: {
@@ -443,7 +489,7 @@ export const configModule = defineModule({
 			execute({ input, ctx }) {
 				ctx.indexedValues = { ...ctx.indexedValues, [input.paramIndex]: input.value };
 				recompute(ctx);
-			},
+			}
 		},
 
 		setWalletTrack: {
@@ -453,7 +499,7 @@ export const configModule = defineModule({
 				ctx.walletTrackEnabled = input.enabled;
 				if (input.address !== undefined) ctx.walletAddress = input.address;
 				recompute(ctx);
-			},
+			}
 		},
 
 		setRange: {
@@ -464,7 +510,7 @@ export const configModule = defineModule({
 				fromDate: z.string().optional(),
 				toDate: z.string().optional(),
 				fromBlock: z.string().optional(),
-				toBlock: z.string().optional(),
+				toBlock: z.string().optional()
 			}),
 			execute({ input, ctx }) {
 				if (input.kind) ctx.rangeKind = input.kind;
@@ -474,7 +520,7 @@ export const configModule = defineModule({
 				if (input.fromBlock !== undefined) ctx.fromBlock = input.fromBlock;
 				if (input.toBlock !== undefined) ctx.toBlock = input.toBlock;
 				recompute(ctx);
-			},
+			}
 		},
 
 		setLive: {
@@ -483,7 +529,7 @@ export const configModule = defineModule({
 			execute({ input, ctx }) {
 				ctx.live = input.live;
 				if (input.intervalSec !== undefined) ctx.liveIntervalSec = input.intervalSec;
-			},
+			}
 		},
 
 		setScanName: {
@@ -491,7 +537,7 @@ export const configModule = defineModule({
 			input: z.object({ name: z.string() }),
 			execute({ input, ctx }) {
 				ctx.scanName = input.name;
-			},
+			}
 		},
 
 		setEtherscanKey: {
@@ -499,8 +545,9 @@ export const configModule = defineModule({
 			input: z.object({ key: z.string() }),
 			execute({ input, ctx }) {
 				ctx.etherscanKey = input.key.trim();
-				if (typeof localStorage !== 'undefined') localStorage.setItem(ETHERSCAN_KEY_LS, ctx.etherscanKey);
-			},
+				if (typeof localStorage !== 'undefined')
+					localStorage.setItem(ETHERSCAN_KEY_LS, ctx.etherscanKey);
+			}
 		},
 
 		applyPreset: {
@@ -526,9 +573,9 @@ export const configModule = defineModule({
 				recompute(ctx);
 				// The UI calls selectChain({ chainId }) when one is returned.
 				return { chainId: preset.chainId };
-			},
-		},
-	},
+			}
+		}
+	}
 });
 
 function dedupeRpcs(primary: string, options: RpcOption[]): string[] {
@@ -549,7 +596,8 @@ export function buildScanInput(ctx: ConfigCtx): BuildScanResult {
 	if (!ctx.chain) return { ok: false, error: 'No chain selected' };
 	const ev = selectedEvent(ctx);
 	if (!ev) return { ok: false, error: 'No event selected' };
-	if (!/^0x[a-fA-F0-9]{40}$/.test(ctx.contract.trim())) return { ok: false, error: 'Invalid contract address' };
+	if (!/^0x[a-fA-F0-9]{40}$/.test(ctx.contract.trim()))
+		return { ok: false, error: 'Invalid contract address' };
 
 	const slots = indexedSlots(ev);
 	const topicCount = slots.length;
@@ -559,14 +607,24 @@ export function buildScanInput(ctx: ConfigCtx): BuildScanResult {
 	// Apply generic indexed filters into base topics.
 	for (const slot of slots) {
 		const raw = (ctx.indexedValues[slot.paramIndex] ?? '').trim();
-		if (raw) baseTopics[slot.topicIndex] = buildTopicSlot(slot.type, raw.split(',').map((s) => s.trim()).filter(Boolean));
+		if (raw)
+			baseTopics[slot.topicIndex] = buildTopicSlot(
+				slot.type,
+				raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean)
+			);
 	}
 
 	let filterSets: FilterSet[];
 	if (ctx.walletTrackEnabled) {
 		const addrSlots = addressIndexedSlots(ev);
 		if (addrSlots.length < 2) {
-			return { ok: false, error: 'Wallet-track needs an event with two indexed address params (e.g. Transfer).' };
+			return {
+				ok: false,
+				error: 'Wallet-track needs an event with two indexed address params (e.g. Transfer).'
+			};
 		}
 		if (!/^0x[a-fA-F0-9]{40}$/.test(ctx.walletAddress.trim())) {
 			return { ok: false, error: 'Enter a valid wallet address to track' };
@@ -579,7 +637,7 @@ export function buildScanInput(ctx: ConfigCtx): BuildScanResult {
 		incoming[toSlot.topicIndex] = walletTopic;
 		filterSets = [
 			{ id: 'out', topics: out },
-			{ id: 'in', topics: incoming },
+			{ id: 'in', topics: incoming }
 		];
 	} else {
 		filterSets = [{ id: 'all', topics: baseTopics }];
@@ -605,7 +663,7 @@ export function buildScanInput(ctx: ConfigCtx): BuildScanResult {
 		liveIntervalMs: ctx.liveIntervalSec * 1000,
 		...(ctx.rangeKind === 'blocks'
 			? { fromBlock: Number(ctx.fromBlock), toBlock: Number(ctx.toBlock) }
-			: { range }),
+			: { range })
 	};
 	return { ok: true, input };
 }

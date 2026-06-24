@@ -64,5 +64,29 @@
 	"es.results.direction": "Yön",
 	"es.results.tx": "İşlem",
 	"es.results.in": "GİRİŞ",
-	"es.results.out": "ÇIKIŞ"
+	"es.results.out": "ÇIKIŞ",
+
+	"es.cfg.need.chain": "Başlamak için bir zincir seçin.",
+	"es.cfg.need.contract": "Taranacak kontrat adresini girin.",
+	"es.cfg.need.contractInvalid": "Bu geçerli bir adres gibi görünmüyor (0x + 40 onaltılık karakter).",
+	"es.cfg.need.abi": "ABI ekleyin — yapıştırın ya da yukarıdaki “ABI getir / Proxy algıla” seçeneğini kullanın.",
+	"es.cfg.need.walletUnsupported": "Cüzdan takibi için Transfer gibi iki indexed adres alanı olan bir olay gerekir.",
+	"es.cfg.need.wallet": "Takip edeceğiniz cüzdan adresini girin.",
+	"es.cfg.need.walletInvalid": "Bu cüzdan adresi geçersiz görünüyor.",
+	"es.cfg.need.range": "Bir tarama aralığı belirleyin.",
+	"es.cfg.ready": "Taramaya hazır.",
+	"es.cfg.fixConfig": "Taramadan önce lütfen yapılandırmayı tamamlayın.",
+	"es.exec.preparingHint": "RPC’ye bağlanılıyor ve blok aralığı belirleniyor — bu biraz sürebilir.",
+	"es.exec.showLog": "Teknik günlüğü göster",
+	"es.exec.hideLog": "Teknik günlüğü gizle",
+	"es.exec.logWarnings": "{count} uyarı",
+	"es.results.copied": "Kopyalandı",
+	"es.results.emptyHint": "Blok veya tarih aralığını genişletmeyi deneyin ya da filtrelerinizi kontrol edin.",
+	"es.alert.scanFailed": "Tarama başarısız",
+	"es.alert.dismiss": "Kapat",
+
+	"es.results.complete": "Tamam — bu aralıktaki her blok tarandı.",
+	"es.results.gapsWarn": "{ranges} aralıktaki {blocks} blok hiçbir RPC'den alınamadı — sonuçlar eksik olabilir.",
+	"es.results.rescanGaps": "Boşlukları yeniden tara",
+	"es.results.interrupted": "Tarama tamamlanmadan kesildi."
 }

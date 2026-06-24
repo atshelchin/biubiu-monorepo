@@ -64,5 +64,29 @@
 	"es.results.direction": "Dir",
 	"es.results.tx": "Tx",
 	"es.results.in": "IN",
-	"es.results.out": "OUT"
+	"es.results.out": "OUT",
+
+	"es.cfg.need.chain": "Select a chain to get started.",
+	"es.cfg.need.contract": "Enter the contract address you want to scan.",
+	"es.cfg.need.contractInvalid": "That doesn't look like a valid address (0x + 40 hex characters).",
+	"es.cfg.need.abi": "Add the ABI — paste it, or use “Fetch ABI / Detect proxy” above.",
+	"es.cfg.need.walletUnsupported": "Wallet tracking needs an event with two indexed address fields, like Transfer.",
+	"es.cfg.need.wallet": "Enter the wallet address you want to track.",
+	"es.cfg.need.walletInvalid": "That wallet address looks invalid.",
+	"es.cfg.need.range": "Set a scan range.",
+	"es.cfg.ready": "Ready to scan.",
+	"es.cfg.fixConfig": "Please complete the configuration before scanning.",
+	"es.exec.preparingHint": "Connecting to the RPC and locating the block range — this can take a moment.",
+	"es.exec.showLog": "Show technical log",
+	"es.exec.hideLog": "Hide technical log",
+	"es.exec.logWarnings": "{count} warning(s)",
+	"es.results.copied": "Copied",
+	"es.results.emptyHint": "Try widening the block or time range, or check your filters.",
+	"es.alert.scanFailed": "Scan failed",
+	"es.alert.dismiss": "Dismiss",
+
+	"es.results.complete": "Complete — every block in this range was scanned.",
+	"es.results.gapsWarn": "{blocks} block(s) in {ranges} range(s) couldn't be fetched from any RPC — results may be incomplete.",
+	"es.results.rescanGaps": "Re-scan gaps",
+	"es.results.interrupted": "Scan was interrupted before finishing."
 }

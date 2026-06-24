@@ -64,5 +64,29 @@
 	"es.results.direction": "Arah",
 	"es.results.tx": "Tx",
 	"es.results.in": "MASUK",
-	"es.results.out": "KELUAR"
+	"es.results.out": "KELUAR",
+
+	"es.cfg.need.chain": "Pilih sebuah chain untuk memulai.",
+	"es.cfg.need.contract": "Masukkan alamat kontrak yang ingin dipindai.",
+	"es.cfg.need.contractInvalid": "Itu tampaknya bukan alamat yang valid (0x + 40 karakter heksadesimal).",
+	"es.cfg.need.abi": "Tambahkan ABI — tempel, atau gunakan “Ambil ABI / Deteksi proxy” di atas.",
+	"es.cfg.need.walletUnsupported": "Pelacakan dompet memerlukan event dengan dua field alamat ber-index, seperti Transfer.",
+	"es.cfg.need.wallet": "Masukkan alamat dompet yang ingin dilacak.",
+	"es.cfg.need.walletInvalid": "Alamat dompet itu tampak tidak valid.",
+	"es.cfg.need.range": "Tetapkan rentang pemindaian.",
+	"es.cfg.ready": "Siap memindai.",
+	"es.cfg.fixConfig": "Harap lengkapi konfigurasi sebelum memindai.",
+	"es.exec.preparingHint": "Menghubungkan ke RPC dan menemukan rentang blok — ini bisa memerlukan beberapa saat.",
+	"es.exec.showLog": "Tampilkan log teknis",
+	"es.exec.hideLog": "Sembunyikan log teknis",
+	"es.exec.logWarnings": "{count} peringatan",
+	"es.results.copied": "Tersalin",
+	"es.results.emptyHint": "Coba perlebar rentang blok atau tanggal, atau periksa filter Anda.",
+	"es.alert.scanFailed": "Pemindaian gagal",
+	"es.alert.dismiss": "Tutup",
+
+	"es.results.complete": "Lengkap — setiap blok dalam rentang ini telah dipindai.",
+	"es.results.gapsWarn": "{blocks} blok dalam {ranges} rentang tidak dapat diambil dari RPC mana pun — hasil mungkin tidak lengkap.",
+	"es.results.rescanGaps": "Pindai ulang celah",
+	"es.results.interrupted": "Pemindaian terhenti sebelum selesai."
 }

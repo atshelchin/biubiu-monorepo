@@ -5,6 +5,7 @@ import { extractEvents, buildTopicSlot, addressTopic } from './infra/events.js';
 import { decodeLogs } from './infra/decode.js';
 import { scanRangeAdaptive } from './infra/adaptive-chunk.js';
 import { resolveBlockRange } from './infra/time-to-block.js';
+import { mergeRanges, subtractRanges, totalBlocks } from './infra/ranges.js';
 import { ERC20_EVENT_ABI } from './infra/presets.js';
 import type { RawLog, ScanJob } from './types.js';
 
@@ -58,7 +59,7 @@ describe('decode: logs → named args', () => {
 			data: numberToHex(1000n, { size: 32 }),
 			blockNumber: '42',
 			transactionHash: '0xabc',
-			logIndex: 7,
+			logIndex: 7
 		};
 		const [decoded] = decodeLogs([log], ERC20_EVENT_ABI, 'scan1', 'chain-56', log.address, 'in');
 		expect(decoded.eventName).toBe('Transfer');
@@ -75,7 +76,11 @@ describe('adaptive-chunk: binary split on overflow', () => {
 		const LIMIT = 1000;
 		const covered: Array<[number, number]> = [];
 		const fakeClient = {
-			request: async ({ params }: { params: [{ fromBlock: `0x${string}`; toBlock: `0x${string}` }] }) => {
+			request: async ({
+				params
+			}: {
+				params: [{ fromBlock: `0x${string}`; toBlock: `0x${string}` }];
+			}) => {
 				const from = Number(BigInt(params[0].fromBlock));
 				const to = Number(BigInt(params[0].toBlock));
 				if (to - from + 1 > LIMIT) throw new Error('query returned more than 10000 results');
@@ -88,15 +93,17 @@ describe('adaptive-chunk: binary split on overflow', () => {
 								data: '0x',
 								blockNumber: numberToHex(1000n),
 								transactionHash: '0xfeed',
-								logIndex: numberToHex(0n),
-							},
+								logIndex: numberToHex(0n)
+							}
 						]
 					: [];
-			},
+			}
 		} as unknown as PublicClient;
 
 		const pool = {
-			do: async (call: { execute: (c: PublicClient) => Promise<RawLog[]> }) => ({ result: await call.execute(fakeClient) }),
+			do: async (call: { execute: (c: PublicClient) => Promise<RawLog[]> }) => ({
+				result: await call.execute(fakeClient)
+			})
 		} as never;
 
 		const job: ScanJob = {
@@ -106,10 +113,15 @@ describe('adaptive-chunk: binary split on overflow', () => {
 			topics: [TRANSFER_TOPIC0],
 			fromBlock: 0,
 			toBlock: 2500,
-			chunkSize: 2500,
+			chunkSize: 2500
 		};
 
-		const logs = await scanRangeAdaptive(pool, job, { signal: new AbortController().signal }, job.chunkSize);
+		const logs = await scanRangeAdaptive(
+			pool,
+			job,
+			{ signal: new AbortController().signal },
+			job.chunkSize
+		);
 
 		expect(logs).toHaveLength(1);
 		expect(logs[0].blockNumber).toBe('1000');
@@ -124,6 +136,68 @@ describe('adaptive-chunk: binary split on overflow', () => {
 	});
 });
 
+describe('ranges: gap-coverage arithmetic (auditability)', () => {
+	it('merges overlapping AND adjacent ranges into a minimal disjoint set', () => {
+		expect(
+			mergeRanges([
+				[5, 7],
+				[1, 3]
+			])
+		).toEqual([
+			[1, 3],
+			[5, 7]
+		]);
+		expect(
+			mergeRanges([
+				[1, 3],
+				[4, 6]
+			])
+		).toEqual([[1, 6]]); // adjacent coalesce
+		expect(
+			mergeRanges([
+				[1, 5],
+				[3, 9],
+				[10, 12]
+			])
+		).toEqual([[1, 12]]); // overlap + adjacent
+		expect(
+			mergeRanges([
+				[7, 7],
+				[7, 7]
+			])
+		).toEqual([[7, 7]]); // duplicate single block
+		expect(mergeRanges([])).toEqual([]);
+	});
+
+	it('subtracts covered ranges, leaving only the still-uncovered gaps', () => {
+		// A gap [100,200] partially refilled in the middle leaves two edge gaps.
+		expect(subtractRanges([[100, 200]], [[120, 180]])).toEqual([
+			[100, 119],
+			[181, 200]
+		]);
+		// Fully covered → no gaps remain.
+		expect(subtractRanges([[100, 200]], [[90, 210]])).toEqual([]);
+		// Untouched gap survives.
+		expect(subtractRanges([[100, 200]], [[300, 400]])).toEqual([[100, 200]]);
+	});
+
+	it('counts total blocks across disjoint ranges (gap size)', () => {
+		expect(totalBlocks([[1, 1]])).toBe(1);
+		expect(
+			totalBlocks([
+				[1, 10],
+				[21, 30]
+			])
+		).toBe(20);
+		expect(
+			totalBlocks([
+				[5, 7],
+				[6, 9]
+			])
+		).toBe(5); // overlap counted once
+	});
+});
+
 describe('time-to-block: estimate (few RPC calls)', () => {
 	it('resolves "last N days" accurately AND with few requests', async () => {
 		const LATEST = 1_000_000;
@@ -133,14 +207,20 @@ describe('time-to-block: estimate (few RPC calls)', () => {
 				calls++;
 				const n = blockNumber !== undefined ? Number(blockNumber) : LATEST;
 				return { number: BigInt(n), timestamp: BigInt(n * 12) };
-			},
+			}
 		} as unknown as PublicClient;
 		const pool = {
-			do: async (call: { execute: (c: PublicClient) => Promise<unknown> }) => ({ result: await call.execute(fakeClient) }),
+			do: async (call: { execute: (c: PublicClient) => Promise<unknown> }) => ({
+				result: await call.execute(fakeClient)
+			})
 		} as never;
 
 		const nowMs = LATEST * 12 * 1000; // head timestamp in ms
-		const { fromBlock, toBlock } = await resolveBlockRange(pool, { kind: 'lastNDays', days: 1, nowMs });
+		const { fromBlock, toBlock } = await resolveBlockRange(pool, {
+			kind: 'lastNDays',
+			days: 1,
+			nowMs
+		});
 		expect(toBlock).toBe(LATEST);
 		// 1 day = 86400s = 7200 blocks @ 12s → estimate ≈ LATEST - 7200, plus a small
 		// earlier safety margin. Accept the estimate ± the margin.

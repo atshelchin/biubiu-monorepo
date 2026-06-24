@@ -64,5 +64,29 @@
 	"es.results.direction": "Richt.",
 	"es.results.tx": "Tx",
 	"es.results.in": "EIN",
-	"es.results.out": "AUS"
+	"es.results.out": "AUS",
+
+	"es.cfg.need.chain": "Wähle zunächst eine Chain aus.",
+	"es.cfg.need.contract": "Gib die zu scannende Contract-Adresse ein.",
+	"es.cfg.need.contractInvalid": "Das sieht nicht nach einer gültigen Adresse aus (0x + 40 Hex-Zeichen).",
+	"es.cfg.need.abi": "Füge die ABI hinzu — einfügen oder oben „ABI laden / Proxy erkennen“ verwenden.",
+	"es.cfg.need.walletUnsupported": "Wallet-Tracking braucht ein Event mit zwei indizierten Adressfeldern, z. B. Transfer.",
+	"es.cfg.need.wallet": "Gib die zu verfolgende Wallet-Adresse ein.",
+	"es.cfg.need.walletInvalid": "Diese Wallet-Adresse sieht ungültig aus.",
+	"es.cfg.need.range": "Lege einen Scan-Bereich fest.",
+	"es.cfg.ready": "Bereit zum Scannen.",
+	"es.cfg.fixConfig": "Bitte vervollständige die Konfiguration vor dem Scannen.",
+	"es.exec.preparingHint": "Verbindung zum RPC wird hergestellt und der Blockbereich ermittelt — das kann einen Moment dauern.",
+	"es.exec.showLog": "Technisches Log anzeigen",
+	"es.exec.hideLog": "Technisches Log ausblenden",
+	"es.exec.logWarnings": "{count} Warnung(en)",
+	"es.results.copied": "Kopiert",
+	"es.results.emptyHint": "Erweitere den Block- oder Zeitbereich oder prüfe deine Filter.",
+	"es.alert.scanFailed": "Scan fehlgeschlagen",
+	"es.alert.dismiss": "Schließen",
+
+	"es.results.complete": "Vollständig — jeder Block in diesem Bereich wurde gescannt.",
+	"es.results.gapsWarn": "{blocks} Block/Blöcke in {ranges} Bereich(en) konnten von keinem RPC abgerufen werden — die Ergebnisse sind möglicherweise unvollständig.",
+	"es.results.rescanGaps": "Lücken erneut scannen",
+	"es.results.interrupted": "Der Scan wurde vor dem Abschluss unterbrochen."
 }

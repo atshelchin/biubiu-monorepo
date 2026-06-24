@@ -14,6 +14,7 @@ import type { FilterSet, RawLog, ScanJob, ScanJobResult, ScanNetwork } from '../
 import { buildRegistry } from './networks.js';
 import { createGetLogsPools } from './getlogs-pool.js';
 import { scanRangeAdaptive } from './adaptive-chunk.js';
+import { mergeRanges, totalBlocks, type BlockRange } from './ranges.js';
 
 export interface ScanPlan {
 	network: ScanNetwork;
@@ -29,10 +30,19 @@ export class EventLogSource extends TaskSource<ScanJob, ScanJobResult> {
 	private pool: Pool<EVMCall<RawLog[]>, RawLog[]> | undefined;
 	private networkKey: string;
 	private jobs: ScanJob[];
-	/** Count of blocks no RPC could serve (skipped, surfaced as a warning). */
-	skippedCount = 0;
+	/** Block ranges no RPC could serve — the auditable data gaps (raw, unmerged). */
+	private skips: BlockRange[] = [];
 	/** Largest getLogs span that worked — discovered once, shared across all jobs. */
 	private sharedSpan: number;
+
+	/** Merged, disjoint block ranges that could not be fetched from any RPC. */
+	get skippedRanges(): BlockRange[] {
+		return mergeRanges(this.skips);
+	}
+	/** Total count of blocks no RPC could serve (for warnings/progress). */
+	get skippedCount(): number {
+		return totalBlocks(this.skips);
+	}
 
 	constructor(plan: ScanPlan) {
 		super();
@@ -55,7 +65,7 @@ export class EventLogSource extends TaskSource<ScanJob, ScanJobResult> {
 					topics: fs.topics,
 					fromBlock: start,
 					toBlock: end,
-					chunkSize: plan.chunkSize,
+					chunkSize: plan.chunkSize
 				});
 			}
 		}
@@ -76,11 +86,11 @@ export class EventLogSource extends TaskSource<ScanJob, ScanJobResult> {
 		if (!this.pool) throw new Error(`No RPC pool for network: ${job.network}`);
 		const logs = await scanRangeAdaptive(this.pool, job, ctx, this.sharedSpan, {
 			onBlocksSkipped: (from, to) => {
-				this.skippedCount += to - from + 1;
+				this.skips.push([from, to]);
 			},
 			onCeiling: (span) => {
 				if (span < this.sharedSpan) this.sharedSpan = span;
-			},
+			}
 		});
 		return { job, logs };
 	}

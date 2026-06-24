@@ -3,10 +3,13 @@
 		percent = 0,
 		label = '',
 		status = '',
+		indeterminate = false
 	}: {
 		percent?: number;
 		label?: string;
 		status?: string;
+		/** Show a looping, position-unknown bar (e.g. before the first chunk lands). */
+		indeterminate?: boolean;
 	} = $props();
 </script>
 
@@ -17,7 +20,11 @@
 		</div>
 	{/if}
 	<div class="progress-track">
-		<div class="progress-fill" style:width="{Math.min(100, Math.max(0, percent))}%"></div>
+		{#if indeterminate}
+			<div class="progress-fill indeterminate"></div>
+		{:else}
+			<div class="progress-fill" style:width="{Math.min(100, Math.max(0, percent))}%"></div>
+		{/if}
 	</div>
 	{#if status}
 		<p class="progress-status">{status}</p>
@@ -54,6 +61,28 @@
 		background: var(--accent);
 		border-radius: var(--radius-full);
 		transition: width var(--motion-normal) var(--easing);
+	}
+
+	.progress-fill.indeterminate {
+		width: 35%;
+		animation: indeterminate-slide 1.4s var(--easing) infinite;
+	}
+
+	@keyframes indeterminate-slide {
+		0% {
+			margin-left: -35%;
+		}
+		100% {
+			margin-left: 100%;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.progress-fill.indeterminate {
+			width: 100%;
+			animation: none;
+			opacity: 0.5;
+		}
 	}
 
 	.progress-status {

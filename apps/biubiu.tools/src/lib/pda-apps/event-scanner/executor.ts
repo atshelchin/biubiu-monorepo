@@ -1,4 +1,9 @@
-import { createTaskHub, computeMerkleRoot, generateJobId, type Job } from '@shelchin/taskhub/browser';
+import {
+	createTaskHub,
+	computeMerkleRoot,
+	generateJobId,
+	type Job
+} from '@shelchin/taskhub/browser';
 import { type Abi, type Address, createPublicClient, getAddress, http } from 'viem';
 import type { AppConfig, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import { inputSchema, outputSchema } from './schema.js';
@@ -9,14 +14,16 @@ import type {
 	ScanJob,
 	ScanJobResult,
 	ScanMeta,
-	ScanNetwork,
+	ScanNetwork
 } from './types.js';
 import { EventLogSource, type ScanPlan } from './infra/log-source.js';
 import { buildRegistry, toViemChain } from './infra/networks.js';
 import { createGetLogsPools } from './infra/getlogs-pool.js';
 import { resolveBlockRange } from './infra/time-to-block.js';
+import { scanRangeAdaptive } from './infra/adaptive-chunk.js';
 import { decodeLogs } from './infra/decode.js';
 import { countEvents, getEventPks, getScan, putEvents, saveScan } from './infra/event-store.js';
+import { mergeRanges, totalBlocks as countRangeBlocks, type BlockRange } from './infra/ranges.js';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
 
 const DEFAULT_CHUNK = 2_000;
@@ -27,14 +34,28 @@ const CONCURRENCY = { min: 1, max: 8, initial: 3 } as const;
 const JOB_TIMEOUT = 180_000;
 
 const DECIMALS_ABI = [
-	{ name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint8' }] },
+	{
+		name: 'decimals',
+		type: 'function',
+		stateMutability: 'view',
+		inputs: [],
+		outputs: [{ type: 'uint8' }]
+	}
 ] as const;
 
 /** Best-effort read of an ERC-20 `decimals()` so amounts can be shown human-friendly. */
-async function readTokenDecimals(net: ScanNetwork, rpcUrl: string, contract: Address): Promise<number | undefined> {
+async function readTokenDecimals(
+	net: ScanNetwork,
+	rpcUrl: string,
+	contract: Address
+): Promise<number | undefined> {
 	try {
 		const client = createPublicClient({ chain: toViemChain(net), transport: http(rpcUrl) });
-		const d = await client.readContract({ address: contract, abi: DECIMALS_ABI, functionName: 'decimals' });
+		const d = await client.readContract({
+			address: contract,
+			abi: DECIMALS_ABI,
+			functionName: 'decimals'
+		});
 		return Number(d);
 	} catch {
 		return undefined;
@@ -93,11 +114,14 @@ export function validate(input: Input): {
 		network: input.network,
 		registryKey: key,
 		contract: getAddress(input.contract.trim()),
-		abi: input.abi as Abi,
+		abi: input.abi as Abi
 	};
 }
 
-async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
+async function* run(
+	input: Input,
+	ctx: Ctx
+): AsyncGenerator<InteractionRequest, RunResult, InteractionResponse | undefined> {
 	const base = validate(input);
 	const { network, contract, abi } = base;
 	const startTime = Date.now();
@@ -112,7 +136,12 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 		const sel = input.range
 			? input.range.kind === 'lastNDays'
 				? { kind: 'lastNDays' as const, days: input.range.days, nowMs: Date.now() }
-				: { kind: 'dates' as const, fromMs: input.range.fromMs, toMs: input.range.toMs, nowMs: Date.now() }
+				: {
+						kind: 'dates' as const,
+						fromMs: input.range.fromMs,
+						toMs: input.range.toMs,
+						nowMs: Date.now()
+					}
 			: { kind: 'lastNDays' as const, days: 7, nowMs: Date.now() };
 		const resolved = await resolveBlockRange(resolvePool, sel);
 		fromBlock = resolved.fromBlock;
@@ -125,11 +154,24 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 
 	if (toBlock < fromBlock) {
 		ctx.info('Empty block range — nothing to scan.', 'warning');
-		return { scanId: '', eventCount: 0, scannedBlocks: 0, totalBlocks: 0, duration: Date.now() - startTime };
+		return {
+			scanId: '',
+			eventCount: 0,
+			scannedBlocks: 0,
+			totalBlocks: 0,
+			duration: Date.now() - startTime
+		};
 	}
 
 	// 2. Build the deterministic source + compute the scanId (merkle root).
-	const plan: ScanPlan = { network, contract, filterSets: input.filterSets, fromBlock, toBlock, chunkSize };
+	const plan: ScanPlan = {
+		network,
+		contract,
+		filterSets: input.filterSets,
+		fromBlock,
+		toBlock,
+		chunkSize
+	};
 	const source = new EventLogSource(plan);
 	const jobs = source.getData();
 	const jobIds = await Promise.all(jobs.map((j) => generateJobId(j)));
@@ -141,7 +183,8 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 	// 3. Persist scan metadata up front so it shows in the saved-scans list.
 	//    Reuse a prior scan's createdAt/decimals if this is a resume.
 	const existingMeta = await getScan(scanId);
-	const tokenDecimals = existingMeta?.tokenDecimals ?? (await readTokenDecimals(network, network.rpcs[0], contract));
+	const tokenDecimals =
+		existingMeta?.tokenDecimals ?? (await readTokenDecimals(network, network.rpcs[0], contract));
 	const now = Date.now();
 	const meta: ScanMeta = {
 		scanId,
@@ -164,7 +207,7 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 		eventCount: 0,
 		createdAt: existingMeta?.createdAt ?? now,
 		updatedAt: now,
-		live: false,
+		live: false
 	};
 	await saveScan(meta);
 
@@ -181,7 +224,7 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 	if (existing) {
 		const resumed = await hub.resumeTask(existing.id, source, {
 			concurrency: CONCURRENCY,
-			timeout: JOB_TIMEOUT,
+			timeout: JOB_TIMEOUT
 		});
 		if (resumed) {
 			task = resumed;
@@ -194,7 +237,7 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 			name: `Event Scan ${input.eventName} - ${new Date().toISOString()}`,
 			source,
 			concurrency: CONCURRENCY,
-			timeout: JOB_TIMEOUT,
+			timeout: JOB_TIMEOUT
 		});
 	}
 
@@ -215,7 +258,7 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 		ctx.progress(
 			Math.min(scannedBlocks, totalBlocks),
 			totalBlocks,
-			`Block ${job.fromBlock}–${job.toBlock}: +${fresh} ${input.eventName} (${eventCount} total)`,
+			`Block ${job.fromBlock}–${job.toBlock}: +${fresh} ${input.eventName} (${eventCount} total)`
 		);
 	};
 
@@ -234,7 +277,10 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 	task.on('job:complete', (job: Job<ScanJob, ScanJobResult>) => ingest(job.output));
 	task.on('job:failed', (job: Job<ScanJob, ScanJobResult>, error: Error) => {
 		scannedBlocks += job.input.toBlock - job.input.fromBlock + 1;
-		ctx.info(`Failed blocks ${job.input.fromBlock}–${job.input.toBlock}: ${error.message}`, 'warning');
+		ctx.info(
+			`Failed blocks ${job.input.fromBlock}–${job.input.toBlock}: ${error.message}`,
+			'warning'
+		);
 		ctx.progress(Math.min(scannedBlocks, totalBlocks), totalBlocks, '');
 	});
 	task.on('rate-limited', (concurrency: number) => {
@@ -247,7 +293,14 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 		taskCompleted = false;
 		taskError = null;
 		const done = isResume ? task.resume() : task.start();
-		done.then(() => { taskCompleted = true; }).catch((err: Error) => { taskCompleted = true; taskError = err; });
+		done
+			.then(() => {
+				taskCompleted = true;
+			})
+			.catch((err: Error) => {
+				taskCompleted = true;
+				taskError = err;
+			});
 	};
 
 	try {
@@ -258,10 +311,13 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 				const interrupt = await interrupts.next(1000);
 				if (interrupt?.type === 'rate-limited') {
 					ctx.info('All RPC endpoints are rate-limited, scan paused', 'warning');
-					const action = yield* ctx.select('All RPC endpoints are rate-limited. What would you like to do?', [
-						{ value: 'wait', label: 'Wait and retry automatically' },
-						{ value: 'abort', label: 'Stop and keep results so far' },
-					]);
+					const action = yield* ctx.select(
+						'All RPC endpoints are rate-limited. What would you like to do?',
+						[
+							{ value: 'wait', label: 'Wait and retry automatically' },
+							{ value: 'abort', label: 'Stop and keep results so far' }
+						]
+					);
 					if (action === 'abort') {
 						await task.stop();
 						break;
@@ -275,7 +331,7 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 				const action = yield* ctx.select(`Scan failed: ${err.message}`, [
 					{ value: 'retry', label: 'Retry' },
 					{ value: 'partial', label: `Keep partial results (${eventCount} events)` },
-					{ value: 'abort', label: 'Abort' },
+					{ value: 'abort', label: 'Abort' }
 				]);
 				if (action === 'retry') launch();
 				else if (action === 'abort') throw err;
@@ -291,12 +347,27 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 	// In the browser, countEvents (IndexedDB) is authoritative incl. resume; in
 	// Node there is no IndexedDB, so fall back to the in-memory unique tally.
 	const finalCount = Math.max(eventCount, await countEvents(scanId));
-	await saveScan({ ...meta, eventCount: finalCount, lastScannedBlock: toBlock, updatedAt: Date.now() });
+	// Carry forward any gaps from prior sessions (resume only re-runs failed/pending
+	// jobs, so skip-completed gaps aren't re-discovered this run) and merge this
+	// run's new gaps. Persisted so completeness is auditable after reload.
+	const gaps = mergeRanges([...(existingMeta?.gaps ?? []), ...source.skippedRanges]);
+	// Only claim full coverage when every job was actually processed. If the run
+	// ended early (e.g. a fatal error kept partial results), leave lastScannedBlock
+	// behind so the scan honestly reads as incomplete (→ Resume) rather than as a
+	// silent partial "success" — critical when the output is accounting data.
+	const fullyProcessed = scannedBlocks >= totalBlocks;
+	await saveScan({
+		...meta,
+		eventCount: finalCount,
+		lastScannedBlock: fullyProcessed ? toBlock : meta.lastScannedBlock,
+		gaps,
+		updatedAt: Date.now()
+	});
 
-	if (source.skippedCount > 0) {
+	if (gaps.length > 0) {
 		ctx.info(
-			`${source.skippedCount} block(s) couldn't be served by any RPC and were skipped — re-run to retry them, or switch RPC.`,
-			'warning',
+			`${countRangeBlocks(gaps)} block(s) across ${gaps.length} gap(s) couldn't be served by any RPC — re-scan the gaps to retry, or switch RPC.`,
+			'warning'
 		);
 	}
 
@@ -305,14 +376,96 @@ async function* run(input: Input, ctx: Ctx): AsyncGenerator<InteractionRequest, 
 		eventCount: finalCount,
 		scannedBlocks: Math.min(scannedBlocks, totalBlocks),
 		totalBlocks,
-		duration: Date.now() - startTime,
+		duration: Date.now() - startTime
 	};
 }
 
-export const executor: AppConfig<typeof inputSchema, typeof outputSchema>['executor'] = async function* (input, ctx) {
-	const result = yield* run(input as Input, ctx);
-	ctx.info(
-		`Completed in ${(result.duration / 1000).toFixed(2)}s: ${result.eventCount} events across ${result.scannedBlocks} blocks`,
-	);
-	return result;
-};
+export const executor: AppConfig<typeof inputSchema, typeof outputSchema>['executor'] =
+	async function* (input, ctx) {
+		const result = yield* run(input as Input, ctx);
+		ctx.info(
+			`Completed in ${(result.duration / 1000).toFixed(2)}s: ${result.eventCount} events across ${result.scannedBlocks} blocks`
+		);
+		return result;
+	};
+
+export interface FillGapsProgress {
+	current: number;
+	total: number;
+	message: string;
+}
+
+export interface FillGapsResult {
+	scanId: string;
+	/** Blocks that were successfully recovered this run. */
+	filledBlocks: number;
+	/** Ranges still unservable after this attempt (the new persisted gaps). */
+	remainingGaps: BlockRange[];
+	eventCount: number;
+}
+
+/**
+ * Targeted re-scan of a saved scan's data gaps. Re-queries ONLY the block ranges
+ * that no RPC could serve (across every filter set), writes recovered events into
+ * the SAME scanId (idempotent dedup), and rewrites the persisted gap list to just
+ * what is still unservable. This is what makes "complete vs has-gaps" both
+ * recoverable and auditable, rather than a silent, permanent hole in the data.
+ */
+export async function fillGaps(
+	scanId: string,
+	onProgress?: (p: FillGapsProgress) => void,
+	signal: AbortSignal = new AbortController().signal
+): Promise<FillGapsResult> {
+	const meta = await getScan(scanId);
+	if (!meta) throw new Error('Scan not found.');
+	const gaps = mergeRanges(meta.gaps ?? []);
+	if (gaps.length === 0) {
+		return { scanId, filledBlocks: 0, remainingGaps: [], eventCount: await countEvents(scanId) };
+	}
+
+	const { key, networks, chainMap } = buildRegistry(meta.net);
+	const pool = createGetLogsPools<RawLog[]>(networks, chainMap).get(key);
+	if (!pool) throw new Error('No RPC endpoints available for this scan’s network.');
+
+	const abi = meta.abi as Abi;
+	const contract = getAddress(meta.contract);
+	const total = countRangeBlocks(gaps) * Math.max(1, meta.filterSets.length);
+	let done = 0;
+	const stillSkipped: BlockRange[] = [];
+
+	for (const [from, to] of gaps) {
+		for (const fs of meta.filterSets) {
+			if (signal.aborted) throw new Error('Aborted');
+			const job: ScanJob = {
+				network: key,
+				contract,
+				filterSetId: fs.id,
+				topics: fs.topics,
+				fromBlock: from,
+				toBlock: to,
+				chunkSize: meta.chunkSize
+			};
+			const logs = await scanRangeAdaptive(pool, job, { signal }, meta.chunkSize, {
+				onBlocksSkipped: (a, b) => stillSkipped.push([a, b])
+			});
+			const decoded = decodeLogs(logs, abi, scanId, key, contract, fs.id);
+			if (decoded.length > 0) await putEvents(decoded);
+			done += to - from + 1;
+			onProgress?.({
+				current: Math.min(done, total),
+				total,
+				message: `Re-scanned blocks ${from}–${to}`
+			});
+		}
+	}
+
+	const remainingGaps = mergeRanges(stillSkipped);
+	const eventCount = await countEvents(scanId);
+	await saveScan({ ...meta, gaps: remainingGaps, eventCount, updatedAt: Date.now() });
+	return {
+		scanId,
+		filledBlocks: countRangeBlocks(gaps) - countRangeBlocks(remainingGaps),
+		remainingGaps,
+		eventCount
+	};
+}

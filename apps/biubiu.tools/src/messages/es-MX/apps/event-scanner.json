@@ -64,5 +64,29 @@
 	"es.results.direction": "Dir",
 	"es.results.tx": "Tx",
 	"es.results.in": "ENTRADA",
-	"es.results.out": "SALIDA"
+	"es.results.out": "SALIDA",
+
+	"es.cfg.need.chain": "Selecciona una cadena para empezar.",
+	"es.cfg.need.contract": "Ingresa la dirección del contrato que quieres escanear.",
+	"es.cfg.need.contractInvalid": "Esa dirección no parece válida (0x + 40 caracteres hexadecimales).",
+	"es.cfg.need.abi": "Agrega el ABI: pégalo o usa «Obtener ABI / Detectar proxy» arriba.",
+	"es.cfg.need.walletUnsupported": "El seguimiento de wallet requiere un evento con dos campos de dirección indexados, como Transfer.",
+	"es.cfg.need.wallet": "Ingresa la dirección de la wallet que quieres rastrear.",
+	"es.cfg.need.walletInvalid": "Esa dirección de wallet parece inválida.",
+	"es.cfg.need.range": "Define un rango de escaneo.",
+	"es.cfg.ready": "Listo para escanear.",
+	"es.cfg.fixConfig": "Completa la configuración antes de escanear.",
+	"es.exec.preparingHint": "Conectando al RPC y localizando el rango de bloques; esto puede tardar un momento.",
+	"es.exec.showLog": "Mostrar registro técnico",
+	"es.exec.hideLog": "Ocultar registro técnico",
+	"es.exec.logWarnings": "{count} advertencia(s)",
+	"es.results.copied": "Copiado",
+	"es.results.emptyHint": "Prueba a ampliar el rango de bloques o fechas, o revisa tus filtros.",
+	"es.alert.scanFailed": "Falló el escaneo",
+	"es.alert.dismiss": "Cerrar",
+
+	"es.results.complete": "Completo — se escaneó cada bloque de este rango.",
+	"es.results.gapsWarn": "{blocks} bloque(s) en {ranges} rango(s) no se pudieron obtener de ningún RPC; los resultados pueden estar incompletos.",
+	"es.results.rescanGaps": "Reescanear huecos",
+	"es.results.interrupted": "El escaneo se interrumpió antes de terminar."
 }

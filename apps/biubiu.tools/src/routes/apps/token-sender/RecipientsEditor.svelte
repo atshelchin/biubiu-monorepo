@@ -22,15 +22,18 @@
 	let { mode, symbol, initial = '', onChange }: Props = $props();
 
 	let editorRef: ReturnType<typeof LineEditor>;
+	// Only the valid lines are consumed (synced to the parent below). The editor surfaces
+	// its own valid/error/duplicate counts in its status bar + issues drawer, so we don't
+	// re-bind them here.
 	let validLines = $state<string[]>([]);
-	let validCount = $state(0);
-	let errorCount = $state(0);
-	let duplicateCount = $state(0);
 
 	const ADDR = /^0x[a-fA-F0-9]{40}$/;
 
 	function validate(line: string): string | null {
-		const parts = line.trim().split(/[,\t ]+/).filter(Boolean);
+		const parts = line
+			.trim()
+			.split(/[,\t ]+/)
+			.filter(Boolean);
 		if (!ADDR.test(parts[0] ?? '')) return t('ts.editor.invalidAddress');
 		if (mode === 'specified') {
 			const amt = parts[1];
@@ -69,22 +72,23 @@
 			error: t('ts.editor.error'),
 			duplicate: t('ts.editor.duplicate'),
 			andMore: t('ts.editor.andMore'),
-			close: t('ts.editor.close'),
+			close: t('ts.editor.close')
 		},
-		validation: { duplicate: t('ts.editor.duplicateAddress') },
+		validation: { duplicate: t('ts.editor.duplicateAddress') }
 	};
 
 	/**
-	 * 把上传弹窗 portal 到 <body>。Step2 在 .glass 卡片里，其 backdrop-filter 会成为
-	 * position:fixed 的包含块，导致弹窗遮罩只盖住卡片、盖不住整页（层次错乱）。
-	 * 移到 body 即可逃出该包含块，遮罩恢复覆盖视口。
+	 * Portal the upload modal to <body>. Its backdrop is `position: fixed`, so any ancestor
+	 * carrying a transform/filter — e.g. the section's fade-in transform while it animates in —
+	 * would become the backdrop's containing block and trap the overlay inside the card instead
+	 * of covering the viewport. Mounting on <body> keeps it anchored to the viewport regardless.
 	 */
 	function portal(node: HTMLElement) {
 		if (typeof document !== 'undefined') document.body.appendChild(node);
 		return {
 			destroy() {
 				node.remove();
-			},
+			}
 		};
 	}
 </script>
@@ -114,9 +118,6 @@
 		minHeight={220}
 		maxHeight={460}
 		bind:validLines
-		bind:validCount
-		bind:errorCount
-		bind:duplicateCount
 	>
 		{#snippet fileUploadModal({ open, onClose, onConfirm })}
 			<div use:portal class="ts-upload-portal">

@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Duplicate",
 	"ts.editor.andMore": "…and {0} more",
 	"ts.editor.close": "Close",
-	"ts.editor.duplicateAddress": "Duplicate address"
+	"ts.editor.duplicateAddress": "Duplicate address",
+
+	"ts.errors.connectWallet": "Connect your wallet first",
+	"ts.errors.invalidTokenAddress": "Invalid token contract address",
+	"ts.errors.tokenMetaFailed": "Couldn't read the token — check the address and network",
+	"ts.errors.reviewFailed": "Couldn't prepare the review — {error}",
+	"ts.alert.dismiss": "Dismiss",
+	"ts.phase.starting": "Starting…",
+	"ts.phase.building": "Building transaction…",
+	"ts.phase.checking": "Checking…",
+	"ts.phase.estimating": "Estimating gas…",
+	"ts.phase.signing": "Sign in your wallet…",
+	"ts.phase.submitting": "Submitting…",
+	"ts.phase.waiting": "Waiting for confirmation…",
+	"ts.phase.confirmed": "Confirmed",
+	"ts.phase.failed": "Failed"
 }

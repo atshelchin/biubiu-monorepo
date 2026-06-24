@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "重複",
 	"ts.editor.andMore": "…還有 {0} 個",
 	"ts.editor.close": "關閉",
-	"ts.editor.duplicateAddress": "重複地址"
+	"ts.editor.duplicateAddress": "重複地址",
+
+	"ts.errors.connectWallet": "請先連接錢包",
+	"ts.errors.invalidTokenAddress": "無效的代幣合約地址",
+	"ts.errors.tokenMetaFailed": "無法讀取代幣 —— 請檢查地址與網絡",
+	"ts.errors.reviewFailed": "無法準備確認資訊 —— {error}",
+	"ts.alert.dismiss": "關閉",
+	"ts.phase.starting": "準備中…",
+	"ts.phase.building": "建立交易中…",
+	"ts.phase.checking": "檢查中…",
+	"ts.phase.estimating": "估算 gas 中…",
+	"ts.phase.signing": "請在錢包中簽名…",
+	"ts.phase.submitting": "提交中…",
+	"ts.phase.waiting": "等待確認中…",
+	"ts.phase.confirmed": "已確認",
+	"ts.phase.failed": "失敗"
 }

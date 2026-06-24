@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "중복",
 	"ts.editor.andMore": "…그리고 {0}개 더",
 	"ts.editor.close": "닫기",
-	"ts.editor.duplicateAddress": "중복된 주소"
+	"ts.editor.duplicateAddress": "중복된 주소",
+
+	"ts.errors.connectWallet": "먼저 지갑을 연결하세요",
+	"ts.errors.invalidTokenAddress": "유효하지 않은 토큰 컨트랙트 주소",
+	"ts.errors.tokenMetaFailed": "토큰을 읽을 수 없습니다 — 주소와 네트워크를 확인하세요",
+	"ts.errors.reviewFailed": "검토 정보를 준비할 수 없습니다 — {error}",
+	"ts.alert.dismiss": "닫기",
+	"ts.phase.starting": "시작 중…",
+	"ts.phase.building": "트랜잭션 생성 중…",
+	"ts.phase.checking": "확인 중…",
+	"ts.phase.estimating": "gas 추정 중…",
+	"ts.phase.signing": "지갑에서 서명하세요…",
+	"ts.phase.submitting": "전송 중…",
+	"ts.phase.waiting": "확인을 기다리는 중…",
+	"ts.phase.confirmed": "확인됨",
+	"ts.phase.failed": "실패"
 }

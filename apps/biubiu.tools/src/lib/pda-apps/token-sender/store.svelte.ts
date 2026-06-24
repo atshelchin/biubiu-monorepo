@@ -4,14 +4,14 @@
  * 编排顺序：选网络/代币 → 录入收件人 → 复核+费用 → 逐批发送（每批一次 passkey）。
  * 发送层依赖注入 core/，UI 仅消费此 store。
  */
-import type { Address, Hex } from 'viem';
+import type { Address } from 'viem';
 import { formatUnits } from 'viem';
 import { walletStore } from '$lib/wallet';
 import {
 	memberWaiver,
 	proveMemberControl,
 	ensureMembershipLoaded,
-	type ProofResult,
+	type ProofResult
 } from '$lib/subscription';
 import { CONTRACTS } from '$lib/auth/safe-tx/constants';
 import type {
@@ -21,7 +21,7 @@ import type {
 	SendBatchRecord,
 	SendRecord,
 	TokenSenderNetwork,
-	TokenType,
+	TokenType
 } from './types.js';
 import { listNetworks } from './infra/networks.js';
 import { parseRecipients, type ParseResult } from './core/parse.js';
@@ -36,11 +36,13 @@ import {
 	deleteCustomNetwork,
 	getRpcOverrides,
 	saveRpcOverride,
-	deleteRpcOverride,
+	deleteRpcOverride
 } from './infra/custom-store.js';
 
 export type WizardStep = 1 | 2 | 3 | 4;
 export type ExecStatus = 'idle' | 'running' | 'done' | 'aborted';
+/** Token-load failure codes — the UI maps these to localized copy (keeps the store i18n-free). */
+export type TokenMetaError = 'no-wallet' | 'invalid-token-address' | 'token-read-failed';
 
 export interface ProgressState {
 	batchIndex: number;
@@ -60,7 +62,7 @@ class TokenSenderStore {
 	tokenAddress = $state<string>('');
 	tokenMeta = $state<{ symbol: string; decimals: number } | null>(null);
 	tokenMetaLoading = $state(false);
-	tokenMetaError = $state<string | null>(null);
+	tokenMetaError = $state<TokenMetaError | null>(null);
 
 	// ── Step 2：收件人 ──
 	distributionMode = $state<DistributionMode>('specified');
@@ -175,11 +177,11 @@ class TokenSenderStore {
 		const connected = walletStore.activeWallet;
 		const addr = this.tokenAddress.trim();
 		if (!connected) {
-			this.tokenMetaError = 'Connect your wallet first';
+			this.tokenMetaError = 'no-wallet';
 			return;
 		}
 		if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-			this.tokenMetaError = 'Invalid token contract address';
+			this.tokenMetaError = 'invalid-token-address';
 			this.tokenMeta = null;
 			return;
 		}
@@ -191,7 +193,7 @@ class TokenSenderStore {
 			this.tokenMeta = meta;
 		} catch {
 			this.tokenMeta = null;
-			this.tokenMetaError = 'Failed to read token metadata (check the address & network)';
+			this.tokenMetaError = 'token-read-failed';
 		} finally {
 			this.tokenMetaLoading = false;
 		}
@@ -202,7 +204,7 @@ class TokenSenderStore {
 			text: this.recipientsText,
 			mode: this.distributionMode,
 			decimals: this.decimals,
-			totalAmount: this.totalAmountInput || undefined,
+			totalAmount: this.totalAmountInput || undefined
 		});
 	}
 
@@ -210,10 +212,9 @@ class TokenSenderStore {
 	async prepareReview(): Promise<void> {
 		const connected = walletStore.activeWallet;
 		this.reviewError = null;
-		if (!connected) {
-			this.reviewError = 'Connect your wallet first';
-			return;
-		}
+		// Step 3 is reached only behind <WalletGate>, so a missing wallet is unreachable
+		// in practice — bail quietly rather than surface a confusing error.
+		if (!connected) return;
 		if (!this.parsed || this.parsed.validCount === 0) return;
 
 		this.feeLoading = true;
@@ -227,10 +228,11 @@ class TokenSenderStore {
 				wallet,
 				network: this.network,
 				tokenType: this.tokenType,
-				tokenAddress: this.tokenType === 'erc20' ? (this.tokenAddress.trim() as Address) : undefined,
+				tokenAddress:
+					this.tokenType === 'erc20' ? (this.tokenAddress.trim() as Address) : undefined,
 				totalAmount: this.parsed.totalAmount,
 				// 每笔都收 → 预检用总费用（每批 × 批次数）
-				fee: { ...fee, amount: fee.amount * BigInt(this.totalBatches) },
+				fee: { ...fee, amount: fee.amount * BigInt(this.totalBatches) }
 			});
 		} catch (e) {
 			this.reviewError = e instanceof Error ? e.message : String(e);
@@ -267,14 +269,18 @@ class TokenSenderStore {
 			interBatchDelayMs: 2500,
 			signal: this.abortController.signal,
 			onProgress: (p) => {
-				this.progress = { batchIndex: p.batchIndex, totalBatches: p.totalBatches, phase: String(p.status) };
+				this.progress = {
+					batchIndex: p.batchIndex,
+					totalBatches: p.totalBatches,
+					phase: String(p.status)
+				};
 			},
 			onBatchDone: (b) => {
 				this.results = [...this.results, b];
 			},
 			onBatchFailed: (f) => {
 				this.failures = [...this.failures, f];
-			},
+			}
 		});
 
 		this.execStatus = outcome.aborted ? 'aborted' : 'done';
@@ -320,14 +326,18 @@ class TokenSenderStore {
 			completedBatchIndices: completed,
 			signal: this.abortController.signal,
 			onProgress: (p) => {
-				this.progress = { batchIndex: p.batchIndex, totalBatches: p.totalBatches, phase: String(p.status) };
+				this.progress = {
+					batchIndex: p.batchIndex,
+					totalBatches: p.totalBatches,
+					phase: String(p.status)
+				};
 			},
 			onBatchDone: (b) => {
 				this.results = [...this.results, b];
 			},
 			onBatchFailed: (f) => {
 				this.failures = [...this.failures, f];
-			},
+			}
 		});
 
 		this.execStatus = outcome.aborted ? 'aborted' : 'done';
@@ -337,7 +347,7 @@ class TokenSenderStore {
 	private async persistHistory(
 		startedAt: number,
 		results: BatchOutput[],
-		failures: { batchIndex: number; error: string }[],
+		failures: { batchIndex: number; error: string }[]
 	): Promise<void> {
 		if (!this.parsed || !this.fee) return;
 		const batches: SendBatchRecord[] = [];
@@ -348,7 +358,7 @@ class TokenSenderStore {
 				txHash: r.txHash,
 				status: 'confirmed',
 				count: r.successCount,
-				explorerUrl: r.explorerUrl,
+				explorerUrl: r.explorerUrl
 			});
 		}
 		for (const f of failures) {
@@ -373,7 +383,7 @@ class TokenSenderStore {
 			feeWei: this.fee.amount.toString(),
 			isMember: this.isMember,
 			status,
-			batches,
+			batches
 		};
 
 		try {
@@ -423,7 +433,7 @@ class TokenSenderStore {
 			multiSendAddress: CONTRACTS.multiSend as Address,
 			maxBatchNative: 100,
 			maxBatchErc20: 100,
-			isCustom: true,
+			isCustom: true
 		};
 		this.customNetworks = [...this.customNetworks.filter((n) => n.slug !== slug), net];
 		this.networkSlug = slug;
@@ -485,8 +495,8 @@ class TokenSenderStore {
 					jsonrpc: '2.0',
 					id: 1,
 					method: 'eth_getCode',
-					params: [CONTRACTS.multiSend, 'latest'],
-				}),
+					params: [CONTRACTS.multiSend, 'latest']
+				})
 			});
 			const json = await res.json();
 			const code = json?.result;

@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Doppelt",
 	"ts.editor.andMore": "…und {0} weitere",
 	"ts.editor.close": "Schließen",
-	"ts.editor.duplicateAddress": "Doppelte Adresse"
+	"ts.editor.duplicateAddress": "Doppelte Adresse",
+
+	"ts.errors.connectWallet": "Verbinde zuerst deine Wallet",
+	"ts.errors.invalidTokenAddress": "Ungültige Token-Contract-Adresse",
+	"ts.errors.tokenMetaFailed": "Token konnte nicht gelesen werden – prüfe Adresse und Netzwerk",
+	"ts.errors.reviewFailed": "Überprüfung konnte nicht vorbereitet werden – {error}",
+	"ts.alert.dismiss": "Schließen",
+	"ts.phase.starting": "Wird gestartet…",
+	"ts.phase.building": "Transaktion wird erstellt…",
+	"ts.phase.checking": "Wird geprüft…",
+	"ts.phase.estimating": "Gas wird geschätzt…",
+	"ts.phase.signing": "In deiner Wallet signieren…",
+	"ts.phase.submitting": "Wird gesendet…",
+	"ts.phase.waiting": "Warte auf Bestätigung…",
+	"ts.phase.confirmed": "Bestätigt",
+	"ts.phase.failed": "Fehlgeschlagen"
 }

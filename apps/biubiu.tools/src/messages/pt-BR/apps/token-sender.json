@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Duplicado",
 	"ts.editor.andMore": "…e mais {0}",
 	"ts.editor.close": "Fechar",
-	"ts.editor.duplicateAddress": "Endereço duplicado"
+	"ts.editor.duplicateAddress": "Endereço duplicado",
+
+	"ts.errors.connectWallet": "Conecte sua carteira primeiro",
+	"ts.errors.invalidTokenAddress": "Endereço de contrato do token inválido",
+	"ts.errors.tokenMetaFailed": "Não foi possível ler o token — verifique o endereço e a rede",
+	"ts.errors.reviewFailed": "Não foi possível preparar a revisão — {error}",
+	"ts.alert.dismiss": "Dispensar",
+	"ts.phase.starting": "Iniciando…",
+	"ts.phase.building": "Montando transação…",
+	"ts.phase.checking": "Verificando…",
+	"ts.phase.estimating": "Estimando gas…",
+	"ts.phase.signing": "Assine na sua wallet…",
+	"ts.phase.submitting": "Enviando…",
+	"ts.phase.waiting": "Aguardando confirmação…",
+	"ts.phase.confirmed": "Confirmada",
+	"ts.phase.failed": "Falhou"
 }

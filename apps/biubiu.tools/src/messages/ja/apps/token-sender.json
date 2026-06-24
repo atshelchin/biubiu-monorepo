@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "重複",
 	"ts.editor.andMore": "…他 {0} 件",
 	"ts.editor.close": "閉じる",
-	"ts.editor.duplicateAddress": "重複したアドレス"
+	"ts.editor.duplicateAddress": "重複したアドレス",
+
+	"ts.errors.connectWallet": "先にウォレットを接続してください",
+	"ts.errors.invalidTokenAddress": "無効なトークンコントラクトアドレスです",
+	"ts.errors.tokenMetaFailed": "トークンを読み取れません — アドレスとネットワークを確認してください",
+	"ts.errors.reviewFailed": "確認情報を準備できません — {error}",
+	"ts.alert.dismiss": "閉じる",
+	"ts.phase.starting": "開始中…",
+	"ts.phase.building": "トランザクションを作成中…",
+	"ts.phase.checking": "確認中…",
+	"ts.phase.estimating": "gas を見積もり中…",
+	"ts.phase.signing": "ウォレットで署名してください…",
+	"ts.phase.submitting": "送信中…",
+	"ts.phase.waiting": "確認を待っています…",
+	"ts.phase.confirmed": "確認済み",
+	"ts.phase.failed": "失敗"
 }

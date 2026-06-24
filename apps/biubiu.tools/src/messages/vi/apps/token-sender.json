@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Trùng lặp",
 	"ts.editor.andMore": "…và {0} dòng nữa",
 	"ts.editor.close": "Đóng",
-	"ts.editor.duplicateAddress": "Địa chỉ trùng lặp"
+	"ts.editor.duplicateAddress": "Địa chỉ trùng lặp",
+
+	"ts.errors.connectWallet": "Hãy kết nối ví của bạn trước",
+	"ts.errors.invalidTokenAddress": "Địa chỉ hợp đồng token không hợp lệ",
+	"ts.errors.tokenMetaFailed": "Không đọc được token — hãy kiểm tra địa chỉ và mạng",
+	"ts.errors.reviewFailed": "Không thể chuẩn bị phần xem lại — {error}",
+	"ts.alert.dismiss": "Đóng",
+	"ts.phase.starting": "Đang bắt đầu…",
+	"ts.phase.building": "Đang dựng giao dịch…",
+	"ts.phase.checking": "Đang kiểm tra…",
+	"ts.phase.estimating": "Đang ước tính gas…",
+	"ts.phase.signing": "Hãy ký trong ví của bạn…",
+	"ts.phase.submitting": "Đang gửi…",
+	"ts.phase.waiting": "Đang chờ xác nhận…",
+	"ts.phase.confirmed": "Đã xác nhận",
+	"ts.phase.failed": "Thất bại"
 }

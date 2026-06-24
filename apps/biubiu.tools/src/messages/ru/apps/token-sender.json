@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Повтор",
 	"ts.editor.andMore": "…и ещё {0}",
 	"ts.editor.close": "Закрыть",
-	"ts.editor.duplicateAddress": "Повторяющийся адрес"
+	"ts.editor.duplicateAddress": "Повторяющийся адрес",
+
+	"ts.errors.connectWallet": "Сначала подключите кошелёк",
+	"ts.errors.invalidTokenAddress": "Неверный адрес контракта токена",
+	"ts.errors.tokenMetaFailed": "Не удалось прочитать токен — проверьте адрес и сеть",
+	"ts.errors.reviewFailed": "Не удалось подготовить сводку — {error}",
+	"ts.alert.dismiss": "Закрыть",
+	"ts.phase.starting": "Запуск…",
+	"ts.phase.building": "Формирование транзакции…",
+	"ts.phase.checking": "Проверка…",
+	"ts.phase.estimating": "Оценка gas…",
+	"ts.phase.signing": "Подпишите в кошельке…",
+	"ts.phase.submitting": "Отправка…",
+	"ts.phase.waiting": "Ожидание подтверждения…",
+	"ts.phase.confirmed": "Подтверждено",
+	"ts.phase.failed": "Ошибка"
 }

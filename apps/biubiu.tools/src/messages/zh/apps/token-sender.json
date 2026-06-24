@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "重复",
 	"ts.editor.andMore": "…还有 {0} 个",
 	"ts.editor.close": "关闭",
-	"ts.editor.duplicateAddress": "重复地址"
+	"ts.editor.duplicateAddress": "重复地址",
+
+	"ts.errors.connectWallet": "请先连接钱包",
+	"ts.errors.invalidTokenAddress": "无效的代币合约地址",
+	"ts.errors.tokenMetaFailed": "无法读取代币 —— 请检查地址和网络",
+	"ts.errors.reviewFailed": "无法准备确认信息 —— {error}",
+	"ts.alert.dismiss": "关闭",
+	"ts.phase.starting": "准备中…",
+	"ts.phase.building": "构建交易中…",
+	"ts.phase.checking": "检查中…",
+	"ts.phase.estimating": "估算 gas 中…",
+	"ts.phase.signing": "请在钱包中签名…",
+	"ts.phase.submitting": "提交中…",
+	"ts.phase.waiting": "等待确认中…",
+	"ts.phase.confirmed": "已确认",
+	"ts.phase.failed": "失败"
 }

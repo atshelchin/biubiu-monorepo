@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Duplikat",
 	"ts.editor.andMore": "…dan {0} lagi",
 	"ts.editor.close": "Tutup",
-	"ts.editor.duplicateAddress": "Alamat duplikat"
+	"ts.editor.duplicateAddress": "Alamat duplikat",
+
+	"ts.errors.connectWallet": "Hubungkan dompet Anda dulu",
+	"ts.errors.invalidTokenAddress": "Alamat kontrak token tidak valid",
+	"ts.errors.tokenMetaFailed": "Tidak bisa membaca token — periksa alamat dan jaringan",
+	"ts.errors.reviewFailed": "Tidak bisa menyiapkan ringkasan — {error}",
+	"ts.alert.dismiss": "Tutup",
+	"ts.phase.starting": "Memulai…",
+	"ts.phase.building": "Menyusun transaksi…",
+	"ts.phase.checking": "Memeriksa…",
+	"ts.phase.estimating": "Memperkirakan gas…",
+	"ts.phase.signing": "Tanda tangani di dompetmu…",
+	"ts.phase.submitting": "Mengirim…",
+	"ts.phase.waiting": "Menunggu konfirmasi…",
+	"ts.phase.confirmed": "Terkonfirmasi",
+	"ts.phase.failed": "Gagal"
 }

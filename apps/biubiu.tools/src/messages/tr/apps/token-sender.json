@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Yinelenen",
 	"ts.editor.andMore": "…ve {0} tane daha",
 	"ts.editor.close": "Kapat",
-	"ts.editor.duplicateAddress": "Yinelenen adres"
+	"ts.editor.duplicateAddress": "Yinelenen adres",
+
+	"ts.errors.connectWallet": "Önce cüzdanını bağla",
+	"ts.errors.invalidTokenAddress": "Geçersiz token sözleşme adresi",
+	"ts.errors.tokenMetaFailed": "Token okunamadı — adresi ve ağı kontrol et",
+	"ts.errors.reviewFailed": "Özet hazırlanamadı — {error}",
+	"ts.alert.dismiss": "Kapat",
+	"ts.phase.starting": "Başlatılıyor…",
+	"ts.phase.building": "İşlem oluşturuluyor…",
+	"ts.phase.checking": "Kontrol ediliyor…",
+	"ts.phase.estimating": "Gas tahmin ediliyor…",
+	"ts.phase.signing": "Cüzdanınızda imzalayın…",
+	"ts.phase.submitting": "Gönderiliyor…",
+	"ts.phase.waiting": "Onay bekleniyor…",
+	"ts.phase.confirmed": "Onaylandı",
+	"ts.phase.failed": "Başarısız"
 }

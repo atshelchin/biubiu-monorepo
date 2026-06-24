@@ -145,5 +145,20 @@
 	"ts.editor.duplicate": "Doublon",
 	"ts.editor.andMore": "…et {0} de plus",
 	"ts.editor.close": "Fermer",
-	"ts.editor.duplicateAddress": "Adresse en double"
+	"ts.editor.duplicateAddress": "Adresse en double",
+
+	"ts.errors.connectWallet": "Connectez d'abord votre portefeuille",
+	"ts.errors.invalidTokenAddress": "Adresse de contrat de jeton invalide",
+	"ts.errors.tokenMetaFailed": "Impossible de lire le jeton — vérifiez l'adresse et le réseau",
+	"ts.errors.reviewFailed": "Impossible de préparer la vérification — {error}",
+	"ts.alert.dismiss": "Fermer",
+	"ts.phase.starting": "Démarrage…",
+	"ts.phase.building": "Construction de la transaction…",
+	"ts.phase.checking": "Vérification…",
+	"ts.phase.estimating": "Estimation du gas…",
+	"ts.phase.signing": "Signez dans votre wallet…",
+	"ts.phase.submitting": "Envoi…",
+	"ts.phase.waiting": "En attente de confirmation…",
+	"ts.phase.confirmed": "Confirmée",
+	"ts.phase.failed": "Échec"
 }

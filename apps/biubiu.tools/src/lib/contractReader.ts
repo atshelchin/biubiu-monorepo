@@ -2,8 +2,7 @@
  * Contract Reader - Simple RPC calls with fallback
  */
 import { encodeFunctionData, decodeFunctionResult, type Abi } from 'viem';
-
-const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
+import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
 
 // Cache for chain data
 const chainDataCache = new Map<number, ChainData>();
@@ -28,7 +27,7 @@ async function fetchChainData(chainId: number): Promise<ChainData> {
 		return chainDataCache.get(chainId)!;
 	}
 
-	const response = await fetch(`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${chainId}.json`);
+	const response = await fetch(`${getEthereumDataURL()}/chains/eip155-${chainId}.json`);
 	if (!response.ok) {
 		throw new Error(`Failed to fetch chain data for chainId ${chainId}`);
 	}

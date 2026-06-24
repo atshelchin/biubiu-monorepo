@@ -8,7 +8,7 @@
 import { type Address, type Hex, encodeFunctionData, concat } from 'viem';
 import type { AuthUser } from '$lib/auth';
 import { CONTRACTS } from '$lib/auth/compute-safe-address.js';
-import { CHAIN_CONFIG } from '$lib/auth/safe-tx/constants.js';
+import { slugForChainId } from '$lib/wallet/infra/chains.js';
 import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
 import type { SendResult } from '$lib/auth/safe-tx/send-token.js';
 import type { Call, ConnectedWallet, SendCallsOptions } from '../types.js';
@@ -44,13 +44,9 @@ export function encodeMultiSend(calls: Call[]): Hex {
 	return encodeFunctionData({ abi: MULTISEND_ABI, functionName: 'multiSend', args: [packed] });
 }
 
-/** chainId → Alchemy network key（biubiu 支持的链），无则返回 null。 */
+/** chainId → 网络 slug（biubiu 支持的链），无则返回 null。源为 wallet/infra/chains.ts。 */
 export function networkKeyForChainId(chainId: number): string | null {
-	const target = BigInt(chainId);
-	for (const [key, cfg] of Object.entries(CHAIN_CONFIG)) {
-		if (cfg.chainId === target) return key;
-	}
-	return null;
+	return slugForChainId(chainId) ?? null;
 }
 
 export class BiubiuWallet implements ConnectedWallet {
@@ -83,6 +79,7 @@ export class BiubiuWallet implements ConnectedWallet {
 		const onStatus = opts.onPhase ?? (() => {});
 
 		// 单条 → 直接 executeUserOp(op=0)；多条 → MultiSend delegatecall(op=1)。
+		// `calls` 原样透传：Tempo 分支需要原始子调用来追加报销 transfer（native 忽略）。
 		if (calls.length === 1) {
 			const c = calls[0];
 			return sendContractCall({
@@ -91,6 +88,7 @@ export class BiubiuWallet implements ConnectedWallet {
 				value: c.value,
 				data: c.data,
 				operation: 0,
+				calls,
 				network,
 				onStatus,
 				gasOverrides: opts.gasOverrides
@@ -103,6 +101,7 @@ export class BiubiuWallet implements ConnectedWallet {
 			value: 0n,
 			data: encodeMultiSend(calls),
 			operation: 1,
+			calls,
 			network,
 			onStatus,
 			gasOverrides: opts.gasOverrides

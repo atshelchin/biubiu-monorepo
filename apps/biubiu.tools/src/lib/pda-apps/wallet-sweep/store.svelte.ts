@@ -10,6 +10,7 @@
  * address-level history (sweep-history.ts) are persisted.
  */
 import { type Address } from 'viem';
+import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import type {
 	SweepNetwork,
 	NetworkReadiness,
@@ -254,8 +255,11 @@ export class WalletSweepStore {
 
 	private async resolveRpcs(net: SweepNetwork): Promise<string[]> {
 		if (this.rpcCache[net.slug]) return this.rpcCache[net.slug];
-		const working = await pickWorkingRpc(net.rpcs, net.chainId);
-		const ordered = working ? [working, ...net.rpcs.filter((u) => u !== working)] : [...net.rpcs];
+		// Merge shared service-node settings (user RPC override / provider key) ahead of
+		// this app's curated RPCs, then pick the fastest working one as primary.
+		const merged = resolveRpcUrls(net.chainId, net.rpcs);
+		const working = await pickWorkingRpc(merged, net.chainId);
+		const ordered = working ? [working, ...merged.filter((u) => u !== working)] : [...merged];
 		this.rpcCache[net.slug] = ordered;
 		return ordered;
 	}

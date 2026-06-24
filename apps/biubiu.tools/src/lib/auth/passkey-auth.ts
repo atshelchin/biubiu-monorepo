@@ -10,8 +10,10 @@
 import type { AuthUser, IndexChallenge, LocalKey, StoredKey } from './types.js';
 import { computeSafeAddress } from './compute-safe-address.js';
 import { toBase64url, fromBase64url, bufToHex, derToRawSignature } from './crypto-utils.js';
+import { getPasskeyIndexURL } from '$lib/wallet/infra/endpoints.js';
 
-const INDEX_BASE = 'https://webauthnp256-publickey-index.biubiu.tools';
+/** Passkey 公钥索引服务的 base URL（可在「服务节点」设置里覆盖）。 */
+const INDEX_BASE = () => getPasskeyIndexURL();
 const RP_NAME = 'BiuBiu Tools';
 const LOCAL_KEYS_STORAGE = 'biubiu-auth-local-keys';
 
@@ -85,7 +87,7 @@ async function signAndUpload(
 	// 1. 获取 challenge
 	let challenge: string;
 	try {
-		const res = await fetch(`${INDEX_BASE}/api/challenge`);
+		const res = await fetch(`${INDEX_BASE()}/api/challenge`);
 		if (!res.ok) return { ok: false, error: 'Failed to get challenge from server' };
 		const data: IndexChallenge = await res.json();
 		challenge = data.challenge;
@@ -130,7 +132,7 @@ async function signAndUpload(
 
 	// 3. 上传
 	try {
-		const res = await fetch(`${INDEX_BASE}/api/create`, {
+		const res = await fetch(`${INDEX_BASE()}/api/create`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -358,7 +360,7 @@ export async function loginWithPasskey(): Promise<
 	// 查远程
 	try {
 		const params = new URLSearchParams({ rpId, credentialId });
-		const res = await fetch(`${INDEX_BASE}/api/query?${params}`);
+		const res = await fetch(`${INDEX_BASE()}/api/query?${params}`);
 
 		if (!res.ok) {
 			if (res.status === 404) {

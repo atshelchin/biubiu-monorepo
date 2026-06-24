@@ -10,6 +10,7 @@
  */
 
 import { CREATE2_PROXY } from './create2.js';
+import { getUserOperationGasPrice } from '$lib/wallet/infra/bundler-client.js';
 
 // ─── Required contract addresses ───
 
@@ -122,22 +123,13 @@ async function checkP256Precompile(rpcUrl: string): Promise<boolean> {
 }
 
 /**
- * Check if bundler supports this chain via pimlico_getUserOperationGasPrice.
- * Uses the /api/bundler proxy endpoint with chainId directly.
+ * Check if the bundler supports this chain via pimlico_getUserOperationGasPrice.
+ * Direct through the shared infra bundler client (vela bundler, no proxy).
  */
 async function checkBundlerSupport(chainId: number): Promise<boolean> {
 	try {
-		const res = await fetch('/api/bundler', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				method: 'pimlico_getUserOperationGasPrice',
-				params: [],
-				chainId
-			})
-		});
-		const json = await res.json();
-		return !json.error;
+		const tiers = await getUserOperationGasPrice(chainId);
+		return tiers !== null;
 	} catch {
 		return false;
 	}

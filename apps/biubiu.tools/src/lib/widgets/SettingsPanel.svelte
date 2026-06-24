@@ -13,6 +13,10 @@
 		type TimeFormat,
 		type Settings
 	} from '$lib/settings';
+	import ServiceNodesModal from '$lib/widgets/ServiceNodesModal.svelte';
+	import { CURRENCIES } from '$lib/wallet/infra/currency-catalog.js';
+
+	let showServiceNodes = $state(false);
 
 	// Unified settings state
 	let settings = $state<Settings>({
@@ -106,6 +110,12 @@
 
 	function handleSetTimeFormat(format: TimeFormat) {
 		settings = { ...settings, timeFormat: format };
+		saveSettings(settings);
+	}
+
+	function handleSetCurrency(code: string) {
+		settings = { ...settings, currency: code };
+		preferences.currency = code;
 		saveSettings(settings);
 	}
 </script>
@@ -261,7 +271,44 @@
 			</div>
 		</div>
 	</section>
+
+		<!-- Currency -->
+		<div class="setting-row">
+			<span class="setting-label">{t('settings.currency')}</span>
+			<select
+				class="currency-select"
+				value={settings.currency}
+				onchange={(e) => handleSetCurrency(e.currentTarget.value)}
+			>
+				{#each CURRENCIES as cur}
+					<option value={cur.code}>{cur.code} · {cur.name}</option>
+				{/each}
+			</select>
+		</div>
+
+		<div class="section-divider"></div>
+
+		<!-- Service Nodes Section -->
+		<section class="settings-section">
+			<div class="section-label">
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+					<rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+					<line x1="6" y1="6" x2="6.01" y2="6"/>
+					<line x1="6" y1="18" x2="6.01" y2="18"/>
+				</svg>
+				<span>{t('settings.serviceNodes')}</span>
+			</div>
+			<div class="setting-row">
+				<span class="setting-label">{t('settings.sn.desc')}</span>
+				<button class="option-btn" onclick={() => (showServiceNodes = true)}>
+					{t('settings.sn.configure')}
+				</button>
+			</div>
+		</section>
 </div>
+
+<ServiceNodesModal open={showServiceNodes} onClose={() => (showServiceNodes = false)} />
 
 <style>
 	.settings-panel {
@@ -494,6 +541,24 @@
 		background: var(--accent);
 		border-color: var(--accent);
 		color: var(--bg-base);
+	}
+
+	/* Currency select */
+	.currency-select {
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		background: var(--bg-raised);
+		color: var(--fg-base);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		max-width: 60%;
+	}
+
+	.currency-select:focus {
+		outline: none;
+		border-color: var(--accent);
 	}
 
 

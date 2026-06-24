@@ -6,6 +6,7 @@
  * pays network gas / bundler / on-chain costs.
  */
 import { createPublicClient, http, fallback, parseUnits } from 'viem';
+import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import {
 	FEE_USD,
 	FEE_COLLECTOR,
@@ -39,7 +40,7 @@ async function fetchNativeUsdPrice(network: SweepNetwork): Promise<number | null
 	const feed = network.chainlinkNativeUsdFeed;
 	if (!feed) return null;
 	try {
-		const client = createPublicClient({ transport: fallback(network.rpcs.map((u) => http(u))) });
+		const client = createPublicClient({ transport: fallback(resolveRpcUrls(network.chainId, network.rpcs).map((u) => http(u))) });
 		const [round, dec] = await Promise.all([
 			client.readContract({ address: feed, abi: AGGREGATOR_ABI, functionName: 'latestRoundData' }) as Promise<
 				readonly [bigint, bigint, bigint, bigint, bigint]

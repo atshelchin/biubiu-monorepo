@@ -8,6 +8,7 @@
  * 单链 Chainlink 读取，后续可按需增强。
  */
 import { createPublicClient, http, fallback } from 'viem';
+import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import type { TokenSenderNetwork } from '../types.js';
 
 const AGGREGATOR_ABI = [
@@ -32,7 +33,7 @@ export async function fetchNativeUsdPrice(network: TokenSenderNetwork): Promise<
 	if (!feed) return null;
 
 	try {
-		const client = createPublicClient({ transport: fallback(network.rpcs.map((u) => http(u))) });
+		const client = createPublicClient({ transport: fallback(resolveRpcUrls(network.chainId, network.rpcs).map((u) => http(u))) });
 		const [round, dec] = await Promise.all([
 			client.readContract({ address: feed, abi: AGGREGATOR_ABI, functionName: 'latestRoundData' }) as Promise<
 				readonly [bigint, bigint, bigint, bigint, bigint]

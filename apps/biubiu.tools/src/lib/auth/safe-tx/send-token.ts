@@ -1,7 +1,9 @@
 /**
  * Safe 提现编排器（多网络、native + ERC-20，native token 付 gas）。
  *
- * 流程：dummy signature 估算 gas → 真实签名 → 提交。
+ * 流程：dummy signature 估算 gas → 真实签名 → 提交。传输已改为直连
+ * （wallet/infra/*）。Tempo（无原生 gas 币）委托给 send-contract-call 的 Tempo
+ * 分支（稳定币付 gas）。
  */
 import {
 	type Address,
@@ -20,19 +22,19 @@ import {
 	calculateSafeOpHash,
 	packAccountGasLimits,
 	packGasFees,
+	formatUserOpForRpc,
 	type UserOperation,
 	type GasParams
 } from './build-userop.js';
 import { signSafeOpWithPasskey } from './webauthn-sign.js';
+import { chainInfoBySlug, isTempoChain, explorerTxUrl } from '$lib/wallet/infra/chains.js';
+import { isDeployed, getNonce, getGasPrices } from '$lib/wallet/infra/account-state.js';
 import {
-	isDeployed,
-	getNonce,
-	getGasPrices,
 	estimateUserOperationGas,
 	sendUserOperation,
 	getUserOperationReceipt
-} from './bundler-client.js';
-import { CHAIN_CONFIG } from './constants.js';
+} from '$lib/wallet/infra/bundler-client.js';
+import { sendContractCall } from './send-contract-call.js';
 
 export type SendStatus =
 	| 'checking'
@@ -70,17 +72,32 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		recipient, amount, network, tokenAddress, decimals, onStatus
 	} = params;
 
-	const chainCfg = CHAIN_CONFIG[network];
-	if (!chainCfg) return { success: false, error: `Unsupported network: ${network}` };
+	const chain = chainInfoBySlug(network);
+	if (!chain) return { success: false, error: `Unsupported network: ${network}` };
+	const chainId = chain.chainId;
 
 	const amountWei = parseUnits(String(amount), decimals);
 	const isNative = !tokenAddress;
 
+	// Tempo：稳定币付 gas，复用 send-contract-call 的 Tempo 分支（native 转账在
+	// Tempo 上无意义，这里把提现表示为一条普通 call 交给编排器追加报销 transfer）。
+	if (isTempoChain(chainId)) {
+		const to = (isNative ? recipient : (tokenAddress as Address));
+		const value = isNative ? amountWei : 0n;
+		const data: Hex = isNative
+			? '0x'
+			: encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [recipient, amountWei] });
+		return sendContractCall({
+			safeAddress, publicKeyHex, credentialId, rpId,
+			to, value, data, operation: 0, network, onStatus
+		});
+	}
+
 	try {
 		// 1. 检查部署状态 + nonce
 		onStatus('checking');
-		const deployed = await isDeployed(safeAddress, network);
-		const nonce = deployed ? await getNonce(safeAddress, network) : 0n;
+		const deployed = await isDeployed(safeAddress, chainId);
+		const nonce = deployed ? await getNonce(safeAddress, chainId) : 0n;
 
 		// 2. 构建 callData
 		onStatus('building');
@@ -96,7 +113,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 		}
 
 		const initCode: Hex = !deployed ? buildInitCode(publicKeyHex) : '0x';
-		const gasPrices = await getGasPrices(network);
+		const gasPrices = await getGasPrices(chainId);
 
 		const initialGas: GasParams = {
 			verificationGasLimit: deployed ? 300000n : 600000n,
@@ -120,7 +137,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 			signature: dummySignature
 		};
 
-		const estimates = await estimateUserOperationGas(dummyUserOp, network);
+		const estimates = await estimateUserOperationGas(formatUserOpForRpc(dummyUserOp), chainId);
 
 		const refinedGas: GasParams = {
 			verificationGasLimit: (BigInt(estimates.verificationGasLimit) * 13n) / 10n,
@@ -131,7 +148,7 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 
 		// 4. 计算 SafeOp Hash
 		const safeOpHash = calculateSafeOpHash(
-			safeAddress, callData, nonce, initCode, refinedGas, chainCfg.chainId
+			safeAddress, callData, nonce, initCode, refinedGas, BigInt(chainId)
 		);
 
 		// 5. WebAuthn 签名
@@ -160,20 +177,20 @@ export async function sendToken(params: SendParams): Promise<SendResult> {
 
 		// 6. 提交
 		onStatus('submitting');
-		const userOpHash = await sendUserOperation(finalUserOp, network);
+		const userOpHash = await sendUserOperation(formatUserOpForRpc(finalUserOp), chainId);
 
 		// 7. 等待确认
 		onStatus('waiting');
 		const startTime = Date.now();
 		while (Date.now() - startTime < 120_000) {
-			const receipt = await getUserOperationReceipt(userOpHash, network);
+			const receipt = await getUserOperationReceipt(userOpHash, chainId);
 			if (receipt) {
 				if (receipt.success) {
 					onStatus('confirmed');
 					return {
 						success: true,
 						txHash: receipt.receipt.transactionHash,
-						explorerUrl: `${chainCfg.explorerUrl}${receipt.receipt.transactionHash}`
+						explorerUrl: `${explorerTxUrl(chainId)}${receipt.receipt.transactionHash}`
 					};
 				}
 				onStatus('failed');

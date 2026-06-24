@@ -57,8 +57,14 @@
 			name: 'Optimism',
 			color: '#FF0420',
 			icon: `<svg viewBox="0 0 500 500" preserveAspectRatio="xMidYMid"><circle fill="currentColor" cx="250" cy="250" r="250"/><path fill="var(--bg-base)" d="M177.133 316.446c-26.636 0-47.615-7.379-62.768-22.137-15.153-14.982-22.73-35.961-22.73-62.768 0-26.806 7.577-47.785 22.73-62.768 15.153-14.982 36.132-22.474 62.768-22.474 26.413 0 47.169 7.492 62.099 22.474 15.153 14.759 22.729 35.738 22.729 62.768 0 27.03-7.576 48.009-22.729 62.768-14.93 14.758-35.686 22.137-62.099 22.137zm0-38.285c13.587 0 24.185-4.589 31.761-13.543 7.8-9.178 11.7-21.802 11.7-37.851s-3.9-28.561-11.7-37.515c-7.576-9.178-18.174-13.767-31.761-13.767-13.811 0-24.521 4.589-32.098 13.767-7.576 8.954-11.364 21.466-11.364 37.515s3.788 28.673 11.364 37.851c7.577 8.954 18.287 13.543 32.098 13.543zM273.053 314.104V148.64h56.077c18.398 0 33.774 4.589 46.128 13.767 12.355 8.954 18.532 21.69 18.532 38.174 0 16.483-6.177 29.331-18.532 38.509-12.354 8.954-27.73 13.431-46.128 13.431h-14.772v61.583h-41.305zm41.305-97.21h10.038c8.022 0 14.199-1.79 18.532-5.373 4.557-3.806 6.835-9.066 6.835-15.781 0-6.716-2.278-11.864-6.835-15.446-4.333-3.807-10.51-5.71-18.532-5.71h-10.038v42.31z"/></svg>`
-		}
-	];
+		},
+		// 与钱包支持的 12 链对齐（infra/chains.ts）：新增链用字母徽章兜底。
+		{ name: 'Gnosis', color: '#04795B', label: 'xDAI' },
+		{ name: 'Unichain', color: '#F50DB4', label: 'UNI' },
+		{ name: 'Tempo', color: '#0B0B0B', label: 'USD' },
+		{ name: 'Monad', color: '#836EF9', label: 'MON' },
+		{ name: 'World Chain', color: '#000000', label: 'WLD' }
+	] as Array<{ name: string; color: string; icon?: string; label?: string }>;
 
 	const qrMatrix = $derived.by(() => {
 		if (!address) return null;
@@ -187,7 +193,11 @@
 			<div class="networks-row">
 				{#each SUPPORTED_CHAINS as chain}
 					<div class="network-chip" title={chain.name} style="--chain-color: {chain.color}">
-						<span class="network-icon">{@html chain.icon}</span>
+						{#if chain.icon}
+							<span class="network-icon">{@html chain.icon}</span>
+						{:else}
+							<span class="network-badge">{chain.label}</span>
+						{/if}
 					</div>
 				{/each}
 			</div>
@@ -366,6 +376,20 @@
 	.network-icon :global(svg) {
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Letter-badge fallback for chains without a brand icon */
+	.network-badge {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 3px;
+		font-size: 8px;
+		font-weight: var(--weight-bold);
+		letter-spacing: -0.02em;
+		color: var(--chain-color);
 	}
 
 	/* Polling hint */

@@ -4,9 +4,12 @@
 	import ScanQrButton from '$lib/ui/ScanQrButton.svelte';
 	import { authStore } from './auth-store.svelte.js';
 	import { sendToken, type SendStatus, type SendResult } from './safe-tx/send-token.js';
-	import { CHAIN_CONFIG } from './safe-tx/constants.js';
 	import { formatBalance, tokenValueUsd, type TokenBalance } from './wallet.js';
 	import { isAddress } from 'viem';
+	import { chainInfoBySlug, isTempoChain } from '$lib/wallet/infra/chains.js';
+	import { isDeployed, estimateUserOpCostWei } from '$lib/wallet/infra/account-state.js';
+	import { checkGasAccountFunding, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
+	import BundlerFundingModal from './BundlerFundingModal.svelte';
 
 	interface Props {
 		open: boolean;
@@ -26,6 +29,10 @@
 	let status = $state<SendStatus | null>(null);
 	let result = $state<SendResult | null>(null);
 	let error = $state<string | null>(null);
+	// Bundler gas-account funding (vela model): if the per-Safe gas account is short,
+	// prompt sponsor / self-fund before signing.
+	let fundingNeeded = $state<GasAccountFunding | null>(null);
+	let showFunding = $state(false);
 
 	const user = $derived(authStore.user);
 	const selectedToken = $derived(balances[selectedIndex] ?? null);
@@ -87,19 +94,30 @@
 		error = null;
 		result = null;
 
-		// 检查该网络是否有 native token 余额用于 gas
-		const sameNetworkNative = balances.find(
-			(b) => b.network === selectedToken.network && !b.tokenAddress
-		);
-		const hasNativeGas = sameNetworkNative && parseFloat(sameNetworkNative.balance) > 0.005;
-
-		if (!hasNativeGas && selectedToken.tokenAddress) {
-			const chainCfg = CHAIN_CONFIG[selectedToken.network];
-			const nativeName = chainCfg?.nativeSymbol ?? 'native token';
-			error = t('auth.send.needNativeGas', { token: nativeName, chain: selectedToken.chainName });
-			return;
+		// Gas 由 bundler 的 per-Safe gas account 支付（vela 模型）。发送前预检：
+		// gas account 不足则弹「充值 / 免费激活」。Tempo 从 Safe 的 pathUSD 在批次内
+		// 报销，不走 gas account 预检。
+		const chain = chainInfoBySlug(selectedToken.network);
+		if (chain && !isTempoChain(chain.chainId)) {
+			try {
+				const deployed = await isDeployed(user.safeAddress, chain.chainId);
+				const requiredWei = await estimateUserOpCostWei(chain.chainId, deployed);
+				const funding = await checkGasAccountFunding(chain.chainId, user.safeAddress, requiredWei);
+				if (funding) {
+					fundingNeeded = funding;
+					showFunding = true;
+					return;
+				}
+			} catch {
+				// 无法判定（bundler 不可达等）→ 放行，由 bundler 在提交时拒绝。
+			}
 		}
 
+		await proceedSend();
+	}
+
+	async function proceedSend() {
+		if (!user || !selectedToken) return;
 		const sendResult = await sendToken({
 			safeAddress: user.safeAddress as `0x${string}`,
 			publicKeyHex: user.publicKey,
@@ -278,6 +296,13 @@
 		{/if}
 	</div>
 </ResponsiveModal>
+
+<BundlerFundingModal
+	open={showFunding}
+	funding={fundingNeeded}
+	onFunded={() => { showFunding = false; proceedSend(); }}
+	onClose={() => { showFunding = false; }}
+/>
 
 <style>
 	.send-content.forever-theme {

@@ -10,6 +10,7 @@
  */
 import { createPublicClient, http, fallback, type Address, type Hex } from 'viem';
 import type { ConnectedWallet, SendStatus } from '$lib/wallet';
+import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import { ERC20_ABI } from '../infra/erc20.js';
 import type { SubTransaction, TokenSenderNetwork } from '../types.js';
 
@@ -32,7 +33,10 @@ export interface SafeSenderWallet {
 }
 
 function clientFor(network: TokenSenderNetwork) {
-	return createPublicClient({ transport: fallback(network.rpcs.map((u) => http(u))) });
+	// Honour shared service-node settings (user RPC override / provider key) first,
+	// falling back to this app's curated RPCs.
+	const urls = resolveRpcUrls(network.chainId, network.rpcs);
+	return createPublicClient({ transport: fallback(urls.map((u) => http(u))) });
 }
 
 /**

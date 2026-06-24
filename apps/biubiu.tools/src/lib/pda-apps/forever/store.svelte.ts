@@ -170,13 +170,30 @@ class ForeverStore {
 		return this.deriveKey(this.credentialFor(user));
 	}
 
+	/** Coalesces concurrent unlocks so only ONE WebAuthn prompt is ever in flight at a time. */
+	private unlockPromise: Promise<boolean> | null = null;
+
 	/** Re-derive the in-memory content key from the wallet passkey (one passkey touch). */
 	async unlock(): Promise<boolean> {
+		// Share a single in-flight request: loadEntries + setSort + seal can all call this at once,
+		// and a second navigator.credentials.get() while one is open would be rejected by the browser.
+		if (this.unlockPromise) return this.unlockPromise;
+		this.unlockPromise = this._unlock();
+		try {
+			return await this.unlockPromise;
+		} finally {
+			this.unlockPromise = null;
+		}
+	}
+
+	private async _unlock(): Promise<boolean> {
 		const user = authStore.user;
 		if (!user) return this.fail(t('capsule.error.signIn'));
 		this.status = 'unlocking';
 		this.message = t('capsule.status.unlocking');
-		return this.deriveKey(this.credential ?? this.credentialFor(user));
+		// ALWAYS the wallet passkey — never a stored credential, which on accounts migrated from the
+		// old scheme could be a dedicated encryption passkey and would derive a divergent key.
+		return this.deriveKey(this.credentialFor(user));
 	}
 
 	/** The PRF credential to target — always the wallet passkey, pinned by its credentialId. */

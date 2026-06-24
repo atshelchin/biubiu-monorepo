@@ -16,8 +16,8 @@ import type {
 	DeploymentRecord,
 	LogEntry
 } from './types.js';
-
-const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
+import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
+import { getUserOperationGasPrice } from '$lib/wallet/infra/bundler-client.js';
 
 export interface RpcProbeResult {
 	url: string;
@@ -325,7 +325,7 @@ class DeployStore {
 		this.chainDataLoading = true;
 		try {
 			const resp = await fetch(
-				`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${network.chainId}.json`
+				`${getEthereumDataURL()}/chains/eip155-${network.chainId}.json`
 			);
 			if (generation !== this.probeGeneration) return; // Network changed, discard
 
@@ -565,17 +565,13 @@ class DeployStore {
 
 		try {
 			// Fetch chain RPC price + bundler price in parallel
-			const [chainRes, bundlerRes] = await Promise.all([
+			const [chainRes, bundlerData] = await Promise.all([
 				fetch(rpc, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] })
 				}).then(r => r.json()).catch(() => null),
-				fetch('/api/bundler', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ method: 'pimlico_getUserOperationGasPrice', params: [], chainId: network.chainId })
-				}).then(r => r.json()).catch(() => null)
+				getUserOperationGasPrice(network.chainId).catch(() => null)
 			]);
 
 			// Chain gas price
@@ -584,7 +580,6 @@ class DeployStore {
 			// Bundler minimum (use "standard" tier — cheapest that bundler accepts)
 			let bundlerMaxFee = 0n;
 			let bundlerPriority = 0n;
-			const bundlerData = bundlerRes?.result;
 			if (bundlerData?.standard) {
 				bundlerMaxFee = BigInt(bundlerData.standard.maxFeePerGas);
 				bundlerPriority = BigInt(bundlerData.standard.maxPriorityFeePerGas);
@@ -782,9 +777,15 @@ class DeployStore {
 		this.log(`Verifying ${contract.name} at ${address}...`);
 
 		try {
+			// The server returns the source path relative to the project root
+			// (e.g. "src/tools/Forever.sol"). Older servers returned just the
+			// basename (e.g. "Forever.sol") — prepend "src/" only in that case.
+			const contractFile = contract.file.includes('/')
+				? contract.file
+				: `src/${contract.file}`;
 			const result = await this.client.verify({
 				contractName: contract.name,
-				contractFile: `src/${contract.file}`,
+				contractFile,
 				address,
 				chainId: network.chainId,
 				verifier: this.verifier,

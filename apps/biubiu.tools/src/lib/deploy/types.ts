@@ -3,6 +3,7 @@ import type { Address, Hex } from 'viem';
 /** Compiled contract artifact from Foundry */
 export interface ContractArtifact {
 	name: string;
+	/** Source path relative to the project root, e.g. "src/tools/Forever.sol" */
 	file: string;
 	bytecode: Hex;
 	abi: readonly AbiItem[];

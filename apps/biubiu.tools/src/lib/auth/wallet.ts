@@ -4,6 +4,8 @@
  * 一次调用获取多链所有 token 余额，只返回非零项。
  * API key 在服务端，前端不暴露。
  */
+import { getFxRate } from '$lib/wallet/infra/fiat-fx.js';
+import { getChainlinkRate } from '$lib/wallet/infra/fiat-chainlink.js';
 
 export interface TokenBalance {
 	network: string;
@@ -32,9 +34,29 @@ export function totalValueUsd(tokens: TokenBalance[]): number {
 	return tokens.reduce((sum, t) => sum + (tokenValueUsd(t) ?? 0), 0);
 }
 
-/** 获取 USD → 目标货币的汇率 */
+/**
+ * 获取 USD → 目标货币的汇率。
+ *
+ * 走可配置的 `fiatRatesURL` 服务节点（默认 Frankfurter v2 直连，全币种 + 6h 缓存，
+ * 见 wallet/infra/fiat-fx.ts）；失败时回退到旧的 /api/exchange-rate 代理。
+ */
 export async function fetchExchangeRate(currency: string): Promise<number> {
 	if (currency === 'USD') return 1;
+	// 1. Chainlink on-chain feed (decentralized) for the 16 major fiats.
+	try {
+		const cl = await getChainlinkRate(currency);
+		if (cl && cl > 0) return cl;
+	} catch {
+		/* fall through */
+	}
+	// 2. Configurable HTTP provider (Frankfurter v2, all currencies).
+	try {
+		const rate = await getFxRate(currency);
+		if (rate && rate > 0 && rate !== 1) return rate;
+	} catch {
+		/* fall through to legacy proxy */
+	}
+	// 3. Legacy /api/exchange-rate proxy (last resort).
 	try {
 		const res = await fetch(`/api/exchange-rate?currency=${encodeURIComponent(currency)}`);
 		if (!res.ok) return 1;

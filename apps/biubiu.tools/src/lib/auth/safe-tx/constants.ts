@@ -66,6 +66,34 @@ export const CHAIN_CONFIG: Record<
 		explorerName: 'GnosisScan',
 		nativeSymbol: 'xDAI'
 	},
+	'unichain-mainnet': {
+		chainId: 130n,
+		alchemySlug: 'unichain-mainnet',
+		explorerUrl: 'https://uniscan.xyz/tx/',
+		explorerName: 'Uniscan',
+		nativeSymbol: 'ETH'
+	},
+	'tempo-mainnet': {
+		chainId: 4217n,
+		alchemySlug: 'tempo-mainnet',
+		explorerUrl: 'https://explore.tempo.xyz/tx/',
+		explorerName: 'Tempo Explorer',
+		nativeSymbol: 'USD'
+	},
+	'monad-mainnet': {
+		chainId: 143n,
+		alchemySlug: 'monad-mainnet',
+		explorerUrl: 'https://monadscan.com/tx/',
+		explorerName: 'MonadScan',
+		nativeSymbol: 'MON'
+	},
+	'worldchain-mainnet': {
+		chainId: 480n,
+		alchemySlug: 'worldchain-mainnet',
+		explorerUrl: 'https://worldscan.org/tx/',
+		explorerName: 'Worldscan',
+		nativeSymbol: 'ETH'
+	},
 	'polygon-amoy': {
 		chainId: 80002n,
 		alchemySlug: 'polygon-amoy',

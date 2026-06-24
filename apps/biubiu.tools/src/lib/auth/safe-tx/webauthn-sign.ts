@@ -5,7 +5,7 @@
  * 然后提取 authenticatorData、clientDataFields、r、s。
  */
 import { type Hex } from 'viem';
-import { fromBase64url, derToRawSignature, bufToHex } from '../crypto-utils.js';
+import { fromBase64url, derToRawSignature, bufToHex, P256_N } from '../crypto-utils.js';
 
 export interface WebAuthnSignatureResult {
 	authenticatorData: Hex;
@@ -107,8 +107,13 @@ export async function signSafeOpWithPasskey(
 
 	// DER → raw (r, s)
 	const rawSig = derToRawSignature(response.signature);
-	let r = BigInt('0x' + bufToHex(rawSig.slice(0, 32)));
+	const r = BigInt('0x' + bufToHex(rawSig.slice(0, 32)));
 	let s = BigInt('0x' + bufToHex(rawSig.slice(32)));
+
+	// 规范化为 low-S：RIP-7212 P-256 预编译（SafeWebAuthnSharedSigner verifiers=0x100）
+	// 拒绝 high-S 签名，否则约 50% 概率验签失败（含 Tempo 等依赖预编译的链）。
+	// 只把可塑签名规范化，不改变 SafeOp hash，也不改变 Safe 地址。
+	if (s > P256_N / 2n) s = P256_N - s;
 
 	return {
 		ok: true,

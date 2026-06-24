@@ -4,7 +4,10 @@
  * gates the write/batch/chain features.
  */
 import type { ChainInfo, ChainSearchResult } from './types.js';
+import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
 
+/** Default data-API base. The active URL is `getEthereumDataURL()` (overridable in
+ *  「服务节点」 settings); this constant is the default + a stable test anchor. */
 export const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
 
 /**
@@ -22,6 +25,10 @@ export const WRITE_NETWORK_BY_CHAIN_ID: Record<number, string> = {
 	56: 'bnb-mainnet',
 	43114: 'avax-mainnet',
 	100: 'gnosis-mainnet',
+	130: 'unichain-mainnet',
+	4217: 'tempo-mainnet',
+	143: 'monad-mainnet',
+	480: 'worldchain-mainnet',
 	80002: 'polygon-amoy'
 };
 
@@ -32,7 +39,7 @@ export function writeNetworkKey(chainId: number | undefined | null): string | nu
 }
 
 export function chainLogoUrl(chainId: number): string {
-	return `${ETHEREUM_DATA_BASE_URL}/chainlogos/eip155-${chainId}.png`;
+	return `${getEthereumDataURL()}/chainlogos/eip155-${chainId}.png`;
 }
 
 let _searchCache: ChainSearchResult[] | null = null;
@@ -40,7 +47,7 @@ let _searchCache: ChainSearchResult[] | null = null;
 /** Load (and cache) the searchable chain index. */
 export async function loadChainIndex(): Promise<ChainSearchResult[]> {
 	if (_searchCache) return _searchCache;
-	const res = await fetch(`${ETHEREUM_DATA_BASE_URL}/index/fuse-chains.json`);
+	const res = await fetch(`${getEthereumDataURL()}/index/fuse-chains.json`);
 	if (!res.ok) return [];
 	const json = await res.json();
 	_searchCache = (json.data ?? []) as ChainSearchResult[];
@@ -86,7 +93,7 @@ export function extractRpcUrls(data: { rpc?: unknown }): string[] {
 
 /** Fetch full chain info for a chainId. Throws on failure. */
 export async function loadChainInfo(chainId: number): Promise<ChainInfo> {
-	const res = await fetch(`${ETHEREUM_DATA_BASE_URL}/chains/eip155-${chainId}.json`);
+	const res = await fetch(`${getEthereumDataURL()}/chains/eip155-${chainId}.json`);
 	if (!res.ok) throw new Error('Chain not found');
 	const data = await res.json();
 	const rpcUrls = extractRpcUrls(data);

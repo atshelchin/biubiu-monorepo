@@ -48,6 +48,13 @@ export const FEE_WEI = 1_000_000_000_000_000n;
 /** Contract-enforced max ciphertext bytes; reserve headroom for version + iv + GCM tag. */
 const MAX_PAYLOAD = 4096;
 const TEXT_BYTE_LIMIT = MAX_PAYLOAD - 29; // 1 version + 12 iv + 16 tag
+/**
+ * Capsule text cap. A time-lock AGE-armors the inner AES blob: base64 (×4/3) of the whole blob
+ * plus ~570B of BLS recipient stanza + headers. Measured against live drand quicknet, ~2585 text
+ * bytes is the largest that lands ≤ MAX_PAYLOAD on-chain — so the soft limit must be much tighter
+ * than the private one (a flat reserve under-counts because the overhead scales with length).
+ */
+const CAPSULE_TEXT_LIMIT = 2500;
 const PAGE = 20; // timeline page size
 
 type Status = 'idle' | 'setup' | 'unlocking' | 'sealing' | 'done' | 'error';
@@ -108,8 +115,8 @@ class ForeverStore {
 		return new TextEncoder().encode(this.text).length;
 	}
 	get overLimit(): boolean {
-		// Capsule (tlock) encoding adds ~600B+ of armored overhead; tighten the soft limit for it.
-		const limit = this.locked ? TEXT_BYTE_LIMIT - 1200 : TEXT_BYTE_LIMIT;
+		// Capsule (tlock) armor inflates the payload well beyond a flat reserve — see CAPSULE_TEXT_LIMIT.
+		const limit = this.locked ? CAPSULE_TEXT_LIMIT : TEXT_BYTE_LIMIT;
 		return this.byteLength > limit;
 	}
 	/** Capsule unlock time as unix seconds (0 if unset/invalid). */

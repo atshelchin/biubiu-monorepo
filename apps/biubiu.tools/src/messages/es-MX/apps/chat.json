@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Chatear en privado",
 	"chat.room.endConfirm.title": "¿Finalizar este chat?",
 	"chat.room.endConfirm.message": "Esto cierra la sesión para ambos y borra la conversación de este dispositivo. No se puede deshacer.",
-	"chat.room.endConfirm.confirm": "Finalizar chat"
+	"chat.room.endConfirm.confirm": "Finalizar chat",
+	"chat.room.anon": "Anónimo",
+	"chat.landing.identityNote": "No necesitas registrarte: aparecerás como Anónimo, mantenido en privado por el código de seguridad.",
+	"chat.landing.connectOptional": "Conecta una wallet para una identidad verificada (opcional)"
 }

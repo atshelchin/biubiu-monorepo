@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Conversar em particular",
 	"chat.room.endConfirm.title": "Encerrar este chat?",
 	"chat.room.endConfirm.message": "Isso encerra a sessão para vocês dois e apaga a conversa deste dispositivo. Não dá para desfazer.",
-	"chat.room.endConfirm.confirm": "Encerrar chat"
+	"chat.room.endConfirm.confirm": "Encerrar chat",
+	"chat.room.anon": "Anônimo",
+	"chat.landing.identityNote": "Não precisa se cadastrar — você aparece como Anônimo, mantido em sigilo pelo código de segurança.",
+	"chat.landing.connectOptional": "Conecte uma wallet para uma identidade verificada (opcional)"
 }

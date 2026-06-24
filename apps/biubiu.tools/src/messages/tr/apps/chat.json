@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Özel sohbet et",
 	"chat.room.endConfirm.title": "Bu sohbet bitirilsin mi?",
 	"chat.room.endConfirm.message": "Bu, ikinizin de oturumunu kapatır ve konuşmayı bu cihazdan siler. Geri alınamaz.",
-	"chat.room.endConfirm.confirm": "Sohbeti bitir"
+	"chat.room.endConfirm.confirm": "Sohbeti bitir",
+	"chat.room.anon": "Anonim",
+	"chat.landing.identityNote": "Kayıt gerekmez — Anonim olarak görünürsünüz ve güvenlik kodu sayesinde gizli kalırsınız.",
+	"chat.landing.connectOptional": "Doğrulanmış bir kimlik için bir cüzdan bağlayın (isteğe bağlı)"
 }

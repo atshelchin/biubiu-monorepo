@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Discuter en privé",
 	"chat.room.endConfirm.title": "Terminer ce chat ?",
 	"chat.room.endConfirm.message": "Cela ferme la session pour vous deux et efface la conversation de cet appareil. C'est irréversible.",
-	"chat.room.endConfirm.confirm": "Terminer le chat"
+	"chat.room.endConfirm.confirm": "Terminer le chat",
+	"chat.room.anon": "Anonyme",
+	"chat.landing.identityNote": "Aucune inscription requise — vous apparaissez en tant qu'Anonyme, gardé privé par le code de sécurité.",
+	"chat.landing.connectOptional": "Connectez un wallet pour une identité vérifiée (facultatif)"
 }

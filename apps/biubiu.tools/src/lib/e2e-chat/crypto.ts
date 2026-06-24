@@ -223,6 +223,12 @@ export async function computeSafetyCode(transcript: string): Promise<SafetyCode>
 	return { digits: `${digits.slice(0, 3)} ${digits.slice(3)}`, emoji };
 }
 
+/** A stable single-emoji avatar derived from a peer's ephemeral public key. */
+export async function computeAvatar(pub: string): Promise<string> {
+	const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(`avatar|${pub}`)));
+	return SAFETY_EMOJI[hash[0] % SAFETY_EMOJI.length];
+}
+
 /** One peer's public handshake contribution. */
 export interface HandshakeParty {
 	address: string;

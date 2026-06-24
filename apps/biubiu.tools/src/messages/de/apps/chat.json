@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Privat chatten",
 	"chat.room.endConfirm.title": "Diesen Chat beenden?",
 	"chat.room.endConfirm.message": "Das schließt die Sitzung für euch beide und löscht das Gespräch von diesem Gerät. Es kann nicht rückgängig gemacht werden.",
-	"chat.room.endConfirm.confirm": "Chat beenden"
+	"chat.room.endConfirm.confirm": "Chat beenden",
+	"chat.room.anon": "Anonym",
+	"chat.landing.identityNote": "Keine Anmeldung nötig — du erscheinst als Anonym und bleibst durch den Sicherheitscode privat.",
+	"chat.landing.connectOptional": "Verbinde eine Wallet für eine verifizierte Identität (optional)"
 }

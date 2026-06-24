@@ -27,6 +27,11 @@ const HELLO_TIMEOUT_MS = 15_000;
 /** Redelivery buffer caps — overflow means the peer can't catch up → drop it. */
 const BUFFER_MAX_FRAMES = 2000;
 const BUFFER_MAX_BYTES = 4_000_000;
+/** Reject any single client frame larger than this (chat messages are tiny). */
+const MAX_FRAME_BYTES = 128 * 1024;
+/** Per-peer message rate limit (a flood beyond this drops the connection). */
+const RATE_WINDOW_MS = 10_000;
+const RATE_MAX = 120;
 
 interface Slot {
   role: Role;
@@ -35,6 +40,8 @@ interface Slot {
   buffer: string[];
   bufferBytes: number;
   graceTimer: ReturnType<typeof setTimeout> | null;
+  rateCount: number;
+  rateWindowStart: number;
 }
 
 export class RoomDO {
@@ -81,6 +88,11 @@ export class RoomDO {
   }
 
   private onMessage(ws: WebSocket, text: string): void {
+    if (text.length > MAX_FRAME_BYTES) {
+      this.send(ws, { t: "error", code: "too-large", message: "frame too large" });
+      return;
+    }
+
     let frame: ClientFrame;
     try {
       frame = JSON.parse(text) as ClientFrame;
@@ -101,6 +113,13 @@ export class RoomDO {
         code: "not-joined",
         message: "send hello first",
       });
+      return;
+    }
+
+    // Flood protection — a peer that exceeds the rate is dropped.
+    const slot = role === "a" ? this.a : this.b;
+    if (slot && !this.rateOk(slot)) {
+      this.dropSlot(role, "rate-limit");
       return;
     }
 
@@ -196,7 +215,20 @@ export class RoomDO {
       buffer: [],
       bufferBytes: 0,
       graceTimer: null,
+      rateCount: 0,
+      rateWindowStart: 0,
     };
+  }
+
+  /** Sliding-window rate check; returns false once a peer exceeds the limit. */
+  private rateOk(slot: Slot): boolean {
+    const now = Date.now();
+    if (now - slot.rateWindowStart > RATE_WINDOW_MS) {
+      slot.rateWindowStart = now;
+      slot.rateCount = 0;
+    }
+    slot.rateCount++;
+    return slot.rateCount <= RATE_MAX;
   }
 
   // ── forwarding + buffering ───────────────────────────────────────────────

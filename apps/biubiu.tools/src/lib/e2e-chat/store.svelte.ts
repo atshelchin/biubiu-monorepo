@@ -16,6 +16,7 @@ import { walletStore } from '$lib/wallet';
 import {
 	buildChallenge,
 	buildTranscript,
+	computeAvatar,
 	computeSafetyCode,
 	deriveTrafficKeys,
 	generateEphemeralKeyPair,
@@ -58,10 +59,14 @@ export interface ChatMessage {
 }
 
 export interface Peer {
+	/** Wallet address, or '' for an anonymous (no-wallet) peer. */
 	address: string;
+	/** Wallet kind, or 'anon' for a no-wallet peer. */
 	kind: string;
-	/** True only if we could verify the wallet signature locally (EOA). */
+	/** True only if we could verify the peer's wallet signature locally (EOA). */
 	verified: boolean;
+	/** Stable emoji avatar derived from the peer's ephemeral key. */
+	avatar: string;
 }
 
 interface QueuedFrame {
@@ -176,47 +181,41 @@ export class ChatStore {
 
 	// ── setup helpers ─────────────────────────────────────────────────────────
 
-	/** Generate the ephemeral key, sign the wallet challenge, build my handshake. */
+	/**
+	 * Generate the ephemeral key and build my handshake. Anonymous by default;
+	 * if a wallet is connected we add a verifiable identity by signing the
+	 * challenge. Declining the signature falls back to anonymous — we never block
+	 * the user from chatting.
+	 */
 	private async prepareIdentity(role: Role, room: string): Promise<boolean> {
 		this.errorCode = null;
-		const wallet = walletStore.activeWallet;
-		if (!wallet) {
-			this.fail('noWallet');
-			return false;
-		}
-		if (!wallet.signMessage) {
-			this.fail('noSign');
-			return false;
-		}
 		this.phase = 'preparing';
 		this.role = role;
 		this.roomId = room;
-		this.myAddress = wallet.address;
 
 		const eph = await generateEphemeralKeyPair();
 		this.myEph = eph;
 
-		const challenge = buildChallenge(room, role, eph.publicKeyB64);
-		let sig: string;
-		try {
-			const res = await wallet.signMessage(challenge, { chainId: CHALLENGE_CHAIN_ID });
-			if (!res.ok || !res.signature) {
-				this.fail('signFailed');
-				return false;
+		let addr = '';
+		let sig = '';
+		let kind = 'anon';
+		const wallet = walletStore.activeWallet;
+		if (wallet?.signMessage) {
+			try {
+				const challenge = buildChallenge(room, role, eph.publicKeyB64);
+				const res = await wallet.signMessage(challenge, { chainId: CHALLENGE_CHAIN_ID });
+				if (res.ok && res.signature) {
+					addr = wallet.address;
+					sig = res.signature;
+					kind = wallet.kind;
+				}
+			} catch {
+				// Signature declined → remain anonymous.
 			}
-			sig = res.signature;
-		} catch {
-			this.fail('signFailed');
-			return false;
 		}
 
-		this.myHandshake = {
-			addr: wallet.address,
-			pub: eph.publicKeyB64,
-			sig,
-			kind: wallet.kind,
-			chainId: CHALLENGE_CHAIN_ID
-		};
+		this.myAddress = addr;
+		this.myHandshake = { addr, pub: eph.publicKeyB64, sig, kind, chainId: CHALLENGE_CHAIN_ID };
 		return true;
 	}
 
@@ -298,7 +297,8 @@ export class ChatStore {
 		this.peer = {
 			address: hs.addr,
 			kind: hs.kind,
-			verified: await this.verifyPeer(hs, peerRole)
+			verified: hs.addr ? await this.verifyPeer(hs, peerRole) : false,
+			avatar: await computeAvatar(hs.pub)
 		};
 
 		this.phase = 'connected';

@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Trò chuyện riêng tư",
 	"chat.room.endConfirm.title": "Kết thúc cuộc trò chuyện này?",
 	"chat.room.endConfirm.message": "Thao tác này đóng phiên cho cả hai người và xóa cuộc trò chuyện khỏi thiết bị này. Không thể hoàn tác.",
-	"chat.room.endConfirm.confirm": "Kết thúc trò chuyện"
+	"chat.room.endConfirm.confirm": "Kết thúc trò chuyện",
+	"chat.room.anon": "Ẩn danh",
+	"chat.landing.identityNote": "Không cần đăng ký — bạn sẽ hiển thị là Ẩn danh, được giữ riêng tư nhờ mã an toàn.",
+	"chat.landing.connectOptional": "Kết nối ví để có danh tính đã xác minh (tùy chọn)"
 }

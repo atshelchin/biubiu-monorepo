@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "私密聊天",
 	"chat.room.endConfirm.title": "结束此聊天？",
 	"chat.room.endConfirm.message": "这将关闭你们双方的会话，并从本设备清除对话内容。此操作无法撤销。",
-	"chat.room.endConfirm.confirm": "结束聊天"
+	"chat.room.endConfirm.confirm": "结束聊天",
+	"chat.room.anon": "匿名",
+	"chat.landing.identityNote": "无需注册——你将以匿名身份出现，并由安全码保护隐私。",
+	"chat.landing.connectOptional": "连接钱包以获得已验证身份（可选）"
 }

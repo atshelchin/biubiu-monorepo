@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "プライベートにチャット",
 	"chat.room.endConfirm.title": "このチャットを終了しますか？",
 	"chat.room.endConfirm.message": "二人ともセッションが終了し、この端末から会話が消去されます。元に戻すことはできません。",
-	"chat.room.endConfirm.confirm": "チャットを終了"
+	"chat.room.endConfirm.confirm": "チャットを終了",
+	"chat.room.anon": "匿名",
+	"chat.landing.identityNote": "サインアップは不要です — あなたは匿名として表示され、安全コードによってプライバシーが守られます。",
+	"chat.landing.connectOptional": "認証済みの本人確認にはウォレットを接続してください（任意）"
 }

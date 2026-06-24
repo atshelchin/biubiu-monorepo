@@ -4,6 +4,8 @@
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { walletStore } from '$lib/wallet';
+	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import { parseInvite, type Invite } from '../relay.js';
 	import type { ChatStore } from '../store.svelte.js';
 	import StatusView from './StatusView.svelte';
@@ -13,6 +15,10 @@
 
 	let linkInput = $state('');
 	let linkError = $state(false);
+	let showAuth = $state(false);
+
+	const walletAddr = $derived(walletStore.activeWallet?.address ?? '');
+	const shortAddr = $derived(walletAddr ? `${walletAddr.slice(0, 6)}…${walletAddr.slice(-4)}` : '');
 
 	function joinFromPaste() {
 		const raw = linkInput.trim();
@@ -121,7 +127,21 @@
 			</div>
 			{#if linkError}<span class="hint">{t('chat.landing.invalidLink')}</span>{/if}
 		</div>
+
+		<div class="identity">
+			{#if walletStore.isConnected}
+				<span class="id-badge">✓ {shortAddr}</span>
+				<span class="id-note">{t('chat.room.verified')}</span>
+			{:else}
+				<span class="id-note">{t('chat.landing.identityNote')}</span>
+				<button class="link-btn" onclick={() => (showAuth = true)}>
+					{t('chat.landing.connectOptional')}
+				</button>
+			{/if}
+		</div>
 	</div>
+
+	<AuthModal open={showAuth} onClose={() => (showAuth = false)} />
 {/if}
 
 <style>
@@ -271,5 +291,40 @@
 	.ghost:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Identity footer (anonymous by default; optional wallet) */
+	.identity {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding-top: var(--space-2);
+		border-top: 1px solid var(--border-subtle);
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		text-align: center;
+	}
+	.id-badge {
+		font-family: var(--font-mono);
+		color: var(--success);
+		font-weight: var(--weight-medium);
+	}
+	.id-note {
+		color: var(--fg-subtle);
+	}
+	.link-btn {
+		padding: 0;
+		font-size: var(--text-xs);
+		color: var(--accent);
+		background: none;
+		border: none;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.link-btn:hover {
+		color: var(--accent-hover);
 	}
 </style>

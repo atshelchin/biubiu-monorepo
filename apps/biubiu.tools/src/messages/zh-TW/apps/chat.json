@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "私密聊天",
 	"chat.room.endConfirm.title": "結束此聊天？",
 	"chat.room.endConfirm.message": "這將關閉你們雙方的工作階段，並從本裝置清除對話內容。此操作無法復原。",
-	"chat.room.endConfirm.confirm": "結束聊天"
+	"chat.room.endConfirm.confirm": "結束聊天",
+	"chat.room.anon": "匿名",
+	"chat.landing.identityNote": "無需註冊——你將以匿名身份出現，並由安全碼保護隱私。",
+	"chat.landing.connectOptional": "連接錢包以獲得已驗證身份（可選）"
 }

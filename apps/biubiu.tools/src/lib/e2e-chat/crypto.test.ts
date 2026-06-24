@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildChallenge,
 	buildTranscript,
+	computeAvatar,
 	computeSafetyCode,
 	deriveTrafficKeys,
 	fromB64url,

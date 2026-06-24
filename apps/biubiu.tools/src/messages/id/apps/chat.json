@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Mengobrol secara pribadi",
 	"chat.room.endConfirm.title": "Akhiri obrolan ini?",
 	"chat.room.endConfirm.message": "Ini menutup sesi untuk Anda berdua dan menghapus percakapan dari perangkat ini. Tindakan ini tidak dapat dibatalkan.",
-	"chat.room.endConfirm.confirm": "Akhiri obrolan"
+	"chat.room.endConfirm.confirm": "Akhiri obrolan",
+	"chat.room.anon": "Anonim",
+	"chat.landing.identityNote": "Tidak perlu mendaftar — Anda akan muncul sebagai Anonim, tetap privat berkat kode keamanan.",
+	"chat.landing.connectOptional": "Hubungkan dompet untuk identitas terverifikasi (opsional)"
 }

@@ -77,8 +77,12 @@
 <section class="room">
 	<header class="head">
 		<div class="who">
-			<span class="peer-label">{t('chat.room.peer')}</span>
-			<span class="peer-addr">{peerShort}</span>
+			<span class="peer-avatar" aria-hidden="true">{store.peer?.avatar ?? '👤'}</span>
+			{#if store.peer?.address}
+				<span class="peer-addr">{peerShort}</span>
+			{:else}
+				<span class="peer-name">{t('chat.room.anon')}</span>
+			{/if}
 		</div>
 		<button class="end" onclick={() => (showEndConfirm = true)}>{t('chat.room.end')}</button>
 	</header>
@@ -93,10 +97,12 @@
 				</span>
 			{/if}
 		</span>
-		{#if store.peer?.verified}
-			<span class="verify ok">✓ {t('chat.room.verified')}</span>
-		{:else}
-			<span class="verify warn">⚠ {t('chat.room.unverified')}</span>
+		{#if store.peer?.address}
+			{#if store.peer.verified}
+				<span class="verify ok">✓ {t('chat.room.verified')}</span>
+			{:else}
+				<span class="verify warn">⚠ {t('chat.room.unverified')}</span>
+			{/if}
 		{/if}
 	</button>
 
@@ -197,15 +203,18 @@
 		gap: var(--space-2);
 		min-width: 0;
 	}
-	.peer-label {
-		font-size: var(--text-xs);
-		color: var(--fg-subtle);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
+	.peer-avatar {
+		font-size: var(--text-xl);
+		line-height: 1;
 	}
 	.peer-addr {
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
+		color: var(--fg-base);
+	}
+	.peer-name {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
 		color: var(--fg-base);
 	}
 	.end {

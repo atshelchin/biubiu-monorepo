@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Общаться приватно",
 	"chat.room.endConfirm.title": "Завершить этот чат?",
 	"chat.room.endConfirm.message": "Это закроет сессию для вас обоих и сотрёт переписку с этого устройства. Отменить нельзя.",
-	"chat.room.endConfirm.confirm": "Завершить чат"
+	"chat.room.endConfirm.confirm": "Завершить чат",
+	"chat.room.anon": "Аноним",
+	"chat.landing.identityNote": "Регистрация не нужна — вы появитесь как Аноним, а код безопасности сохранит вашу приватность.",
+	"chat.landing.connectOptional": "Подключите кошелёк для подтверждённой личности (необязательно)"
 }

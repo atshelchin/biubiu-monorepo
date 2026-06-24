@@ -127,15 +127,15 @@ const scWallet = {
 };
 
 /** Drive two stores through a full create→join→connected handshake. */
-async function connectPair() {
+async function connectPair(wa: unknown = eoaWallet, wb: unknown = scWallet) {
 	const A = new ChatStore();
 	const B = new ChatStore();
 
-	W.wallet = eoaWallet;
+	W.wallet = wa;
 	await A.create('/apps/chat');
 	const invite = parseInvite(A.inviteUrl!.slice(A.inviteUrl!.indexOf('#')))!;
 
-	W.wallet = scWallet;
+	W.wallet = wb;
 	await B.join(invite.roomId, invite.creatorPub);
 
 	await vi.waitFor(() => {
@@ -158,10 +158,26 @@ describe('ChatStore — two-peer handshake', () => {
 		expect(A.safety?.emoji).toBe(B.safety?.emoji);
 	});
 
-	it('each side sees the other peer’s wallet address', async () => {
+	it('each side sees the other peer’s wallet address + a stable avatar', async () => {
 		const { A, B } = await connectPair();
 		expect(A.peer?.address).toBe(scWallet.address);
 		expect(B.peer?.address.toLowerCase()).toBe(eoaWallet.address.toLowerCase());
+		expect(A.peer?.avatar).toBeTruthy();
+		expect(B.peer?.avatar).toBeTruthy();
+	});
+
+	it('lets two anonymous peers (no wallet) connect and chat', async () => {
+		const { A, B } = await connectPair(null, null);
+		expect(A.peer?.address).toBe('');
+		expect(A.peer?.kind).toBe('anon');
+		expect(A.peer?.verified).toBe(false);
+		expect(A.peer?.avatar).toBeTruthy();
+		expect(A.safety?.digits).toBe(B.safety?.digits);
+		await A.send('anon hello');
+		await vi.waitFor(() => {
+			if (!B.messages.some((m) => m.text === 'anon hello')) throw new Error('pending');
+		});
+		expect(B.messages.find((m) => m.dir === 'in')?.text).toBe('anon hello');
 	});
 
 	it('verifies an EOA signature but not a smart-contract one', async () => {

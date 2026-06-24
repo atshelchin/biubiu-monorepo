@@ -59,5 +59,8 @@
 	"chat.landing.steps.chat": "Chat privately",
 	"chat.room.endConfirm.title": "End this chat?",
 	"chat.room.endConfirm.message": "This closes the session for both of you and clears the conversation from this device. It can't be undone.",
-	"chat.room.endConfirm.confirm": "End chat"
+	"chat.room.endConfirm.confirm": "End chat",
+	"chat.room.anon": "Anonymous",
+	"chat.landing.identityNote": "No sign-up needed — you'll appear as Anonymous, kept private by the safety code.",
+	"chat.landing.connectOptional": "Connect a wallet for a verified identity (optional)"
 }

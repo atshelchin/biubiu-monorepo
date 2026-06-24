@@ -4,6 +4,8 @@
 		slug: string;
 		name: string;
 		symbol: string;
+		/** EVM chainId — used to load the unified chain logo (ethereum-data). */
+		chainId?: number;
 		isTestnet?: boolean;
 		isCustom?: boolean;
 	}
@@ -18,7 +20,13 @@
 	 * vela-spec networks, wallet-sweep passes its EIP-7702 networks.
 	 */
 	import type { Snippet } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { getChainLogoUrl } from '$lib/chains/api.js';
 	import { chainVisual, chainInitials } from './chain-visuals.js';
+
+	// Slugs whose unified logo PNG failed to load → fall back to the inline SVG /
+	// letter badge so the grid still renders (offline, custom chain, missing logo).
+	const logoFailed = new SvelteSet<string>();
 
 	interface Props {
 		networks: NetworkGridItem[];
@@ -80,8 +88,10 @@
 				class:selected={selectedSlug === net.slug}
 				onclick={() => onSelect(net.slug)}
 			>
-				<span class="net-badge" style="--c:{v.color}">
-					{#if v.icon}
+				<span class="net-badge" class:logo={net.chainId != null && !logoFailed.has(net.slug)} style="--c:{v.color}">
+					{#if net.chainId != null && !logoFailed.has(net.slug)}
+						<img src={getChainLogoUrl(net.chainId)} alt="" loading="lazy" onerror={() => logoFailed.add(net.slug)} />
+					{:else if v.icon}
 						{@html v.icon}
 					{:else}
 						{chainInitials(net.name)}
@@ -174,6 +184,17 @@
 	.net-badge :global(svg) {
 		width: 18px;
 		height: 18px;
+		display: block;
+	}
+	/* Unified chain logo: let the opaque PNG sit bare (no tile behind it). */
+	.net-badge.logo {
+		background: transparent;
+	}
+	.net-badge.logo img {
+		width: 24px;
+		height: 24px;
+		object-fit: contain;
+		border-radius: var(--radius-sm);
 		display: block;
 	}
 	.net-badge.add {

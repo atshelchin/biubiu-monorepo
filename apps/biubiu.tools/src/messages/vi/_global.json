@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "Tùy chỉnh",
   "widgets.networkPicker.customRpcPlaceholder": "https://rpc-của-bạn…",
   "widgets.networkPicker.apply": "Áp dụng",
+  "widgets.addNetwork.title": "Thêm mạng tùy chỉnh",
+  "widgets.addNetwork.name": "Tên mạng",
+  "widgets.addNetwork.namePlaceholder": "ví dụ My Chain",
+  "widgets.addNetwork.chainId": "Chain ID",
+  "widgets.addNetwork.chainIdPlaceholder": "ví dụ 56",
+  "widgets.addNetwork.rpcs": "URL RPC (mỗi dòng một URL)",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "Ký hiệu native",
+  "widgets.addNetwork.symbolPlaceholder": "ví dụ BNB",
+  "widgets.addNetwork.decimals": "Số thập phân",
+  "widgets.addNetwork.submit": "Thêm mạng",
+  "widgets.addNetwork.cancel": "Hủy",
+  "widgets.addNetwork.errorName": "Bắt buộc nhập tên",
+  "widgets.addNetwork.errorChainId": "Chain ID phải là số dương",
+  "widgets.addNetwork.errorRpcs": "Cần ít nhất một URL RPC hợp lệ",
+  "widgets.addNetwork.errorSymbol": "Bắt buộc nhập ký hiệu",
+  "widgets.addNetwork.errorDuplicate": "Đã tồn tại một mạng với Chain ID này",
 
   "widgets.smartParam.raw": "thô",
   "widgets.smartParam.tokenAmount": "số lượng token",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "Trình duyệt này không hỗ trợ nhận diện QR",
 
   "subscriptionBadge.premiumMember": "Thành viên cao cấp",
-  "subscriptionBadge.premium": "CAO CẤP"
+  "subscriptionBadge.premium": "CAO CẤP",
+
+  "home.socialProof.trusted": "Được người dùng on-chain tin dùng"
 }

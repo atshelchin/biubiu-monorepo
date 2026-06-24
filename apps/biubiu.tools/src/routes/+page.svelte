@@ -246,7 +246,7 @@
 			<div class="social-proof" use:fadeInUp={{ delay: 0 }}>
 				<span class="social-proof-number">{displayCount.toLocaleString()}</span>
 				<span class="social-proof-divider"></span>
-				<span class="social-proof-label">Trusted by on-chain users</span>
+				<span class="social-proof-label">{t('home.socialProof.trusted')}</span>
 			</div>
 		{/if}
 

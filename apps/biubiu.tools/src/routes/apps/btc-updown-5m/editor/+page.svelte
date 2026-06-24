@@ -130,19 +130,19 @@
     alert(t('updown5m.editor.draftSaved'));
   }
 
-  const signalMethods: { value: SignalMethod; label: string }[] = [
-    { value: 'clob_imbalance', label: 'CLOB Imbalance' },
-    { value: 'rsi_reversal', label: 'RSI Reversal' },
-    { value: 'volume_spike', label: 'Volume Spike' },
-    { value: 'candle_pattern', label: 'Candle Pattern' },
-    { value: 'custom', label: 'Custom' }
-  ];
+  const signalMethods = $derived<{ value: SignalMethod; label: string }[]>([
+    { value: 'clob_imbalance', label: t('updown5m.editor.signalClobImbalance') },
+    { value: 'rsi_reversal', label: t('updown5m.editor.signalRsiReversal') },
+    { value: 'volume_spike', label: t('updown5m.editor.signalVolumeSpike') },
+    { value: 'candle_pattern', label: t('updown5m.editor.signalCandlePattern') },
+    { value: 'custom', label: t('updown5m.editor.signalCustom') }
+  ]);
 </script>
 
 <div class="editor-page">
   <!-- Header -->
   <section class="page-header" use:fadeInUp={{ delay: 0 }}>
-    <a class="back-link" href={routes.hub()}>&larr; Back</a>
+    <a class="back-link" href={routes.hub()}>&larr; {t('updown5m.back')}</a>
     <h1 class="page-title">{t('updown5m.editor.title')}</h1>
   </section>
 
@@ -233,9 +233,9 @@
         <div class="field">
           <label for="candlePattern">{t('updown5m.editor.pattern')}</label>
           <select id="candlePattern" bind:value={candlePattern}>
-            <option value="hammer">Hammer</option>
-            <option value="doji">Doji</option>
-            <option value="engulfing">Engulfing</option>
+            <option value="hammer">{t('updown5m.editor.patternHammer')}</option>
+            <option value="doji">{t('updown5m.editor.patternDoji')}</option>
+            <option value="engulfing">{t('updown5m.editor.patternEngulfing')}</option>
           </select>
         </div>
         <div class="field">
@@ -262,8 +262,8 @@
       <div class="field">
         <label for="entryMethod">{t('updown5m.editor.entryMethod')}</label>
         <select id="entryMethod" bind:value={entryMethod}>
-          <option value="market">Market</option>
-          <option value="limit">Limit</option>
+          <option value="market">{t('updown5m.editor.methodMarket')}</option>
+          <option value="limit">{t('updown5m.editor.methodLimit')}</option>
         </select>
       </div>
     </div>

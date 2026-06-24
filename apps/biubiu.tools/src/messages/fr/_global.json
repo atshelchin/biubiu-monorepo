@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "Personnalisé",
   "widgets.networkPicker.customRpcPlaceholder": "https://votre-rpc…",
   "widgets.networkPicker.apply": "Appliquer",
+  "widgets.addNetwork.title": "Ajouter un réseau personnalisé",
+  "widgets.addNetwork.name": "Nom du réseau",
+  "widgets.addNetwork.namePlaceholder": "ex. My Chain",
+  "widgets.addNetwork.chainId": "Chain ID",
+  "widgets.addNetwork.chainIdPlaceholder": "ex. 56",
+  "widgets.addNetwork.rpcs": "URLs RPC (une par ligne)",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "Symbole natif",
+  "widgets.addNetwork.symbolPlaceholder": "ex. BNB",
+  "widgets.addNetwork.decimals": "Décimales",
+  "widgets.addNetwork.submit": "Ajouter le réseau",
+  "widgets.addNetwork.cancel": "Annuler",
+  "widgets.addNetwork.errorName": "Le nom est obligatoire",
+  "widgets.addNetwork.errorChainId": "Le Chain ID doit être un nombre positif",
+  "widgets.addNetwork.errorRpcs": "Au moins une URL RPC valide est requise",
+  "widgets.addNetwork.errorSymbol": "Le symbole est obligatoire",
+  "widgets.addNetwork.errorDuplicate": "Un réseau avec ce Chain ID existe déjà",
 
   "widgets.smartParam.raw": "brut",
   "widgets.smartParam.tokenAmount": "montant de tokens",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "La détection de QR code n'est pas prise en charge par ce navigateur",
 
   "subscriptionBadge.premiumMember": "Membre Premium",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "Adopté par les utilisateurs on-chain"
 }

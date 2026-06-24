@@ -22,8 +22,8 @@
 		walletStore.kind === 'biubiu'
 			? authStore.displayName
 			: walletStore.kind === 'walletpair'
-				? 'WalletPair'
-				: 'Browser wallet'
+				? t('deploy.account.walletPair')
+				: t('deploy.account.browserWallet')
 	);
 
 	// SEO
@@ -85,7 +85,7 @@
 
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
-		store.log('Copied to clipboard', 'info');
+		store.log(t('deploy.action.copied'), 'info');
 	}
 
 	function renderQrCode(canvas: HTMLCanvasElement, address: string) {
@@ -113,7 +113,7 @@
 		const probe = store.rpcProbes[url];
 		const host = new URL(url).hostname;
 		if (!probe || probe.status === 'pending') return `${host} — ...`;
-		if (probe.status === 'error') return `${host} — ${probe.error || 'Error'}`;
+		if (probe.status === 'error') return `${host} — ${probe.error || t('deploy.chain.rpcError')}`;
 		return `${host} — ${probe.latencyMs}ms`;
 	}
 
@@ -217,11 +217,11 @@
 				<button
 					class="mono address"
 					onclick={() => copyToClipboard(walletStore.activeWallet?.address ?? '')}
-					title="Click to copy"
+					title={t('deploy.account.clickToCopy')}
 				>
 					{truncateAddress(walletStore.activeWallet?.address ?? '')}
 				</button>
-				<button class="btn-icon" onclick={() => showQrCode = true} title="Show QR Code">
+				<button class="btn-icon" onclick={() => showQrCode = true} title={t('deploy.account.showQrCode')}>
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
 				</button>
 			</div>
@@ -277,28 +277,28 @@
 		<!-- Network check status -->
 		{#if store.chainDataLoading}
 			<div class="chain-checking">
-				<span class="spinner"></span> Loading chain data...
+				<span class="spinner"></span> {t('deploy.chain.loadingData')}
 			</div>
 		{:else if store.networkChecking}
 			<div class="chain-checking">
-				<span class="spinner"></span> Checking network infrastructure...
+				<span class="spinner"></span> {t('deploy.chain.checkingInfra')}
 			</div>
 		{:else if store.networkCheck?.rpcError}
 			<div class="chain-rpc-error">
-				RPC endpoint error — select a different RPC or enter a custom one
+				{t('deploy.chain.rpcEndpointError')}
 			</div>
 		{:else if store.networkCheck && !store.networkCheck.ready}
 			<div class="chain-warn">
-				<div class="chain-warn-title">Network not ready</div>
+				<div class="chain-warn-title">{t('deploy.chain.notReady')}</div>
 				{#each store.networkCheck.issues as issue}
 					<div class="chain-warn-item">{issue}</div>
 				{/each}
 			</div>
 		{:else if store.networkCheck?.ready}
 			<div class="chain-ok">
-				All infrastructure contracts verified
+				{t('deploy.chain.infraVerified')}
 				{#if store.networkCheck.gasBalance !== null}
-					· Balance: {(Number(store.networkCheck.gasBalance) / 1e18).toFixed(6)} {store.selectedNetwork?.nativeSymbol || 'ETH'}
+					· {t('deploy.chain.balance')}: {(Number(store.networkCheck.gasBalance) / 1e18).toFixed(6)} {store.selectedNetwork?.nativeSymbol || 'ETH'}
 				{/if}
 			</div>
 		{/if}
@@ -308,7 +308,7 @@
 			<label class="label" for="rpc-select">
 				{t('deploy.chain.rpc')}
 				{#if store.rpcProbing}
-					<span class="rpc-probing">probing...</span>
+					<span class="rpc-probing">{t('deploy.chain.probing')}</span>
 				{/if}
 			</label>
 			{#if store.rpcOptions.length > 0}
@@ -316,7 +316,7 @@
 					{#each store.rpcOptions as rpc}
 						<option value={rpc}>{rpcLabel(rpc)}</option>
 					{/each}
-					<option value="__custom__">-- Custom RPC --</option>
+					<option value="__custom__">{t('deploy.chain.customRpcOption')}</option>
 				</select>
 			{/if}
 			{#if store.rpcOptions.length === 0 || store.selectedRpc === '__custom__'}
@@ -349,19 +349,19 @@
 
 		<!-- Gas Settings -->
 		<div class="gas-settings">
-			<span class="label gas-label">Gas Settings</span>
+			<span class="label gas-label">{t('deploy.gas.title')}</span>
 			<div class="gas-row">
 				<div class="gas-field">
-					<label class="gas-field-label" for="gas-limit">Gas Limit</label>
+					<label class="gas-field-label" for="gas-limit">{t('deploy.gas.limit')}</label>
 					<input id="gas-limit" type="text" class="input input-sm mono" bind:value={store.gasLimitInput} />
 				</div>
 				<div class="gas-field">
-					<label class="gas-field-label" for="max-fee">Max Fee ({store.gasPriceUnit})</label>
-					<input id="max-fee" type="text" class="input input-sm mono" bind:value={store.maxFeePerGasGwei} placeholder="fetching..." />
+					<label class="gas-field-label" for="max-fee">{t('deploy.gas.maxFee', { unit: store.gasPriceUnit })}</label>
+					<input id="max-fee" type="text" class="input input-sm mono" bind:value={store.maxFeePerGasGwei} placeholder={t('deploy.gas.fetching')} />
 				</div>
 				<div class="gas-field">
-					<label class="gas-field-label" for="priority-fee">Priority ({store.gasPriceUnit})</label>
-					<input id="priority-fee" type="text" class="input input-sm mono" bind:value={store.maxPriorityFeePerGasGwei} placeholder="fetching..." />
+					<label class="gas-field-label" for="priority-fee">{t('deploy.gas.priority', { unit: store.gasPriceUnit })}</label>
+					<input id="priority-fee" type="text" class="input input-sm mono" bind:value={store.maxPriorityFeePerGasGwei} placeholder={t('deploy.gas.fetching')} />
 				</div>
 			</div>
 		</div>
@@ -416,11 +416,11 @@
 		<div class="radio-group">
 			<label class:active={store.verifier === 'etherscan'}>
 				<input type="radio" name="verifier" value="etherscan" bind:group={store.verifier} />
-				<span>Etherscan</span>
+				<span>{t('deploy.verify.etherscan')}</span>
 			</label>
 			<label class:active={store.verifier === 'blockscout'}>
 				<input type="radio" name="verifier" value="blockscout" bind:group={store.verifier} />
-				<span>Blockscout</span>
+				<span>{t('deploy.verify.blockscout')}</span>
 			</label>
 		</div>
 
@@ -473,7 +473,7 @@
 					</button>
 				{/if}
 				<button class="btn btn-outline btn-sm" onclick={() => store.showHistory = !store.showHistory}>
-					{store.showHistory ? 'Hide' : t('deploy.history.btn')} ({store.history.length})
+					{store.showHistory ? t('deploy.history.hide') : t('deploy.history.btn')} ({store.history.length})
 				</button>
 			</div>
 		</div>
@@ -510,7 +510,7 @@
 									</button>
 								{/if}
 								{#if record.verified}
-									<span class="history-verified">Verified</span>
+									<span class="history-verified">{t('deploy.history.verified')}</span>
 								{/if}
 							</div>
 						</div>
@@ -524,9 +524,9 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="qr-overlay" role="presentation" onclick={() => showQrCode = false}>
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-			<div class="qr-modal" role="dialog" aria-label="QR Code" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+			<div class="qr-modal" role="dialog" aria-label={t('deploy.qr.ariaLabel')} tabindex="-1" onclick={(e) => e.stopPropagation()}>
 				<div class="qr-header">
-					<span class="qr-title">Wallet Address</span>
+					<span class="qr-title">{t('deploy.qr.title')}</span>
 					<button class="btn-icon" onclick={() => showQrCode = false}>
 						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
 					</button>

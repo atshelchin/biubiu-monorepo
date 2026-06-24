@@ -24,13 +24,13 @@
 
 <AuthModal open={showAuth.value} onClose={() => (showAuth.value = false)} />
 
-<ResponsiveModal open={showAddSpace.value} onClose={() => (showAddSpace.value = false)} title="Add Space">
+<ResponsiveModal open={showAddSpace.value} onClose={() => (showAddSpace.value = false)} title={t('updown5m.addSpace')}>
   <div class="add-space-form">
-    <p class="add-space-desc">Paste the endpoint API base URL to connect to a new space.</p>
+    <p class="add-space-desc">{t('updown5m.addSpaceDesc')}</p>
     <input type="url" class="add-space-input" placeholder="https://btc-bot.example.com" bind:value={addSpaceUrl.value} />
     <div class="add-space-actions">
-      <button class="btn-secondary" onclick={() => (showAddSpace.value = false)}>Cancel</button>
-      <button class="btn-accent" onclick={() => { alert('TODO: Validate & connect to ' + addSpaceUrl.value); showAddSpace.value = false; addSpaceUrl.value = ''; }}>Connect</button>
+      <button class="btn-secondary" onclick={() => (showAddSpace.value = false)}>{t('updown5m.cancel')}</button>
+      <button class="btn-accent" onclick={() => { alert('TODO: Validate & connect to ' + addSpaceUrl.value); showAddSpace.value = false; addSpaceUrl.value = ''; }}>{t('updown5m.connect')}</button>
     </div>
   </div>
 </ResponsiveModal>

@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "Özel",
   "widgets.networkPicker.customRpcPlaceholder": "https://kendi-rpc-adresiniz…",
   "widgets.networkPicker.apply": "Uygula",
+  "widgets.addNetwork.title": "Özel ağ ekle",
+  "widgets.addNetwork.name": "Ağ adı",
+  "widgets.addNetwork.namePlaceholder": "örn. Benim Zincirim",
+  "widgets.addNetwork.chainId": "Zincir ID'si",
+  "widgets.addNetwork.chainIdPlaceholder": "örn. 56",
+  "widgets.addNetwork.rpcs": "RPC URL'leri (her satıra bir tane)",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "Yerel sembol",
+  "widgets.addNetwork.symbolPlaceholder": "örn. BNB",
+  "widgets.addNetwork.decimals": "Ondalık basamak",
+  "widgets.addNetwork.submit": "Ağ ekle",
+  "widgets.addNetwork.cancel": "İptal",
+  "widgets.addNetwork.errorName": "Ad gerekli",
+  "widgets.addNetwork.errorChainId": "Zincir ID'si pozitif bir sayı olmalı",
+  "widgets.addNetwork.errorRpcs": "En az bir geçerli RPC URL'si gerekli",
+  "widgets.addNetwork.errorSymbol": "Sembol gerekli",
+  "widgets.addNetwork.errorDuplicate": "Bu Zincir ID'sine sahip bir ağ zaten var",
 
   "widgets.smartParam.raw": "ham",
   "widgets.smartParam.tokenAmount": "token tutarı",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "Bu tarayıcıda QR algılama desteklenmiyor",
 
   "subscriptionBadge.premiumMember": "Premium üye",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "Zincir üstü kullanıcıların güvendiği"
 }

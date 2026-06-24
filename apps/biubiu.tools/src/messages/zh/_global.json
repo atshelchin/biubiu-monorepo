@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "自定义",
   "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
   "widgets.networkPicker.apply": "应用",
+  "widgets.addNetwork.title": "添加自定义网络",
+  "widgets.addNetwork.name": "网络名称",
+  "widgets.addNetwork.namePlaceholder": "例如 My Chain",
+  "widgets.addNetwork.chainId": "链 ID",
+  "widgets.addNetwork.chainIdPlaceholder": "例如 56",
+  "widgets.addNetwork.rpcs": "RPC 地址（每行一个）",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "原生币符号",
+  "widgets.addNetwork.symbolPlaceholder": "例如 BNB",
+  "widgets.addNetwork.decimals": "小数位",
+  "widgets.addNetwork.submit": "添加网络",
+  "widgets.addNetwork.cancel": "取消",
+  "widgets.addNetwork.errorName": "名称为必填项",
+  "widgets.addNetwork.errorChainId": "链 ID 必须是正整数",
+  "widgets.addNetwork.errorRpcs": "至少需要一个有效的 RPC 地址",
+  "widgets.addNetwork.errorSymbol": "符号为必填项",
+  "widgets.addNetwork.errorDuplicate": "已存在相同链 ID 的网络",
 
   "widgets.smartParam.raw": "原始值",
   "widgets.smartParam.tokenAmount": "代币数量",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "此浏览器不支持二维码识别",
 
   "subscriptionBadge.premiumMember": "高级会员",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "深受链上用户信赖"
 }

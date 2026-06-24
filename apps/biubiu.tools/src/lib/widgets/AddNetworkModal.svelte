@@ -50,11 +50,11 @@
 			.filter((r) => /^https?:\/\//.test(r));
 		const dec = Number(decimals);
 
-		if (!trimmedName) return (error = t('br.addNetwork.errorName'));
-		if (!Number.isInteger(id) || id <= 0) return (error = t('br.addNetwork.errorChainId'));
-		if (existingChainIds.includes(id)) return (error = t('br.addNetwork.errorDuplicate'));
-		if (rpcs.length === 0) return (error = t('br.addNetwork.errorRpcs'));
-		if (!symbol.trim()) return (error = t('br.addNetwork.errorSymbol'));
+		if (!trimmedName) return (error = t('widgets.addNetwork.errorName'));
+		if (!Number.isInteger(id) || id <= 0) return (error = t('widgets.addNetwork.errorChainId'));
+		if (existingChainIds.includes(id)) return (error = t('widgets.addNetwork.errorDuplicate'));
+		if (rpcs.length === 0) return (error = t('widgets.addNetwork.errorRpcs'));
+		if (!symbol.trim()) return (error = t('widgets.addNetwork.errorSymbol'));
 
 		submitting = true;
 		try {
@@ -73,41 +73,41 @@
 	}
 </script>
 
-<ResponsiveModal {open} onClose={close} title={t('br.addNetwork.title')}>
+<ResponsiveModal {open} onClose={close} title={t('widgets.addNetwork.title')}>
 	<div class="form">
 		<label class="field">
-			<span class="label">{t('br.addNetwork.name')}</span>
-			<input class="input" bind:value={name} placeholder={t('br.addNetwork.namePlaceholder')} />
+			<span class="label">{t('widgets.addNetwork.name')}</span>
+			<input class="input" bind:value={name} placeholder={t('widgets.addNetwork.namePlaceholder')} />
 		</label>
 
 		<div class="row">
 			<label class="field">
-				<span class="label">{t('br.addNetwork.chainId')}</span>
+				<span class="label">{t('widgets.addNetwork.chainId')}</span>
 				<input
 					class="input"
 					type="number"
 					bind:value={chainId}
-					placeholder={t('br.addNetwork.chainIdPlaceholder')}
+					placeholder={t('widgets.addNetwork.chainIdPlaceholder')}
 				/>
 			</label>
 			<label class="field field-narrow">
-				<span class="label">{t('br.addNetwork.decimals')}</span>
+				<span class="label">{t('widgets.addNetwork.decimals')}</span>
 				<input class="input" type="number" bind:value={decimals} />
 			</label>
 		</div>
 
 		<label class="field">
-			<span class="label">{t('br.addNetwork.symbol')}</span>
-			<input class="input" bind:value={symbol} placeholder={t('br.addNetwork.symbolPlaceholder')} />
+			<span class="label">{t('widgets.addNetwork.symbol')}</span>
+			<input class="input" bind:value={symbol} placeholder={t('widgets.addNetwork.symbolPlaceholder')} />
 		</label>
 
 		<label class="field">
-			<span class="label">{t('br.addNetwork.rpcs')}</span>
+			<span class="label">{t('widgets.addNetwork.rpcs')}</span>
 			<textarea
 				class="input textarea"
 				bind:value={rpcsText}
 				rows="3"
-				placeholder={t('br.addNetwork.rpcsPlaceholder')}
+				placeholder={t('widgets.addNetwork.rpcsPlaceholder')}
 			></textarea>
 		</label>
 
@@ -117,10 +117,10 @@
 
 		<div class="actions">
 			<button class="btn btn-secondary" onclick={close} disabled={submitting}>
-				{t('br.addNetwork.cancel')}
+				{t('widgets.addNetwork.cancel')}
 			</button>
 			<button class="btn btn-primary" onclick={handleSubmit} disabled={submitting}>
-				{t('br.addNetwork.submit')}
+				{t('widgets.addNetwork.submit')}
 			</button>
 		</div>
 	</div>

@@ -129,24 +129,24 @@ export function getSkipReasonLabel(t: TranslateFn, reason: string): string {
 	}
 }
 
-export function getSwingExitLabel(_locale: string, reason: string): string {
+export function getSwingExitLabel(t: TranslateFn, reason: string): string {
 	switch (reason) {
 		case 'stop_loss':
-			return 'Stop Loss';
+			return t('btcUpdown.exit.stopLoss');
 		case 'binance_stop_loss':
-			return 'Binance Stop Loss';
+			return t('btcUpdown.exit.binanceStopLoss');
 		case 'take_profit':
-			return 'Take Profit';
+			return t('btcUpdown.exit.takeProfit');
 		case 'checkpoint_mismatch':
-			return 'Signal Reversed';
+			return t('btcUpdown.exit.signalReversed');
 		case 'clob_direction_mismatch':
-			return 'Direction Mismatch';
+			return t('btcUpdown.exit.directionMismatch');
 		case 'price_moved_against':
-			return 'Price Moved Against';
+			return t('btcUpdown.exit.priceMovedAgainst');
 		case 'manual':
-			return 'Manual Exit';
+			return t('btcUpdown.exit.manual');
 		case 'timeout':
-			return 'Timeout';
+			return t('btcUpdown.exit.timeout');
 		default:
 			return reason;
 	}

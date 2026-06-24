@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "Kustom",
   "widgets.networkPicker.customRpcPlaceholder": "https://rpc-kamu…",
   "widgets.networkPicker.apply": "Terapkan",
+  "widgets.addNetwork.title": "Tambah Jaringan Kustom",
+  "widgets.addNetwork.name": "Nama Jaringan",
+  "widgets.addNetwork.namePlaceholder": "mis. Chain Saya",
+  "widgets.addNetwork.chainId": "Chain ID",
+  "widgets.addNetwork.chainIdPlaceholder": "mis. 56",
+  "widgets.addNetwork.rpcs": "URL RPC (satu per baris)",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "Simbol Native",
+  "widgets.addNetwork.symbolPlaceholder": "mis. BNB",
+  "widgets.addNetwork.decimals": "Desimal",
+  "widgets.addNetwork.submit": "Tambah Jaringan",
+  "widgets.addNetwork.cancel": "Batal",
+  "widgets.addNetwork.errorName": "Nama wajib diisi",
+  "widgets.addNetwork.errorChainId": "Chain ID harus berupa angka positif",
+  "widgets.addNetwork.errorRpcs": "Diperlukan setidaknya satu URL RPC yang valid",
+  "widgets.addNetwork.errorSymbol": "Simbol wajib diisi",
+  "widgets.addNetwork.errorDuplicate": "Jaringan dengan Chain ID ini sudah ada",
 
   "widgets.smartParam.raw": "mentah",
   "widgets.smartParam.tokenAmount": "jumlah token",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "Deteksi QR tidak didukung di browser ini",
 
   "subscriptionBadge.premiumMember": "Anggota Premium",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "Dipercaya oleh pengguna on-chain"
 }

@@ -87,17 +87,17 @@
 {:else}
 	<!-- ── Logged in: stats + instances ── -->
 	<div class="mode-filter" use:fadeInUp={{ delay: 50 }}>
-		<button class="mode-pill" class:active={modeFilter.value === 'all'} onclick={() => modeFilter.value = 'all'}>All</button>
-		<button class="mode-pill" class:active={modeFilter.value === 'sandbox'} onclick={() => modeFilter.value = 'sandbox'}>Sandbox</button>
-		<button class="mode-pill" class:active={modeFilter.value === 'live'} onclick={() => modeFilter.value = 'live'}>Live</button>
+		<button class="mode-pill" class:active={modeFilter.value === 'all'} onclick={() => modeFilter.value = 'all'}>{t('updown5m.table.all')}</button>
+		<button class="mode-pill" class:active={modeFilter.value === 'sandbox'} onclick={() => modeFilter.value = 'sandbox'}>{t('updown5m.modeSandbox')}</button>
+		<button class="mode-pill" class:active={modeFilter.value === 'live'} onclick={() => modeFilter.value = 'live'}>{t('updown5m.modeLive')}</button>
 	</div>
 
 	<!-- Stats -->
 	<div class="stats-grid-4" use:fadeInUp={{ delay: 80 }}>
-		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.todayProfit')}</div><div class="stat-value {profitClass(modeTodayProfit)}">{fmt(modeTodayProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.todayProfit')}</div><div class="stat-value {profitClass(modeTodayProfit)}">{fmt(modeTodayProfit)}</div><div class="stat-sub">{t('updown5m.stat.instancesCount', { count: modeInstances.length })}</div></div>
 		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.active')}</div><div class="stat-value">{modeActiveCount}</div><div class="stat-sub">{t('updown5m.stat.instancesRunning')}</div></div>
-		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.avgWinRate')}</div><div class="stat-value">{fmtPct(modeWinRate)}</div><div class="stat-sub">{modeRoundsToday} rounds</div></div>
-		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.30dProfit')}</div><div class="stat-value {profitClass(mode30dProfit)}">{fmtShort(mode30dProfit)}</div><div class="stat-sub">{modeInstances.length} instances</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.avgWinRate')}</div><div class="stat-value">{fmtPct(modeWinRate)}</div><div class="stat-sub">{t('updown5m.stat.roundsCount', { count: modeRoundsToday })}</div></div>
+		<div class="stat-card"><div class="stat-label">{t('updown5m.stat.30dProfit')}</div><div class="stat-value {profitClass(mode30dProfit)}">{fmtShort(mode30dProfit)}</div><div class="stat-sub">{t('updown5m.stat.instancesCount', { count: modeInstances.length })}</div></div>
 	</div>
 
 	<!-- Instances table -->
@@ -127,7 +127,7 @@
 					{:else if key === 'spaceName'}
 						<span class="muted">{row.spaceName}</span>
 					{:else if key === 'mode'}
-						<span class="mode-badge" class:mode-live={row.mode === 'live'}>{row.mode === 'live' ? 'LIVE' : 'SANDBOX'}</span>
+						<span class="mode-badge" class:mode-live={row.mode === 'live'}>{row.mode === 'live' ? t('updown5m.modeLiveUpper') : t('updown5m.modeSandboxUpper')}</span>
 					{:else if key === 'status'}
 						<span class={row.status === 'running' ? 'positive' : row.status === 'paused' ? 'warning' : 'muted'}>{row.status}</span>
 					{:else if key === 'hour'}
@@ -150,13 +150,13 @@
 		{#each spaces.list as space (space.id)}
 			<a class="card interactive space-card" href={routes.space(space.id)}>
 				<div class="space-status" class:online={space.online}></div>
-				<span class="space-badge" class:badge-official={space.isOfficial}>{space.isOfficial ? 'Official' : 'Private'}</span>
+				<span class="space-badge" class:badge-official={space.isOfficial}>{space.isOfficial ? t('updown5m.spaceOfficial') : t('updown5m.spacePrivate')}</span>
 				<div class="card-name">{space.name}</div>
 				<div class="space-url">{space.endpointUrl}</div>
 				<div class="card-metrics">
-					<span class="metric"><span class="metric-value">{space.stats.totalUsers}</span> <span class="metric-label">users</span></span>
-					<span class="metric"><span class="metric-value">{space.stats.totalStrategies}</span> <span class="metric-label">strategies</span></span>
-					<span class="metric" class:positive={space.allowLiveTrading}>{space.allowLiveTrading ? 'Live' : 'Sandbox'}</span>
+					<span class="metric"><span class="metric-value">{space.stats.totalUsers}</span> <span class="metric-label">{t('updown5m.spaceUsers')}</span></span>
+					<span class="metric"><span class="metric-value">{space.stats.totalStrategies}</span> <span class="metric-label">{t('updown5m.spaceStrategies')}</span></span>
+					<span class="metric" class:positive={space.allowLiveTrading}>{space.allowLiveTrading ? t('updown5m.modeLive') : t('updown5m.modeSandbox')}</span>
 				</div>
 			</a>
 		{/each}

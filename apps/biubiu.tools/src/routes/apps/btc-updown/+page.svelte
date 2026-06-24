@@ -1590,9 +1590,9 @@
 						}}
 						role="button"
 						tabindex={0}
-						title="Click to sort"
+						title={t('btcUpdown.strategy.clickToSort')}
 					>
-						Name
+						{t('btcUpdown.strategy.nameCol')}
 						{#if profitSortColumn === 'name'}
 							<span class="sort-indicator">
 								{#if profitSortDir === 'desc'}<ArrowDown size={11} />{:else}<ArrowUp size={11} />{/if}
@@ -1635,7 +1635,7 @@
 									}}
 									role="button"
 									tabindex={0}
-									title="Click to sort"
+									title={t('btcUpdown.strategy.clickToSort')}
 								>
 									{getProfitColumnLabel(colKey)}
 									{#if profitSortColumn === col}
@@ -1748,7 +1748,7 @@
 									<button
 										class="row-hide-btn"
 										onclick={() => toggleStrategyVisibility(s.id)}
-										title="Hide"
+										title={t('btcUpdown.strategy.hide')}
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
 									</button>
@@ -1760,7 +1760,7 @@
 					{#if hiddenBuiltins.length > 0}
 						<button class="hidden-section-toggle" onclick={() => toggleCollapse('builtin-hidden')}>
 							<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has('builtin-hidden')}><polyline points="6 9 12 15 18 9" /></svg>
-							{`Hidden (${hiddenBuiltins.length})`}
+							{t('btcUpdown.strategy.hidden', { count: hiddenBuiltins.length })}
 						</button>
 						{#if !collapsedSections.has('builtin-hidden')}
 							<div class="version-options hidden-options">
@@ -1775,7 +1775,7 @@
 										<button
 											class="row-hide-btn"
 											onclick={() => toggleStrategyVisibility(s.id)}
-											title="Show"
+											title={t('btcUpdown.strategy.show')}
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
 										</button>
@@ -1830,7 +1830,7 @@
 										<button
 											class="row-hide-btn"
 											onclick={() => toggleStrategyVisibility(s.id)}
-											title="Hide"
+											title={t('btcUpdown.strategy.hide')}
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
 										</button>
@@ -1842,7 +1842,7 @@
 						{#if hiddenHostStrategies.length > 0}
 							<button class="hidden-section-toggle" onclick={() => toggleCollapse(`${host}-hidden`)}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class:collapsed={collapsedSections.has(`${host}-hidden`)}><polyline points="6 9 12 15 18 9" /></svg>
-								{`Hidden (${hiddenHostStrategies.length})`}
+								{t('btcUpdown.strategy.hidden', { count: hiddenHostStrategies.length })}
 							</button>
 							{#if !collapsedSections.has(`${host}-hidden`)}
 								<div class="version-options hidden-options">
@@ -1858,7 +1858,7 @@
 											<button
 												class="row-hide-btn"
 												onclick={() => toggleStrategyVisibility(s.id)}
-												title="Show"
+												title={t('btcUpdown.strategy.show')}
 											>
 												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
 											</button>
@@ -1883,7 +1883,8 @@
 							{#each endpointStore.endpoints as ep (ep.url + ep.clientId)}
 								{@const epKey = `ep:${ep.url}`}
 								{@const instances = endpointInstances.get(ep.url) ?? []}
-								{@const badge = ep.permissions?.funds ? 'Full' : ep.permissions?.trading ? 'Trading' : ep.permissions?.read ? 'Read' : '...'}
+								{@const badgeKey = ep.permissions?.funds ? 'full' : ep.permissions?.trading ? 'trading' : ep.permissions?.read ? 'read' : '...'}
+								{@const badgeLabel = ep.permissions?.funds ? t('btcUpdown.endpoint.permFull') : ep.permissions?.trading ? t('btcUpdown.endpoint.permTrading') : ep.permissions?.read ? t('btcUpdown.endpoint.permRead') : '...'}
 								<div class="ep-group">
 									<div class="ep-group-header" role="button" tabindex="0" onclick={() => {
 										toggleCollapse(epKey);
@@ -1897,7 +1898,7 @@
 										</button>
 										<span class="ep-group-label">{ep.label}</span>
 										<span class="ep-meta">
-											<span class="ep-badge ep-badge-{badge.toLowerCase()}">{badge}</span>
+											<span class="ep-badge ep-badge-{badgeKey}">{badgeLabel}</span>
 											{#if ep.credentialId}
 												<span class="ep-passkey" title={t('btcUpdown.live.passkeyRegistered')}>K</span>
 											{:else if ep.permissions?.trading}
@@ -2053,7 +2054,7 @@
 									</button>
 								{/if}
 								<span class="instance-status-badge" class:status-running={status === 'running'} class:status-paused={status === 'paused'} class:status-stopped={status === 'stopped'}>
-									{status ?? 'unknown'}
+									{status ?? t('btcUpdown.instance.statusUnknown')}
 								</span>
 							</div>
 						</div>
@@ -2187,10 +2188,10 @@
 					<!-- 方向选择 -->
 					<div class="v70-direction">
 						<button class="v70-dir-btn" class:v70-dir-active={v70Direction === 'Up'} class:v70-up={v70Direction === 'Up'} onclick={() => v70Direction = 'Up'}>
-							UP
+							{t('btcUpdown.v70.up')}
 						</button>
 						<button class="v70-dir-btn" class:v70-dir-active={v70Direction === 'Down'} class:v70-down={v70Direction === 'Down'} onclick={() => v70Direction = 'Down'}>
-							DOWN
+							{t('btcUpdown.v70.down')}
 						</button>
 					</div>
 

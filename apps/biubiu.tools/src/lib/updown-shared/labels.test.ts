@@ -110,20 +110,14 @@ describe('getSkipReasonLabel', () => {
 });
 
 describe('getSwingExitLabel', () => {
-	it('returns English labels for en locale', () => {
-		expect(getSwingExitLabel('en', 'stop_loss')).toBe('Stop Loss');
-		expect(getSwingExitLabel('en', 'take_profit')).toBe('Take Profit');
-		expect(getSwingExitLabel('en', 'checkpoint_mismatch')).toBe('Signal Reversed');
-		expect(getSwingExitLabel('en', 'manual')).toBe('Manual Exit');
-	});
-
-	it('returns English labels regardless of locale', () => {
-		expect(getSwingExitLabel('zh', 'stop_loss')).toBe('Stop Loss');
-		expect(getSwingExitLabel('zh', 'take_profit')).toBe('Take Profit');
-		expect(getSwingExitLabel('zh', 'checkpoint_mismatch')).toBe('Signal Reversed');
+	it('returns translation key for known exit reasons', () => {
+		expect(getSwingExitLabel(mockT, 'stop_loss')).toBe('btcUpdown.exit.stopLoss');
+		expect(getSwingExitLabel(mockT, 'take_profit')).toBe('btcUpdown.exit.takeProfit');
+		expect(getSwingExitLabel(mockT, 'checkpoint_mismatch')).toBe('btcUpdown.exit.signalReversed');
+		expect(getSwingExitLabel(mockT, 'manual')).toBe('btcUpdown.exit.manual');
 	});
 
 	it('returns raw reason for unknown', () => {
-		expect(getSwingExitLabel('en', 'custom_exit')).toBe('custom_exit');
+		expect(getSwingExitLabel(mockT, 'custom_exit')).toBe('custom_exit');
 	});
 });

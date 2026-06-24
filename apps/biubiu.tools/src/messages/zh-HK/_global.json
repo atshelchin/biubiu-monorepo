@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "自訂",
   "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
   "widgets.networkPicker.apply": "套用",
+  "widgets.addNetwork.title": "新增自訂網絡",
+  "widgets.addNetwork.name": "網絡名稱",
+  "widgets.addNetwork.namePlaceholder": "例如 My Chain",
+  "widgets.addNetwork.chainId": "鏈 ID",
+  "widgets.addNetwork.chainIdPlaceholder": "例如 56",
+  "widgets.addNetwork.rpcs": "RPC 地址（每行一個）",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "原生幣符號",
+  "widgets.addNetwork.symbolPlaceholder": "例如 BNB",
+  "widgets.addNetwork.decimals": "小數位",
+  "widgets.addNetwork.submit": "新增網絡",
+  "widgets.addNetwork.cancel": "取消",
+  "widgets.addNetwork.errorName": "名稱為必填項",
+  "widgets.addNetwork.errorChainId": "鏈 ID 必須是正整數",
+  "widgets.addNetwork.errorRpcs": "至少需要一個有效的 RPC 地址",
+  "widgets.addNetwork.errorSymbol": "符號為必填項",
+  "widgets.addNetwork.errorDuplicate": "已存在相同鏈 ID 的網絡",
 
   "widgets.smartParam.raw": "原始值",
   "widgets.smartParam.tokenAmount": "代幣數量",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "此瀏覽器不支援二維碼偵測",
 
   "subscriptionBadge.premiumMember": "進階會員",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "深受鏈上用戶信賴"
 }

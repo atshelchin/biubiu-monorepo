@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "Свой",
   "widgets.networkPicker.customRpcPlaceholder": "https://ваш-rpc…",
   "widgets.networkPicker.apply": "Применить",
+  "widgets.addNetwork.title": "Добавить свою сеть",
+  "widgets.addNetwork.name": "Название сети",
+  "widgets.addNetwork.namePlaceholder": "например, My Chain",
+  "widgets.addNetwork.chainId": "Chain ID",
+  "widgets.addNetwork.chainIdPlaceholder": "например, 56",
+  "widgets.addNetwork.rpcs": "RPC-адреса (по одному в строке)",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "Символ нативной монеты",
+  "widgets.addNetwork.symbolPlaceholder": "например, BNB",
+  "widgets.addNetwork.decimals": "Знаков после запятой",
+  "widgets.addNetwork.submit": "Добавить сеть",
+  "widgets.addNetwork.cancel": "Отмена",
+  "widgets.addNetwork.errorName": "Укажите название",
+  "widgets.addNetwork.errorChainId": "Chain ID должен быть положительным числом",
+  "widgets.addNetwork.errorRpcs": "Нужен хотя бы один верный RPC-адрес",
+  "widgets.addNetwork.errorSymbol": "Укажите символ",
+  "widgets.addNetwork.errorDuplicate": "Сеть с таким Chain ID уже существует",
 
   "widgets.smartParam.raw": "как есть",
   "widgets.smartParam.tokenAmount": "сумма токена",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "Распознавание QR не поддерживается в этом браузере",
 
   "subscriptionBadge.premiumMember": "Premium-участник",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "Нам доверяют ончейн-пользователи"
 }

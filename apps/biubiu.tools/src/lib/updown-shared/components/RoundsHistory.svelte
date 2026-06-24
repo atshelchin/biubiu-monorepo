@@ -150,7 +150,7 @@
 							<div class="round-row">
 								<span class="round-label">{t('btcUpdown.round.exitReason')}</span>
 								<span class="round-value swing-exit-badge swing-exit-{round.swing_exit_reason}">
-									{getSwingExitLabel('en', round.swing_exit_reason)}
+									{getSwingExitLabel(t, round.swing_exit_reason)}
 								</span>
 							</div>
 							{#if round.swing_exit_price !== null}

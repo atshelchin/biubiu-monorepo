@@ -301,6 +301,23 @@
   "widgets.networkPicker.custom": "カスタム",
   "widgets.networkPicker.customRpcPlaceholder": "https://your-rpc…",
   "widgets.networkPicker.apply": "適用",
+  "widgets.addNetwork.title": "カスタムネットワークを追加",
+  "widgets.addNetwork.name": "ネットワーク名",
+  "widgets.addNetwork.namePlaceholder": "例：My Chain",
+  "widgets.addNetwork.chainId": "チェーン ID",
+  "widgets.addNetwork.chainIdPlaceholder": "例：56",
+  "widgets.addNetwork.rpcs": "RPC URL（1 行に 1 件）",
+  "widgets.addNetwork.rpcsPlaceholder": "https://rpc.example.com",
+  "widgets.addNetwork.symbol": "ネイティブシンボル",
+  "widgets.addNetwork.symbolPlaceholder": "例：BNB",
+  "widgets.addNetwork.decimals": "小数桁数",
+  "widgets.addNetwork.submit": "ネットワークを追加",
+  "widgets.addNetwork.cancel": "キャンセル",
+  "widgets.addNetwork.errorName": "名前は必須です",
+  "widgets.addNetwork.errorChainId": "チェーン ID は正の整数で入力してください",
+  "widgets.addNetwork.errorRpcs": "有効な RPC URL が少なくとも 1 件必要です",
+  "widgets.addNetwork.errorSymbol": "シンボルは必須です",
+  "widgets.addNetwork.errorDuplicate": "このチェーン ID のネットワークはすでに存在します",
 
   "widgets.smartParam.raw": "そのまま",
   "widgets.smartParam.tokenAmount": "トークン量",
@@ -332,5 +349,7 @@
   "scanQr.notSupported": "このブラウザは QR コードの検出に対応していません",
 
   "subscriptionBadge.premiumMember": "プレミアム会員",
-  "subscriptionBadge.premium": "PREMIUM"
+  "subscriptionBadge.premium": "PREMIUM",
+
+  "home.socialProof.trusted": "オンチェーンユーザーに信頼されています"
 }

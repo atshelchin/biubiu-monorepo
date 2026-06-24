@@ -114,8 +114,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   i18nState.preferences.dateLocale = dateLocale;
   i18nState.preferences.currency = currency;
   i18nState.preferences.timezone = timezone;
-  const weekStartDayCookie = event.cookies.get('week-start-day');
-  i18nState.preferences.weekStartDay = weekStartDayCookie === '0' ? 0 : 1;
 
   // Handle request
   const response = await resolve(event, {

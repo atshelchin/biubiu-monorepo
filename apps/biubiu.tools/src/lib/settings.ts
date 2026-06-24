@@ -18,9 +18,8 @@ export interface Settings {
   numberLocale: string;
   dateLocale: string;
   currency: string;
-  timezone: string;
+  timezone: string; // always the browser's local timezone (not user-configurable)
   timeFormat: TimeFormat;
-  weekStartDay: number; // 0=Sunday, 1=Monday
 }
 
 const STORAGE_KEY = 'biubiu-settings';
@@ -32,8 +31,17 @@ const DEFAULT_SETTINGS: Settings = {
   currency: 'USD',
   timezone: 'UTC',
   timeFormat: '24',
-  weekStartDay: 1,
 };
+
+/** The browser's local IANA timezone; falls back to UTC on the server or on error. */
+function browserTimezone(): string {
+  if (!browser) return DEFAULT_SETTINGS.timezone;
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_SETTINGS.timezone;
+  } catch {
+    return DEFAULT_SETTINGS.timezone;
+  }
+}
 
 // Valid values for validation
 const VALID_THEMES: Theme[] = ['dark', 'light'];
@@ -98,9 +106,8 @@ export function loadSettings(): Settings {
         numberLocale: parsed.numberLocale || DEFAULT_SETTINGS.numberLocale,
         dateLocale: parsed.dateLocale || DEFAULT_SETTINGS.dateLocale,
         currency: parsed.currency || DEFAULT_SETTINGS.currency,
-        timezone: parsed.timezone || DEFAULT_SETTINGS.timezone,
+        timezone: browserTimezone(),
         timeFormat: parsed.timeFormat === '12' || parsed.timeFormat === '24' ? parsed.timeFormat : DEFAULT_SETTINGS.timeFormat,
-        weekStartDay: parsed.weekStartDay === 0 || parsed.weekStartDay === 1 ? parsed.weekStartDay : DEFAULT_SETTINGS.weekStartDay,
       };
     } catch {
       // Fallback to defaults if parsing fails
@@ -109,7 +116,7 @@ export function loadSettings(): Settings {
 
   // No unified settings found - try to migrate old keys
   const migrated = migrateOldSettings();
-  const settings = { ...DEFAULT_SETTINGS, ...migrated };
+  const settings = { ...DEFAULT_SETTINGS, ...migrated, timezone: browserTimezone() };
 
   // Save migrated settings
   if (Object.keys(migrated).length > 0) {
@@ -139,7 +146,6 @@ export function saveSettings(settings: Settings): void {
   document.cookie = `date-locale=${settings.dateLocale}${cookieOptions}`;
   document.cookie = `currency=${settings.currency}${cookieOptions}`;
   document.cookie = `timezone=${encodeURIComponent(settings.timezone)}${cookieOptions}`;
-  document.cookie = `week-start-day=${settings.weekStartDay}${cookieOptions}`;
 }
 
 /**

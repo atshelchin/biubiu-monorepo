@@ -23,23 +23,29 @@
 		currency: 'USD',
 		timezone: 'UTC',
 		timeFormat: '24',
-		weekStartDay: 1,
 	});
 
-	const localTimezone = browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
-	const timezoneOptions = $derived.by(() => {
-		const base = [
-			{ value: localTimezone, label: 'Local' },
-			{ value: 'UTC', label: 'UTC' },
-		];
-		// Deduplicate if local TZ is UTC
-		const seen = new Set<string>();
-		return base.filter(o => {
-			if (seen.has(o.value)) return false;
-			seen.add(o.value);
-			return true;
-		});
-	});
+	// Format presets shown by live example. The locale strings drive Intl directly,
+	// so each example is exactly what the app renders. Timezone always follows the
+	// browser — it isn't a user choice.
+	const dateSample = new Date(Date.UTC(2026, 5, 13, 12, 0, 0));
+	const numExample = (loc: string) =>
+		new Intl.NumberFormat(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(1234567.89);
+	const dateExample = (loc: string) =>
+		new Intl.DateTimeFormat(loc, { dateStyle: 'medium', timeZone: 'UTC' }).format(dateSample);
+
+	const numberFormatOptions = [
+		{ value: 'en-US', label: numExample('en-US') }, // 1,234,567.89
+		{ value: 'de-DE', label: numExample('de-DE') }, // 1.234.567,89
+		{ value: 'fr-FR', label: numExample('fr-FR') }, // 1 234 567,89
+		{ value: 'en-IN', label: numExample('en-IN') }, // 12,34,567.89 (Indian grouping)
+	];
+	const dateFormatOptions = [
+		{ value: 'en-US', label: dateExample('en-US') }, // Jun 13, 2026
+		{ value: 'en-GB', label: dateExample('en-GB') }, // 13 Jun 2026
+		{ value: 'de-DE', label: dateExample('de-DE') }, // 13.06.2026
+		{ value: 'ja-JP', label: dateExample('ja-JP') }, // 2026/06/13
+	];
 
 	const textScales = getTextScales();
 
@@ -59,7 +65,6 @@
 			preferences.dateLocale = settings.dateLocale;
 			preferences.currency = settings.currency;
 			preferences.timezone = settings.timezone;
-			preferences.weekStartDay = settings.weekStartDay;
 			settingsLoaded = true;
 		}
 	});
@@ -93,20 +98,14 @@
 		saveSettings(settings);
 	}
 
-	function handleSetTimezone(tz: string) {
-		settings = { ...settings, timezone: tz };
-		preferences.timezone = tz;
+	function handleSetDateLocale(loc: string) {
+		settings = { ...settings, dateLocale: loc };
+		preferences.dateLocale = loc;
 		saveSettings(settings);
 	}
 
 	function handleSetTimeFormat(format: TimeFormat) {
 		settings = { ...settings, timeFormat: format };
-		saveSettings(settings);
-	}
-
-	function handleSetWeekStartDay(day: number) {
-		settings = { ...settings, weekStartDay: day };
-		preferences.weekStartDay = day;
 		saveSettings(settings);
 	}
 </script>
@@ -210,38 +209,32 @@
 		</div>
 
 		<!-- Number Format -->
-		<div class="setting-row">
+		<div class="setting-row stacked">
 			<span class="setting-label">{t('settings.numberFormat')}</span>
-			<div class="format-group">
-				<button
-					class="format-btn"
-					class:active={settings.numberLocale === 'en-US'}
-					onclick={() => handleSetNumberLocale('en-US')}
-				>
-					1<span class="sep-thousand">,</span>234<span class="sep-decimal">.</span>56
-				</button>
-				<button
-					class="format-btn"
-					class:active={settings.numberLocale === 'de-DE'}
-					onclick={() => handleSetNumberLocale('de-DE')}
-				>
-					1<span class="sep-thousand">.</span>234<span class="sep-decimal">,</span>56
-				</button>
+			<div class="format-grid">
+				{#each numberFormatOptions as opt}
+					<button
+						class="format-btn chip"
+						class:active={settings.numberLocale === opt.value}
+						onclick={() => handleSetNumberLocale(opt.value)}
+					>
+						{opt.label}
+					</button>
+				{/each}
 			</div>
 		</div>
 
-
-		<!-- Timezone -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.timezone')}</span>
-			<div class="format-group">
-				{#each timezoneOptions as tz}
+		<!-- Date Format -->
+		<div class="setting-row stacked">
+			<span class="setting-label">{t('settings.dateFormat')}</span>
+			<div class="format-grid">
+				{#each dateFormatOptions as opt}
 					<button
-						class="format-btn"
-						class:active={settings.timezone === tz.value}
-						onclick={() => handleSetTimezone(tz.value)}
+						class="format-btn chip"
+						class:active={settings.dateLocale === opt.value}
+						onclick={() => handleSetDateLocale(opt.value)}
 					>
-						{tz.label}
+						{opt.label}
 					</button>
 				{/each}
 			</div>
@@ -264,27 +257,6 @@
 					onclick={() => handleSetTimeFormat('12')}
 				>
 					2:30 PM
-				</button>
-			</div>
-		</div>
-
-		<!-- Week Start Day -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.weekStart')}</span>
-			<div class="format-group">
-				<button
-					class="format-btn"
-					class:active={settings.weekStartDay === 1}
-					onclick={() => handleSetWeekStartDay(1)}
-				>
-					{t('settings.weekday.mon')}
-				</button>
-				<button
-					class="format-btn"
-					class:active={settings.weekStartDay === 0}
-					onclick={() => handleSetWeekStartDay(0)}
-				>
-					{t('settings.weekday.sun')}
 				</button>
 			</div>
 		</div>
@@ -491,22 +463,37 @@
 		color: var(--bg-base);
 	}
 
-	/* Number format separators - weaken thousand, strengthen decimal */
-	.sep-thousand {
-		color: var(--fg-faint);
+	/* Stacked row: label sits above a grid of format chips (for many/wide options) */
+	.setting-row.stacked {
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-2);
 	}
 
-	.sep-decimal {
-		color: var(--accent);
-		font-weight: var(--weight-bold);
-		font-size: 1.4em;
-		line-height: 0.8;
+	.format-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-1);
 	}
 
-	/* Override colors when format button is active */
-	.format-btn.active .sep-thousand,
-	.format-btn.active .sep-decimal {
-		color: inherit;
+	.format-btn.chip {
+		padding: var(--space-2);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--bg-raised);
+		text-align: center;
+	}
+
+	.format-btn.chip:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-base);
+		color: var(--fg-base);
+	}
+
+	.format-btn.chip.active {
+		background: var(--accent);
+		border-color: var(--accent);
+		color: var(--bg-base);
 	}
 
 

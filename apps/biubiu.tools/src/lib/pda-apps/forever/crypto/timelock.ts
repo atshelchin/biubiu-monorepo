@@ -30,12 +30,23 @@ export function timeForRound(round: number): number {
 	return QUICKNET_GENESIS + (round - 1) * QUICKNET_PERIOD;
 }
 
+/**
+ * drand quicknet group public key (G2, 96 bytes). Pinned alongside the chain hash so a
+ * hostile or MITM'd api.drand.sh cannot feed a forged beacon to open a capsule early.
+ * Verified against the authoritative /info (hash, genesis, period all cross-check).
+ */
+const QUICKNET_PUBLIC_KEY =
+	'83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a';
+
 async function makeClient() {
 	const tlock = await import('tlock-js');
-	// tlock-js 0.9 has no `defaultChainOptions` export; the constructors apply sane defaults
-	// (these are the options the verified Phase 0 spike ran with).
-	const chain = new tlock.HttpCachingChain(QUICKNET_URL);
-	return { tlock, client: new tlock.HttpChainClient(chain) };
+	const options = {
+		disableBeaconVerification: false,
+		noCache: false,
+		chainVerificationParams: { chainHash: QUICKNET_HASH, publicKey: QUICKNET_PUBLIC_KEY }
+	};
+	const chain = new tlock.HttpCachingChain(QUICKNET_URL, options);
+	return { tlock, client: new tlock.HttpChainClient(chain, options) };
 }
 
 /** Wrap an AES blob so it can only be opened at/after `round`. Returns versioned bytes. */

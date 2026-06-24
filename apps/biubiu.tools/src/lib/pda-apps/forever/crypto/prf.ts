@@ -1,10 +1,11 @@
 /**
- * WebAuthn PRF for 《致未来 · Forever》 — derives the encryption key material.
+ * WebAuthn PRF for Capsule — derives the deterministic encryption key material.
  *
- * Uses a DEDICATED encryption passkey (separate from the wallet/login passkey), created WITH
- * the `prf` extension. The wallet passkey signs UserOps; this one only ever produces the PRF
- * secret used to wrap/unwrap the data-encryption key. Verified working (prf.enabled=true,
- * 32-byte stable output) via the PRF probe page.
+ * The WALLET passkey itself produces the PRF secret (one passkey = identity AND encryption root).
+ * `evaluatePrf` is pinned to a specific credentialId so it always targets that one passkey; PRF is
+ * a pure function of (credential, salt), giving a stable 32-byte output on every device/browser the
+ * passkey is available on. `createEncryptionPasskey` (a separate passkey) is kept only as a legacy
+ * helper and is not used by the live store path.
  */
 import { browser } from '$app/environment';
 import { fromBase64url, toBase64url } from '$lib/auth/crypto-utils.js';

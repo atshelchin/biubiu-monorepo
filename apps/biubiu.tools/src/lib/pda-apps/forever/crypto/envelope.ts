@@ -1,20 +1,14 @@
 /**
- * Envelope (wrapped-DEK) encryption for 《致未来 · Forever》.
+ * Content-key derivation + AES-GCM for Capsule.
  *
- * Why an envelope instead of using the PRF output directly as the content key:
- *  - Each passkey has its OWN PRF secret. If we encrypted content directly under a
- *    PRF-derived key, adding a backup passkey or migrating devices would make old
- *    entries unreadable.
- *  - Instead: content is encrypted under one random DEK (data-encryption key). The DEK is
- *    "wrapped" (encrypted) under a KEK (key-encryption key) derived from each passkey's PRF.
- *    A backup passkey just wraps the SAME DEK under its own KEK — the DEK never changes and
- *    never appears in cleartext. This is standard envelope / multi-KEK encryption.
+ * LIVE PATH: the content key is derived DETERMINISTICALLY from the wallet passkey's PRF via
+ * `deriveContentKey` — the same passkey yields the same key on every device/browser, so a letter
+ * sealed anywhere decrypts everywhere with nothing published on-chain. Each note's ciphertext is
+ * the only thing that goes on-chain (the `Sealed` event/state).
  *
- * On-chain layout:
- *  - The wrapped DEK (`envelope`) is published once per passkey via the `KeyInit` event.
- *  - Each note's ciphertext (`payload`) is published via the `Sealed` event.
- *
- * The KEK is never extractable; an attacker reading the chain sees only ciphertext.
+ * LEGACY (tests only): the wrapped-DEK envelope helpers below (`createEnvelope`/`openEnvelope`/
+ * `wrapDek`/`deriveKEK`) were a random-DEK + multi-KEK scheme. They are no longer used by the
+ * store — kept solely so the existing spec tests keep exercising the AES/GCM primitives.
  */
 import { aesOpen, aesSeal, concat, fromUtf8, hkdfAesKey, hkdfBytes, importAesKey, randomBytes, utf8 } from './core.js';
 

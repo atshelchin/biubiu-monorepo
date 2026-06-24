@@ -43,6 +43,8 @@ export interface TimelineEntry {
 }
 
 const LS_CRED = 'forever.enc.cred';
+const LS_CHAIN = 'forever.chain'; // remember the chosen chain
+const LS_ENTERED = 'forever.entered'; // remember the gate was passed (skip it on reload)
 
 /** Per-write fee charged + displayed (0.001 native). Must be >= the contract's on-chain floor. */
 export const FEE_WEI = 1_000_000_000_000_000n;
@@ -97,6 +99,13 @@ class ForeverStore {
 		try {
 			const c = localStorage.getItem(LS_CRED);
 			if (c) this.credential = JSON.parse(c) as EncryptionCredential;
+			// Remember the last chosen chain so reloads don't bounce back to the gate (and never
+			// land on a different chain showing an empty timeline). Only restore a still-valid slug.
+			const savedChain = localStorage.getItem(LS_CHAIN);
+			if (savedChain && WRITE_NETWORKS.some((n) => n.slug === savedChain)) {
+				this.networkSlug = savedChain;
+				this.chainEntered = localStorage.getItem(LS_ENTERED) === '1';
+			}
 		} catch {
 			/* ignore corrupt local state */
 		}
@@ -396,14 +405,11 @@ class ForeverStore {
 		if (!user || !this.rawDek) return;
 		this.loadingEntries = true;
 		try {
-			const raw = await fetchEntriesPage(
-				this.networkSlug,
-				user.safeAddress as Address,
-				this.entries.length,
-				PAGE,
-				this.sortDir === 'desc'
-			);
+			const author = user.safeAddress as Address;
+			const raw = await fetchEntriesPage(this.networkSlug, author, this.entries.length, PAGE, this.sortDir === 'desc');
 			this.entries = [...this.entries, ...(await this.toTimeline(raw))];
+			// Refresh the total so the "read older (N more)" count stays accurate.
+			this.entriesTotal = await entryCount(this.networkSlug, author);
 		} catch (e) {
 			this.message = t('capsule.error.loadMoreFailed', { error: (e as Error).message });
 		} finally {
@@ -428,11 +434,16 @@ class ForeverStore {
 			this.entriesTotal = 0;
 		}
 		this.chainEntered = true;
+		if (browser) {
+			localStorage.setItem(LS_CHAIN, slug);
+			localStorage.setItem(LS_ENTERED, '1');
+		}
 	}
 
 	/** Leave to the region gate to pick a different chain. */
 	exitChain(): void {
 		this.chainEntered = false;
+		if (browser) localStorage.setItem(LS_ENTERED, '0');
 	}
 
 	/** Surface the gas-account funding modal — parse the relayer error for amount + address. */

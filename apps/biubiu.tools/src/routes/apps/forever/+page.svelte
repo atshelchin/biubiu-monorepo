@@ -68,6 +68,17 @@
 		return () => clearInterval(id);
 	});
 
+	// When a capsule's unlock time passes while you're watching, re-fetch so it opens itself —
+	// no manual refresh. Throttled (the drand beacon may lag a few seconds past the unlock time).
+	let lastAutoReload = 0;
+	$effect(() => {
+		const matured = store.entries.some((e) => e.locked && e.unlockAt <= now);
+		if (matured && !store.loadingEntries && now - lastAutoReload >= 15) {
+			lastAutoReload = now;
+			store.loadEntries();
+		}
+	});
+
 	function countdown(unlockAt: number): string {
 		const s = Math.max(0, unlockAt - now);
 		const d = Math.floor(s / 86400);

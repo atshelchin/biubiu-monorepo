@@ -2,6 +2,8 @@
 
 ## Design Style (Apple-inspired)
 
+> Full UI + front-end standard: [`agent-rules/UI-DESIGN-RULES.md`](agent-rules/UI-DESIGN-RULES.md) — authoritative, token-driven, theme-correct. The principles below summarize it.
+
 Follow these core design principles:
 
 1. **Minimalism** - Remove unnecessary decorations, keep it clean

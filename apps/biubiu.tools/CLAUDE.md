@@ -30,64 +30,24 @@ This document outlines the design principles, code patterns, and best practices 
 
 ## Design Philosophy & Aesthetic Goals
 
-### Target Quality Level
-Aim for **top-tier product portal** aesthetics, comparable to:
-- Vercel (clean, minimalist, premium feel)
-- Linear (attention to micro-interactions)
-- Uniswap (modern web3 aesthetic)
+**Authoritative design + front-end standard: [`agent-rules/UI-DESIGN-RULES.md`](../../agent-rules/UI-DESIGN-RULES.md).** Read it before building UI.
 
-### Core Design Principles
+Direction is **Apple-clean / Vercel / Linear / Stripe** — minimal, calm, crisp, and obvious
+for a novice. The older glass-morphism / glow / gradient-orb / shine-sweep guidance that used
+to live here is **retired** (it broke the light theme and looked flashy). In short:
 
-1. **Visual Depth Through Layers**
-   - Use multi-layer background effects (gradient orbs, grid patterns)
-   - Glass morphism with proper backdrop-filter
-   - Subtle animations that add life without distraction
+- **Token-driven, theme-correct.** Never hardcode `rgba(255,255,255,x)` or hex — use tokens
+  (`--bg-elevated`, `--border-base`, `--shadow-sm`, `--fg-*`, `--accent`, `--success|warning|error`)
+  so both light and dark themes work.
+- **Cards:** `--bg-elevated` + `1px --border-base` + `--shadow-sm`; hover `--border-strong` +
+  `--shadow-md` + `translateY(-1..2px)`. Row hover background = `--bg-raised`/`--bg-sunken`.
+- **Restrained motion:** ≤2px translate, **no glow / pulse / shine-sweep**. Always honour
+  `prefers-reduced-motion`.
+- **Premium details:** skeleton loaders (not bare spinners), progressive loading for long lists,
+  `⌘K` search, and surface errors in the UI (inline alert) — never only in the console.
 
-2. **Typography Excellence**
-   - Headlines: font-weight 800, letter-spacing -0.02em to -0.05em
-   - Use gradient text for highlighted phrases
-   - Subtitles/descriptions should be more muted (`--fg-subtle` or `--fg-muted`)
-
-3. **Premium Interactions**
-   - Cards float on hover (`translateY(-6px)`)
-   - Shine sweep animation on hover (skewX transform, left transition)
-   - Glow effects on interactive elements
-   - Respect `prefers-reduced-motion`
-
-4. **Glass Morphism Pattern**
-   ```css
-   .glass-card {
-     background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
-     backdrop-filter: blur(20px) saturate(180%);
-     border: 1px solid rgba(255, 255, 255, 0.12);
-     box-shadow:
-       0 8px 32px rgba(0, 0, 0, 0.4),
-       0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-       0 1px 0 rgba(255, 255, 255, 0.1) inset;
-   }
-   ```
-
-5. **Shine Sweep Effect**
-   ```css
-   .card::after {
-     content: '';
-     position: absolute;
-     top: 0;
-     left: -100%;
-     width: 60%;
-     height: 100%;
-     background: linear-gradient(90deg,
-       transparent 0%,
-       rgba(255,255,255,0.03) 20%,
-       rgba(255,255,255,0.15) 50%,
-       rgba(255,255,255,0.03) 80%,
-       transparent 100%
-     );
-     transform: skewX(-20deg);
-     transition: left 0.7s var(--easing-smooth);
-   }
-   .card:hover::after { left: 150%; }
-   ```
+See the rules doc for the full checklist (loading, search a11y, reactive collections, i18n,
+wallet "Add to network" flow, accepted lint).
 
 ---
 

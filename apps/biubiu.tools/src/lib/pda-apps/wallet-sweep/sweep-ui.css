@@ -1,0 +1,299 @@
+/*
+ * Shared UI primitives for the Wallet Sweep tool.
+ *
+ * Imported once (globally) from the route so the three phase widgets
+ * (WalletSweepConfig / Run / Done) share one visual language instead of each
+ * re-declaring cards / inputs / buttons. Classes are `ws-` prefixed to stay out
+ * of other tools' way.
+ *
+ * Token-driven + theme-correct per agent-rules/UI-DESIGN-RULES.md: cards sit on
+ * `--bg-elevated` with a real `--border-base` + soft `--shadow-sm` (reads
+ * crisply in BOTH themes — light mode can't lean on surface lightness, so the
+ * border carries the edge and the sunken inputs pop against the white card).
+ * Never hardcode rgba(255,255,255,x) here — it's invisible on a light page.
+ */
+
+/* ── Card (one per section) ── */
+.ws-card {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-base);
+	border-radius: var(--radius-xl);
+	box-shadow: var(--shadow-sm);
+	padding: var(--space-6);
+}
+.ws-card-center {
+	text-align: center;
+}
+.ws-card-title {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin: 0;
+	font-size: var(--text-xl);
+	font-weight: var(--weight-semibold);
+	letter-spacing: -0.01em;
+	color: var(--fg-base);
+}
+.ws-card-title .ws-title-icon {
+	display: inline-flex;
+	color: var(--fg-subtle);
+	flex-shrink: 0;
+}
+.ws-card-sub {
+	margin: var(--space-2) 0 var(--space-4);
+	font-size: var(--text-sm);
+	color: var(--fg-muted);
+	line-height: var(--leading-relaxed);
+}
+
+/* ── Inline alert (errors surfaced in the UI, never console-only) ── */
+.ws-alert {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-md);
+	background: var(--error-subtle);
+	border: 1px solid var(--error-muted);
+	color: var(--fg-base);
+	font-size: var(--text-sm);
+	line-height: var(--leading-snug);
+}
+.ws-alert-icon {
+	flex-shrink: 0;
+	color: var(--error);
+	margin-top: 1px;
+}
+.ws-alert-body {
+	flex: 1;
+	min-width: 0;
+}
+.ws-alert-x {
+	flex-shrink: 0;
+	display: inline-flex;
+	border: none;
+	background: none;
+	color: var(--fg-subtle);
+	cursor: pointer;
+	padding: 0;
+	border-radius: var(--radius-sm);
+}
+.ws-alert-x:hover {
+	color: var(--fg-base);
+}
+
+/* ── Security note (subtle, reassuring) ── */
+.ws-note-card {
+	display: flex;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	background: var(--accent-subtle);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-lg);
+	color: var(--fg-muted);
+	font-size: var(--text-xs);
+	line-height: var(--leading-relaxed);
+}
+.ws-note-card .ws-note-icon {
+	flex-shrink: 0;
+	color: var(--accent);
+	margin-top: 1px;
+}
+.ws-note-card strong {
+	display: block;
+	color: var(--fg-base);
+	font-size: var(--text-sm);
+	margin-bottom: 2px;
+}
+
+/* ── Inputs ── */
+.ws-input {
+	width: 100%;
+	padding: var(--space-3) var(--space-4);
+	background: var(--bg-sunken);
+	border: 1px solid var(--border-base);
+	border-radius: var(--radius-md);
+	font-size: var(--text-sm);
+	color: var(--fg-base);
+	box-sizing: border-box;
+	outline: none;
+	transition:
+		border-color var(--motion-fast) var(--easing),
+		box-shadow var(--motion-fast) var(--easing);
+}
+.ws-input:focus {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.ws-input::placeholder {
+	color: var(--fg-faint);
+}
+.ws-input-invalid:not(:focus) {
+	border-color: var(--error-muted);
+}
+.ws-mono {
+	font-family: var(--font-mono);
+}
+.ws-field-msg {
+	margin: var(--space-2) 0 0;
+	font-size: var(--text-xs);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.ws-field-msg.is-ok {
+	color: var(--success);
+}
+.ws-field-msg.is-err {
+	color: var(--error);
+}
+
+/* ── Buttons ── */
+.ws-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: var(--space-3) var(--space-5);
+	border: 1px solid transparent;
+	border-radius: var(--radius-md);
+	font-size: var(--text-sm);
+	font-weight: var(--weight-medium);
+	cursor: pointer;
+	transition:
+		transform var(--motion-fast) var(--easing),
+		background var(--motion-fast) var(--easing),
+		border-color var(--motion-fast) var(--easing),
+		opacity var(--motion-fast) var(--easing);
+}
+.ws-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.ws-btn-lg {
+	padding: var(--space-3) var(--space-8);
+}
+.ws-btn-sm {
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--text-xs);
+}
+.ws-btn-primary {
+	background: var(--accent);
+	color: var(--accent-fg);
+}
+.ws-btn-primary:not(:disabled):hover {
+	background: var(--accent-hover);
+	transform: translateY(-1px);
+}
+.ws-btn-ghost {
+	background: var(--bg-sunken);
+	color: var(--fg-base);
+	border-color: var(--border-base);
+}
+.ws-btn-ghost:not(:disabled):hover {
+	border-color: var(--border-strong);
+}
+.ws-btn-danger {
+	background: var(--error-muted);
+	color: var(--error);
+}
+.ws-btn-danger:not(:disabled):hover {
+	background: color-mix(in srgb, var(--error) 18%, transparent);
+}
+.ws-actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: var(--space-3);
+}
+.ws-actions-hint {
+	margin-right: auto;
+	font-size: var(--text-xs);
+	color: var(--fg-subtle);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* ── Badges (network grid) ── */
+.ws-badge {
+	font-size: 10px;
+	padding: 2px 6px;
+	border-radius: var(--radius-full);
+	background: var(--bg-sunken);
+	color: var(--fg-muted);
+	border: 1px solid var(--border-subtle);
+}
+.ws-badge-ok {
+	background: var(--success-muted);
+	color: var(--success);
+	border-color: transparent;
+}
+.ws-badge-bad {
+	background: var(--error-muted);
+	color: var(--error);
+	border-color: transparent;
+}
+.ws-badge-muted {
+	color: var(--fg-subtle);
+}
+
+/* ── Chips (key stats / status) ── */
+.ws-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: var(--text-xs);
+	padding: 3px 9px;
+	border-radius: var(--radius-full);
+}
+.ws-chip-ok {
+	background: var(--success-muted);
+	color: var(--success);
+}
+.ws-chip-bad {
+	background: var(--error-muted);
+	color: var(--error);
+}
+.ws-chip-muted {
+	background: var(--bg-sunken);
+	color: var(--fg-subtle);
+}
+
+/* ── Skeleton (loading) ── */
+.ws-skeleton {
+	background: var(--bg-sunken);
+	border-radius: var(--radius-sm);
+	position: relative;
+	overflow: hidden;
+}
+.ws-skeleton::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	transform: translateX(-100%);
+	background: linear-gradient(
+		90deg,
+		transparent,
+		color-mix(in srgb, var(--fg-faint) 12%, transparent),
+		transparent
+	);
+	animation: ws-shimmer 1.4s infinite;
+}
+@keyframes ws-shimmer {
+	to {
+		transform: translateX(100%);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ws-btn {
+		transition: none;
+	}
+	.ws-btn-primary:not(:disabled):hover {
+		transform: none;
+	}
+	.ws-skeleton::after {
+		animation: none;
+	}
+}

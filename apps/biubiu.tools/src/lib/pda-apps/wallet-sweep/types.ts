@@ -1,9 +1,9 @@
 /**
- * Wallet Sweep — shared types.
+ * Wallet Sweep — shared types (v2, relay-centric, no passkey / Safe).
  *
- * The tool upgrades many EOAs to an EIP-7702 Sweeper delegate (controller =
- * the user's passkey Safe), then the Safe pulls native + ERC20 out of all of
- * them in one fingerprint via Safe MultiSend.
+ * A throwaway relay EOA upgrades many EOAs to an EIP-7702 Sweeper delegate
+ * (controller = the relay) and pulls native + ERC20 out of all of them via
+ * `BatchSweeper.sweepMany` — one type-4 transaction per chunk.
  */
 import type { Address, Hex } from 'viem';
 
@@ -22,13 +22,13 @@ export interface SweepNetwork {
 	writableRpcs: string[];
 	explorerTxUrl: string;
 	explorerAddressUrl: string;
-	/** Safe MultiSend 1.4.1 (same deterministic address on every chain). */
+	/** Legacy (v1 Safe MultiSend) — kept for type compatibility, unused in v2. */
 	multiSendAddress: Address;
 	/** Multicall3 (same deterministic address on every chain). */
 	multicall3: Address;
 	/** Max EOA authorizations per upgrade (type-4) tx. */
 	maxBatchUpgrade: number;
-	/** Max sweep() sub-calls per MultiSend batch (one fingerprint). */
+	/** Max sweep() sub-calls per BatchSweeper batch (one type-4 tx). */
 	maxBatchSweep: number;
 	/** Curated: chain is post-Pectra / supports EIP-7702. */
 	supports7702: boolean;
@@ -55,20 +55,6 @@ export type Delegation =
 	| 'foreign' // delegated to a different contract
 	| 'contract' // real contract code — not a sweepable EOA
 	| 'unknown';
-
-export type UpgradeStatus = 'pending' | 'signing' | 'broadcast' | 'upgraded' | 'skipped' | 'failed';
-
-/** Per-EOA working state (status keyed by address; keys held separately). */
-export interface EoaStatus {
-	address: Address;
-	delegation: Delegation;
-	/** Native balance (wei) as decimal string for serialization. */
-	nativeBalance: string;
-	/** tokenAddress(lowercase) → balance (raw) string. */
-	tokenBalances: Record<string, string>;
-	upgrade: UpgradeStatus;
-	error?: string;
-}
 
 /** A private key paired with its derived address (in-memory only, never persisted). */
 export interface EoaKey {

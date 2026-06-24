@@ -164,28 +164,22 @@ export async function rpcCall<T>(method: string, params: unknown[], chainId: num
 	throw new Error(`All RPC endpoints failed for chain ${chainId}`);
 }
 
-/** Pick the lowest-latency reachable RPC URL for a chain (for the bundler's X-Rpc-Url). */
-const fastestCache = new Map<number, { url: string; at: number }>();
-const FASTEST_TTL = 60_000;
-
-export async function pickFastestRpcUrl(chainId: number): Promise<string | undefined> {
-	const cached = fastestCache.get(chainId);
-	if (cached && Date.now() - cached.at < FASTEST_TTL) return cached.url;
-
-	const endpoints = sortedEndpoints(chainId);
-	if (endpoints.length === 0) return undefined;
-
-	// Race eth_chainId across candidates; first valid responder wins. Fall back to
-	// the top-scored URL if all races reject.
-	const winner = await Promise.any(
-		endpoints.map(async (ep) => {
-			const t0 = Date.now();
-			await tryEndpoint<Hex>(ep.url, 'eth_chainId', []);
-			recordSuccess(ep.url, Date.now() - t0);
-			return ep.url;
+/**
+ * A KEYLESS public RPC URL safe to disclose to a third party (the bundler's
+ * `X-Rpc-Url` header). Never returns a provider URL (which embeds the user's API
+ * key) — only the built-in public endpoints. Falls back to a user override only for
+ * custom chains with no public entry (where forwarding the user's own RPC is the
+ * only option). This prevents leaking provider keys to the bundler and avoids
+ * handing the bundler a user-controlled URL to fetch.
+ */
+export async function pickBundlerRpcUrl(chainId: number): Promise<string | undefined> {
+	const publicUrls = chainInfo(chainId)?.rpcUrls ?? [];
+	if (publicUrls.length === 0) return getNetworkConfig(chainId)?.rpcURL;
+	if (publicUrls.length === 1) return publicUrls[0];
+	return Promise.any(
+		publicUrls.map(async (url) => {
+			await tryEndpoint<Hex>(url, 'eth_chainId', []);
+			return url;
 		})
-	).catch(() => endpoints[0].url);
-
-	fastestCache.set(chainId, { url: winner, at: Date.now() });
-	return winner;
+	).catch(() => publicUrls[0]);
 }

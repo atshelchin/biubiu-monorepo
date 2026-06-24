@@ -11,7 +11,7 @@
 import type { Hex } from 'viem';
 import { CONTRACTS } from '$lib/auth/compute-safe-address.js';
 import { getBundlerServiceURL } from './endpoints.js';
-import { pickFastestRpcUrl } from './rpc-client.js';
+import { pickBundlerRpcUrl } from './rpc-client.js';
 
 interface RpcResponse<T = unknown> {
 	jsonrpc: '2.0';
@@ -30,7 +30,8 @@ function bundlerRpcUrl(chainId: number): string {
 }
 
 async function bundlerCall<T>(method: string, params: unknown[], chainId: number): Promise<T> {
-	const chainRpc = await pickFastestRpcUrl(chainId).catch(() => undefined);
+	// Keyless public RPC only — never leak a provider-key URL to the bundler.
+	const chainRpc = await pickBundlerRpcUrl(chainId).catch(() => undefined);
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (chainRpc) headers['X-Rpc-Url'] = chainRpc;
 

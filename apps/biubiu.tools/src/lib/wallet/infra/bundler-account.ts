@@ -13,7 +13,7 @@
 
 import { type Hex } from 'viem';
 import { getBundlerServiceURL } from './endpoints.js';
-import { pickFastestRpcUrl, rpcCall } from './rpc-client.js';
+import { pickBundlerRpcUrl, rpcCall } from './rpc-client.js';
 import { chainInfo, isTempoChain } from './chains.js';
 import { TEMPO_DEFAULT_FEE_TOKEN } from './tempo.js';
 
@@ -69,7 +69,7 @@ export async function fetchBundlerAccountInfo(
 
 	try {
 		const url = `${getBundlerServiceURL()}/v1/account/${chainId}/${safeAddress.toLowerCase()}`;
-		const chainRpc = await pickFastestRpcUrl(chainId).catch(() => undefined);
+		const chainRpc = await pickBundlerRpcUrl(chainId).catch(() => undefined);
 		const headers: Record<string, string> = { Accept: 'application/json' };
 		if (chainRpc) headers['X-Rpc-Url'] = chainRpc;
 
@@ -140,7 +140,7 @@ export async function requestSponsorship(
 ): Promise<SponsorResult> {
 	try {
 		const url = `${getBundlerServiceURL()}/v1/sponsor/${chainId}/${safeAddress.toLowerCase()}`;
-		const chainRpc = await pickFastestRpcUrl(chainId).catch(() => undefined);
+		const chainRpc = await pickBundlerRpcUrl(chainId).catch(() => undefined);
 		const headers: Record<string, string> = { Accept: 'application/json', 'Content-Type': 'application/json' };
 		if (chainRpc) headers['X-Rpc-Url'] = chainRpc;
 

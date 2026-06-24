@@ -136,12 +136,38 @@ async function tryEndpoint<T>(url: string, method: string, params: unknown[]): P
 	}
 }
 
+/** url -> reported chainId (probed once via eth_chainId), to skip wrong-chain endpoints. */
+const chainIdCache = new Map<string, number>();
+
+/**
+ * Does `url` actually serve `chainId`? Probes eth_chainId once and caches. Returns
+ * true on a transport failure (can't determine — don't exclude on a network blip);
+ * returns false only when the endpoint affirmatively reports a DIFFERENT chain.
+ */
+async function reportsChain(url: string, chainId: number): Promise<boolean> {
+	const cached = chainIdCache.get(url);
+	if (cached !== undefined) return cached === chainId;
+	try {
+		const hex = await tryEndpoint<Hex>(url, 'eth_chainId', []);
+		const got = Number(BigInt(hex));
+		chainIdCache.set(url, got);
+		return got === chainId;
+	} catch {
+		return true;
+	}
+}
+
 /** JSON-RPC call against a chain's best available endpoint, with transport failover. */
 export async function rpcCall<T>(method: string, params: unknown[], chainId: number, retried = false): Promise<T> {
 	const endpoints = sortedEndpoints(chainId);
 	if (endpoints.length === 0) throw new Error(`No RPC endpoint configured for chain ${chainId}`);
 
 	for (const ep of endpoints) {
+		// A user-supplied RPC override is the only untrusted source that could point at
+		// the WRONG chain (built-in public + provider URLs are chain-correct by
+		// construction). Verify it once before trusting its data.
+		if (ep.source === 'user' && !(await reportsChain(ep.url, chainId))) continue;
+
 		const t0 = Date.now();
 		try {
 			const result = await tryEndpoint<T>(ep.url, method, params);
@@ -175,10 +201,10 @@ export async function rpcCall<T>(method: string, params: unknown[], chainId: num
 export async function pickBundlerRpcUrl(chainId: number): Promise<string | undefined> {
 	const publicUrls = chainInfo(chainId)?.rpcUrls ?? [];
 	if (publicUrls.length === 0) return getNetworkConfig(chainId)?.rpcURL;
-	if (publicUrls.length === 1) return publicUrls[0];
+	// First public endpoint that responds AND reports the right chainId.
 	return Promise.any(
 		publicUrls.map(async (url) => {
-			await tryEndpoint<Hex>(url, 'eth_chainId', []);
+			if (!(await reportsChain(url, chainId))) throw new Error('wrong chain');
 			return url;
 		})
 	).catch(() => publicUrls[0]);

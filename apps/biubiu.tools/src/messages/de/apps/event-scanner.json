@@ -88,5 +88,10 @@
 	"es.results.complete": "Vollständig — jeder Block in diesem Bereich wurde gescannt.",
 	"es.results.gapsWarn": "{blocks} Block/Blöcke in {ranges} Bereich(en) konnten von keinem RPC abgerufen werden — die Ergebnisse sind möglicherweise unvollständig.",
 	"es.results.rescanGaps": "Lücken erneut scannen",
-	"es.results.interrupted": "Der Scan wurde vor dem Abschluss unterbrochen."
+	"es.results.interrupted": "Der Scan wurde vor dem Abschluss unterbrochen.",
+
+	"es.resume.banner": "Dein letzter Scan „{name}“ wurde nicht abgeschlossen — der Fortschritt ist gespeichert, du kannst fortsetzen.",
+	"es.resume.continue": "Scan fortsetzen",
+	"es.resume.dismiss": "Schließen",
+	"es.exec.savedHint": "Der Fortschritt wird automatisch gespeichert — du kannst die Seite schließen und später fortsetzen."
 }

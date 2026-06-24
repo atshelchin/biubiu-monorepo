@@ -88,5 +88,10 @@
 	"es.results.complete": "Hoàn chỉnh — mọi khối trong phạm vi này đã được quét.",
 	"es.results.gapsWarn": "{blocks} khối trong {ranges} phạm vi không thể lấy từ bất kỳ RPC nào — kết quả có thể chưa đầy đủ.",
 	"es.results.rescanGaps": "Quét lại chỗ thiếu",
-	"es.results.interrupted": "Quá trình quét bị gián đoạn trước khi hoàn tất."
+	"es.results.interrupted": "Quá trình quét bị gián đoạn trước khi hoàn tất.",
+
+	"es.resume.banner": "Lần quét trước “{name}” chưa xong — tiến độ đã lưu, bạn có thể tiếp tục.",
+	"es.resume.continue": "Tiếp tục quét",
+	"es.resume.dismiss": "Bỏ qua",
+	"es.exec.savedHint": "Tiến độ được lưu tự động — bạn có thể đóng trang này và tiếp tục sau."
 }

@@ -88,5 +88,10 @@
 	"es.results.complete": "Complet — chaque bloc de cette plage a été scanné.",
 	"es.results.gapsWarn": "{blocks} bloc(s) dans {ranges} plage(s) n'ont pu être récupérés depuis aucun RPC — les résultats peuvent être incomplets.",
 	"es.results.rescanGaps": "Rescanner les lacunes",
-	"es.results.interrupted": "Le scan a été interrompu avant la fin."
+	"es.results.interrupted": "Le scan a été interrompu avant la fin.",
+
+	"es.resume.banner": "Votre dernier scan « {name} » n'est pas terminé — la progression est enregistrée, vous pouvez reprendre.",
+	"es.resume.continue": "Reprendre le scan",
+	"es.resume.dismiss": "Ignorer",
+	"es.exec.savedHint": "La progression est enregistrée automatiquement — vous pouvez fermer cette page et reprendre plus tard."
 }

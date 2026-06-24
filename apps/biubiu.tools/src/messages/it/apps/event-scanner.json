@@ -88,5 +88,10 @@
 	"es.results.complete": "Completo — ogni blocco di questo intervallo è stato scansionato.",
 	"es.results.gapsWarn": "{blocks} blocco/i in {ranges} intervallo/i non è stato possibile recuperarli da alcun RPC — i risultati potrebbero essere incompleti.",
 	"es.results.rescanGaps": "Riscansiona le lacune",
-	"es.results.interrupted": "La scansione è stata interrotta prima del completamento."
+	"es.results.interrupted": "La scansione è stata interrotta prima del completamento.",
+
+	"es.resume.banner": "L'ultima scansione “{name}” non è stata completata — i progressi sono salvati, puoi riprendere.",
+	"es.resume.continue": "Riprendi scansione",
+	"es.resume.dismiss": "Ignora",
+	"es.exec.savedHint": "I progressi vengono salvati automaticamente — puoi chiudere questa pagina e riprendere più tardi."
 }

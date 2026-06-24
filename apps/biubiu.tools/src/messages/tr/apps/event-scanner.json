@@ -88,5 +88,10 @@
 	"es.results.complete": "Tamam — bu aralıktaki her blok tarandı.",
 	"es.results.gapsWarn": "{ranges} aralıktaki {blocks} blok hiçbir RPC'den alınamadı — sonuçlar eksik olabilir.",
 	"es.results.rescanGaps": "Boşlukları yeniden tara",
-	"es.results.interrupted": "Tarama tamamlanmadan kesildi."
+	"es.results.interrupted": "Tarama tamamlanmadan kesildi.",
+
+	"es.resume.banner": "Son taramanız “{name}” tamamlanmadı — ilerleme kaydedildi, devam edebilirsiniz.",
+	"es.resume.continue": "Taramayı sürdür",
+	"es.resume.dismiss": "Kapat",
+	"es.exec.savedHint": "İlerleme otomatik kaydedilir — bu sayfayı kapatıp sonra devam edebilirsiniz."
 }

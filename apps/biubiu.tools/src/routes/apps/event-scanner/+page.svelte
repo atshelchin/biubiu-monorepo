@@ -3,7 +3,7 @@
 	import { usePage } from '@shelchin/pagekit/svelte';
 	import { ActionBusyError } from '@shelchin/pagekit';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import { TriangleAlert, X } from '@lucide/svelte';
+	import { RotateCw, TriangleAlert, X } from '@lucide/svelte';
 	import { t, locale } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
@@ -20,11 +20,27 @@
 	let execEl = $state<HTMLElement>();
 	let resultsEl = $state<HTMLElement>();
 	let startError = $state('');
+	let resumeDismissed = $state('');
 
 	onMount(() => {
 		page.config.hydrate({});
 		page.execution.refreshScans({});
 	});
+
+	// A scan that stopped before reaching its end block — its progress is safely
+	// persisted (OPFS/IndexedDB), so we surface it up top and offer to continue,
+	// instead of leaving a long interrupted scan stranded in the saved list.
+	const unfinished = $derived(
+		page.execution.ctx.status === 'running'
+			? undefined
+			: page.execution.ctx.savedScans.find(
+					(s) => (s.lastScannedBlock || 0) < s.toBlock && s.scanId !== resumeDismissed
+				)
+	);
+
+	function resumeUnfinished() {
+		if (unfinished) page.execution.resumeScan({ scanId: unfinished.scanId });
+	}
 
 	// Surface either a failed scan or a config that couldn't be built — never a
 	// silently dead button.
@@ -104,6 +120,19 @@
 		<h1 class="page-title">{t('es.title')}</h1>
 		<p class="page-subtitle">{t('es.subtitle')}</p>
 	</header>
+
+	{#if unfinished}
+		<div class="resume-bar" use:fadeInUp={{ delay: 0 }}>
+			<RotateCw size={18} class="resume-icon" />
+			<span class="resume-text">{t('es.resume.banner', { name: unfinished.name })}</span>
+			<button class="resume-btn" onclick={resumeUnfinished}>{t('es.resume.continue')}</button>
+			<button
+				class="resume-x"
+				onclick={() => (resumeDismissed = unfinished.scanId)}
+				aria-label={t('es.resume.dismiss')}><X size={16} /></button
+			>
+		</div>
+	{/if}
 
 	<div use:fadeInUp={{ delay: 50 }}>
 		<EventScannerConfig
@@ -205,6 +234,54 @@
 		color: var(--fg-muted);
 		margin: var(--space-2) 0 0;
 		line-height: var(--leading-normal);
+	}
+	.resume-bar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		background: var(--accent-subtle);
+		border: 1px solid var(--accent-muted);
+		border-radius: var(--radius-lg);
+		padding: var(--space-3) var(--space-4);
+	}
+	.resume-bar :global(.resume-icon) {
+		flex: 0 0 auto;
+		color: var(--accent);
+	}
+	.resume-text {
+		flex: 1;
+		min-width: 0;
+		font-size: var(--text-sm);
+		color: var(--fg-base);
+	}
+	.resume-btn {
+		flex: 0 0 auto;
+		padding: var(--space-2) var(--space-4);
+		background: var(--accent);
+		border: 1px solid var(--accent);
+		border-radius: var(--radius-md);
+		color: var(--accent-fg);
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		cursor: pointer;
+		white-space: nowrap;
+		transition: background var(--motion-fast) var(--easing);
+	}
+	.resume-btn:hover {
+		background: var(--accent-hover);
+	}
+	.resume-x {
+		flex: 0 0 auto;
+		display: inline-flex;
+		padding: 2px;
+		background: transparent;
+		border: none;
+		color: var(--fg-subtle);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+	}
+	.resume-x:hover {
+		color: var(--fg-base);
 	}
 	.alert {
 		display: flex;

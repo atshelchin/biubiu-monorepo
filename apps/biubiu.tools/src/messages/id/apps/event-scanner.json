@@ -88,5 +88,10 @@
 	"es.results.complete": "Lengkap — setiap blok dalam rentang ini telah dipindai.",
 	"es.results.gapsWarn": "{blocks} blok dalam {ranges} rentang tidak dapat diambil dari RPC mana pun — hasil mungkin tidak lengkap.",
 	"es.results.rescanGaps": "Pindai ulang celah",
-	"es.results.interrupted": "Pemindaian terhenti sebelum selesai."
+	"es.results.interrupted": "Pemindaian terhenti sebelum selesai.",
+
+	"es.resume.banner": "Pemindaian terakhir Anda “{name}” belum selesai — progres tersimpan, Anda bisa melanjutkan.",
+	"es.resume.continue": "Lanjutkan pemindaian",
+	"es.resume.dismiss": "Tutup",
+	"es.exec.savedHint": "Progres tersimpan otomatis — Anda dapat menutup halaman ini dan melanjutkan nanti."
 }

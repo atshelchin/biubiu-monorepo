@@ -437,7 +437,7 @@
 		flex: 1;
 		min-width: 0;
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		font-size: var(--text-sm);
@@ -468,13 +468,19 @@
 	}
 	.btn {
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		color: var(--fg-base);
 		font-size: var(--text-sm);
 		cursor: pointer;
 		white-space: nowrap;
+		transition:
+			border-color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
+	}
+	.btn:hover:not(:disabled) {
+		border-color: var(--border-strong);
 	}
 	.btn:disabled {
 		opacity: 0.5;
@@ -484,6 +490,17 @@
 		background: var(--accent);
 		border-color: var(--accent);
 		color: var(--accent-fg);
+	}
+	.btn-primary:hover:not(:disabled) {
+		background: var(--accent-hover);
+		border-color: var(--accent-hover);
+	}
+	/* Clearly-inert disabled CTA — a quiet neutral, never a muddy faded green. */
+	.btn-primary:disabled {
+		background: var(--bg-raised);
+		border-color: var(--border-base);
+		color: var(--fg-subtle);
+		opacity: 1;
 	}
 	.btn-lg {
 		padding: var(--space-3) var(--space-6);
@@ -545,7 +562,7 @@
 	}
 	.chip {
 		padding: 2px var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-full);
 		font-size: var(--text-xs);
@@ -597,7 +614,7 @@
 	}
 	.seg-btn {
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: none;
 		color: var(--fg-muted);
 		font-size: var(--text-sm);
@@ -609,7 +626,7 @@
 	}
 	.adv {
 		padding: var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border-radius: var(--radius-md);
 	}
 	@media (max-width: 640px) {

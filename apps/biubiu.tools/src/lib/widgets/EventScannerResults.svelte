@@ -466,7 +466,7 @@
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		overflow: hidden;
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 	}
 	.saved-chip.active {
 		border-color: var(--accent);
@@ -627,7 +627,7 @@
 		align-items: center;
 		gap: 5px;
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		color: var(--fg-base);
@@ -661,7 +661,7 @@
 		white-space: nowrap;
 	}
 	.tbl th {
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		color: var(--fg-muted);
 		font-weight: var(--weight-medium);
 		position: sticky;

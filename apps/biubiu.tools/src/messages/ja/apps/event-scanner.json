@@ -88,5 +88,10 @@
 	"es.results.complete": "完全 — この範囲のすべてのブロックをスキャンしました。",
 	"es.results.gapsWarn": "{ranges} 範囲の {blocks} ブロックをどの RPC からも取得できませんでした。結果が不完全な可能性があります。",
 	"es.results.rescanGaps": "欠落を再スキャン",
-	"es.results.interrupted": "スキャンは完了前に中断されました。"
+	"es.results.interrupted": "スキャンは完了前に中断されました。",
+
+	"es.resume.banner": "前回のスキャン「{name}」は完了していません — 進捗は保存済みで、再開できます。",
+	"es.resume.continue": "スキャンを再開",
+	"es.resume.dismiss": "閉じる",
+	"es.exec.savedHint": "進捗は自動保存されます — このページを閉じても後で再開できます。"
 }

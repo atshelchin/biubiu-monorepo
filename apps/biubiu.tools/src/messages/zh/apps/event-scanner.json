@@ -88,5 +88,10 @@
 	"es.results.complete": "数据完整 —— 此范围内每个区块都已扫描。",
 	"es.results.gapsWarn": "{ranges} 段共 {blocks} 个区块未能从任何 RPC 获取，结果可能不完整。",
 	"es.results.rescanGaps": "重扫缺口",
-	"es.results.interrupted": "扫描未完成 —— 上次在此中断。"
+	"es.results.interrupted": "扫描未完成 —— 上次在此中断。",
+
+	"es.resume.banner": "上次的扫描「{name}」未完成 —— 进度已保存,可继续。",
+	"es.resume.continue": "继续扫描",
+	"es.resume.dismiss": "忽略",
+	"es.exec.savedHint": "进度已自动保存,可随时关闭页面,稍后继续。"
 }

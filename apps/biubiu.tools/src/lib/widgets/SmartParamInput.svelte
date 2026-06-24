@@ -256,7 +256,8 @@
 
 		{#if numberPreview}
 			<p class="preview">
-				= {numberPreview.grouped}{#each numberPreview.parts as part}<span class="preview-part"
+				= {numberPreview.grouped}{#each numberPreview.parts as part (part.kind + part.text)}<span
+						class="preview-part"
 						>·
 						{#if part.kind === 'date'}<Calendar size={12} />{:else}<Timer size={12} />{/if}
 						{part.text}</span
@@ -333,14 +334,14 @@
 		font-family: var(--font-mono);
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		padding: 1px var(--space-2);
 		border-radius: var(--radius-sm);
 	}
 	.input {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		font-size: var(--text-sm);
@@ -394,7 +395,7 @@
 	}
 	.seg-btn {
 		padding: var(--space-2) var(--space-4);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: none;
 		color: var(--fg-muted);
 		font-size: var(--text-sm);
@@ -411,7 +412,7 @@
 	}
 	.chip {
 		padding: 2px var(--space-2);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-full);
 		font-size: var(--text-xs);

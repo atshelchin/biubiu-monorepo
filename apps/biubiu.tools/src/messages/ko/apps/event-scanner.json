@@ -88,5 +88,10 @@
 	"es.results.complete": "완료 — 이 범위의 모든 블록을 스캔했습니다.",
 	"es.results.gapsWarn": "{ranges}개 구간의 {blocks}개 블록을 어떤 RPC에서도 가져오지 못했습니다. 결과가 불완전할 수 있습니다.",
 	"es.results.rescanGaps": "누락 구간 다시 스캔",
-	"es.results.interrupted": "스캔이 완료되기 전에 중단되었습니다."
+	"es.results.interrupted": "스캔이 완료되기 전에 중단되었습니다.",
+
+	"es.resume.banner": "지난 스캔 “{name}”이(가) 완료되지 않았습니다 — 진행 상황이 저장되어 이어서 할 수 있습니다.",
+	"es.resume.continue": "스캔 재개",
+	"es.resume.dismiss": "닫기",
+	"es.exec.savedHint": "진행 상황은 자동 저장됩니다 — 이 페이지를 닫아도 나중에 이어서 할 수 있습니다."
 }

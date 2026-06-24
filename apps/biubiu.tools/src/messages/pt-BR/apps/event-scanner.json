@@ -88,5 +88,10 @@
 	"es.results.complete": "Completo — cada bloco deste intervalo foi varrido.",
 	"es.results.gapsWarn": "{blocks} bloco(s) em {ranges} intervalo(s) não puderam ser obtidos de nenhum RPC — os resultados podem estar incompletos.",
 	"es.results.rescanGaps": "Reescanear lacunas",
-	"es.results.interrupted": "A varredura foi interrompida antes de concluir."
+	"es.results.interrupted": "A varredura foi interrompida antes de concluir.",
+
+	"es.resume.banner": "Sua última varredura “{name}” não terminou — o progresso está salvo, você pode continuar.",
+	"es.resume.continue": "Retomar varredura",
+	"es.resume.dismiss": "Dispensar",
+	"es.exec.savedHint": "O progresso é salvo automaticamente — você pode fechar esta página e continuar depois."
 }

@@ -72,7 +72,7 @@
 		onSwitchRpc,
 		onCustomRpcInput,
 		onApplyCustomRpc,
-		badge,
+		badge
 	}: Props = $props();
 
 	let showCustom = $state(false);
@@ -144,18 +144,32 @@
 		<div class="bar-rpc">
 			<span class="rpc-tag">RPC</span>
 			{#if rpcOptions.length > 0}
-				<select class="rpc-select" value={usingCustomRpc ? '__custom__' : rpcUrl} onchange={handleRpcSelect}>
+				<select
+					class="rpc-select"
+					value={usingCustomRpc ? '__custom__' : rpcUrl}
+					onchange={handleRpcSelect}
+				>
 					{#each rpcOptions as opt (opt.url)}
 						<option value={opt.url} disabled={opt.status === 'error'}>
-							{host(opt.url).slice(0, 42)}{#if opt.status === 'ok'} · {opt.latencyMs}ms{:else if opt.status === 'error'} · ✕{:else} · …{/if}
+							{host(opt.url).slice(0, 42)}{#if opt.status === 'ok'}
+								· {opt.latencyMs}ms{:else if opt.status === 'error'}
+								· ✕{:else}
+								· …{/if}
 						</option>
 					{/each}
-					{#if usingCustomRpc}<option value="__custom__">{host(customRpcInput).slice(0, 42)} · custom</option>{/if}
+					{#if usingCustomRpc}<option value="__custom__"
+							>{host(customRpcInput).slice(0, 42)} · custom</option
+						>{/if}
 				</select>
 			{:else}
-				<code class="rpc-url">{host(rpcUrl)}{#if rpcLatency !== null} · {rpcLatency}ms{/if}</code>
+				<code class="rpc-url"
+					>{host(rpcUrl)}{#if rpcLatency !== null}
+						· {rpcLatency}ms{/if}</code
+				>
 			{/if}
-			<button class="link sm" onclick={() => (showCustom = !showCustom)}>{showCustom ? t('widgets.networkPicker.hide') : t('widgets.networkPicker.custom')}</button>
+			<button class="link sm" onclick={() => (showCustom = !showCustom)}
+				>{showCustom ? t('widgets.networkPicker.hide') : t('widgets.networkPicker.custom')}</button
+			>
 		</div>
 
 		{#if showCustom}
@@ -168,7 +182,9 @@
 					oninput={(e) => onCustomRpcInput((e.target as HTMLInputElement).value)}
 					onkeydown={(e) => e.key === 'Enter' && onApplyCustomRpc()}
 				/>
-				<button class="apply" onclick={onApplyCustomRpc} disabled={!customRpcInput.trim()}>{t('widgets.networkPicker.apply')}</button>
+				<button class="apply" onclick={onApplyCustomRpc} disabled={!customRpcInput.trim()}
+					>{t('widgets.networkPicker.apply')}</button
+				>
 			</div>
 		{/if}
 		{#if rpcError}<p class="err">{rpcError}</p>{/if}
@@ -177,7 +193,7 @@
 
 <style>
 	.card {
-		background: var(--bg-raised);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		padding: var(--space-5);
@@ -205,7 +221,7 @@
 	.input {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-md);
 		font-size: var(--text-sm);
@@ -251,7 +267,7 @@
 		gap: var(--space-3);
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 		cursor: pointer;
@@ -324,7 +340,7 @@
 		flex: 1;
 		min-width: 0;
 		padding: var(--space-1) var(--space-2);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-sm);
 		font-size: var(--text-xs);

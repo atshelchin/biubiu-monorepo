@@ -88,5 +88,10 @@
 	"es.results.complete": "Complete — every block in this range was scanned.",
 	"es.results.gapsWarn": "{blocks} block(s) in {ranges} range(s) couldn't be fetched from any RPC — results may be incomplete.",
 	"es.results.rescanGaps": "Re-scan gaps",
-	"es.results.interrupted": "Scan was interrupted before finishing."
+	"es.results.interrupted": "Scan was interrupted before finishing.",
+
+	"es.resume.banner": "Your last scan “{name}” didn't finish — progress is saved, you can resume.",
+	"es.resume.continue": "Resume scan",
+	"es.resume.dismiss": "Dismiss",
+	"es.exec.savedHint": "Progress is saved automatically — you can close this page and resume later."
 }

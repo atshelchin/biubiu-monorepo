@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { ChevronDown, ChevronRight, TriangleAlert } from '@lucide/svelte';
+	import { ChevronDown, ChevronRight, ShieldCheck, TriangleAlert } from '@lucide/svelte';
 	import ProgressBar from '$lib/ui/ProgressBar.svelte';
 	import type { LogEntry, ProgressState } from '$lib/pda-apps/event-scanner/modules/execution.js';
 
@@ -31,6 +31,8 @@
 	{#if preparing}
 		<p class="prep-hint">{t('es.exec.preparingHint')}</p>
 	{/if}
+
+	<p class="saved-hint"><ShieldCheck size={13} />{t('es.exec.savedHint')}</p>
 
 	{#if warnings > 0}
 		<p class="warn-note">
@@ -74,6 +76,18 @@
 		color: var(--fg-muted);
 		margin: 0;
 	}
+	.saved-hint {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		margin: 0;
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+	}
+	.saved-hint :global(svg) {
+		flex: 0 0 auto;
+		color: var(--success);
+	}
 	.warn-note {
 		display: flex;
 		align-items: center;
@@ -112,7 +126,7 @@
 		max-height: 200px;
 		overflow-y: auto;
 		padding: var(--space-2);
-		background: var(--bg-sunken);
+		background: var(--bg-raised);
 		border-radius: var(--radius-md);
 		font-family: var(--font-mono);
 		font-size: var(--text-xs);

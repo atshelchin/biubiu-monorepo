@@ -88,5 +88,10 @@
 	"es.results.complete": "Completo — se escaneó cada bloque de este rango.",
 	"es.results.gapsWarn": "{blocks} bloque(s) en {ranges} rango(s) no se pudieron obtener de ningún RPC; los resultados pueden estar incompletos.",
 	"es.results.rescanGaps": "Reescanear huecos",
-	"es.results.interrupted": "El escaneo se interrumpió antes de terminar."
+	"es.results.interrupted": "El escaneo se interrumpió antes de terminar.",
+
+	"es.resume.banner": "Tu último escaneo “{name}” no terminó — el progreso está guardado, puedes continuar.",
+	"es.resume.continue": "Reanudar escaneo",
+	"es.resume.dismiss": "Descartar",
+	"es.exec.savedHint": "El progreso se guarda automáticamente — puedes cerrar esta página y continuar después."
 }

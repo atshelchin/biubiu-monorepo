@@ -156,5 +156,7 @@
 	"ws.history.title": "이력",
 	"ws.history.empty": "아직 정리 내역이 없습니다.",
 
-	"ws.logs.title": "활동"
+	"ws.logs.title": "활동",
+	"ws.fee.title": "Service fee",
+	"ws.fee.subtitle": "$5 service fee per sweep. Network gas, bundler and other on-chain costs are billed separately."
 }

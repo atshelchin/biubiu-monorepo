@@ -351,5 +351,22 @@
   "subscriptionBadge.premiumMember": "高级会员",
   "subscriptionBadge.premium": "PREMIUM",
 
-  "home.socialProof.trusted": "深受链上用户信赖"
+  "home.socialProof.trusted": "深受链上用户信赖",
+  "sub.waive.active": "Pro 已免服务费",
+  "sub.waive.protocolNote": "网络 gas、bundler 及链上协议费用照旧收取。",
+  "sub.waive.cta": "用 Pro 免服务费",
+  "sub.waive.proving": "验证中…",
+  "sub.waive.ctaHint": "用指纹确认是你本人，即可免本次服务费。",
+  "sub.waive.notMember": "升级 Pro 可免此服务费。",
+  "sub.waive.notLoggedIn": "登录 Pro 账户可免此服务费。",
+  "sub.waive.errNotMember": "该账户不是 Pro 会员。",
+  "sub.waive.errWrongCredential": "passkey 与登录账户不符。",
+  "sub.waive.errBadSignature": "签名校验失败。",
+  "sub.waive.errUnsupported": "此设备不支持 passkey。",
+  "sub.waive.errNotLoggedIn": "请先登录。",
+  "sub.scope.waiveTitle": "Pro 免除平台服务费：",
+  "sub.scope.protocolTitle": "以下为链上 / 协议费用，会员同样支付：",
+  "sub.scope.gas": "网络 gas",
+  "sub.scope.bundler": "Bundler 打包费",
+  "sub.scope.onchain": "Capsule 上链费"
 }

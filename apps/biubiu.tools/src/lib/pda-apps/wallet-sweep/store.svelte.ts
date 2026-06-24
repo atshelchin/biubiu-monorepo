@@ -54,6 +54,12 @@ import { planSweep, runSweep, type SweepPlan, type SweepEvent } from './infra/sw
 import { runRevoke } from './infra/revoke.js';
 import { quoteSweepFee, type FeeQuote } from './infra/fee.js';
 import { putSweep, listSweeps, deleteSweep } from './history/sweep-history.js';
+import {
+	memberWaiver,
+	proveMemberControl,
+	ensureMembershipLoaded,
+	type ProofResult,
+} from '$lib/subscription/member-proof.svelte.js';
 
 export type LogLevel = 'info' | 'ok' | 'warn' | 'error';
 export interface LogEntry {
@@ -127,6 +133,28 @@ export class WalletSweepStore {
 	get network(): SweepNetwork | null {
 		if (!this.networkSlug) return null;
 		return getNetwork(this.networkSlug) ?? this.customNetworks.find((n) => n.slug === this.networkSlug) ?? null;
+	}
+
+	// ─── membership / fee waiver ───
+	/** 本次 sweep 是否享受会员服务费豁免（需本会话 passkey 签名证明）。 */
+	get feeWaived(): boolean {
+		return memberWaiver.isWaiverActive;
+	}
+	/** 有资格签名豁免：已登录 Pro，但本会话尚未签名。 */
+	get canWaiveFee(): boolean {
+		return memberWaiver.canProve;
+	}
+	/** 正在进行 passkey 签名。 */
+	get waiveProving(): boolean {
+		return memberWaiver.proving;
+	}
+	/** 懒加载链上会员状态（页面挂载时调用）。 */
+	loadMembership(): void {
+		void ensureMembershipLoaded();
+	}
+	/** 发起 passkey 控制权证明；成功则豁免本次 sweep 的服务费。 */
+	async waiveFeeWithPasskey(): Promise<ProofResult> {
+		return proveMemberControl();
 	}
 	get sweeperAddress(): Address | null {
 		return this.relay ? predictSweeperAddress(this.relay.address) : null;
@@ -355,7 +383,7 @@ export class WalletSweepStore {
 			const [balances, plan, fee, batchDeployed, sweeperDeployed] = await Promise.all([
 				fetchBalances(net, rpcs, addresses, this.erc20Addresses),
 				planSweep(rpcs, this.keys, sweeper),
-				quoteSweepFee(net),
+				quoteSweepFee(net, { isMember: this.feeWaived }),
 				isBatchSweeperDeployed(rpcs),
 				isSweeperDeployed(rpcs, this.relay!.address),
 			]);
@@ -425,7 +453,7 @@ export class WalletSweepStore {
 			const rpcs = await this.resolveRpcs(net);
 			// refresh balances first so empty wallets are skipped
 			this.balances = await fetchBalances(net, rpcs, this.keys.map((k) => k.address), this.erc20Addresses);
-			const fee = await quoteSweepFee(net);
+			const fee = await quoteSweepFee(net, { isMember: this.feeWaived });
 			this.fee = fee;
 			await this.executeSweep(rpcs, net, sweeper, fee.amount);
 		} catch (e) {

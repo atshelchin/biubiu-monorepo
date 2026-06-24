@@ -13,7 +13,8 @@
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { walletStore } from '$lib/wallet';
 	import { tokenSender as s } from '$lib/pda-apps/token-sender/store.svelte.js';
-	import { chainVisual, chainInitials } from '$lib/pda-apps/token-sender/infra/chain-visuals.js';
+	import NetworkGrid from '$lib/widgets/NetworkGrid.svelte';
+	import MemberFeeWaiver from '$lib/subscription/MemberFeeWaiver.svelte';
 	import { Lock, Key, Shield, BookOpen, ChevronDown } from '@lucide/svelte';
 	import RecipientsEditor from './RecipientsEditor.svelte';
 
@@ -47,6 +48,7 @@
 	onMount(() => {
 		s.loadHistory();
 		s.hydrateCustom();
+		s.loadMembership();
 	});
 
 	function next2() {
@@ -187,40 +189,16 @@
 				<h3>{t('ts.step1.heading')}</h3>
 
 				<div class="field-label">{t('ts.step1.network')}</div>
-				<div class="net-grid">
-					{#each s.networks as net (net.slug)}
-						{@const v = chainVisual(net.slug)}
-						<button
-							class="net-chip"
-							class:selected={s.networkSlug === net.slug}
-							onclick={() => s.setNetwork(net.slug)}
-						>
-							<span class="net-badge" style="--c:{v.color}">
-								{#if v.icon}
-									{@html v.icon ?? ''}
-								{:else}
-									{chainInitials(net.name)}
-								{/if}
-							</span>
-							<span class="net-text">
-								<span class="net-name">{net.name}</span>
-								<span class="net-sym">
-									{net.symbol}{net.isTestnet ? t('ts.step1.testnetSuffix') : ''}{net.isCustom
-										? t('ts.step1.customSuffix')
-										: ''}
-								</span>
-							</span>
-						</button>
-					{/each}
-
-					<button class="net-chip add-chip" onclick={() => (showAddNetwork = true)}>
-						<span class="net-badge add">+</span>
-						<span class="net-text">
-							<span class="net-name">{t('ts.step1.addNetwork')}</span>
-							<span class="net-sym">{t('ts.step1.addNetworkHint')}</span>
-						</span>
-					</button>
-				</div>
+				<NetworkGrid
+					networks={s.networks}
+					selectedSlug={s.networkSlug}
+					onSelect={(slug) => s.setNetwork(slug)}
+					onAddCustom={() => (showAddNetwork = true)}
+					addLabel={t('ts.step1.addNetwork')}
+					addHint={t('ts.step1.addNetworkHint')}
+					testnetSuffix={t('ts.step1.testnetSuffix')}
+					customSuffix={t('ts.step1.customSuffix')}
+				/>
 
 				<!-- RPC line for the selected network -->
 				<div class="net-meta">
@@ -387,6 +365,8 @@
 						{/if}
 					{/if}
 				</div>
+
+				<MemberFeeWaiver proving={s.waiveProving} onProve={() => s.waiveFeeWithPasskey()} />
 
 				{#if s.preLoading}
 					<p class="muted">{t('ts.step3.checkingBalance')}</p>
@@ -766,73 +746,6 @@
 		font-weight: 600;
 		color: var(--fg-muted);
 		margin: var(--space-4) 0 var(--space-2);
-	}
-
-	/* Network grid */
-	.net-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-		gap: var(--space-2);
-	}
-	.net-chip {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-base);
-		background: var(--bg-raised);
-		cursor: pointer;
-		text-align: left;
-		transition: all var(--motion-normal) var(--easing);
-	}
-	.net-chip:hover {
-		transform: translateY(-2px);
-	}
-	.net-chip.selected {
-		border-color: var(--accent);
-		background: var(--accent-subtle);
-	}
-	.net-badge {
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-md);
-		display: grid;
-		place-items: center;
-		background: var(--bg-elevated);
-		color: var(--c, var(--fg-muted));
-		font-weight: 700;
-		font-size: var(--text-sm);
-		flex-shrink: 0;
-	}
-	.net-badge :global(svg) {
-		width: 18px;
-		height: 18px;
-		display: block;
-	}
-	.net-badge.add {
-		color: var(--accent);
-		font-size: var(--text-lg);
-	}
-	.net-text {
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-	}
-	.net-name {
-		font-weight: 600;
-		color: var(--fg-base);
-		font-size: var(--text-sm);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.net-sym {
-		font-size: var(--text-xs);
-		color: var(--fg-subtle);
-	}
-	.add-chip {
-		border-style: dashed;
 	}
 
 	.net-meta {

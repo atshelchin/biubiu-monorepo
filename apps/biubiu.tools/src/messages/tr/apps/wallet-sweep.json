@@ -156,5 +156,7 @@
 	"ws.history.title": "Geçmiş",
 	"ws.history.empty": "Henüz toplama yok.",
 
-	"ws.logs.title": "Etkinlik"
+	"ws.logs.title": "Etkinlik",
+	"ws.fee.title": "Service fee",
+	"ws.fee.subtitle": "$5 service fee per sweep. Network gas, bundler and other on-chain costs are billed separately."
 }

@@ -351,5 +351,22 @@
   "subscriptionBadge.premiumMember": "Membre Premium",
   "subscriptionBadge.premium": "PREMIUM",
 
-  "home.socialProof.trusted": "Adopté par les utilisateurs on-chain"
+  "home.socialProof.trusted": "Adopté par les utilisateurs on-chain",
+  "sub.waive.active": "Pro service fee waived",
+  "sub.waive.protocolNote": "Network gas, bundler and on-chain protocol fees still apply.",
+  "sub.waive.cta": "Waive fee with Pro",
+  "sub.waive.proving": "Verifying…",
+  "sub.waive.ctaHint": "Confirm it’s really you with your passkey to waive this fee.",
+  "sub.waive.notMember": "Upgrade to Pro to waive this service fee.",
+  "sub.waive.notLoggedIn": "Log in with your Pro account to waive this service fee.",
+  "sub.waive.errNotMember": "This account is not a Pro member.",
+  "sub.waive.errWrongCredential": "Passkey does not match the logged-in account.",
+  "sub.waive.errBadSignature": "Signature verification failed.",
+  "sub.waive.errUnsupported": "This device does not support passkeys.",
+  "sub.waive.errNotLoggedIn": "Please log in first.",
+  "sub.scope.waiveTitle": "Pro waives these platform service fees:",
+  "sub.scope.protocolTitle": "On-chain / protocol fees — members pay these too:",
+  "sub.scope.gas": "Network gas",
+  "sub.scope.bundler": "Bundler fee",
+  "sub.scope.onchain": "Capsule on-chain fee"
 }

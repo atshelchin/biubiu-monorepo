@@ -13,6 +13,8 @@
 	import AddTokenModal from './components/AddTokenModal.svelte';
 	import KeysEditor from './components/KeysEditor.svelte';
 	import AddNetworkModal from '$lib/widgets/AddNetworkModal.svelte';
+	import NetworkGrid, { type NetworkGridItem } from '$lib/widgets/NetworkGrid.svelte';
+	import MemberFeeWaiver from '$lib/subscription/MemberFeeWaiver.svelte';
 	import { Fingerprint, Download, Upload, Check, RefreshCw } from '@lucide/svelte';
 
 	const store = new WalletSweepStore();
@@ -52,6 +54,7 @@
 	onMount(() => {
 		void store.probeAll();
 		void store.loadHistory();
+		store.loadMembership();
 	});
 
 	const canContinue = $derived(
@@ -94,6 +97,18 @@
 <SEO {...seoProps} />
 <PageHeader />
 
+{#snippet badges(net: NetworkGridItem)}
+	{@const r = store.readiness[net.slug]}
+	<span class="badge">{t('ws.network.badge7702')}</span>
+	{#if !r}
+		<span class="badge badge-muted">{t('ws.network.checking')}</span>
+	{:else if r.ready}
+		<span class="badge badge-ok">{t('ws.network.ready')}</span>
+	{:else}
+		<span class="badge badge-bad" title={r.error}>{t('ws.network.unavailable')}</span>
+	{/if}
+{/snippet}
+
 <main class="page">
 	<header class="hero">
 		<h1 class="title">{t('ws.title')}</h1>
@@ -114,38 +129,21 @@
 	<!-- ─────────── CONFIG ─────────── -->
 	{#if store.phase === 'config'}
 		<section class="card">
-			<div class="card-head">
-				<h2 class="card-title">{t('ws.network.title')}</h2>
-				<button class="link" onclick={() => (showAddNetwork = true)}>+ {t('ws.network.addCustom')}</button>
-			</div>
+			<h2 class="card-title">{t('ws.network.title')}</h2>
 			<p class="card-sub">{t('ws.network.subtitle')}</p>
-			<label class="testnet-toggle">
-				<input type="checkbox" bind:checked={store.includeTestnets} />
-				<span>{t('ws.network.testnets')}</span>
-			</label>
-			<div class="net-grid">
-				{#each store.networks as net (net.slug)}
-					{@const r = store.readiness[net.slug]}
-					<div class="net-card-wrap">
-						<button class="net-card" class:selected={store.networkSlug === net.slug} onclick={() => store.selectNetwork(net.slug)}>
-							<span class="net-name">{net.name}</span>
-							<span class="net-badges">
-								<span class="badge">{t('ws.network.badge7702')}</span>
-								{#if !r}
-									<span class="badge badge-muted">{t('ws.network.checking')}</span>
-								{:else if r.ready}
-									<span class="badge badge-ok">{t('ws.network.ready')}</span>
-								{:else}
-									<span class="badge badge-bad" title={r.error}>{t('ws.network.unavailable')}</span>
-								{/if}
-							</span>
-						</button>
-						{#if net.isCustom}
-							<button class="net-remove" onclick={() => store.removeCustomNetwork(net.slug)} aria-label="remove network">×</button>
-						{/if}
-					</div>
-				{/each}
-			</div>
+			<NetworkGrid
+				networks={store.networks}
+				selectedSlug={store.networkSlug}
+				onSelect={(slug) => store.selectNetwork(slug)}
+				onAddCustom={() => (showAddNetwork = true)}
+				addLabel={t('ws.network.addCustom')}
+				onRemoveCustom={(slug) => store.removeCustomNetwork(slug)}
+				testnetToggle
+				testnetsOn={store.includeTestnets}
+				onToggleTestnets={(on) => (store.includeTestnets = on)}
+				testnetToggleLabel={t('ws.network.testnets')}
+				{badges}
+			/>
 		</section>
 
 		<section class="card">
@@ -179,6 +177,12 @@
 			<input class="input mono" placeholder={t('ws.dest.placeholder')} bind:value={store.destination} spellcheck="false" />
 		</section>
 
+		<section class="card">
+			<h2 class="card-title">{t('ws.fee.title')}</h2>
+			<p class="card-sub">{t('ws.fee.subtitle')}</p>
+			<MemberFeeWaiver proving={store.waiveProving} onProve={() => store.waiveFeeWithPasskey()} />
+		</section>
+
 		<div class="actions">
 			<button class="btn btn-primary lg" disabled={!canContinue || store.balancesLoading} onclick={() => store.preflight()}>
 				{store.balancesLoading ? t('ws.btn.checking') : t('ws.btn.continue')}
@@ -193,7 +197,7 @@
 				<div class="stat"><span class="stat-n">{store.plan.sweepable.length}</span><span class="stat-l">{t('ws.run.wallets')}</span></div>
 				<div class="stat"><span class="stat-n">{fmt(store.totalNative)}</span><span class="stat-l">{t('ws.preview.totalNative')} {store.network?.symbol}</span></div>
 				{#if store.fee}
-					<div class="stat"><span class="stat-n">{fmt(store.fee.amount)} {store.network?.symbol}</span><span class="stat-l">{t('ws.fee.label')}</span></div>
+					<div class="stat"><span class="stat-n">{store.fee.source === 'member-free' ? t('ws.fee.free') : `${fmt(store.fee.amount)} ${store.network?.symbol}`}</span><span class="stat-l">{t('ws.fee.label')}</span></div>
 				{/if}
 				{#if store.plan.contracts.length}
 					<div class="stat"><span class="stat-n">{store.plan.contracts.length}</span><span class="stat-l">{t('ws.preview.contractsSkipped')}</span></div>
@@ -403,11 +407,6 @@
 	.card.center {
 		text-align: center;
 	}
-	.card-head {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
 	.card-title {
 		margin: 0;
 		font-size: var(--text-xl);
@@ -418,13 +417,6 @@
 		margin: var(--space-2) 0 var(--space-4);
 		font-size: var(--text-sm);
 		color: var(--fg-muted);
-	}
-	.link {
-		background: none;
-		border: none;
-		color: var(--accent);
-		font-size: var(--text-sm);
-		cursor: pointer;
 	}
 	.security {
 		display: flex;
@@ -449,73 +441,6 @@
 	.banner-error {
 		background: var(--error-muted);
 		color: var(--error);
-	}
-	.testnet-toggle {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		margin-bottom: var(--space-3);
-		cursor: pointer;
-	}
-	.net-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-		gap: var(--space-3);
-	}
-	.net-card-wrap {
-		position: relative;
-	}
-	.net-remove {
-		position: absolute;
-		top: 6px;
-		right: 6px;
-		width: 20px;
-		height: 20px;
-		border-radius: var(--radius-full);
-		border: 1px solid var(--border-base);
-		background: var(--bg-elevated);
-		color: var(--fg-subtle);
-		font-size: var(--text-sm);
-		line-height: 1;
-		cursor: pointer;
-	}
-	.net-remove:hover {
-		color: var(--error);
-		border-color: var(--error);
-	}
-	.net-card {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-4);
-		background: var(--bg-sunken);
-		border: 1px solid var(--border-base);
-		border-radius: var(--radius-lg);
-		cursor: pointer;
-		text-align: left;
-		transition: transform var(--motion-fast) var(--easing), border-color var(--motion-fast) var(--easing);
-	}
-	.net-card:hover {
-		transform: translateY(-2px);
-		border-color: var(--border-strong);
-	}
-	.net-card.selected {
-		border-color: var(--accent);
-		box-shadow: 0 0 0 1px var(--accent) inset;
-	}
-	.net-name {
-		font-size: var(--text-md);
-		font-weight: var(--weight-semibold);
-		color: var(--fg-base);
-	}
-	.net-badges {
-		display: flex;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-		align-items: center;
 	}
 	.badge {
 		font-size: 10px;
@@ -988,7 +913,6 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.net-card:hover,
 		.btn-primary:not(:disabled):hover {
 			transform: none;
 		}

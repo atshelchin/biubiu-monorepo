@@ -7,7 +7,12 @@
 import type { Address, Hex } from 'viem';
 import { formatUnits } from 'viem';
 import { walletStore } from '$lib/wallet';
-import { subscriptionStore } from '$lib/subscription';
+import {
+	memberWaiver,
+	proveMemberControl,
+	ensureMembershipLoaded,
+	type ProofResult,
+} from '$lib/subscription';
 import { CONTRACTS } from '$lib/auth/safe-tx/constants';
 import type {
 	BatchOutput,
@@ -107,8 +112,27 @@ class TokenSenderStore {
 	get symbol(): string {
 		return this.tokenType === 'native' ? this.network.symbol : (this.tokenMeta?.symbol ?? 'TOKEN');
 	}
+	/** 仅在本会话已 passkey 签名证明控制权后才为真 —— 防观察钱包/复制 session 绕过。 */
 	get isMember(): boolean {
-		return subscriptionStore.isPremium;
+		return memberWaiver.isWaiverActive;
+	}
+	/** 有资格签名豁免：已登录 Pro，但本会话尚未签名。 */
+	get canWaiveFee(): boolean {
+		return memberWaiver.canProve;
+	}
+	/** 正在进行 passkey 签名。 */
+	get waiveProving(): boolean {
+		return memberWaiver.proving;
+	}
+	/** 懒加载链上会员状态（进入流程时调用）。 */
+	loadMembership(): void {
+		void ensureMembershipLoaded();
+	}
+	/** passkey 控制权证明；成功则重算费用（会员 = 0）。 */
+	async waiveFeeWithPasskey(): Promise<ProofResult> {
+		const res = await proveMemberControl();
+		if (res.ok && this.step === 3) await this.prepareReview();
+		return res;
 	}
 	get batchSize(): number {
 		return this.tokenType === 'native' ? this.network.maxBatchNative : this.network.maxBatchErc20;

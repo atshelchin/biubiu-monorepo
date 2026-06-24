@@ -156,5 +156,7 @@
 	"ws.history.title": "歷史",
 	"ws.history.empty": "暫無歸集記錄。",
 
-	"ws.logs.title": "動態"
+	"ws.logs.title": "動態",
+	"ws.fee.title": "服務費",
+	"ws.fee.subtitle": "每次歸集收取 $5 服務費；網絡 gas、bundler 等鏈上費用另計。"
 }

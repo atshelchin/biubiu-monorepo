@@ -362,6 +362,20 @@
 				</button>
 			</div>
 
+			<div class="scope-note">
+				<p class="scope-head">{t('sub.scope.waiveTitle')}</p>
+				<ul class="scope-list scope-waive">
+					<li>Wallet Sweep</li>
+					<li>Token Sender</li>
+				</ul>
+				<p class="scope-head protocol">{t('sub.scope.protocolTitle')}</p>
+				<ul class="scope-list scope-protocol">
+					<li>{t('sub.scope.gas')}</li>
+					<li>{t('sub.scope.bundler')}</li>
+					<li>{t('sub.scope.onchain')}</li>
+				</ul>
+			</div>
+
 			<!-- Price info -->
 			<div class="price-info">
 				{#if priceLoading}
@@ -549,6 +563,50 @@
 		font-size: var(--text-xs);
 		color: var(--fg-subtle);
 		margin: var(--space-1) 0 0;
+	}
+
+	.scope-note {
+		font-size: var(--text-xs);
+		line-height: var(--leading-normal);
+		color: var(--fg-muted);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		padding: var(--space-3);
+		margin: var(--space-3) 0 0;
+	}
+	.scope-head {
+		margin: 0 0 var(--space-1);
+		font-weight: var(--weight-medium);
+		color: var(--fg-base);
+	}
+	.scope-head.protocol {
+		margin-top: var(--space-2);
+	}
+	.scope-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1) var(--space-3);
+	}
+	.scope-list li {
+		position: relative;
+		padding-left: var(--space-4);
+	}
+	.scope-waive li::before {
+		content: '✓';
+		position: absolute;
+		left: 0;
+		color: var(--accent);
+		font-weight: var(--weight-bold);
+	}
+	.scope-protocol li::before {
+		content: '•';
+		position: absolute;
+		left: var(--space-1);
+		color: var(--fg-subtle);
 	}
 
 	.contract-info {

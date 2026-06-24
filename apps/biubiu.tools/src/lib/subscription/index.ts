@@ -1,5 +1,12 @@
 export { subscriptionStore } from './subscription-store.svelte.js';
 export {
+	memberWaiver,
+	proveMemberControl,
+	ensureMembershipLoaded,
+	type ProofResult,
+	type ProofFailure
+} from './member-proof.svelte.js';
+export {
 	getSubscriptionInfo,
 	getPrice,
 	getEthUsdPrice,

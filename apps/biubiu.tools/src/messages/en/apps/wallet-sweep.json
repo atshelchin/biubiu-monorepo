@@ -156,5 +156,7 @@
 	"ws.history.title": "History",
 	"ws.history.empty": "No sweeps yet.",
 
-	"ws.logs.title": "Activity"
+	"ws.logs.title": "Activity",
+	"ws.fee.title": "Service fee",
+	"ws.fee.subtitle": "$5 service fee per sweep. Network gas, bundler and other on-chain costs are billed separately."
 }

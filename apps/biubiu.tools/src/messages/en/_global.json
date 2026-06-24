@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Get key",
   "settings.sn.perNetwork": "Per-Network RPC",
   "settings.sn.reset": "Reset to defaults",
-  "settings.sn.saved": "Saved"
+  "settings.sn.saved": "Saved",
+	"widgets.addNetwork.lookupHint": "Enter a chain ID to auto-fill from the public chain registry",
+	"widgets.addNetwork.lookingUp": "Looking up…",
+	"widgets.addNetwork.lookupFound": "Auto-filled from the registry — you can edit the RPCs",
+	"widgets.addNetwork.lookupNotFound": "Chain not found — fill in the details manually",
+	"widgets.addNetwork.lookupError": "Lookup failed — fill in the details manually"
 }

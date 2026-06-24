@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Schlüssel holen",
   "settings.sn.perNetwork": "RPC pro Netzwerk",
   "settings.sn.reset": "Auf Standard zurücksetzen",
-  "settings.sn.saved": "Gespeichert"
+  "settings.sn.saved": "Gespeichert",
+	"widgets.addNetwork.lookupHint": "Chain-ID eingeben, um aus dem öffentlichen Chain-Register automatisch auszufüllen",
+	"widgets.addNetwork.lookingUp": "Suche…",
+	"widgets.addNetwork.lookupFound": "Aus dem Register ausgefüllt — RPCs können bearbeitet werden",
+	"widgets.addNetwork.lookupNotFound": "Chain nicht gefunden — bitte manuell ausfüllen",
+	"widgets.addNetwork.lookupError": "Suche fehlgeschlagen — bitte manuell ausfüllen"
 }

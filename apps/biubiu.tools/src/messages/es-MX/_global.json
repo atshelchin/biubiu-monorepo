@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Obtener clave",
   "settings.sn.perNetwork": "RPC por red",
   "settings.sn.reset": "Restablecer",
-  "settings.sn.saved": "Guardado"
+  "settings.sn.saved": "Guardado",
+	"widgets.addNetwork.lookupHint": "Ingresa un Chain ID para autocompletar desde el registro público de cadenas",
+	"widgets.addNetwork.lookingUp": "Buscando…",
+	"widgets.addNetwork.lookupFound": "Autocompletado desde el registro: puedes editar los RPC",
+	"widgets.addNetwork.lookupNotFound": "Cadena no encontrada: complétala manualmente",
+	"widgets.addNetwork.lookupError": "Error en la búsqueda: complétala manualmente"
 }

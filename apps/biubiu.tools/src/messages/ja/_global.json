@@ -399,5 +399,10 @@
   "settings.sn.getKey": "キーを取得",
   "settings.sn.perNetwork": "ネットワーク別 RPC",
   "settings.sn.reset": "デフォルトに戻す",
-  "settings.sn.saved": "保存しました"
+  "settings.sn.saved": "保存しました",
+	"widgets.addNetwork.lookupHint": "チェーン ID を入力すると、公開チェーンレジストリから自動入力します",
+	"widgets.addNetwork.lookingUp": "検索中…",
+	"widgets.addNetwork.lookupFound": "レジストリから自動入力しました（RPC は編集できます）",
+	"widgets.addNetwork.lookupNotFound": "チェーンが見つかりません。手動で入力してください",
+	"widgets.addNetwork.lookupError": "検索に失敗しました。手動で入力してください"
 }

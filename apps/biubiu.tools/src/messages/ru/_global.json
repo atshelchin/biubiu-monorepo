@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Получить ключ",
   "settings.sn.perNetwork": "RPC по сетям",
   "settings.sn.reset": "Сбросить к умолчаниям",
-  "settings.sn.saved": "Сохранено"
+  "settings.sn.saved": "Сохранено",
+	"widgets.addNetwork.lookupHint": "Введите Chain ID для автозаполнения из публичного реестра сетей",
+	"widgets.addNetwork.lookingUp": "Поиск…",
+	"widgets.addNetwork.lookupFound": "Заполнено из реестра — RPC можно изменить",
+	"widgets.addNetwork.lookupNotFound": "Сеть не найдена — заполните вручную",
+	"widgets.addNetwork.lookupError": "Не удалось найти — заполните вручную"
 }

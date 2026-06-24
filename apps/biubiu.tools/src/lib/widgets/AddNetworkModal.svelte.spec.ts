@@ -5,12 +5,12 @@ import AddNetworkModal from './AddNetworkModal.svelte';
 
 // i18n is not loaded in the browser test env, so t() returns the raw key —
 // which makes button text / placeholders deterministic to query against.
-const NAME = 'br.addNetwork.namePlaceholder';
-const CHAIN = 'br.addNetwork.chainIdPlaceholder';
-const SYMBOL = 'br.addNetwork.symbolPlaceholder';
-const RPCS = 'br.addNetwork.rpcsPlaceholder';
-const SUBMIT = 'br.addNetwork.submit';
-const CANCEL = 'br.addNetwork.cancel';
+const NAME = 'widgets.addNetwork.namePlaceholder';
+const CHAIN = 'widgets.addNetwork.chainIdPlaceholder';
+const SYMBOL = 'widgets.addNetwork.symbolPlaceholder';
+const RPCS = 'widgets.addNetwork.rpcsPlaceholder';
+const SUBMIT = 'widgets.addNetwork.submit';
+const CANCEL = 'widgets.addNetwork.cancel';
 
 function setup(overrides: Partial<{ existingChainIds: number[] }> = {}) {
 	const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -52,7 +52,7 @@ describe('AddNetworkModal', () => {
 
 		await page.getByRole('button', { name: SUBMIT }).click();
 
-		await expect.element(page.getByText('br.addNetwork.errorDuplicate')).toBeInTheDocument();
+		await expect.element(page.getByText('widgets.addNetwork.errorDuplicate')).toBeInTheDocument();
 		expect(onSubmit).not.toHaveBeenCalled();
 	});
 
@@ -65,7 +65,7 @@ describe('AddNetworkModal', () => {
 
 		await page.getByRole('button', { name: SUBMIT }).click();
 
-		await expect.element(page.getByText('br.addNetwork.errorName')).toBeInTheDocument();
+		await expect.element(page.getByText('widgets.addNetwork.errorName')).toBeInTheDocument();
 		expect(onSubmit).not.toHaveBeenCalled();
 	});
 
@@ -79,7 +79,7 @@ describe('AddNetworkModal', () => {
 
 		await page.getByRole('button', { name: SUBMIT }).click();
 
-		await expect.element(page.getByText('br.addNetwork.errorRpcs')).toBeInTheDocument();
+		await expect.element(page.getByText('widgets.addNetwork.errorRpcs')).toBeInTheDocument();
 		expect(onSubmit).not.toHaveBeenCalled();
 	});
 

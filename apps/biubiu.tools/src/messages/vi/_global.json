@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Lấy khóa",
   "settings.sn.perNetwork": "RPC theo mạng",
   "settings.sn.reset": "Đặt lại mặc định",
-  "settings.sn.saved": "Đã lưu"
+  "settings.sn.saved": "Đã lưu",
+	"widgets.addNetwork.lookupHint": "Nhập Chain ID để tự động điền từ sổ đăng ký chuỗi công khai",
+	"widgets.addNetwork.lookingUp": "Đang tra cứu…",
+	"widgets.addNetwork.lookupFound": "Đã điền từ sổ đăng ký — bạn có thể sửa RPC",
+	"widgets.addNetwork.lookupNotFound": "Không tìm thấy chuỗi — hãy điền thủ công",
+	"widgets.addNetwork.lookupError": "Tra cứu thất bại — hãy điền thủ công"
 }

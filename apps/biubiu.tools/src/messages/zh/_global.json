@@ -399,5 +399,10 @@
   "settings.sn.getKey": "获取 key",
   "settings.sn.perNetwork": "各网络 RPC",
   "settings.sn.reset": "恢复默认",
-  "settings.sn.saved": "已保存"
+  "settings.sn.saved": "已保存",
+	"widgets.addNetwork.lookupHint": "输入链 ID，自动从链注册表填充名称、符号与 RPC",
+	"widgets.addNetwork.lookingUp": "查询中…",
+	"widgets.addNetwork.lookupFound": "已自动填充，可修改 RPC",
+	"widgets.addNetwork.lookupNotFound": "未找到该链，请手动填写",
+	"widgets.addNetwork.lookupError": "查询失败，请手动填写"
 }

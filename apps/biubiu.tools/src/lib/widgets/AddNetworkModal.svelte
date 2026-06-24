@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import { lookupChain } from '$lib/evm/chain-registry';
 
 	interface Props {
 		open: boolean;
@@ -25,6 +27,20 @@
 	let error = $state('');
 	let submitting = $state(false);
 
+	// Auto-lookup: type a chain ID → fill name/symbol/decimals/RPCs from the
+	// public chain registry. `manualEdit` guards against clobbering anything the
+	// user typed themselves (and keeps the manual-entry path fully intact).
+	let lookupStatus = $state<'idle' | 'loading' | 'found' | 'notfound' | 'error'>('idle');
+	let manualEdit = $state(false);
+	let lookupTimer: ReturnType<typeof setTimeout> | undefined;
+	let lookupAbort: AbortController | undefined;
+	let lastLookedUp = '';
+
+	onDestroy(() => {
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupAbort?.abort();
+	});
+
 	function reset() {
 		name = '';
 		chainId = '';
@@ -33,11 +49,56 @@
 		decimals = '18';
 		error = '';
 		submitting = false;
+		lookupStatus = 'idle';
+		manualEdit = false;
+		lastLookedUp = '';
+		if (lookupTimer) clearTimeout(lookupTimer);
+		lookupAbort?.abort();
 	}
 
 	function close() {
 		reset();
 		onClose();
+	}
+
+	function onChainIdInput(value: string) {
+		chainId = value;
+		error = '';
+		if (lookupTimer) clearTimeout(lookupTimer);
+		const id = Number(value);
+		if (!Number.isInteger(id) || id <= 0) {
+			lookupStatus = 'idle';
+			return;
+		}
+		lookupTimer = setTimeout(() => runLookup(id), 500);
+	}
+
+	async function runLookup(id: number) {
+		if (String(id) === lastLookedUp) return;
+		lastLookedUp = String(id);
+		lookupAbort?.abort();
+		const ctrl = new AbortController();
+		lookupAbort = ctrl;
+		lookupStatus = 'loading';
+		try {
+			const info = await lookupChain(id, ctrl.signal);
+			if (ctrl.signal.aborted) return;
+			if (!info) {
+				lookupStatus = 'notfound';
+				return;
+			}
+			lookupStatus = 'found';
+			// Only fill from the registry if the user hasn't typed their own values.
+			if (!manualEdit) {
+				if (info.name) name = info.name;
+				if (info.symbol) symbol = info.symbol;
+				decimals = String(info.decimals);
+				if (info.rpcs.length) rpcsText = info.rpcs.join('\n');
+			}
+		} catch (e) {
+			if ((e as Error)?.name === 'AbortError') return;
+			lookupStatus = 'error';
+		}
 	}
 
 	async function handleSubmit() {
@@ -75,37 +136,65 @@
 
 <ResponsiveModal {open} onClose={close} title={t('widgets.addNetwork.title')}>
 	<div class="form">
+		<!-- Chain ID drives auto-fill from the public chain registry -->
 		<label class="field">
-			<span class="label">{t('widgets.addNetwork.name')}</span>
-			<input class="input" bind:value={name} placeholder={t('widgets.addNetwork.namePlaceholder')} />
+			<span class="label">{t('widgets.addNetwork.chainId')}</span>
+			<input
+				class="input"
+				type="number"
+				value={chainId}
+				oninput={(e) => onChainIdInput((e.currentTarget as HTMLInputElement).value)}
+				placeholder={t('widgets.addNetwork.chainIdPlaceholder')}
+			/>
+			{#if lookupStatus === 'loading'}
+				<span class="lookup lookup-loading">{t('widgets.addNetwork.lookingUp')}</span>
+			{:else if lookupStatus === 'found'}
+				<span class="lookup lookup-ok">{t('widgets.addNetwork.lookupFound')}</span>
+			{:else if lookupStatus === 'notfound'}
+				<span class="lookup lookup-warn">{t('widgets.addNetwork.lookupNotFound')}</span>
+			{:else if lookupStatus === 'error'}
+				<span class="lookup lookup-warn">{t('widgets.addNetwork.lookupError')}</span>
+			{:else}
+				<span class="lookup lookup-hint">{t('widgets.addNetwork.lookupHint')}</span>
+			{/if}
 		</label>
 
 		<div class="row">
 			<label class="field">
-				<span class="label">{t('widgets.addNetwork.chainId')}</span>
+				<span class="label">{t('widgets.addNetwork.name')}</span>
 				<input
 					class="input"
-					type="number"
-					bind:value={chainId}
-					placeholder={t('widgets.addNetwork.chainIdPlaceholder')}
+					bind:value={name}
+					oninput={() => (manualEdit = true)}
+					placeholder={t('widgets.addNetwork.namePlaceholder')}
+				/>
+			</label>
+			<label class="field field-narrow">
+				<span class="label">{t('widgets.addNetwork.symbol')}</span>
+				<input
+					class="input"
+					bind:value={symbol}
+					oninput={() => (manualEdit = true)}
+					placeholder={t('widgets.addNetwork.symbolPlaceholder')}
 				/>
 			</label>
 			<label class="field field-narrow">
 				<span class="label">{t('widgets.addNetwork.decimals')}</span>
-				<input class="input" type="number" bind:value={decimals} />
+				<input
+					class="input"
+					type="number"
+					bind:value={decimals}
+					oninput={() => (manualEdit = true)}
+				/>
 			</label>
 		</div>
-
-		<label class="field">
-			<span class="label">{t('widgets.addNetwork.symbol')}</span>
-			<input class="input" bind:value={symbol} placeholder={t('widgets.addNetwork.symbolPlaceholder')} />
-		</label>
 
 		<label class="field">
 			<span class="label">{t('widgets.addNetwork.rpcs')}</span>
 			<textarea
 				class="input textarea"
 				bind:value={rpcsText}
+				oninput={() => (manualEdit = true)}
 				rows="3"
 				placeholder={t('widgets.addNetwork.rpcsPlaceholder')}
 			></textarea>
@@ -146,7 +235,7 @@
 	}
 
 	.field-narrow {
-		max-width: 120px;
+		max-width: 110px;
 	}
 
 	.label {
@@ -177,6 +266,27 @@
 		font-size: var(--text-xs);
 	}
 
+	.lookup {
+		font-size: var(--text-xs);
+		margin-top: 2px;
+	}
+
+	.lookup-hint {
+		color: var(--fg-subtle);
+	}
+
+	.lookup-loading {
+		color: var(--fg-muted);
+	}
+
+	.lookup-ok {
+		color: var(--success);
+	}
+
+	.lookup-warn {
+		color: var(--warning);
+	}
+
 	.error {
 		font-size: var(--text-sm);
 		color: var(--error);
@@ -205,6 +315,11 @@
 		cursor: not-allowed;
 	}
 
+	.btn:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+
 	.btn-primary {
 		background: var(--accent);
 		color: var(--accent-fg);
@@ -222,5 +337,14 @@
 
 	.btn-secondary:not(:disabled):hover {
 		border-color: var(--border-strong);
+	}
+
+	@media (max-width: 640px) {
+		.row {
+			flex-wrap: wrap;
+		}
+		.field-narrow {
+			max-width: none;
+		}
 	}
 </style>

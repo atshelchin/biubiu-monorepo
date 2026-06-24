@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Anahtar al",
   "settings.sn.perNetwork": "Ağ başına RPC",
   "settings.sn.reset": "Varsayılanlara sıfırla",
-  "settings.sn.saved": "Kaydedildi"
+  "settings.sn.saved": "Kaydedildi",
+	"widgets.addNetwork.lookupHint": "Genel zincir kaydından otomatik doldurmak için bir Chain ID girin",
+	"widgets.addNetwork.lookingUp": "Aranıyor…",
+	"widgets.addNetwork.lookupFound": "Kayıttan dolduruldu — RPC’leri düzenleyebilirsin",
+	"widgets.addNetwork.lookupNotFound": "Zincir bulunamadı — bilgileri elle girin",
+	"widgets.addNetwork.lookupError": "Arama başarısız — bilgileri elle girin"
 }

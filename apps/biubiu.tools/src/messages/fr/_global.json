@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Obtenir une clé",
   "settings.sn.perNetwork": "RPC par réseau",
   "settings.sn.reset": "Réinitialiser",
-  "settings.sn.saved": "Enregistré"
+  "settings.sn.saved": "Enregistré",
+	"widgets.addNetwork.lookupHint": "Saisissez un Chain ID pour remplir automatiquement depuis le registre public",
+	"widgets.addNetwork.lookingUp": "Recherche…",
+	"widgets.addNetwork.lookupFound": "Rempli depuis le registre — vous pouvez modifier les RPC",
+	"widgets.addNetwork.lookupNotFound": "Chaîne introuvable — remplissez manuellement",
+	"widgets.addNetwork.lookupError": "Échec de la recherche — remplissez manuellement"
 }

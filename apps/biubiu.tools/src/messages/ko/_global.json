@@ -399,5 +399,10 @@
   "settings.sn.getKey": "키 받기",
   "settings.sn.perNetwork": "네트워크별 RPC",
   "settings.sn.reset": "기본값으로 재설정",
-  "settings.sn.saved": "저장됨"
+  "settings.sn.saved": "저장됨",
+	"widgets.addNetwork.lookupHint": "체인 ID를 입력하면 공개 체인 레지스트리에서 자동 입력됩니다",
+	"widgets.addNetwork.lookingUp": "조회 중…",
+	"widgets.addNetwork.lookupFound": "레지스트리에서 자동 입력됨 — RPC를 편집할 수 있습니다",
+	"widgets.addNetwork.lookupNotFound": "체인을 찾을 수 없습니다 — 직접 입력하세요",
+	"widgets.addNetwork.lookupError": "조회 실패 — 직접 입력하세요"
 }

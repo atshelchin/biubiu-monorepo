@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Obter chave",
   "settings.sn.perNetwork": "RPC por rede",
   "settings.sn.reset": "Restaurar padrões",
-  "settings.sn.saved": "Salvo"
+  "settings.sn.saved": "Salvo",
+	"widgets.addNetwork.lookupHint": "Insira um Chain ID para preencher automaticamente do registro público",
+	"widgets.addNetwork.lookingUp": "Buscando…",
+	"widgets.addNetwork.lookupFound": "Preenchido pelo registro — você pode editar os RPCs",
+	"widgets.addNetwork.lookupNotFound": "Cadeia não encontrada — preencha manualmente",
+	"widgets.addNetwork.lookupError": "Falha na busca — preencha manualmente"
 }

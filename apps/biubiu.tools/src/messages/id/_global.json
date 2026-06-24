@@ -399,5 +399,10 @@
   "settings.sn.getKey": "Dapatkan kunci",
   "settings.sn.perNetwork": "RPC per jaringan",
   "settings.sn.reset": "Setel ulang ke default",
-  "settings.sn.saved": "Tersimpan"
+  "settings.sn.saved": "Tersimpan",
+	"widgets.addNetwork.lookupHint": "Masukkan Chain ID untuk mengisi otomatis dari registri chain publik",
+	"widgets.addNetwork.lookingUp": "Mencari…",
+	"widgets.addNetwork.lookupFound": "Terisi otomatis dari registri — RPC bisa diedit",
+	"widgets.addNetwork.lookupNotFound": "Chain tidak ditemukan — isi manual",
+	"widgets.addNetwork.lookupError": "Pencarian gagal — isi manual"
 }

@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Stopping…",
 	"br.execution.elapsed": "Elapsed {time}",
 	"br.execution.eta": "~{time} left",
-	"br.summary.largeWarning": "Large run (~{total} queries) — this can take several minutes; you can stop anytime."
+	"br.summary.largeWarning": "Large run (~{total} queries) — this can take several minutes; you can stop anytime.",
+	"br.results.table.value": "Value (USD)",
+	"br.results.stats.totalValue": "Total value",
+	"br.results.table.hideZero": "Only with balance ({count})"
 }

@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Arrêt…",
 	"br.execution.elapsed": "Écoulé {time}",
 	"br.execution.eta": "~{time} restant",
-	"br.summary.largeWarning": "Exécution importante (~{total} requêtes) — cela peut prendre plusieurs minutes ; vous pouvez arrêter à tout moment."
+	"br.summary.largeWarning": "Exécution importante (~{total} requêtes) — cela peut prendre plusieurs minutes ; vous pouvez arrêter à tout moment.",
+	"br.results.table.value": "Valeur (USD)",
+	"br.results.stats.totalValue": "Valeur totale",
+	"br.results.table.hideZero": "Uniquement avec solde ({count})"
 }

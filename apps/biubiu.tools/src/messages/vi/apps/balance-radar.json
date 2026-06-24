@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Đang dừng…",
 	"br.execution.elapsed": "Đã dùng {time}",
 	"br.execution.eta": "còn ~{time}",
-	"br.summary.largeWarning": "Lượt chạy lớn (~{total} truy vấn) — có thể mất vài phút; bạn có thể dừng bất cứ lúc nào."
+	"br.summary.largeWarning": "Lượt chạy lớn (~{total} truy vấn) — có thể mất vài phút; bạn có thể dừng bất cứ lúc nào.",
+	"br.results.table.value": "Giá trị (USD)",
+	"br.results.stats.totalValue": "Tổng giá trị",
+	"br.results.table.hideZero": "Chỉ có số dư ({count})"
 }

@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Остановка…",
 	"br.execution.elapsed": "Прошло {time}",
 	"br.execution.eta": "осталось ~{time}",
-	"br.summary.largeWarning": "Большой запуск (~{total} запросов) — может занять несколько минут; можно остановить в любой момент."
+	"br.summary.largeWarning": "Большой запуск (~{total} запросов) — может занять несколько минут; можно остановить в любой момент.",
+	"br.results.table.value": "Стоимость (USD)",
+	"br.results.stats.totalValue": "Общая стоимость",
+	"br.results.table.hideZero": "Только с балансом ({count})"
 }

@@ -96,5 +96,8 @@
 	"br.execution.stopping": "停止中…",
 	"br.execution.elapsed": "経過 {time}",
 	"br.execution.eta": "残り約 {time}",
-	"br.summary.largeWarning": "大量のクエリ（約 {total} 件）です。数分かかる場合があります。いつでも停止できます。"
+	"br.summary.largeWarning": "大量のクエリ（約 {total} 件）です。数分かかる場合があります。いつでも停止できます。",
+	"br.results.table.value": "価値 (USD)",
+	"br.results.stats.totalValue": "合計価値",
+	"br.results.table.hideZero": "残高ありのみ（{count}）"
 }

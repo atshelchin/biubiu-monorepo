@@ -96,5 +96,8 @@
 	"br.execution.stopping": "停止中…",
 	"br.execution.elapsed": "已用 {time}",
 	"br.execution.eta": "預計剩餘 {time}",
-	"br.summary.largeWarning": "查詢量較大（約 {total} 次），可能需要數分鐘，執行中可隨時停止。"
+	"br.summary.largeWarning": "查詢量較大（約 {total} 次），可能需要數分鐘，執行中可隨時停止。",
+	"br.results.table.value": "價值 (USD)",
+	"br.results.stats.totalValue": "總價值",
+	"br.results.table.hideZero": "僅顯示有餘額（{count}）"
 }

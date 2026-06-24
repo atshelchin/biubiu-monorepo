@@ -96,5 +96,8 @@
 	"br.execution.stopping": "停止中…",
 	"br.execution.elapsed": "已用 {time}",
 	"br.execution.eta": "预计剩余 {time}",
-	"br.summary.largeWarning": "查询量较大（约 {total} 次），可能需要数分钟，运行中可随时停止。"
+	"br.summary.largeWarning": "查询量较大（约 {total} 次），可能需要数分钟，运行中可随时停止。",
+	"br.results.table.value": "价值 (USD)",
+	"br.results.stats.totalValue": "总价值",
+	"br.results.table.hideZero": "仅显示有余额（{count}）"
 }

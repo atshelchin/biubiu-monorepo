@@ -96,5 +96,8 @@
 	"br.execution.stopping": "중지 중…",
 	"br.execution.elapsed": "경과 {time}",
 	"br.execution.eta": "약 {time} 남음",
-	"br.summary.largeWarning": "대규모 실행(~{total}건 조회) — 몇 분 걸릴 수 있으며 언제든 중지할 수 있습니다."
+	"br.summary.largeWarning": "대규모 실행(~{total}건 조회) — 몇 분 걸릴 수 있으며 언제든 중지할 수 있습니다.",
+	"br.results.table.value": "가치 (USD)",
+	"br.results.stats.totalValue": "총 가치",
+	"br.results.table.hideZero": "잔액 있는 항목만 ({count})"
 }

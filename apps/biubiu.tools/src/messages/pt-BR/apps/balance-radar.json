@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Parando…",
 	"br.execution.elapsed": "Decorrido {time}",
 	"br.execution.eta": "~{time} restante",
-	"br.summary.largeWarning": "Execução grande (~{total} consultas) — pode levar vários minutos; você pode parar a qualquer momento."
+	"br.summary.largeWarning": "Execução grande (~{total} consultas) — pode levar vários minutos; você pode parar a qualquer momento.",
+	"br.results.table.value": "Valor (USD)",
+	"br.results.stats.totalValue": "Valor total",
+	"br.results.table.hideZero": "Apenas com saldo ({count})"
 }

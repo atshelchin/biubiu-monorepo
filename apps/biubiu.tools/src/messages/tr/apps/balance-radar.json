@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Durduruluyor…",
 	"br.execution.elapsed": "Geçen {time}",
 	"br.execution.eta": "~{time} kaldı",
-	"br.summary.largeWarning": "Büyük çalışma (~{total} sorgu) — birkaç dakika sürebilir; istediğin zaman durdurabilirsin."
+	"br.summary.largeWarning": "Büyük çalışma (~{total} sorgu) — birkaç dakika sürebilir; istediğin zaman durdurabilirsin.",
+	"br.results.table.value": "Değer (USD)",
+	"br.results.stats.totalValue": "Toplam değer",
+	"br.results.table.hideZero": "Sadece bakiyesi olanlar ({count})"
 }

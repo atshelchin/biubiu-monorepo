@@ -96,5 +96,8 @@
 	"br.execution.stopping": "Wird gestoppt…",
 	"br.execution.elapsed": "Verstrichen {time}",
 	"br.execution.eta": "noch ~{time}",
-	"br.summary.largeWarning": "Großer Lauf (~{total} Abfragen) — das kann einige Minuten dauern; du kannst jederzeit stoppen."
+	"br.summary.largeWarning": "Großer Lauf (~{total} Abfragen) — das kann einige Minuten dauern; du kannst jederzeit stoppen.",
+	"br.results.table.value": "Wert (USD)",
+	"br.results.stats.totalValue": "Gesamtwert",
+	"br.results.table.hideZero": "Nur mit Guthaben ({count})"
 }

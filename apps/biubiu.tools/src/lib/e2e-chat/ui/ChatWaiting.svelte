@@ -5,6 +5,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import QrCanvas from '$lib/ui/QrCanvas.svelte';
+	import Spinner from './Spinner.svelte';
 	import type { ChatStore } from '../store.svelte.js';
 
 	let { store }: { store: ChatStore } = $props();
@@ -26,7 +27,7 @@
 </script>
 
 <section class="waiting">
-	<div class="spinner" aria-hidden="true"></div>
+	<Spinner />
 	<h2>{t('chat.waiting.title')}</h2>
 	<p class="desc">{t('chat.waiting.desc')}</p>
 
@@ -36,7 +37,13 @@
 		</div>
 
 		<div class="link-row">
-			<input class="link" type="text" readonly value={store.inviteUrl} aria-label={t('chat.waiting.title')} />
+			<input
+				class="link"
+				type="text"
+				readonly
+				value={store.inviteUrl}
+				aria-label={t('chat.waiting.title')}
+			/>
 			<button class="copy" onclick={copy}>
 				{copied ? t('chat.waiting.copied') : t('chat.waiting.copy')}
 			</button>
@@ -62,15 +69,6 @@
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		box-shadow: var(--shadow-sm);
-	}
-
-	.spinner {
-		width: 28px;
-		height: 28px;
-		border-radius: var(--radius-full);
-		border: 2px solid var(--border-base);
-		border-top-color: var(--accent);
-		animation: spin 0.9s linear infinite;
 	}
 
 	h2 {
@@ -145,16 +143,5 @@
 	}
 	.cancel:hover {
 		border-color: var(--border-strong);
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.spinner {
-			animation: none;
-		}
 	}
 </style>

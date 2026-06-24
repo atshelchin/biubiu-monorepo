@@ -9,6 +9,7 @@
 		"deploy": "wrangler deploy",
 		"build": "tsc --noEmit",
 		"check": "tsc --noEmit",
+		"test:relay": "bun test/relay.test.mjs",
 		"tail": "wrangler tail"
 	},
 	"devDependencies": {

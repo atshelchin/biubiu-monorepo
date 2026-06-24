@@ -1,11 +1,12 @@
 <!--
-  Entry screen: create a room, join via a pasted link, or accept an invite that
-  was opened from a link. Also renders the "ended" and "error" terminal states.
+  Entry screen: create a room, or join via a pasted link / an opened invite.
+  Also renders the "ended" and "error" terminal states (via StatusView).
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { parseInvite, type Invite } from '../relay.js';
 	import type { ChatStore } from '../store.svelte.js';
+	import StatusView from './StatusView.svelte';
 
 	let { store, invite, basePath }: { store: ChatStore; invite: Invite | null; basePath: string } =
 		$props();
@@ -58,71 +59,107 @@
 </script>
 
 {#if store.phase === 'ended'}
-	<section class="card center">
-		<div class="mark">🔒</div>
-		<h2>{endedTitle}</h2>
-		<p>{t('chat.ended.desc')}</p>
-		<button class="primary" onclick={() => store.reset()}>{t('chat.ended.restart')}</button>
-	</section>
+	<StatusView icon="🔒" title={endedTitle} description={t('chat.ended.desc')}>
+		{#snippet action()}
+			<button class="primary" onclick={() => store.reset()}>{t('chat.ended.restart')}</button>
+		{/snippet}
+	</StatusView>
 {:else if store.phase === 'error'}
-	<section class="card center">
-		<div class="mark error">!</div>
-		<h2>{t('chat.error.title')}</h2>
-		<p>{errorMsg}</p>
-		<button class="primary" onclick={() => store.reset()}>{t('chat.error.retry')}</button>
-	</section>
+	<StatusView icon="!" tone="error" title={t('chat.error.title')} description={errorMsg}>
+		{#snippet action()}
+			<button class="primary" onclick={() => store.reset()}>{t('chat.error.retry')}</button>
+		{/snippet}
+	</StatusView>
 {:else if store.phase === 'preparing'}
-	<section class="card center">
-		<div class="spinner" aria-hidden="true"></div>
-		<h2>{t('chat.landing.preparing')}</h2>
-		<p>{t('chat.landing.preparingDesc')}</p>
-	</section>
+	<StatusView
+		loading
+		title={t('chat.landing.preparing')}
+		description={t('chat.landing.preparingDesc')}
+	/>
 {:else if invite}
-	<section class="card center">
-		<div class="mark">💬</div>
-		<h2>{t('chat.landing.inviteTitle')}</h2>
-		<p>{t('chat.landing.inviteDesc')}</p>
-		<button class="primary" onclick={acceptInvite}>
-			{t('chat.landing.inviteBtn')}
-		</button>
-	</section>
+	<StatusView
+		icon="💬"
+		title={t('chat.landing.inviteTitle')}
+		description={t('chat.landing.inviteDesc')}
+	>
+		{#snippet action()}
+			<button class="primary" onclick={acceptInvite}>{t('chat.landing.inviteBtn')}</button>
+		{/snippet}
+	</StatusView>
 {:else}
-	<div class="grid">
-		<section class="card">
+	<div class="start">
+		<ol class="steps">
+			<li><span class="num">1</span><span>{t('chat.landing.steps.create')}</span></li>
+			<li><span class="num">2</span><span>{t('chat.landing.steps.share')}</span></li>
+			<li><span class="num">3</span><span>{t('chat.landing.steps.chat')}</span></li>
+		</ol>
+
+		<div class="card primary-card">
 			<h3>{t('chat.landing.createTitle')}</h3>
 			<p>{t('chat.landing.createDesc')}</p>
-			<button class="primary" onclick={() => store.create(basePath)}>
+			<button class="primary lg" onclick={() => store.create(basePath)}>
 				{t('chat.landing.createBtn')}
 			</button>
-		</section>
+		</div>
 
-		<section class="card">
-			<h3>{t('chat.landing.joinTitle')}</h3>
-			<p>{t('chat.landing.joinDesc')}</p>
-			<input
-				class="link-input"
-				class:invalid={linkError}
-				type="text"
-				bind:value={linkInput}
-				oninput={() => (linkError = false)}
-				placeholder={t('chat.landing.joinPlaceholder')}
-				aria-label={t('chat.landing.joinTitle')}
-			/>
+		<div class="join">
+			<span class="join-label">{t('chat.landing.joinTitle')}</span>
+			<div class="join-row">
+				<input
+					class="link-input"
+					class:invalid={linkError}
+					type="text"
+					bind:value={linkInput}
+					oninput={() => (linkError = false)}
+					onkeydown={(e) => e.key === 'Enter' && joinFromPaste()}
+					placeholder={t('chat.landing.joinPlaceholder')}
+					aria-label={t('chat.landing.joinTitle')}
+				/>
+				<button class="ghost" onclick={joinFromPaste} disabled={!linkInput.trim()}>
+					{t('chat.landing.joinBtn')}
+				</button>
+			</div>
 			{#if linkError}<span class="hint">{t('chat.landing.invalidLink')}</span>{/if}
-			<button class="ghost" onclick={joinFromPaste} disabled={!linkInput.trim()}>
-				{t('chat.landing.joinBtn')}
-			</button>
-		</section>
+		</div>
 	</div>
 {/if}
 
 <style>
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-		gap: var(--space-4);
-		max-width: 760px;
+	.start {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
+		max-width: 480px;
 		margin: 0 auto;
+	}
+
+	/* How it works */
+	.steps {
+		display: flex;
+		justify-content: center;
+		gap: var(--space-4);
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		flex-wrap: wrap;
+	}
+	.steps li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+	}
+	.num {
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		border-radius: var(--radius-full);
+		background: var(--accent-muted);
+		color: var(--accent);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
 	}
 
 	.card {
@@ -135,18 +172,9 @@
 		border-radius: var(--radius-xl);
 		box-shadow: var(--shadow-sm);
 	}
-	.card.center {
+	.primary-card {
 		align-items: center;
 		text-align: center;
-		max-width: 460px;
-		margin: 0 auto;
-	}
-
-	.card h2 {
-		margin: 0;
-		font-size: var(--text-xl);
-		font-weight: var(--weight-semibold);
-		color: var(--fg-base);
 	}
 	.card h3 {
 		margin: 0;
@@ -161,24 +189,7 @@
 		line-height: var(--leading-relaxed);
 	}
 
-	.mark {
-		font-size: var(--text-4xl);
-		line-height: 1;
-	}
-	.mark.error {
-		display: grid;
-		place-items: center;
-		width: 48px;
-		height: 48px;
-		border-radius: var(--radius-full);
-		background: var(--error-muted);
-		color: var(--error);
-		font-weight: var(--weight-bold);
-		font-size: var(--text-2xl);
-	}
-
 	.primary {
-		margin-top: var(--space-1);
 		padding: var(--space-3) var(--space-5);
 		font-size: var(--text-sm);
 		font-weight: var(--weight-medium);
@@ -187,13 +198,63 @@
 		border: none;
 		border-radius: var(--radius-md);
 		cursor: pointer;
-		transition: background var(--motion-fast) var(--easing);
+		transition:
+			background var(--motion-fast) var(--easing),
+			transform var(--motion-fast) var(--easing);
 	}
 	.primary:hover {
 		background: var(--accent-hover);
 	}
+	.primary:active {
+		transform: translateY(1px);
+	}
+	.primary.lg {
+		margin-top: var(--space-1);
+		padding: var(--space-3) var(--space-8);
+		font-size: var(--text-base);
+	}
+
+	/* Secondary: paste a link */
+	.join {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.join-label {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		text-align: center;
+	}
+	.join-row {
+		display: flex;
+		gap: var(--space-2);
+	}
+	.link-input {
+		flex: 1;
+		min-width: 0;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--text-sm);
+		color: var(--fg-base);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-md);
+		transition: border-color var(--motion-fast) var(--easing);
+	}
+	.link-input:focus {
+		outline: none;
+		border-color: var(--accent);
+	}
+	.link-input.invalid {
+		border-color: var(--error);
+	}
+	.hint {
+		font-size: var(--text-xs);
+		color: var(--error);
+		text-align: center;
+	}
 
 	.ghost {
+		flex-shrink: 0;
 		padding: var(--space-2) var(--space-4);
 		font-size: var(--text-sm);
 		font-weight: var(--weight-medium);
@@ -210,44 +271,5 @@
 	.ghost:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.link-input {
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--text-sm);
-		color: var(--fg-base);
-		background: var(--bg-base);
-		border: 1px solid var(--border-base);
-		border-radius: var(--radius-md);
-	}
-	.link-input:focus {
-		outline: none;
-		border-color: var(--accent);
-	}
-	.link-input.invalid {
-		border-color: var(--error);
-	}
-	.hint {
-		font-size: var(--text-xs);
-		color: var(--error);
-	}
-
-	.spinner {
-		width: 28px;
-		height: 28px;
-		border-radius: var(--radius-full);
-		border: 2px solid var(--border-base);
-		border-top-color: var(--accent);
-		animation: spin 0.9s linear infinite;
-	}
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.spinner {
-			animation: none;
-		}
 	}
 </style>

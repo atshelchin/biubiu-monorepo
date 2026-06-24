@@ -45,6 +45,19 @@ Then bind the custom domain **chat.biubiu.tools** to the Worker in the Cloudflar
 dashboard (Workers → Settings → Domains & Routes → Add Custom Domain), or uncomment the
 `routes` entry in [`wrangler.jsonc`](wrangler.jsonc) before deploying.
 
+## Test
+
+Live integration test of the real `RoomDO` (routing, the 2-peer cap, reconnect +
+buffered redelivery). Start the worker, then run the test against it:
+
+```sh
+bun run dev          # terminal 1 — wrangler dev on :8787
+bun run test:relay   # terminal 2 — connects two WS clients + a rejected third
+```
+
+The client-side crypto and the full two-peer session flow are covered by Vitest in
+`apps/biubiu.tools` (`src/lib/e2e-chat/*.test.ts`): `bun run test:unit`.
+
 ## Tuning (constants in `src/room.ts`)
 
 - `GRACE_MS` — how long a slot is held after an unexpected drop (default 90s).

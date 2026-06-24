@@ -133,7 +133,11 @@ export async function seal(
 	plaintext: string
 ): Promise<string> {
 	const ct = await crypto.subtle.encrypt(
-		{ name: 'AES-GCM', iv: nonceFor(direction, seq), additionalData: aadFor(roomId, direction, seq) },
+		{
+			name: 'AES-GCM',
+			iv: nonceFor(direction, seq),
+			additionalData: aadFor(roomId, direction, seq)
+		},
 		key,
 		utf8(plaintext)
 	);
@@ -148,7 +152,11 @@ export async function open(
 	ciphertextB64: string
 ): Promise<string> {
 	const pt = await crypto.subtle.decrypt(
-		{ name: 'AES-GCM', iv: nonceFor(direction, seq), additionalData: aadFor(roomId, direction, seq) },
+		{
+			name: 'AES-GCM',
+			iv: nonceFor(direction, seq),
+			additionalData: aadFor(roomId, direction, seq)
+		},
 		key,
 		fromB64url(ciphertextB64)
 	);
@@ -159,10 +167,38 @@ export async function open(
 
 /** Emoji alphabet for the visual half of the safety code (memorable, no homoglyphs). */
 const SAFETY_EMOJI = [
-	'🐶', '🐱', '🦊', '🐼', '🐧', '🦉', '🐢', '🐬',
-	'🌵', '🍀', '🌻', '🍎', '🍋', '🍇', '🌈', '⚡',
-	'🔥', '💧', '⭐', '🌙', '🎵', '🎲', '🚀', '🔑',
-	'🛡️', '🎯', '🧭', '🍩', '🥑', '🦋', '🐝', '🌸'
+	'🐶',
+	'🐱',
+	'🦊',
+	'🐼',
+	'🐧',
+	'🦉',
+	'🐢',
+	'🐬',
+	'🌵',
+	'🍀',
+	'🌻',
+	'🍎',
+	'🍋',
+	'🍇',
+	'🌈',
+	'⚡',
+	'🔥',
+	'💧',
+	'⭐',
+	'🌙',
+	'🎵',
+	'🎲',
+	'🚀',
+	'🔑',
+	'🛡️',
+	'🎯',
+	'🧭',
+	'🍩',
+	'🥑',
+	'🦋',
+	'🐝',
+	'🌸'
 ];
 
 export interface SafetyCode {
@@ -181,7 +217,9 @@ export async function computeSafetyCode(transcript: string): Promise<SafetyCode>
 	const view = new DataView(hash.buffer);
 	const n = view.getUint32(0) % 1_000_000;
 	const digits = n.toString().padStart(6, '0');
-	const emoji = [hash[4], hash[5], hash[6]].map((b) => SAFETY_EMOJI[b % SAFETY_EMOJI.length]).join('');
+	const emoji = [hash[4], hash[5], hash[6]]
+		.map((b) => SAFETY_EMOJI[b % SAFETY_EMOJI.length])
+		.join('');
 	return { digits: `${digits.slice(0, 3)} ${digits.slice(3)}`, emoji };
 }
 

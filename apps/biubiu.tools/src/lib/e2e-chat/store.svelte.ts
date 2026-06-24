@@ -32,7 +32,14 @@ import { buildInviteUrl, newRoomId, relayUrl } from './relay.js';
 /** Fixed domain separator for the wallet sign-in challenge (not an on-chain action). */
 const CHALLENGE_CHAIN_ID = 1;
 
-export type Phase = 'idle' | 'preparing' | 'waiting' | 'handshaking' | 'connected' | 'ended' | 'error';
+export type Phase =
+	| 'idle'
+	| 'preparing'
+	| 'waiting'
+	| 'handshaking'
+	| 'connected'
+	| 'ended'
+	| 'error';
 export type ErrorCode =
 	| 'noWallet'
 	| 'noSign'
@@ -265,7 +272,8 @@ export class ChatStore {
 	}
 
 	private async onPeerSignal(hs: Handshake): Promise<void> {
-		if (this.peerHandshake || !this.myEph || !this.myHandshake || !this.roomId || !this.role) return;
+		if (this.peerHandshake || !this.myEph || !this.myHandshake || !this.roomId || !this.role)
+			return;
 
 		// Anti-tamper: the joiner knows the creator's key from the invite link.
 		if (this.expectedPeerPub && hs.pub !== this.expectedPeerPub) {
@@ -277,7 +285,11 @@ export class ChatStore {
 		this.keys = await deriveTrafficKeys(this.myEph.privateKey, hs.pub, this.roomId);
 
 		// Role-ordered transcript (creator first) → identical Safety Code on both sides.
-		const mine = { address: this.myHandshake.addr, pub: this.myHandshake.pub, sig: this.myHandshake.sig };
+		const mine = {
+			address: this.myHandshake.addr,
+			pub: this.myHandshake.pub,
+			sig: this.myHandshake.sig
+		};
 		const theirs = { address: hs.addr, pub: hs.pub, sig: hs.sig };
 		const [a, b] = this.role === 'a' ? [mine, theirs] : [theirs, mine];
 		this.safety = await computeSafetyCode(buildTranscript(this.roomId, a, b));
@@ -317,7 +329,13 @@ export class ChatStore {
 			return; // forged or corrupt frame — drop silently
 		}
 		this.lastRecvSeq = seq;
-		this.messages.push({ id: crypto.randomUUID(), dir: 'in', text, ts: Date.now(), status: 'sent' });
+		this.messages.push({
+			id: crypto.randomUUID(),
+			dir: 'in',
+			text,
+			ts: Date.now(),
+			status: 'sent'
+		});
 	}
 
 	private flushOut(): void {

@@ -2,6 +2,8 @@
 	import { onDestroy } from 'svelte';
 	import { t, formatNumber } from '$lib/i18n';
 	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
+	import { chainLogoUrl, tokenRowLogoUrl } from '$lib/evm/asset-icons';
+	import AssetIcon from '$lib/ui/AssetIcon.svelte';
 	import type { NetworkInfo, TokenInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
 	import AddNetworkModal from './AddNetworkModal.svelte';
 	import AddTokenModal from './AddTokenModal.svelte';
@@ -228,6 +230,7 @@
 							class:chip-selected={selected}
 							onclick={() => onToggleNetwork(network.key)}
 						>
+							<AssetIcon src={chainLogoUrl(network.key)} label={network.name} size={16} />
 							{network.name}
 							<span class="chip-symbol">({network.symbol})</span>
 							{#if network.isCustom}
@@ -273,6 +276,7 @@
 									class:chip-selected={tokenSelected}
 									onclick={() => onToggleToken(networkKey, tk.id)}
 								>
+									<AssetIcon src={tokenRowLogoUrl(networkKey, tk.address)} label={tk.symbol} size={16} />
 									{tk.symbol}
 									{#if tk.kind === 'native'}
 										<span class="chip-symbol">({t('br.tokens.native')})</span>

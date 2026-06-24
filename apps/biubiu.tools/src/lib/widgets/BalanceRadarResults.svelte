@@ -3,6 +3,8 @@
 	import { t, formatCurrency } from '$lib/i18n';
 	import { resultsStore } from '$lib/pda-apps/balance-radar/modules/results-store.svelte.js';
 	import { fetchUsdPrices, priceKey, type PriceItem } from '$lib/evm/token-prices';
+	import { chainLogoUrl, tokenRowLogoUrl } from '$lib/evm/asset-icons';
+	import AssetIcon from '$lib/ui/AssetIcon.svelte';
 	import type { ResultEntry, SortField, SortDirection } from '$lib/pda-apps/balance-radar/modules/execution.js';
 
 	interface Props {
@@ -352,9 +354,17 @@
 								{copiedKey === rowKey(row) ? t('br.results.table.copied') : truncateAddress(row.address)}
 							</button>
 						</td>
-						<td>{networkLabel(row.network)}</td>
+						<td>
+							<span class="cell-asset">
+								<AssetIcon src={chainLogoUrl(row.network)} label={networkLabel(row.network)} size={18} />
+								{networkLabel(row.network)}
+							</span>
+						</td>
 						<td class="cell-token" title={row.tokenAddress ?? ''}>
-							{row.symbol}
+							<span class="cell-asset">
+								<AssetIcon src={tokenRowLogoUrl(row.network, row.tokenAddress)} label={row.symbol} size={18} />
+								{row.symbol}
+							</span>
 						</td>
 						<td class="cell-balance" class:cell-zero={parseFloat(row.balance) === 0} title={row.balance}>
 							{formatBalance(row.balance)}
@@ -661,6 +671,12 @@
 
 	.cell-token {
 		font-weight: var(--weight-medium);
+	}
+
+	.cell-asset {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 
 	.cell-balance {

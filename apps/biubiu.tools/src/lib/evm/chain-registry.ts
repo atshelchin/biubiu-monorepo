@@ -12,9 +12,11 @@ export interface ChainInfo {
 	rpcs: string[];
 }
 
-// Per-chain JSON files. chainid.network is primary; the raw ethereum-lists repo is
-// a fallback if it's unreachable. Both send `access-control-allow-origin: *`.
+// Per-chain JSON files (ethereum-lists format). The ethereum-data mirror is
+// primary; chainid.network and the raw repo are fallbacks. All send
+// `access-control-allow-origin: *`.
 const SOURCES = [
+	(id: number) => `https://ethereum-data.awesometools.dev/chains/eip155-${id}.json`,
 	(id: number) => `https://chainid.network/chains/eip155-${id}.json`,
 	(id: number) => `https://raw.githubusercontent.com/ethereum-lists/chains/master/_data/chains/eip155-${id}.json`,
 ];

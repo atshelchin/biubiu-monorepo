@@ -9,8 +9,9 @@
  * there. A scenario's pre-wired chain feeds step 1's return value straight into
  * step 2's parameter, which is the whole point we're demonstrating.
  */
-import { type Address, type Hex, getAddress, createPublicClient, http } from 'viem';
+import { type Address, type Hex, getAddress } from 'viem';
 import { CREATE2_PROXY, predictCreate2Address } from '$lib/deploy/create2.js';
+import { makeClient } from '../rpc-client.js';
 import { DEMO_BYTECODE, type DemoContractName } from './bytecode.js';
 
 export type { DemoContractName };
@@ -190,7 +191,7 @@ export async function getDeployedDemos(
 	rpcUrl: string,
 	names: DemoContractName[]
 ): Promise<Record<string, boolean>> {
-	const client = createPublicClient({ transport: http(rpcUrl) });
+	const client = makeClient(rpcUrl);
 	const out: Record<string, boolean> = {};
 	await Promise.all(
 		names.map(async (n) => {

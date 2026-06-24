@@ -44,7 +44,7 @@ import {
 } from './networks.js';
 import { parseAbiInput } from './abi.js';
 import { buildArgs, encodeCall } from './encode.js';
-import { executeRead } from './read.js';
+import { executeReadWithFailover } from './read.js';
 import { toOutputRows } from './read.js';
 import { detectProxy } from './proxy.js';
 import {
@@ -201,6 +201,15 @@ class ContractCallerStore {
 
 	get explorerBaseUrl(): string {
 		return this.selectedChain?.explorerUrl?.replace(/\/$/, '') ?? '';
+	}
+
+	/**
+	 * RPC endpoints to try for a read, in order: the active one first, then any
+	 * other endpoint that probed OK — so a flaky/slow RPC doesn't break reads.
+	 */
+	get readRpcs(): string[] {
+		const healthy = this.rpcOptions.filter((o) => o.status === 'ok').map((o) => o.url);
+		return [...new Set([this.rpcUrl, ...healthy].filter(Boolean))];
 	}
 
 	// ── Network actions ──
@@ -456,8 +465,8 @@ class ContractCallerStore {
 			return;
 		}
 		this.readResults[method.signature] = { status: 'loading' };
-		const res = await executeRead(
-			this.rpcUrl,
+		const res = await executeReadWithFailover(
+			this.readRpcs,
 			getAddress(this.contractAddress.trim()) as Address,
 			method,
 			built.args ?? []
@@ -981,8 +990,8 @@ class ContractCallerStore {
 				results.push({ labelKey: p.labelKey, error: built.error });
 				continue;
 			}
-			const res = await executeRead(
-				this.rpcUrl,
+			const res = await executeReadWithFailover(
+				this.readRpcs,
 				DEMO_ADDRESS[p.contract],
 				method,
 				built.args ?? []

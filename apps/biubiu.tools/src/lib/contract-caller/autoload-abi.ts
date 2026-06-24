@@ -13,8 +13,9 @@
  *
  * Both loaders take chainId explicitly — autoload does not thread it through.
  */
-import { type Address, createPublicClient, http } from 'viem';
+import { type Address } from 'viem';
 import type { Abi } from './types.js';
+import { makeClient, fetchWithTimeout } from './rpc-client.js';
 
 const SOURCIFY_V2 = 'https://sourcify.dev/server/v2/contract';
 const FOURBYTE_SOURCIFY = 'https://api.4byte.sourcify.dev/signature-database/v1/lookup';
@@ -26,7 +27,7 @@ class SourcifyV2ABILoader {
 
 	async loadABI(address: string): Promise<unknown[]> {
 		try {
-			const res = await fetch(`${SOURCIFY_V2}/${this.chainId}/${address}?fields=abi`);
+			const res = await fetchWithTimeout(`${SOURCIFY_V2}/${this.chainId}/${address}?fields=abi`);
 			if (!res.ok) return [];
 			const data = (await res.json()) as { abi?: unknown };
 			return Array.isArray(data.abi) ? data.abi : [];
@@ -54,7 +55,7 @@ class Sourcify4ByteSignatureLookup {
 
 	private async lookup(kind: 'function' | 'event', sig: string): Promise<string[]> {
 		try {
-			const res = await fetch(`${FOURBYTE_SOURCIFY}?${kind}=${sig}&filter=true`);
+			const res = await fetchWithTimeout(`${FOURBYTE_SOURCIFY}?${kind}=${sig}&filter=true`);
 			if (!res.ok) return [];
 			const data = (await res.json()) as {
 				result?: Record<string, Record<string, Array<{ name?: string }>>>;
@@ -102,7 +103,7 @@ export async function autoFetchAbi(
 ): Promise<AutoAbiResult> {
 	try {
 		const { whatsabi } = await import('@shazow/whatsabi');
-		const client = createPublicClient({ transport: http(rpcUrl) });
+		const client = makeClient(rpcUrl);
 
 		const result = await whatsabi.autoload(address, {
 			provider: client,

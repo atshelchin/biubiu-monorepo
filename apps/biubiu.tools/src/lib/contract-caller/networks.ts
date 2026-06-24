@@ -5,6 +5,7 @@
  */
 import type { ChainInfo, ChainSearchResult } from './types.js';
 import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
+import { fetchWithTimeout } from './rpc-client.js';
 
 /** Default data-API base. The active URL is `getEthereumDataURL()` (overridable in
  *  「服务节点」 settings); this constant is the default + a stable test anchor. */
@@ -47,7 +48,7 @@ let _searchCache: ChainSearchResult[] | null = null;
 /** Load (and cache) the searchable chain index. */
 export async function loadChainIndex(): Promise<ChainSearchResult[]> {
 	if (_searchCache) return _searchCache;
-	const res = await fetch(`${getEthereumDataURL()}/index/fuse-chains.json`);
+	const res = await fetchWithTimeout(`${getEthereumDataURL()}/index/fuse-chains.json`);
 	if (!res.ok) return [];
 	const json = await res.json();
 	_searchCache = (json.data ?? []) as ChainSearchResult[];
@@ -93,7 +94,7 @@ export function extractRpcUrls(data: { rpc?: unknown }): string[] {
 
 /** Fetch full chain info for a chainId. Throws on failure. */
 export async function loadChainInfo(chainId: number): Promise<ChainInfo> {
-	const res = await fetch(`${getEthereumDataURL()}/chains/eip155-${chainId}.json`);
+	const res = await fetchWithTimeout(`${getEthereumDataURL()}/chains/eip155-${chainId}.json`);
 	if (!res.ok) throw new Error('Chain not found');
 	const data = await res.json();
 	const rpcUrls = extractRpcUrls(data);

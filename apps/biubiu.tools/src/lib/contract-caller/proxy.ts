@@ -7,8 +7,9 @@
  * beacon), EIP-1822 (UUPS), `implementation()` / `masterCopy()` getters
  * (incl. Gnosis Safe).
  */
-import { type Address, type Hex, createPublicClient, http, getAddress, isAddress } from 'viem';
+import { type Address, type Hex, createPublicClient, getAddress, isAddress } from 'viem';
 import type { ProxyInfo } from './types.js';
+import { makeClient } from './rpc-client.js';
 
 // EIP-1967 logic slot: keccak256('eip1967.proxy.implementation') - 1
 const EIP1967_IMPL = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
@@ -65,7 +66,7 @@ const NONE: ProxyInfo = { kind: 'none', implementation: null, label: '' };
 
 /** Probe an address for the supported proxy patterns. */
 export async function detectProxy(rpcUrl: string, address: Address): Promise<ProxyInfo> {
-	const client = createPublicClient({ transport: http(rpcUrl) });
+	const client = makeClient(rpcUrl);
 
 	const [code, implWord, beaconWord, proxiableWord] = await Promise.all([
 		client.getCode({ address }).catch(() => undefined),

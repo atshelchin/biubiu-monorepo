@@ -91,5 +91,10 @@
 	"br.summary.hint": "Agrega al menos una dirección y un token para comenzar",
 	"br.results.table.copied": "Copiado",
 	"br.lineEditor.upload": "Subir",
-	"br.lineEditor.statusBar.clear": "Limpiar"
+	"br.lineEditor.statusBar.clear": "Limpiar",
+	"br.execution.stop": "Detener",
+	"br.execution.stopping": "Deteniendo…",
+	"br.execution.elapsed": "Transcurrido {time}",
+	"br.execution.eta": "~{time} restante",
+	"br.summary.largeWarning": "Consulta grande (~{total} consultas): puede tardar varios minutos; puedes detenerla cuando quieras."
 }

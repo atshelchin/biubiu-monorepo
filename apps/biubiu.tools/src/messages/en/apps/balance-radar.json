@@ -91,5 +91,10 @@
 	"br.summary.hint": "Add at least one address and token to start",
 	"br.results.table.copied": "Copied",
 	"br.lineEditor.upload": "Upload",
-	"br.lineEditor.statusBar.clear": "Clear"
+	"br.lineEditor.statusBar.clear": "Clear",
+	"br.execution.stop": "Stop",
+	"br.execution.stopping": "Stopping…",
+	"br.execution.elapsed": "Elapsed {time}",
+	"br.execution.eta": "~{time} left",
+	"br.summary.largeWarning": "Large run (~{total} queries) — this can take several minutes; you can stop anytime."
 }

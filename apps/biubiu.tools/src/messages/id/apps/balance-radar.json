@@ -91,5 +91,10 @@
 	"br.summary.hint": "Tambahkan minimal satu alamat dan token untuk memulai",
 	"br.results.table.copied": "Tersalin",
 	"br.lineEditor.upload": "Unggah",
-	"br.lineEditor.statusBar.clear": "Bersihkan"
+	"br.lineEditor.statusBar.clear": "Bersihkan",
+	"br.execution.stop": "Hentikan",
+	"br.execution.stopping": "Menghentikan…",
+	"br.execution.elapsed": "Berlalu {time}",
+	"br.execution.eta": "sisa ~{time}",
+	"br.summary.largeWarning": "Proses besar (~{total} kueri) — bisa memakan beberapa menit; bisa dihentikan kapan saja."
 }

@@ -91,5 +91,10 @@
 	"br.summary.hint": "Добавьте хотя бы один адрес и токен, чтобы начать",
 	"br.results.table.copied": "Скопировано",
 	"br.lineEditor.upload": "Загрузить",
-	"br.lineEditor.statusBar.clear": "Очистить"
+	"br.lineEditor.statusBar.clear": "Очистить",
+	"br.execution.stop": "Остановить",
+	"br.execution.stopping": "Остановка…",
+	"br.execution.elapsed": "Прошло {time}",
+	"br.execution.eta": "осталось ~{time}",
+	"br.summary.largeWarning": "Большой запуск (~{total} запросов) — может занять несколько минут; можно остановить в любой момент."
 }

@@ -15,6 +15,7 @@ import type {
 } from './types';
 import { mergeNetworks, nativeToken } from './infra/networks';
 import { BalanceQuerySource } from './infra/source';
+import { runControl } from './infra/run-control';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
 
 export type Input = {
@@ -29,10 +30,18 @@ export function validate(input: Input): ValidatedInput {
     const customNetworks = (input.customNetworks ?? []).map((n) => ({ ...n, isCustom: true }));
     const { networks: registry } = mergeNetworks(customNetworks);
 
-    const addresses = input.addresses
-        .split(/[,\n]/)
-        .map((a) => a.trim())
-        .filter((a) => a.startsWith('0x') && a.length === 42);
+    // Parse, validate, and de-duplicate (case-insensitive) so 100k pasted rows
+    // with repeats don't turn into wasted RPC calls.
+    const seen = new Set<string>();
+    const addresses: string[] = [];
+    for (const raw of input.addresses.split(/[,\n]/)) {
+        const a = raw.trim();
+        if (!a.startsWith('0x') || a.length !== 42) continue;
+        const key = a.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        addresses.push(a);
+    }
 
     const networks = input.networks.filter((n) => registry[n]);
 
@@ -94,9 +103,22 @@ async function* run(
 
     const startTime = Date.now();
 
-    const CHUNK_SIZE = 500;
+    // 200 addresses per multicall: one eth_call carries the whole chunk, but kept
+    // modest so a single response stays within public-RPC gas/size limits (500 was
+    // rejected by weaker endpoints). The vendor pool retries failed chunks elsewhere.
+    const CHUNK_SIZE = 200;
     const source = new BalanceQuerySource(addresses, tokensByNetwork, customNetworks, CHUNK_SIZE);
     const hub = await createTaskHub();
+
+    // Scale worker concurrency with the number of networks so per-network RPC
+    // pools aren't starved by a fixed global cap; per-endpoint rate limiting in
+    // the vendor pool is the safety valve against hammering any single RPC.
+    const networkCount = Math.max(1, networks.length);
+    const concurrency = {
+        min: 1,
+        initial: Math.min(12, Math.max(3, networkCount * 2)),
+        max: Math.min(24, Math.max(6, networkCount * 4)),
+    };
 
     // Compute merkle root from the chunked jobs for idempotent lookup
     const jobs = source.getData();
@@ -109,9 +131,7 @@ async function* run(
     let task;
 
     if (existing) {
-        const resumed = await hub.resumeTask(existing.id, source, {
-            concurrency: { min: 1, max: 6, initial: 3 },
-        });
+        const resumed = await hub.resumeTask(existing.id, source, { concurrency });
         if (resumed) {
             task = resumed;
             isResume = true;
@@ -123,7 +143,7 @@ async function* run(
         task = await hub.createTask({
             name: `Balance Query - ${new Date().toISOString()}`,
             source,
-            concurrency: { min: 1, max: 6, initial: 3 },
+            concurrency,
         });
         ctx.info(`Created task ${task.id} with ${jobs.length} jobs (${totalQueries} total queries)`);
     }
@@ -237,8 +257,17 @@ async function* run(
         // Outer loop: retry on task-level failure
         // Inner loop: poll interrupts while task is running
         let done = false;
+        let userAborted = false;
         while (!done) {
             while (!taskCompleted) {
+                // User pressed Stop: halt the task, keep whatever we've collected.
+                if (runControl.aborted) {
+                    ctx.info('Stopped by user — returning partial results', 'warning');
+                    await task.stop();
+                    userAborted = true;
+                    break;
+                }
+
                 const interrupt = await interrupts.next(1000);
 
                 if (interrupt?.type === 'rate-limited') {
@@ -261,7 +290,9 @@ async function* run(
                 }
             }
 
-            if (!taskError) {
+            if (userAborted) {
+                done = true;
+            } else if (!taskError) {
                 done = true;
             } else {
                 const err = taskError as Error;

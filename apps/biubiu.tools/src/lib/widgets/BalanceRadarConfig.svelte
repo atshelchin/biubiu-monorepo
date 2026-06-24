@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { t } from '$lib/i18n';
+	import { t, formatNumber } from '$lib/i18n';
 	import { LineEditor, FileUploadModal } from '@shelchin/proeditor-sveltekit';
 	import type { NetworkInfo, TokenInfo } from '$lib/pda-apps/balance-radar/modules/config.js';
 	import AddNetworkModal from './AddNetworkModal.svelte';
@@ -113,6 +113,8 @@
 			selectedNetworks.reduce((sum, n) => sum + (selectedTokens[n]?.length ?? 0), 0),
 	);
 	const localCanExecute = $derived(localTotalQueries > 0);
+	// Heads-up (not a blocker) when a run is big enough to take minutes.
+	const isLargeRun = $derived(localTotalQueries > 50000);
 
 	// Lookup helpers
 	const networkByKey = $derived(
@@ -301,6 +303,13 @@
 			<div class="error-banner">
 				<strong>{t('br.error.title')}</strong>
 				<p>{errorMessage}</p>
+			</div>
+		{/if}
+
+		<!-- Large-run heads-up -->
+		{#if isLargeRun}
+			<div class="scale-warning">
+				{t('br.summary.largeWarning', { total: formatNumber(localTotalQueries) })}
 			</div>
 		{/if}
 
@@ -551,6 +560,16 @@
 	.summary-hint {
 		font-size: var(--text-sm);
 		color: var(--fg-subtle);
+	}
+
+	.scale-warning {
+		padding: var(--space-2) var(--space-3);
+		margin-bottom: var(--space-3);
+		background: var(--warning-subtle);
+		border: 1px solid var(--warning);
+		border-radius: var(--radius-md);
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
 	}
 
 	/* Button */

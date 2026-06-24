@@ -126,6 +126,8 @@
 			<BalanceRadarExecution
 				progress={page.execution.ctx.progress}
 				logs={page.execution.ctx.logs}
+				stopping={page.execution.ctx.stopping}
+				onStop={() => page.execution.stop({})}
 			/>
 		</div>
 	{/if}
@@ -134,8 +136,6 @@
 	{#if page.execution.ctx.status === 'success'}
 		<div use:fadeInUp={{ delay: 0 }}>
 			<BalanceRadarResults
-				results={page.execution.ctx.results}
-				failures={page.execution.ctx.failures}
 				duration={page.execution.ctx.duration}
 				sortField={page.execution.ctx.sortField}
 				sortDirection={page.execution.ctx.sortDirection}

@@ -91,5 +91,10 @@
 	"br.summary.hint": "Füge mindestens eine Adresse und ein Token hinzu, um zu starten",
 	"br.results.table.copied": "Kopiert",
 	"br.lineEditor.upload": "Hochladen",
-	"br.lineEditor.statusBar.clear": "Leeren"
+	"br.lineEditor.statusBar.clear": "Leeren",
+	"br.execution.stop": "Stoppen",
+	"br.execution.stopping": "Wird gestoppt…",
+	"br.execution.elapsed": "Verstrichen {time}",
+	"br.execution.eta": "noch ~{time}",
+	"br.summary.largeWarning": "Großer Lauf (~{total} Abfragen) — das kann einige Minuten dauern; du kannst jederzeit stoppen."
 }

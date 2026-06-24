@@ -91,5 +91,10 @@
 	"br.summary.hint": "開始するにはアドレスとトークンを 1 つ以上追加してください",
 	"br.results.table.copied": "コピーしました",
 	"br.lineEditor.upload": "アップロード",
-	"br.lineEditor.statusBar.clear": "クリア"
+	"br.lineEditor.statusBar.clear": "クリア",
+	"br.execution.stop": "停止",
+	"br.execution.stopping": "停止中…",
+	"br.execution.elapsed": "経過 {time}",
+	"br.execution.eta": "残り約 {time}",
+	"br.summary.largeWarning": "大量のクエリ（約 {total} 件）です。数分かかる場合があります。いつでも停止できます。"
 }

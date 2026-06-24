@@ -91,5 +91,10 @@
 	"br.summary.hint": "시작하려면 주소와 토큰을 하나 이상 추가하세요",
 	"br.results.table.copied": "복사됨",
 	"br.lineEditor.upload": "업로드",
-	"br.lineEditor.statusBar.clear": "지우기"
+	"br.lineEditor.statusBar.clear": "지우기",
+	"br.execution.stop": "중지",
+	"br.execution.stopping": "중지 중…",
+	"br.execution.elapsed": "경과 {time}",
+	"br.execution.eta": "약 {time} 남음",
+	"br.summary.largeWarning": "대규모 실행(~{total}건 조회) — 몇 분 걸릴 수 있으며 언제든 중지할 수 있습니다."
 }

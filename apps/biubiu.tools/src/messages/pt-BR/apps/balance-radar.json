@@ -91,5 +91,10 @@
 	"br.summary.hint": "Adicione pelo menos um endereço e um token para começar",
 	"br.results.table.copied": "Copiado",
 	"br.lineEditor.upload": "Enviar",
-	"br.lineEditor.statusBar.clear": "Limpar"
+	"br.lineEditor.statusBar.clear": "Limpar",
+	"br.execution.stop": "Parar",
+	"br.execution.stopping": "Parando…",
+	"br.execution.elapsed": "Decorrido {time}",
+	"br.execution.eta": "~{time} restante",
+	"br.summary.largeWarning": "Execução grande (~{total} consultas) — pode levar vários minutos; você pode parar a qualquer momento."
 }

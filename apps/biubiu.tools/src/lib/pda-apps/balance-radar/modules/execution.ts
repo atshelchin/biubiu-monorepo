@@ -2,6 +2,8 @@ import { defineModule } from '@shelchin/pagekit';
 import { z } from '@shelchin/pda';
 import { balanceRadarApp } from '../index.js';
 import { tokenSpecSchema, networkConfigSchema } from '../schema.js';
+import { resultsStore } from './results-store.svelte.js';
+import { runControl } from '../infra/run-control.js';
 import type { Adapter, InteractionRequest, InteractionResponse } from '@shelchin/pda';
 import type { BalanceFailure, NetworkTokenSelection, NetworkConfig } from '../types.js';
 
@@ -51,8 +53,12 @@ export const executionModule = defineModule({
 		status: 'idle' as ExecutionStatus,
 		progress: { current: 0, total: 0, status: '', percent: 0 } as ProgressState,
 		logs: [] as LogEntry[],
-		results: [] as ResultEntry[],
-		failures: [] as BalanceFailure[],
+		// Heavy result rows/failures live in resultsStore ($state.raw), NOT here —
+		// ctx is deep-proxied by PageKit and must stay light. These scalars mirror
+		// the store so the UI can show counts/stat pills cheaply.
+		resultCount: 0,
+		failureCount: 0,
+		stopping: false,
 		duration: 0,
 		errorMessage: '',
 
@@ -91,12 +97,15 @@ export const executionModule = defineModule({
 				// Reset state
 				ctx.status = 'running';
 				ctx.logs = [];
-				ctx.results = [];
-				ctx.failures = [];
+				ctx.resultCount = 0;
+				ctx.failureCount = 0;
+				ctx.stopping = false;
 				ctx.duration = 0;
 				ctx.errorMessage = '';
 				ctx.showFailures = false;
 				ctx.progress = { current: 0, total: 0, status: 'Preparing...', percent: 0 };
+				resultsStore.clear();
+				runControl.reset();
 
 				// Create adapter that bridges PDA events to Pagekit ctx
 				const adapter: Adapter<PDAInput, PDAOutput> = {
@@ -148,9 +157,12 @@ export const executionModule = defineModule({
 
 				if (executionResult.success && executionResult.data) {
 					const data = executionResult.data;
-					ctx.results = data.results;
-					ctx.failures = data.failures ?? [];
+					const failures = data.failures ?? [];
+					resultsStore.set(data.results, failures);
+					ctx.resultCount = data.results.length;
+					ctx.failureCount = failures.length;
 					ctx.duration = data.stats.duration;
+					ctx.stopping = false;
 					ctx.status = 'success';
 					ctx.progress = {
 						current: data.stats.total,
@@ -167,6 +179,7 @@ export const executionModule = defineModule({
 					};
 				} else {
 					ctx.errorMessage = executionResult.error ?? 'Unknown error';
+					ctx.stopping = false;
 					ctx.status = 'error';
 
 					return {
@@ -226,17 +239,26 @@ export const executionModule = defineModule({
 			description: 'Export results as CSV file download',
 			input: z.object({}),
 			output: z.object({ rowCount: z.number() }),
-			execute({ ctx }) {
-				const rows = [
-					['Address', 'Network', 'Token', 'Contract', 'Balance'].join(','),
-					...ctx.results.map((r) =>
-						[r.address, r.network, r.symbol, r.tokenAddress ?? 'native', r.balance].join(','),
-					),
-				];
-				const csv = rows.join('\n');
+			execute() {
+				const rows = resultsStore.rows;
+
+				// Build the file as an array of string chunks so we never hold a
+				// single multi-hundred-MB string in memory; the Blob constructor
+				// concatenates the parts. At millions of rows a single join() OOMs.
+				const CHUNK = 5000;
+				const parts: string[] = ['Address,Network,Token,Contract,Balance\n'];
+				for (let i = 0; i < rows.length; i += CHUNK) {
+					let s = '';
+					const end = Math.min(i + CHUNK, rows.length);
+					for (let j = i; j < end; j++) {
+						const r = rows[j];
+						s += `${csvCell(r.address)},${csvCell(r.network)},${csvCell(r.symbol)},${csvCell(r.tokenAddress ?? 'native')},${csvCell(r.balance)}\n`;
+					}
+					parts.push(s);
+				}
 
 				if (typeof window !== 'undefined') {
-					const blob = new Blob([csv], { type: 'text/csv' });
+					const blob = new Blob(parts, { type: 'text/csv;charset=utf-8' });
 					const url = URL.createObjectURL(blob);
 					const a = document.createElement('a');
 					a.href = url;
@@ -245,7 +267,16 @@ export const executionModule = defineModule({
 					URL.revokeObjectURL(url);
 				}
 
-				return { rowCount: ctx.results.length };
+				return { rowCount: rows.length };
+			},
+		},
+
+		stop: {
+			description: 'Stop the current run and keep partial results',
+			input: z.object({}),
+			execute({ ctx }) {
+				runControl.abort();
+				ctx.stopping = true;
 			},
 		},
 
@@ -256,12 +287,28 @@ export const executionModule = defineModule({
 				ctx.status = 'idle';
 				ctx.progress = { current: 0, total: 0, status: '', percent: 0 };
 				ctx.logs = [];
-				ctx.results = [];
-				ctx.failures = [];
+				ctx.resultCount = 0;
+				ctx.failureCount = 0;
+				ctx.stopping = false;
 				ctx.duration = 0;
 				ctx.errorMessage = '';
 				ctx.showFailures = false;
+				// Start the next run with a clean results view.
+				ctx.sortField = 'network';
+				ctx.sortDirection = 'asc';
+				ctx.filterNetwork = '';
+				ctx.searchQuery = '';
+				resultsStore.clear();
+				runControl.reset();
 			},
 		},
 	},
 });
+
+/** Minimal RFC-4180 CSV escaping for fields that may contain , " or newlines. */
+function csvCell(value: string): string {
+	if (/[",\n\r]/.test(value)) {
+		return `"${value.replace(/"/g, '""')}"`;
+	}
+	return value;
+}

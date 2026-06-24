@@ -91,5 +91,10 @@
 	"br.summary.hint": "Thêm ít nhất một địa chỉ và token để bắt đầu",
 	"br.results.table.copied": "Đã sao chép",
 	"br.lineEditor.upload": "Tải lên",
-	"br.lineEditor.statusBar.clear": "Xóa"
+	"br.lineEditor.statusBar.clear": "Xóa",
+	"br.execution.stop": "Dừng",
+	"br.execution.stopping": "Đang dừng…",
+	"br.execution.elapsed": "Đã dùng {time}",
+	"br.execution.eta": "còn ~{time}",
+	"br.summary.largeWarning": "Lượt chạy lớn (~{total} truy vấn) — có thể mất vài phút; bạn có thể dừng bất cứ lúc nào."
 }

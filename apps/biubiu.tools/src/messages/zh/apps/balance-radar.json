@@ -91,5 +91,10 @@
 	"br.summary.hint": "输入至少一个地址并选择代币后即可开始查询",
 	"br.results.table.copied": "已复制",
 	"br.lineEditor.upload": "上传",
-	"br.lineEditor.statusBar.clear": "清空"
+	"br.lineEditor.statusBar.clear": "清空",
+	"br.execution.stop": "停止",
+	"br.execution.stopping": "停止中…",
+	"br.execution.elapsed": "已用 {time}",
+	"br.execution.eta": "预计剩余 {time}",
+	"br.summary.largeWarning": "查询量较大（约 {total} 次），可能需要数分钟，运行中可随时停止。"
 }

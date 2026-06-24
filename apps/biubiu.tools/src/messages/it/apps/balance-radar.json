@@ -91,5 +91,10 @@
 	"br.summary.hint": "Aggiungi almeno un indirizzo e un token per iniziare",
 	"br.results.table.copied": "Copiato",
 	"br.lineEditor.upload": "Carica",
-	"br.lineEditor.statusBar.clear": "Svuota"
+	"br.lineEditor.statusBar.clear": "Svuota",
+	"br.execution.stop": "Ferma",
+	"br.execution.stopping": "Arresto…",
+	"br.execution.elapsed": "Trascorso {time}",
+	"br.execution.eta": "~{time} rimanenti",
+	"br.summary.largeWarning": "Esecuzione ampia (~{total} query) — può richiedere alcuni minuti; puoi fermarla in qualsiasi momento."
 }

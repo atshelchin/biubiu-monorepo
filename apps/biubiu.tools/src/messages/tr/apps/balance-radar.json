@@ -91,5 +91,10 @@
 	"br.summary.hint": "Başlamak için en az bir adres ve token ekleyin",
 	"br.results.table.copied": "Kopyalandı",
 	"br.lineEditor.upload": "Yükle",
-	"br.lineEditor.statusBar.clear": "Temizle"
+	"br.lineEditor.statusBar.clear": "Temizle",
+	"br.execution.stop": "Durdur",
+	"br.execution.stopping": "Durduruluyor…",
+	"br.execution.elapsed": "Geçen {time}",
+	"br.execution.eta": "~{time} kaldı",
+	"br.summary.largeWarning": "Büyük çalışma (~{total} sorgu) — birkaç dakika sürebilir; istediğin zaman durdurabilirsin."
 }

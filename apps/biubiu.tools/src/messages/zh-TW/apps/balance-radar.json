@@ -91,5 +91,10 @@
 	"br.summary.hint": "輸入至少一個地址並選擇代幣即可開始查詢",
 	"br.results.table.copied": "已複製",
 	"br.lineEditor.upload": "上傳",
-	"br.lineEditor.statusBar.clear": "清空"
+	"br.lineEditor.statusBar.clear": "清空",
+	"br.execution.stop": "停止",
+	"br.execution.stopping": "停止中…",
+	"br.execution.elapsed": "已用 {time}",
+	"br.execution.eta": "預計剩餘 {time}",
+	"br.summary.largeWarning": "查詢量較大（約 {total} 次），可能需要數分鐘，執行中可隨時停止。"
 }

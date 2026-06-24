@@ -89,7 +89,11 @@ export class RoomDO {
 
   private onMessage(ws: WebSocket, text: string): void {
     if (text.length > MAX_FRAME_BYTES) {
-      this.send(ws, { t: "error", code: "too-large", message: "frame too large" });
+      this.send(ws, {
+        t: "error",
+        code: "too-large",
+        message: "frame too large",
+      });
       return;
     }
 

@@ -124,6 +124,14 @@ describe('safety code (SAS)', () => {
 	});
 });
 
+describe('avatar', () => {
+	it('is deterministic for the same key and non-empty', async () => {
+		const av = await computeAvatar('SOME_PUBKEY');
+		expect(av).toBeTruthy();
+		expect(await computeAvatar('SOME_PUBKEY')).toBe(av);
+	});
+});
+
 describe('challenge', () => {
 	it('binds room, role and ephemeral key', () => {
 		const c = buildChallenge(ROOM, 'a', 'PUBKEY123');

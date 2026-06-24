@@ -104,7 +104,13 @@ vi.mock('./transport.js', () => ({ ChatTransport: H.FakeTransport }));
 
 // ── Mock the site wallet store (avoids pulling browser-only wallet backends) ──
 const W = vi.hoisted(() => ({ wallet: null as unknown }));
-vi.mock('$lib/wallet', () => ({ walletStore: { get activeWallet() { return W.wallet; } } }));
+vi.mock('$lib/wallet', () => ({
+	walletStore: {
+		get activeWallet() {
+			return W.wallet;
+		}
+	}
+}));
 
 import { ChatStore } from './store.svelte.js';
 
@@ -116,7 +122,10 @@ const eoaWallet = {
 	kind: 'inject',
 	address: account.address,
 	accountType: 'smart-contract',
-	signMessage: async (message: string) => ({ ok: true, signature: await account.signMessage({ message }) })
+	signMessage: async (message: string) => ({
+		ok: true,
+		signature: await account.signMessage({ message })
+	})
 };
 // A smart-contract wallet → signature can't be ecrecovered (unverified; SAS is authority).
 const scWallet = {
@@ -233,7 +242,8 @@ describe('ChatStore — recovery & limits', () => {
 		ta.open = true; // reconnected
 		ta.cb.onState('open');
 		await vi.waitFor(() => {
-			if (!B.messages.some((m) => m.text === 'queued while offline')) throw new Error('not flushed');
+			if (!B.messages.some((m) => m.text === 'queued while offline'))
+				throw new Error('not flushed');
 		});
 		expect(A.messages.find((m) => m.dir === 'out')?.status).toBe('sent');
 	});

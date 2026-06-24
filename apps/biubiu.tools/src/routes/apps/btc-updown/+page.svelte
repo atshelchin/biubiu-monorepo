@@ -1530,6 +1530,10 @@
 	{/if}
 
 	<!-- Mobile drawer backdrop -->
+	<!-- overlay-portal-exempt: page-level mobile nav. The drawer is `.sidebar` woven into
+	     `.page-layout` (this is only its dimming backdrop); it's not a reusable/nestable
+	     overlay and never sits under a transformed modal ancestor, so portaling it out of
+	     the layout grid would break it. -->
 	{#if mobileDrawerOpen}
 		<div
 			class="mobile-drawer-backdrop"

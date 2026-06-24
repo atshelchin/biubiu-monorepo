@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { portal } from '$lib/actions/portal';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -33,35 +34,38 @@
 			};
 		}
 	});
+
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<!-- Backdrop -->
-	<div class="modal-backdrop" onclick={onClose} role="presentation" style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset})` : ''}></div>
+	<div use:portal>
+		<!-- Backdrop -->
+		<div class="modal-backdrop" onclick={onClose} role="presentation" style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset})` : ''}></div>
 
-	<!-- Modal Panel -->
-	<div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset + 1})` : ''}>
-		<!-- Drag handle for mobile -->
-		<div class="modal-handle"></div>
+		<!-- Modal Panel -->
+		<div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} style={zOffset ? `z-index: calc(var(--z-modal) + ${zOffset + 1})` : ''}>
+			<!-- Drag handle for mobile -->
+			<div class="modal-handle"></div>
 
-		<!-- Header -->
-		{#if title}
-			<div class="modal-header">
-				<h2 id="modal-title" class="modal-title">{title}</h2>
-				<button class="modal-close" onclick={onClose} aria-label="Close">
-					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="18" y1="6" x2="6" y2="18"/>
-						<line x1="6" y1="6" x2="18" y2="18"/>
-					</svg>
-				</button>
+			<!-- Header -->
+			{#if title}
+				<div class="modal-header">
+					<h2 id="modal-title" class="modal-title">{title}</h2>
+					<button class="modal-close" onclick={onClose} aria-label="Close">
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<line x1="18" y1="6" x2="6" y2="18"/>
+							<line x1="6" y1="6" x2="18" y2="18"/>
+						</svg>
+					</button>
+				</div>
+			{/if}
+
+			<!-- Content -->
+			<div class="modal-content">
+				{@render children()}
 			</div>
-		{/if}
-
-		<!-- Content -->
-		<div class="modal-content">
-			{@render children()}
 		</div>
 	</div>
 {/if}

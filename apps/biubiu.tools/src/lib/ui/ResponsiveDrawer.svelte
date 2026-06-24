@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { portal } from '$lib/actions/portal';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -36,29 +37,31 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<!-- Backdrop -->
-	<div class="drawer-backdrop" onclick={onClose} role="presentation"></div>
+	<div use:portal>
+		<!-- Backdrop -->
+		<div class="drawer-backdrop" onclick={onClose} role="presentation"></div>
 
-	<!-- Drawer Panel -->
-	<div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'drawer-title' : undefined}>
-		<!-- Header -->
-		<div class="drawer-header">
-			{#if title}
-				<h2 id="drawer-title" class="drawer-title">{title}</h2>
-			{:else}
-				<div></div>
-			{/if}
-			<button class="drawer-close" onclick={onClose} aria-label="Close">
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<line x1="18" y1="6" x2="6" y2="18"/>
-					<line x1="6" y1="6" x2="18" y2="18"/>
-				</svg>
-			</button>
-		</div>
+		<!-- Drawer Panel -->
+		<div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby={title ? 'drawer-title' : undefined}>
+			<!-- Header -->
+			<div class="drawer-header">
+				{#if title}
+					<h2 id="drawer-title" class="drawer-title">{title}</h2>
+				{:else}
+					<div></div>
+				{/if}
+				<button class="drawer-close" onclick={onClose} aria-label="Close">
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="18" y1="6" x2="6" y2="18"/>
+						<line x1="6" y1="6" x2="18" y2="18"/>
+					</svg>
+				</button>
+			</div>
 
-		<!-- Content -->
-		<div class="drawer-content">
-			{@render children()}
+			<!-- Content -->
+			<div class="drawer-content">
+				{@render children()}
+			</div>
 		</div>
 	</div>
 {/if}

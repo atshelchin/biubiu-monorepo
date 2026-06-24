@@ -6,6 +6,7 @@
 	 */
 
 	import { t } from '$lib/i18n';
+	import { portal } from '$lib/actions/portal';
 
 	interface Props {
 		/** Called with the scanned QR code value */
@@ -81,7 +82,7 @@
 
 {#if scanning}
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="scan-overlay" role="presentation" onclick={stopScan}>
+	<div class="scan-overlay" use:portal role="presentation" onclick={stopScan}>
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="scan-modal" onclick={(e) => e.stopPropagation()}>
 			<div class="scan-header">

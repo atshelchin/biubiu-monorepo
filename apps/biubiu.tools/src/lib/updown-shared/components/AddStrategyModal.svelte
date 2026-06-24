@@ -2,6 +2,7 @@
 	import type { ValidationProgress } from '$lib/btc-updown-strategies';
 	import type { TranslateFn } from '../types.js';
 	import { VALIDATE_STEP_KEYS } from '../constants.js';
+	import { portal } from '$lib/actions/portal';
 
 	interface Props {
 		open: boolean;
@@ -34,7 +35,7 @@
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="modal-overlay" onclick={handleClose}>
+	<div class="modal-overlay" use:portal onclick={handleClose}>
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 		<div class="modal" onclick={(e) => e.stopPropagation()}>
 			<button class="modal-close" aria-label={t('btcUpdown.strategy.close')} disabled={validating} onclick={handleClose}>

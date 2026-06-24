@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
+	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { CHAINS } from '$lib/wallet/infra/chains.js';
 	import { PROVIDER_ORDER, PROVIDERS } from '$lib/wallet/infra/providers.js';
 	import {
@@ -26,6 +27,14 @@
 			saved = false;
 		}
 	});
+
+	// Count active customisations so collapsed groups still flag "you changed something here".
+	const providerCount = $derived(
+		PROVIDER_ORDER.filter((id) => (local.providerKeys[id] ?? '').trim()).length
+	);
+	const networkCount = $derived(
+		Object.values(local.networks).filter((n) => n?.rpcURL).length
+	);
 
 	function rpcOverride(chainId: number): string {
 		return local.networks[chainId]?.rpcURL ?? '';
@@ -56,10 +65,9 @@
 
 <ResponsiveModal {open} {onClose} title={t('settings.serviceNodes')} zOffset={2}>
 	<div class="sn">
-		<!-- Service Endpoints -->
-		<section class="sn-group">
-			<div class="sn-group-title">{t('settings.sn.endpoints')}</div>
-
+		<!-- Service Endpoints — open by default: the primary config -->
+		<Disclosure title={t('settings.sn.endpoints')} open>
+			<div class="sn-group">
 			<label class="sn-field">
 				<span class="sn-label">{t('settings.sn.bundler')}</span>
 				<input
@@ -103,11 +111,12 @@
 					placeholder={DEFAULT_SERVICE_ENDPOINTS.passkeyIndexURL}
 				/>
 			</label>
-		</section>
+			</div>
+		</Disclosure>
 
-		<!-- RPC Providers -->
-		<section class="sn-group">
-			<div class="sn-group-title">{t('settings.sn.providers')}</div>
+		<!-- RPC Providers — collapsed: advanced, optional API keys -->
+		<Disclosure title={t('settings.sn.providers')} marked={providerCount > 0}>
+			<div class="sn-group">
 			<p class="sn-hint">{t('settings.sn.providerHint')}</p>
 
 			{#each PROVIDER_ORDER as id}
@@ -126,12 +135,12 @@
 					/>
 				</label>
 			{/each}
-		</section>
+			</div>
+		</Disclosure>
 
-		<!-- Per-network RPC override -->
-		<section class="sn-group">
-			<div class="sn-group-title">{t('settings.sn.perNetwork')}</div>
-
+		<!-- Per-network RPC override — collapsed: one input per chain -->
+		<Disclosure title={t('settings.sn.perNetwork')} marked={networkCount > 0}>
+			<div class="sn-group">
 			{#each CHAINS as chain}
 				<label class="sn-field">
 					<span class="sn-label">{chain.name}</span>
@@ -145,7 +154,8 @@
 					/>
 				</label>
 			{/each}
-		</section>
+			</div>
+		</Disclosure>
 
 		<div class="sn-actions">
 			<button class="sn-btn ghost" onclick={reset}>{t('settings.sn.reset')}</button>
@@ -158,19 +168,13 @@
 	.sn {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
+		gap: var(--space-3);
 	}
 
 	.sn-group {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-3);
-	}
-
-	.sn-group-title {
-		font-size: var(--text-sm);
-		font-weight: var(--weight-semibold);
-		color: var(--fg-base);
 	}
 
 	.sn-hint {
@@ -212,6 +216,9 @@
 		color: var(--fg-base);
 		font-size: var(--text-sm);
 		font-family: var(--font-mono);
+		/* Long URLs truncate cleanly with an ellipsis when unfocused instead of
+		   clipping mid-string; on focus the field scrolls normally. */
+		text-overflow: ellipsis;
 		transition: border-color var(--motion-fast) var(--easing);
 	}
 	.sn-input::placeholder {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { browser } from '$app/environment';
+	import { portal } from '$lib/actions/portal';
 
 	interface Props {
 		open: boolean;
@@ -42,27 +43,29 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<div class="confirm-backdrop" onclick={onCancel} role="presentation"></div>
-	<div
-		class="confirm-panel"
-		class:forever-theme={variant === 'forever'}
-		role="alertdialog"
-		aria-modal="true"
-		aria-labelledby="confirm-title"
-	>
-		<h3 id="confirm-title" class="confirm-title">{title}</h3>
-		<p class="confirm-message">{message}</p>
-		<div class="confirm-actions">
-			<button class="confirm-btn cancel" onclick={onCancel}>
-				{cancelText ?? t('common.cancel')}
-			</button>
-			<button
-				class="confirm-btn confirm"
-				class:destructive
-				onclick={onConfirm}
-			>
-				{confirmText ?? t('common.confirm')}
-			</button>
+	<div use:portal>
+		<div class="confirm-backdrop" onclick={onCancel} role="presentation"></div>
+		<div
+			class="confirm-panel"
+			class:forever-theme={variant === 'forever'}
+			role="alertdialog"
+			aria-modal="true"
+			aria-labelledby="confirm-title"
+		>
+			<h3 id="confirm-title" class="confirm-title">{title}</h3>
+			<p class="confirm-message">{message}</p>
+			<div class="confirm-actions">
+				<button class="confirm-btn cancel" onclick={onCancel}>
+					{cancelText ?? t('common.cancel')}
+				</button>
+				<button
+					class="confirm-btn confirm"
+					class:destructive
+					onclick={onConfirm}
+				>
+					{confirmText ?? t('common.confirm')}
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

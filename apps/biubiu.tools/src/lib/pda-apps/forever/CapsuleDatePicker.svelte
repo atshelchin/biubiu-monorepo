@@ -6,6 +6,7 @@
 	 * datetime-local string ("YYYY-MM-DDT09:00") so the store's unlockUnix parsing is unchanged.
 	 */
 	import { locale, formatDate } from '$lib/i18n';
+	import { portal } from '$lib/actions/portal';
 
 	interface Props {
 		value?: string;
@@ -16,6 +17,36 @@
 
 	let open = $state(false);
 	let root = $state<HTMLElement>();
+	let popEl = $state<HTMLElement>();
+
+	// The popup is portaled to <body> so it can't be clipped by an `overflow`
+	// ancestor. That also drops it out of the `.forever` scope, so its position AND
+	// the scoped theme vars it relies on are injected inline (read from the trigger,
+	// which IS in scope). Globals like --space-*/--radius-* still resolve at :root.
+	const FOREVER_VARS = ['--paper', '--edge', '--seal', '--seal-soft', '--ink', '--ink-soft', '--serif'];
+	let popStyle = $state('');
+	function updatePopPos() {
+		if (!root) return;
+		const r = root.getBoundingClientRect();
+		const w = 280;
+		const top = Math.round(r.bottom + 8);
+		const left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - w - 8)));
+		const cs = getComputedStyle(root);
+		const vars = FOREVER_VARS.map((v) => `${v}:${cs.getPropertyValue(v)}`).join(';');
+		popStyle = `top:${top}px;left:${left}px;${vars}`;
+	}
+
+	// Reposition while open so the popup tracks the trigger through scroll/resize.
+	$effect(() => {
+		if (!open) return;
+		const onMove = () => updatePopPos();
+		window.addEventListener('scroll', onMove, true);
+		window.addEventListener('resize', onMove);
+		return () => {
+			window.removeEventListener('scroll', onMove, true);
+			window.removeEventListener('resize', onMove);
+		};
+	});
 
 	const pad = (n: number) => String(n).padStart(2, '0');
 	const startOfToday = () => {
@@ -39,7 +70,10 @@
 	}
 	function toggle() {
 		if (disabled) return;
-		if (!open) initView();
+		if (!open) {
+			initView();
+			updatePopPos();
+		}
 		open = !open;
 	}
 
@@ -107,7 +141,11 @@
 	}
 
 	function onWindowPointerDown(e: PointerEvent) {
-		if (open && root && !root.contains(e.target as Node)) open = false;
+		if (!open) return;
+		const target = e.target as Node;
+		// popEl is portaled out of `root`, so check both before treating a click as "outside".
+		if (root?.contains(target) || popEl?.contains(target)) return;
+		open = false;
 	}
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') open = false;
@@ -130,7 +168,7 @@
 	</button>
 
 	{#if open}
-		<div class="dp-pop" role="dialog" aria-label={placeholder}>
+		<div class="dp-pop" use:portal bind:this={popEl} style={popStyle} role="dialog" aria-label={placeholder}>
 			<div class="dp-head">
 				<button type="button" class="dp-nav" onclick={prevMonth} aria-label="previous month">←</button>
 				<span class="dp-month">{monthLabel}</span>
@@ -181,10 +219,9 @@
 		cursor: default;
 	}
 	.dp-pop {
-		position: absolute;
-		top: calc(100% + 8px);
-		left: 0;
-		z-index: 40;
+		/* Portaled to <body>; positioned via inline top/left from the trigger rect. */
+		position: fixed;
+		z-index: 9999;
 		width: 280px;
 		padding: var(--space-3);
 		background: var(--paper);

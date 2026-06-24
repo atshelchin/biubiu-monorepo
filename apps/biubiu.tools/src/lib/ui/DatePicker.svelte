@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { preferences, t } from '$lib/i18n';
+	import { portal } from '$lib/actions/portal';
 	import type { Snippet } from 'svelte';
 
 	type DateRange = { from: string; to: string };
@@ -337,16 +338,6 @@
 			// Calculate panel position
 			updatePanelPos();
 		}
-	}
-
-	/** Svelte action: moves the node to document.body (escapes ancestor transform/stacking) */
-	function portal(node: HTMLElement) {
-		document.body.appendChild(node);
-		return {
-			destroy() {
-				node.remove();
-			}
-		};
 	}
 
 	function handleKeydown(e: KeyboardEvent) {

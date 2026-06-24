@@ -13,6 +13,7 @@
 		type TimeFormat,
 		type Settings
 	} from '$lib/settings';
+	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import ServiceNodesModal from '$lib/widgets/ServiceNodesModal.svelte';
 	import { CURRENCIES } from '$lib/wallet/infra/currency-catalog.js';
 
@@ -76,6 +77,14 @@
 	// Current UI language (resolved server-side, exposed via the i18n store)
 	const currentLocale = $derived(locale.value as string);
 
+	// Collapsed-state previews (built from existing data — no new i18n keys).
+	const languageSummary = $derived(LOCALE_NAMES[currentLocale as AppLanguage] ?? '');
+	const themeLabel = $derived(
+		settings.theme === 'dark' ? t('settings.theme.dark') : t('settings.theme.light')
+	);
+	const appearanceSummary = $derived(`${themeLabel} · ${settings.textScale.toUpperCase()}`);
+	const formatSummary = $derived(`${numExample(settings.numberLocale)} · ${settings.currency}`);
+
 	function handleSetLocale(code: AppLanguage) {
 		if (!browser || code === currentLocale) return;
 		// Persist for SSR; a reload re-renders the whole page in the new locale.
@@ -121,15 +130,71 @@
 </script>
 
 <div class="settings-panel">
-	<!-- Language Section -->
-	<section class="settings-section">
-		<div class="section-label">
+	<!-- Appearance — open by default: small, frequently-toggled controls -->
+	<Disclosure title={t('settings.appearance')} summary={appearanceSummary} open>
+		{#snippet icon()}
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="3"/>
+				<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+			</svg>
+		{/snippet}
+
+		<div class="body-stack">
+			<!-- Theme -->
+			<div class="setting-row">
+				<span class="setting-label">{t('settings.theme.title')}</span>
+				<div class="button-group compact">
+					<button
+						class="option-btn icon-btn"
+						class:active={settings.theme === 'light'}
+						onclick={() => handleSetTheme('light')}
+						title={t('settings.theme.light')}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="4"/>
+							<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+						</svg>
+					</button>
+					<button
+						class="option-btn icon-btn"
+						class:active={settings.theme === 'dark'}
+						onclick={() => handleSetTheme('dark')}
+						title={t('settings.theme.dark')}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+
+			<!-- Text Scale -->
+			<div class="setting-row">
+				<span class="setting-label">{t('settings.textSize')}</span>
+				<div class="text-scale-group">
+					{#each textScales as scale}
+						<button
+							class="scale-btn"
+							class:active={settings.textScale === scale}
+							onclick={() => handleSetTextScale(scale)}
+							title={scale.toUpperCase()}
+						>
+							<span class="scale-letter" style="font-size: {scaleFontSizes[scale]}px;">A</span>
+						</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+	</Disclosure>
+
+	<!-- Language — collapsed: the 15-locale grid is the tallest block -->
+	<Disclosure title={t('settings.language')} summary={languageSummary}>
+		{#snippet icon()}
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<circle cx="12" cy="12" r="10"/>
 				<path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
 			</svg>
-			<span>{t('settings.language')}</span>
-		</div>
+		{/snippet}
 
 		<div class="lang-grid">
 			{#each SUPPORTED_LOCALES as code}
@@ -143,71 +208,11 @@
 				</button>
 			{/each}
 		</div>
-	</section>
+	</Disclosure>
 
-	<div class="section-divider"></div>
-
-	<!-- Appearance Section -->
-	<section class="settings-section">
-		<div class="section-label">
-			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<circle cx="12" cy="12" r="3"/>
-				<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-			</svg>
-			<span>{t('settings.appearance')}</span>
-		</div>
-
-		<!-- Theme -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.theme.title')}</span>
-			<div class="button-group compact">
-				<button
-					class="option-btn icon-btn"
-					class:active={settings.theme === 'light'}
-					onclick={() => handleSetTheme('light')}
-					title={t('settings.theme.light')}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="4"/>
-						<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-					</svg>
-				</button>
-				<button
-					class="option-btn icon-btn"
-					class:active={settings.theme === 'dark'}
-					onclick={() => handleSetTheme('dark')}
-					title={t('settings.theme.dark')}
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-					</svg>
-				</button>
-			</div>
-		</div>
-
-		<!-- Text Scale -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.textSize')}</span>
-			<div class="text-scale-group">
-				{#each textScales as scale}
-					<button
-						class="scale-btn"
-						class:active={settings.textScale === scale}
-						onclick={() => handleSetTextScale(scale)}
-						title={scale.toUpperCase()}
-					>
-						<span class="scale-letter" style="font-size: {scaleFontSizes[scale]}px;">A</span>
-					</button>
-				{/each}
-			</div>
-		</div>
-	</section>
-
-	<div class="section-divider"></div>
-
-	<!-- Format Section -->
-	<section class="settings-section">
-		<div class="section-label">
+	<!-- Format — collapsed: number / date / time / currency -->
+	<Disclosure title={t('settings.format')} summary={formatSummary}>
+		{#snippet icon()}
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
 				<polyline points="14 2 14 8 20 8"/>
@@ -215,97 +220,93 @@
 				<line x1="16" y1="17" x2="8" y2="17"/>
 				<polyline points="10 9 9 9 8 9"/>
 			</svg>
-			<span>{t('settings.format')}</span>
-		</div>
+		{/snippet}
 
-		<!-- Number Format -->
-		<div class="setting-row stacked">
-			<span class="setting-label">{t('settings.numberFormat')}</span>
-			<div class="format-grid">
-				{#each numberFormatOptions as opt}
-					<button
-						class="format-btn chip"
-						class:active={settings.numberLocale === opt.value}
-						onclick={() => handleSetNumberLocale(opt.value)}
-					>
-						{opt.label}
-					</button>
-				{/each}
+		<div class="body-stack">
+			<!-- Number Format -->
+			<div class="setting-row stacked">
+				<span class="setting-label">{t('settings.numberFormat')}</span>
+				<div class="format-grid">
+					{#each numberFormatOptions as opt}
+						<button
+							class="format-btn chip"
+							class:active={settings.numberLocale === opt.value}
+							onclick={() => handleSetNumberLocale(opt.value)}
+						>
+							{opt.label}
+						</button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
-		<!-- Date Format -->
-		<div class="setting-row stacked">
-			<span class="setting-label">{t('settings.dateFormat')}</span>
-			<div class="format-grid">
-				{#each dateFormatOptions as opt}
-					<button
-						class="format-btn chip"
-						class:active={settings.dateLocale === opt.value}
-						onclick={() => handleSetDateLocale(opt.value)}
-					>
-						{opt.label}
-					</button>
-				{/each}
+			<!-- Date Format -->
+			<div class="setting-row stacked">
+				<span class="setting-label">{t('settings.dateFormat')}</span>
+				<div class="format-grid">
+					{#each dateFormatOptions as opt}
+						<button
+							class="format-btn chip"
+							class:active={settings.dateLocale === opt.value}
+							onclick={() => handleSetDateLocale(opt.value)}
+						>
+							{opt.label}
+						</button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
-		<!-- Time Format -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.timeFormat')}</span>
-			<div class="format-group">
-				<button
-					class="format-btn"
-					class:active={settings.timeFormat === '24'}
-					onclick={() => handleSetTimeFormat('24')}
-				>
-					14:30
-				</button>
-				<button
-					class="format-btn"
-					class:active={settings.timeFormat === '12'}
-					onclick={() => handleSetTimeFormat('12')}
-				>
-					2:30 PM
-				</button>
-			</div>
-		</div>
-	</section>
-
-		<!-- Currency -->
-		<div class="setting-row">
-			<span class="setting-label">{t('settings.currency')}</span>
-			<select
-				class="currency-select"
-				value={settings.currency}
-				onchange={(e) => handleSetCurrency(e.currentTarget.value)}
-			>
-				{#each CURRENCIES as cur}
-					<option value={cur.code}>{cur.code} · {cur.name}</option>
-				{/each}
-			</select>
-		</div>
-
-		<div class="section-divider"></div>
-
-		<!-- Service Nodes Section -->
-		<section class="settings-section">
-			<div class="section-label">
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-					<rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-					<line x1="6" y1="6" x2="6.01" y2="6"/>
-					<line x1="6" y1="18" x2="6.01" y2="18"/>
-				</svg>
-				<span>{t('settings.serviceNodes')}</span>
-			</div>
+			<!-- Time Format -->
 			<div class="setting-row">
-				<span class="setting-label">{t('settings.sn.desc')}</span>
-				<button class="option-btn" onclick={() => (showServiceNodes = true)}>
-					{t('settings.sn.configure')}
-				</button>
+				<span class="setting-label">{t('settings.timeFormat')}</span>
+				<div class="format-group">
+					<button
+						class="format-btn"
+						class:active={settings.timeFormat === '24'}
+						onclick={() => handleSetTimeFormat('24')}
+					>
+						14:30
+					</button>
+					<button
+						class="format-btn"
+						class:active={settings.timeFormat === '12'}
+						onclick={() => handleSetTimeFormat('12')}
+					>
+						2:30 PM
+					</button>
+				</div>
 			</div>
-		</section>
+
+			<!-- Currency -->
+			<div class="setting-row">
+				<span class="setting-label">{t('settings.currency')}</span>
+				<select
+					class="currency-select"
+					value={settings.currency}
+					onchange={(e) => handleSetCurrency(e.currentTarget.value)}
+				>
+					{#each CURRENCIES as cur}
+						<option value={cur.code}>{cur.code} · {cur.name}</option>
+					{/each}
+				</select>
+			</div>
+		</div>
+	</Disclosure>
+
+	<!-- Service Nodes — navigation row into its own modal -->
+	<Disclosure
+		title={t('settings.serviceNodes')}
+		summary={t('settings.sn.desc')}
+		onActivate={() => (showServiceNodes = true)}
+	>
+		{#snippet icon()}
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+				<rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+				<line x1="6" y1="6" x2="6.01" y2="6"/>
+				<line x1="6" y1="18" x2="6.01" y2="18"/>
+			</svg>
+		{/snippet}
+	</Disclosure>
 </div>
 
 <ServiceNodesModal open={showServiceNodes} onClose={() => (showServiceNodes = false)} />
@@ -314,29 +315,14 @@
 	.settings-panel {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
+		gap: var(--space-3);
 	}
 
-	/* Section */
-	.settings-section {
+	/* Stacks the rows inside a disclosure body */
+	.body-stack {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-	}
-
-	.section-label {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		color: var(--fg-muted);
-	}
-
-	.section-divider {
-		height: 1px;
-		background: var(--border-subtle);
-		margin: var(--space-4) 0;
 	}
 
 	/* Setting Row */
@@ -560,6 +546,4 @@
 		outline: none;
 		border-color: var(--accent);
 	}
-
-
 </style>

@@ -6,6 +6,7 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import { createUrDecoder } from '$lib/pda-apps/wallet-generator/crypto/sign';
+	import { portal } from '$lib/actions/portal';
 
 	interface ScannedUr {
 		type: string;
@@ -104,7 +105,7 @@
 
 {#if scanning}
 	<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-	<div class="scan-overlay" role="presentation" onclick={cancel}>
+	<div class="scan-overlay" use:portal role="presentation" onclick={cancel}>
 		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
 		<div class="scan-modal" onclick={(e) => e.stopPropagation()}>
 			<div class="scan-header">

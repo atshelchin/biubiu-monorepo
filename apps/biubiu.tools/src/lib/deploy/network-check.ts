@@ -10,7 +10,6 @@
  */
 
 import { CREATE2_PROXY } from './create2.js';
-import { getUserOperationGasPrice } from '$lib/wallet/infra/bundler-client.js';
 
 // ─── Required contract addresses ───
 
@@ -122,20 +121,7 @@ async function checkP256Precompile(rpcUrl: string): Promise<boolean> {
 	}
 }
 
-/**
- * Check if the bundler supports this chain via pimlico_getUserOperationGasPrice.
- * Direct through the shared infra bundler client (vela bundler, no proxy).
- */
-async function checkBundlerSupport(chainId: number): Promise<boolean> {
-	try {
-		const tiers = await getUserOperationGasPrice(chainId);
-		return tiers !== null;
-	} catch {
-		return false;
-	}
-}
-
-// ─── Cache (contract checks only, bundler + gas always live) ───
+// ─── Cache (contract checks only, gas always live) ───
 
 const CACHE_KEY = 'biubiu-deploy-network-cache';
 /** Cache TTL: 7 days — deployed contracts don't disappear */
@@ -288,15 +274,12 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 		issues.push('RIP-7212 P256 precompile not available (passkey signatures will fail)');
 	}
 
-	// ── Bundler (4): always live — uses chainId directly (Pimlico supports any chain) ──
+	// ── Bundler: the vela bundler serves every network by default, so it is NOT a
+	//    gating requirement. The only user-side step is funding the gas account on
+	//    the target chain (checked below). ──
+	const bundlerSupported = true;
 
-	let bundlerSupported = false;
-	bundlerSupported = await checkBundlerSupport(chainId);
-	if (!bundlerSupported) {
-		issues.push('Bundler does not support this chain');
-	}
-
-	// ── Gas balance (5): always live ──
+	// ── Gas balance (the one user-side action): always live ──
 
 	let gasBalance: bigint | null = null;
 	if (safeAddress) {
@@ -314,7 +297,6 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 		create2Proxy.deployed &&
 		missingSafe.length === 0 &&
 		p256Available &&
-		bundlerSupported &&
 		(gasBalance === null || gasBalance > 0n);
 
 	return {

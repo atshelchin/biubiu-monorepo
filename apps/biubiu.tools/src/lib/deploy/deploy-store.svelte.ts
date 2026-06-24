@@ -16,17 +16,14 @@ import type {
 	DeploymentRecord,
 	LogEntry
 } from './types.js';
-import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
+import {
+	searchChains as searchChainsApi,
+	loadChainInfo,
+	probeRpcs,
+	rpcCall
+} from '$lib/contract-caller/networks.js';
+import type { ChainInfo, ChainSearchResult, RpcOption } from '$lib/contract-caller/types.js';
 import { getUserOperationGasPrice } from '$lib/wallet/infra/bundler-client.js';
-
-export interface RpcProbeResult {
-	url: string;
-	status: 'ok' | 'error' | 'pending';
-	/** Latency in ms, null if error */
-	latencyMs: number | null;
-	/** Error message if failed */
-	error?: string;
-}
 
 /** Format a gas price value with minimal but sufficient precision */
 function formatGasValue(v: number): string {
@@ -44,18 +41,55 @@ export interface SupportedNetwork {
 	name: string;
 	chainId: number;
 	nativeSymbol: string;
+	/** Canonical block explorer base URL (no trailing slash). */
+	explorer: string;
 }
 
+/**
+ * Shared Etherscan V2 API key, baked in so verification works out of the box.
+ * Public/rate-limited — heavy users should paste their own (Verify step links to one).
+ */
+export const DEFAULT_ETHERSCAN_KEY = '1GA442Z79I7USRD8KWF8DBQ799MCX3JDX2';
+
+/** Why the Deploy button is disabled — UI maps this to `deploy.gate.<key>`. */
+export type DeployBlocker =
+	| 'server'
+	| 'wallet'
+	| 'contract'
+	| 'network'
+	| 'rpc'
+	| 'notReady'
+	| 'deployed'
+	| null;
+
 export const SUPPORTED_NETWORKS: SupportedNetwork[] = [
-	{ key: 'eth-mainnet', name: 'Ethereum', chainId: 1, nativeSymbol: 'ETH' },
-	{ key: 'arb-mainnet', name: 'Arbitrum', chainId: 42161, nativeSymbol: 'ETH' },
-	{ key: 'base-mainnet', name: 'Base', chainId: 8453, nativeSymbol: 'ETH' },
-	{ key: 'opt-mainnet', name: 'Optimism', chainId: 10, nativeSymbol: 'ETH' },
-	{ key: 'matic-mainnet', name: 'Polygon', chainId: 137, nativeSymbol: 'POL' },
-	{ key: 'bnb-mainnet', name: 'BNB Chain', chainId: 56, nativeSymbol: 'BNB' },
-	{ key: 'avax-mainnet', name: 'Avalanche', chainId: 43114, nativeSymbol: 'AVAX' },
-	{ key: 'gnosis-mainnet', name: 'Gnosis', chainId: 100, nativeSymbol: 'xDAI' }
+	{ key: 'eth-mainnet', name: 'Ethereum', chainId: 1, nativeSymbol: 'ETH', explorer: 'https://etherscan.io' },
+	{ key: 'arb-mainnet', name: 'Arbitrum', chainId: 42161, nativeSymbol: 'ETH', explorer: 'https://arbiscan.io' },
+	{ key: 'base-mainnet', name: 'Base', chainId: 8453, nativeSymbol: 'ETH', explorer: 'https://basescan.org' },
+	{ key: 'opt-mainnet', name: 'Optimism', chainId: 10, nativeSymbol: 'ETH', explorer: 'https://optimistic.etherscan.io' },
+	{ key: 'matic-mainnet', name: 'Polygon', chainId: 137, nativeSymbol: 'POL', explorer: 'https://polygonscan.com' },
+	{ key: 'bnb-mainnet', name: 'BNB Chain', chainId: 56, nativeSymbol: 'BNB', explorer: 'https://bscscan.com' },
+	{ key: 'avax-mainnet', name: 'Avalanche', chainId: 43114, nativeSymbol: 'AVAX', explorer: 'https://snowtrace.io' },
+	{ key: 'gnosis-mainnet', name: 'Gnosis', chainId: 100, nativeSymbol: 'xDAI', explorer: 'https://gnosisscan.io' }
 ];
+
+/** Block explorer base URL for a chain id, or null if unknown. */
+export function explorerForChain(chainId: number): string | null {
+	return SUPPORTED_NETWORKS.find((n) => n.chainId === chainId)?.explorer ?? null;
+}
+
+/**
+ * Common chains shown as quick-pick when the network search box is empty.
+ * NOT a hard allow-list — the user can search ANY EVM chain; the live readiness
+ * check decides whether a chain actually has the passkey-wallet infra deployed.
+ */
+export const COMMON_CHAINS: ChainSearchResult[] = SUPPORTED_NETWORKS.map((n) => ({
+	chainId: n.chainId,
+	name: n.name,
+	shortName: n.key,
+	nativeCurrencySymbol: n.nativeSymbol,
+	hasLogo: true
+}));
 
 // ─── Store ───
 
@@ -73,22 +107,25 @@ class DeployStore {
 	selectedContractIndex = $state(-1);
 	constructorArgs = $state<ConstructorArg[]>([]);
 
-	// Chain selection (from verified SUPPORTED_NETWORKS only)
-	selectedNetworkKey = $state('');
-	chainDataLoading = $state(false);
+	// Chain selection — search ANY EVM chain via the ethereum-data API.
+	searchQuery = $state('');
+	searchResults = $state<ChainSearchResult[]>(COMMON_CHAINS);
+	searching = $state(false);
+	selectedChain = $state<ChainInfo | null>(null);
+	loadingChain = $state(false);
+	chainError = $state('');
 
-	// Network readiness check
+	// Network readiness check (CREATE2 proxy, Safe contracts, P256, bundler, gas)
 	networkCheck = $state<NetworkCheckResult | null>(null);
 	networkChecking = $state(false);
 
-	// Full chain data (fetched after selection)
-	fullChainData = $state<Record<string, unknown> | null>(null);
-	rpcOptions = $state<string[]>([]);
-	rpcProbes = $state<Record<string, RpcProbeResult>>({});
-	rpcProbing = $state(false);
-	selectedRpc = $state('');
-	customRpc = $state('');
-	explorerUrl = $state('');
+	// RPC endpoint for the selected chain
+	rpcUrl = $state('');
+	rpcOptions = $state<RpcOption[]>([]);
+	rpcLatency = $state<number | null>(null);
+	usingCustomRpc = $state(false);
+	customRpcInput = $state('');
+	rpcError = $state('');
 
 	// Gas settings (empty = auto-estimate)
 	gasLimitInput = $state('');
@@ -108,7 +145,7 @@ class DeployStore {
 	// Verify state
 	verifyAddress = $state('');
 	verifier = $state<'etherscan' | 'blockscout'>('etherscan');
-	etherscanKey = $state('1GA442Z79I7USRD8KWF8DBQ799MCX3JDX2');
+	etherscanKey = $state(DEFAULT_ETHERSCAN_KEY);
 	verifying = $state(false);
 
 	// Logs
@@ -128,15 +165,14 @@ class DeployStore {
 		return this.contracts[this.selectedContractIndex] ?? null;
 	}
 
+	/** The active RPC URL (alias kept for the predicted-address deployed check). */
 	get effectiveRpc(): string {
-		if (this.selectedRpc === '__custom__' || !this.selectedRpc) {
-			return this.customRpc.trim();
-		}
-		return this.selectedRpc;
+		return this.rpcUrl;
 	}
 
-	get selectedNetwork(): SupportedNetwork | null {
-		return SUPPORTED_NETWORKS.find((n) => n.key === this.selectedNetworkKey) ?? null;
+	/** Block explorer base URL of the selected chain (no trailing slash). */
+	get explorerUrl(): string {
+		return this.selectedChain?.explorerUrl?.replace(/\/$/, '') ?? '';
 	}
 
 	/**
@@ -197,13 +233,42 @@ class DeployStore {
 			this.serverStatus === 'connected' &&
 			walletStore.isConnected &&
 			this.selectedContract !== null &&
-			this.selectedNetwork !== null &&
+			this.selectedChain !== null &&
 			this.networkCheck?.ready === true &&
-			this.effectiveRpc !== '' &&
+			this.rpcUrl !== '' &&
 			this.salt.length === 66 &&
 			!this.deploying &&
 			!this.addressAlreadyDeployed
 		);
+	}
+
+	/** First reason the Deploy button is blocked, or null when ready. */
+	get deployBlocker(): DeployBlocker {
+		if (this.serverStatus !== 'connected') return 'server';
+		if (!walletStore.isConnected) return 'wallet';
+		if (!this.selectedContract) return 'contract';
+		if (!this.selectedChain) return 'network';
+		if (!this.rpcUrl) return 'rpc';
+		if (this.networkCheck?.ready !== true) return 'notReady';
+		if (this.addressAlreadyDeployed) return 'deployed';
+		return null;
+	}
+
+	// ─── Progressive-reveal gates (single-screen flow) ───
+
+	/** Setup done: both the build server and a wallet are connected. */
+	get setupReady(): boolean {
+		return this.serverStatus === 'connected' && walletStore.isConnected;
+	}
+
+	/** A contract is selected and its args encode to a valid address. */
+	get contractReady(): boolean {
+		return this.selectedContract !== null && this.predictedAddress !== null;
+	}
+
+	/** A chain and a usable RPC endpoint are set. */
+	get networkReady(): boolean {
+		return this.selectedChain !== null && this.rpcUrl !== '';
 	}
 
 	// ─── Server connection ───
@@ -295,116 +360,130 @@ class DeployStore {
 		}
 	}
 
-	// ─── Network selection ───
+	// ─── Network selection (search any EVM chain) ───
 
-	/** Incremented on each network switch to invalidate in-flight probes */
-	private probeGeneration = 0;
+	/** Search the chain index; empty query falls back to the common quick-pick. */
+	async searchChains(query: string): Promise<void> {
+		this.searchQuery = query;
+		if (!query.trim()) {
+			this.searchResults = COMMON_CHAINS;
+			return;
+		}
+		this.searching = true;
+		try {
+			this.searchResults = await searchChainsApi(query);
+		} catch {
+			this.searchResults = [];
+		} finally {
+			this.searching = false;
+		}
+	}
 
-	async selectNetwork(key: string): Promise<void> {
-		this.selectedNetworkKey = key;
-		// Reset all network-dependent state
-		this.explorerUrl = '';
-		this.rpcOptions = [];
-		this.rpcProbes = {};
-		this.selectedRpc = '';
-		this.customRpc = '';
+	/** Load a chain by id, auto-pick the fastest RPC, then run the readiness check. */
+	async selectChain(chainId: number): Promise<void> {
+		this.loadingChain = true;
+		this.chainError = '';
+		this.searchResults = [];
+		this.searchQuery = '';
+		// Reset all chain-dependent state.
 		this.networkCheck = null;
+		this.rpcUrl = '';
+		this.rpcOptions = [];
+		this.rpcLatency = null;
+		this.usingCustomRpc = false;
+		this.customRpcInput = '';
+		this.rpcError = '';
 		this.predictedAddress = null;
 		this.addressAlreadyDeployed = false;
 		this.maxFeePerGasGwei = '';
 		this.maxPriorityFeePerGasGwei = '';
 		this.gasPriceUnit = 'gwei';
 
-		const network = this.selectedNetwork;
-		if (!network) return;
-
-		// Invalidate any in-flight probes from previous network
-		const generation = ++this.probeGeneration;
-
-		// Fetch full chain data for RPC list & explorer
-		this.chainDataLoading = true;
 		try {
-			const resp = await fetch(
-				`${getEthereumDataURL()}/chains/eip155-${network.chainId}.json`
-			);
-			if (generation !== this.probeGeneration) return; // Network changed, discard
+			const chain = await loadChainInfo(chainId);
+			this.selectedChain = chain;
 
-			if (resp.ok) {
-				const data = await resp.json();
-				this.fullChainData = data;
+			await this.findBestRpc(chain.rpcUrls);
+			if (!this.rpcUrl) throw new Error('All RPC endpoints are unreachable');
 
-				const rpcs = (data.rpc || []).filter(
-					(r: string) =>
-						typeof r === 'string' &&
-						r.startsWith('https://') &&
-						!r.includes('${') &&
-						!r.includes('$\\{')
-				);
-				this.rpcOptions = rpcs;
-				this.explorerUrl = data.explorers?.[0]?.url || '';
-
-				if (rpcs.length > 0) {
-					const probePromise = this.probeAllRpcs(rpcs);
-
-					const firstRpc = await this.raceFirstWorkingRpc(rpcs);
-					if (generation !== this.probeGeneration) return; // Stale
-
-					if (firstRpc) {
-						this.selectedRpc = firstRpc;
-						this.updatePredictedAddress();
-						this.runNetworkCheck();
-						this.fetchGasPrices();
-					}
-
-					const fastest = await probePromise;
-					if (generation !== this.probeGeneration) return; // Stale
-					if (fastest && fastest !== this.selectedRpc) {
-						this.selectedRpc = fastest;
-					}
-				}
-			}
-		} catch (e) {
-			if (generation === this.probeGeneration) {
-				this.log('Failed to load chain data: ' + (e instanceof Error ? e.message : String(e)), 'warn');
-			}
-		} finally {
-			if (generation === this.probeGeneration) {
-				this.chainDataLoading = false;
-			}
-		}
-
-		if (generation === this.probeGeneration) {
+			this.probeAllRpcs(chain.rpcUrls); // keep probing in the background
 			this.updatePredictedAddress();
+			this.runNetworkCheck();
+			this.fetchGasPrices();
+		} catch (e) {
+			this.chainError = e instanceof Error ? e.message : 'Failed to load chain';
+			this.selectedChain = null;
+		} finally {
+			this.loadingChain = false;
 		}
 	}
 
-	/** Called when user switches RPC — re-run network check + refresh gas prices */
-	switchRpc(rpc: string): void {
-		this.selectedRpc = rpc;
-		if (rpc !== '__custom__') {
-			this.customRpc = '';
-		}
+	/** Go back to the chain search. */
+	changeNetwork(): void {
+		this.selectedChain = null;
+		this.searchQuery = '';
+		this.searchResults = COMMON_CHAINS;
+		this.rpcUrl = '';
+		this.rpcOptions = [];
+		this.rpcLatency = null;
+		this.usingCustomRpc = false;
+		this.customRpcInput = '';
+		this.rpcError = '';
+		this.networkCheck = null;
+		this.predictedAddress = null;
+		this.addressAlreadyDeployed = false;
+	}
+
+	/** User picked a different RPC from the list — re-check readiness + gas. */
+	switchRpc(url: string): void {
+		this.rpcUrl = url;
+		this.usingCustomRpc = false;
+		this.rpcLatency = this.rpcOptions.find((r) => r.url === url)?.latencyMs ?? null;
 		this.runNetworkCheck();
 		this.fetchGasPrices();
 	}
 
-	/** Check if the selected network has all required infrastructure */
+	/** Validate + apply a user-supplied custom RPC (must match the chain id). */
+	async applyCustomRpc(): Promise<void> {
+		const url = this.customRpcInput.trim();
+		if (!url) return;
+		this.rpcError = '';
+		try {
+			const result = (await rpcCall(url, 'eth_chainId', [])) as string;
+			const remoteChainId = parseInt(result, 16);
+			if (this.selectedChain && remoteChainId !== this.selectedChain.chainId) {
+				this.rpcError = `Chain ID mismatch: RPC is chain ${remoteChainId}, expected ${this.selectedChain.chainId}`;
+				return;
+			}
+		} catch (e) {
+			this.rpcError = e instanceof Error ? e.message : 'RPC is unreachable';
+			return;
+		}
+		this.rpcUrl = url;
+		this.usingCustomRpc = true;
+		this.rpcLatency = null;
+		this.customRpcInput = '';
+		this.runNetworkCheck();
+		this.fetchGasPrices();
+	}
+
+	/** Check if the selected chain has all required passkey-wallet infrastructure */
 	async runNetworkCheck(): Promise<void> {
-		const rpc = this.effectiveRpc;
-		const network = this.selectedNetwork;
-		if (!rpc || !network) {
+		const rpc = this.rpcUrl;
+		const chain = this.selectedChain;
+		if (!rpc || !chain) {
 			this.networkCheck = null;
 			return;
 		}
 
 		this.networkChecking = true;
 		this.networkCheck = null;
-		this.log(`Checking ${network.name} (${network.chainId})...`);
+		this.log(`Checking ${chain.name} (${chain.chainId})...`);
 
 		try {
 			const result = await checkNetworkSupport({
 				rpcUrl: rpc,
-				chainId: network.chainId,
+				chainId: chain.chainId,
 				safeAddress: walletStore.activeWallet?.address
 			});
 
@@ -414,7 +493,7 @@ class DeployStore {
 				this.log(`Network ready — all contracts deployed, bundler available`, 'ok');
 				if (result.gasBalance !== null) {
 					const ethBalance = Number(result.gasBalance) / 1e18;
-					this.log(`Gas balance: ${ethBalance.toFixed(6)} ${network.nativeSymbol}`, 'info');
+					this.log(`Gas balance: ${ethBalance.toFixed(6)} ${chain.nativeCurrency.symbol}`, 'info');
 				}
 			} else {
 				for (const issue of result.issues) {
@@ -428,130 +507,29 @@ class DeployStore {
 		}
 	}
 
-	/**
-	 * Race RPCs — resolve as soon as the first one responds OK.
-	 * Used to unblock network check immediately while full probing continues.
-	 */
-	async raceFirstWorkingRpc(rpcs: string[]): Promise<string | null> {
-		if (rpcs.length === 0) return null;
-
-		return new Promise((resolve) => {
-			let resolved = false;
-			let pending = rpcs.length;
-
-			for (const url of rpcs) {
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-				fetch(url, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}',
-					signal: controller.signal
-				})
-					.then(async (res) => {
-						clearTimeout(timeoutId);
-						if (!res.ok) throw new Error();
-						const json = await res.json();
-						if (json.error) throw new Error();
-						if (!resolved) {
-							resolved = true;
-							resolve(url);
-						}
-					})
-					.catch(() => {
-						clearTimeout(timeoutId);
-						pending--;
-						if (pending === 0 && !resolved) {
-							resolve(null);
-						}
-					});
-			}
-		});
+	/** Probe all RPCs in parallel (for the dropdown latencies). */
+	private async probeAllRpcs(urls: string[]): Promise<void> {
+		this.rpcOptions = urls.map((url) => ({ url, latencyMs: null, status: 'pending' as const }));
+		this.rpcOptions = await probeRpcs(urls);
 	}
 
-	/**
-	 * Probe all RPCs in parallel, measure latency, store results.
-	 * Auto-selects the fastest working RPC.
-	 */
-	async probeAllRpcs(rpcs: string[]): Promise<string> {
-		if (rpcs.length === 0) return '';
-
-		this.rpcProbing = true;
-
-		// Initialize all as pending
-		const probes: Record<string, RpcProbeResult> = {};
-		for (const url of rpcs) {
-			probes[url] = { url, status: 'pending', latencyMs: null };
-		}
-		this.rpcProbes = { ...probes };
-
-		// Probe each RPC in parallel (5s timeout per probe)
-		const probePromises = rpcs.map(async (url) => {
-			const start = performance.now();
-			try {
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 5000);
-				const res = await fetch(url, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}',
-					signal: controller.signal
-				});
-				clearTimeout(timeoutId);
-
-				const latencyMs = Math.round(performance.now() - start);
-
-				if (!res.ok) {
-					const result: RpcProbeResult = { url, status: 'error', latencyMs: null, error: `HTTP ${res.status}` };
-					probes[url] = result;
-					this.rpcProbes = { ...probes };
-					return result;
-				}
-
-				const json = await res.json();
-				if (json.error) {
-					const result: RpcProbeResult = { url, status: 'error', latencyMs: null, error: json.error.message };
-					probes[url] = result;
-					this.rpcProbes = { ...probes };
-					return result;
-				}
-
-				const result: RpcProbeResult = { url, status: 'ok', latencyMs };
-				probes[url] = result;
-				this.rpcProbes = { ...probes };
-				return result;
-			} catch (e) {
-				const result: RpcProbeResult = {
-					url,
-					status: 'error',
-					latencyMs: null,
-					error: e instanceof DOMException ? 'Timeout' : (e instanceof Error ? e.message : 'Failed')
-				};
-				probes[url] = result;
-				this.rpcProbes = { ...probes };
-				return result;
+	/** Probe RPCs and pick the fastest working one. */
+	private async findBestRpc(urls: string[]): Promise<void> {
+		const probed = await probeRpcs(urls);
+		let best: { url: string; latencyMs: number } | null = null;
+		for (const r of probed) {
+			if (r.status === 'ok' && r.latencyMs !== null && (!best || r.latencyMs < best.latencyMs)) {
+				best = { url: r.url, latencyMs: r.latencyMs };
 			}
-		});
-
-		const results = await Promise.all(probePromises);
-		this.rpcProbing = false;
-
-		// Pick fastest working RPC
-		const working = results
-			.filter((r): r is RpcProbeResult & { status: 'ok'; latencyMs: number } =>
-				r.status === 'ok' && r.latencyMs !== null
-			)
-			.sort((a, b) => a.latencyMs - b.latencyMs);
-
-		if (working.length > 0) {
-			const best = working[0];
-			this.log(`RPC: ${new URL(best.url).hostname} (${best.latencyMs}ms)`, 'info');
-			return best.url;
 		}
-
-		this.log('No RPC responded — use Custom RPC', 'warn');
-		return rpcs[0];
+		if (best) {
+			this.rpcUrl = best.url;
+			this.rpcLatency = best.latencyMs;
+			this.log(`RPC: ${new URL(best.url).hostname} (${best.latencyMs}ms)`, 'info');
+		} else if (urls.length > 0) {
+			this.rpcUrl = urls[0];
+			this.rpcLatency = null;
+		}
 	}
 
 	/** Gas unit: 'gwei' or 'wei', auto-detected from chain gas price */
@@ -559,9 +537,9 @@ class DeployStore {
 
 	/** Fetch gas prices from both chain RPC and bundler, use the higher (bundler has minimums) */
 	async fetchGasPrices(): Promise<void> {
-		const rpc = this.effectiveRpc;
-		const network = this.selectedNetwork;
-		if (!rpc || !network) return;
+		const rpc = this.rpcUrl;
+		const chain = this.selectedChain;
+		if (!rpc || !chain) return;
 
 		try {
 			// Fetch chain RPC price + bundler price in parallel
@@ -571,7 +549,7 @@ class DeployStore {
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_gasPrice', params: [] })
 				}).then(r => r.json()).catch(() => null),
-				getUserOperationGasPrice(network.chainId).catch(() => null)
+				getUserOperationGasPrice(chain.chainId).catch(() => null)
 			]);
 
 			// Chain gas price
@@ -672,7 +650,7 @@ class DeployStore {
 	async deploy(): Promise<void> {
 		const contract = this.selectedContract;
 		const wallet = walletStore.activeWallet;
-		const network = this.selectedNetwork;
+		const network = this.selectedChain;
 
 		if (!contract || !wallet || !network || !this.canDeploy) return;
 		if (this.addressAlreadyDeployed) {
@@ -745,10 +723,13 @@ class DeployStore {
 					constructorArgs: values,
 					txHash: result.txHash as Hex,
 					deployer: wallet.address,
-					verified: false
+					verified: false,
+					explorerUrl: this.explorerUrl || undefined
 				};
 				await saveDeployment(record);
 				await this.loadHistory();
+				// verifyAddress is already pre-filled above; the Verify card reveals
+				// itself once history is non-empty.
 			} else {
 				this.log(`Deploy failed: ${result.error}`, 'error');
 			}
@@ -764,7 +745,7 @@ class DeployStore {
 
 	async verifyContract(): Promise<void> {
 		const contract = this.selectedContract;
-		const network = this.selectedNetwork;
+		const network = this.selectedChain;
 		if (!contract || !network) return;
 
 		const address = this.verifyAddress.trim();

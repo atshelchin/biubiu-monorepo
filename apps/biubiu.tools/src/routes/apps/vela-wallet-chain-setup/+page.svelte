@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { t, locale } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
@@ -35,6 +36,13 @@
 		store.searchResults = [];
 		store.selectChain(chainId);
 	}
+
+	// Deep-link: `?chainId=N` pre-selects a chain (e.g. arriving from the
+	// Contract Deployer's "network not ready" → "set up this network" link).
+	onMount(() => {
+		const cid = Number(new URLSearchParams(window.location.search).get('chainId'));
+		if (Number.isInteger(cid) && cid > 0) handleSelectChain(cid);
+	});
 
 	function handleRpcSelect(e: Event) {
 		const val = (e.target as HTMLSelectElement).value;
@@ -140,7 +148,7 @@
 									alt=""
 									class="chain-logo"
 									onerror={(e) => {
-										/** @type {HTMLImageElement} */ (e.target).style.display = 'none';
+										(e.target as HTMLImageElement).style.display = 'none';
 									}}
 								/>
 								<div class="chain-info">
@@ -208,7 +216,7 @@
 			<section class="card chain-header-card" use:fadeInUp={{ delay: 0 }}>
 				<div class="chain-header">
 					<img src={store.chainLogoUrl} alt="" class="chain-logo-lg" onerror={(e) => {
-						/** @type {HTMLImageElement} */ (e.target).style.display = 'none';
+						(e.target as HTMLImageElement).style.display = 'none';
 					}} />
 					<div>
 						<h2 class="chain-header-name">{store.selectedChain.name}</h2>

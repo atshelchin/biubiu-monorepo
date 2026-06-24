@@ -91,6 +91,8 @@ export interface DeploymentRecord {
 	deployer: Address;
 	verified: boolean;
 	verifiedAt?: number;
+	/** Block explorer base URL captured at deploy time (works for any chain). */
+	explorerUrl?: string;
 }
 
 /** Constructor argument value */

@@ -107,5 +107,7 @@
 	"ws.status.partial": "Kısmi",
 	"ws.status.failed": "Başarısız",
 	"ws.alert.dismiss": "Kapat",
-	"ws.history.delete": "Sil"
+	"ws.history.delete": "Sil",
+	"ws.keys.import": "İçe aktar",
+	"ws.keys.clear": "Temizle"
 }

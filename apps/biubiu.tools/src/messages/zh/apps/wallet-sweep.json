@@ -107,5 +107,7 @@
 	"ws.status.partial": "部分完成",
 	"ws.status.failed": "失败",
 	"ws.alert.dismiss": "关闭",
-	"ws.history.delete": "删除"
+	"ws.history.delete": "删除",
+	"ws.keys.import": "导入",
+	"ws.keys.clear": "清空"
 }

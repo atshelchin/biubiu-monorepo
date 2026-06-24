@@ -48,7 +48,11 @@
 	});
 
 	const i18n = {
-		statusBar: { valid: t('ws.keys.statusValid') },
+		// `upload`/`clear` would otherwise render in English. We use "Import" (not
+		// "Upload") on purpose: keys never leave the browser — "Upload" wrongly
+		// implies a server send, which undermines trust in a key-handling tool.
+		upload: t('ws.keys.import'),
+		statusBar: { valid: t('ws.keys.statusValid'), clear: t('ws.keys.clear') },
 		errorDrawer: {
 			title: t('ws.keys.issues'),
 			line: t('ws.keys.line'),

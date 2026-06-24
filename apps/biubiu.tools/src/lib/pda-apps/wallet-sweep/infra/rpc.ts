@@ -5,16 +5,32 @@
  * so a single rate-limited / down endpoint never breaks an operation over many
  * wallets. Used for the raw account queries (getCode / nonce / balance) that
  * can't go through Multicall3.
+ *
+ * Each attempt is bounded by an AbortController timeout — without it a hung
+ * endpoint (one that accepts the socket but never responds) would block the
+ * whole flow forever and never trigger failover, leaving the UI spinning with
+ * no error. On timeout we abort and fall through to the next RPC.
  */
-export async function rpcCall(rpcs: string[], method: string, params: unknown[]): Promise<unknown> {
+const RPC_TIMEOUT_MS = 8_000;
+
+export async function rpcCall(
+	rpcs: string[],
+	method: string,
+	params: unknown[],
+	timeoutMs = RPC_TIMEOUT_MS,
+): Promise<unknown> {
 	let lastErr: unknown;
 	for (const url of rpcs) {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), timeoutMs);
 		try {
 			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+				signal: controller.signal,
 			});
+			clearTimeout(timer);
 			if (!res.ok) {
 				lastErr = new Error(`HTTP ${res.status}`);
 				continue;
@@ -26,7 +42,11 @@ export async function rpcCall(rpcs: string[], method: string, params: unknown[])
 			}
 			return json.result;
 		} catch (e) {
-			lastErr = e;
+			clearTimeout(timer);
+			lastErr =
+				e instanceof DOMException && e.name === 'AbortError'
+					? new Error(`RPC timed out after ${timeoutMs}ms`)
+					: e;
 		}
 	}
 	throw lastErr instanceof Error ? lastErr : new Error('All RPCs failed');

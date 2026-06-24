@@ -107,5 +107,7 @@
 	"ws.status.partial": "Sebagian",
 	"ws.status.failed": "Gagal",
 	"ws.alert.dismiss": "Tutup",
-	"ws.history.delete": "Hapus"
+	"ws.history.delete": "Hapus",
+	"ws.keys.import": "Impor",
+	"ws.keys.clear": "Bersihkan"
 }

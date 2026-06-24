@@ -107,5 +107,7 @@
 	"ws.status.partial": "一部",
 	"ws.status.failed": "失敗",
 	"ws.alert.dismiss": "閉じる",
-	"ws.history.delete": "削除"
+	"ws.history.delete": "削除",
+	"ws.keys.import": "読み込む",
+	"ws.keys.clear": "クリア"
 }

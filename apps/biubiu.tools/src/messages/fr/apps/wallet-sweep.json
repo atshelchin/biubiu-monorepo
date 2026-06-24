@@ -107,5 +107,7 @@
 	"ws.status.partial": "Partiel",
 	"ws.status.failed": "Échec",
 	"ws.alert.dismiss": "Fermer",
-	"ws.history.delete": "Supprimer"
+	"ws.history.delete": "Supprimer",
+	"ws.keys.import": "Importer",
+	"ws.keys.clear": "Effacer"
 }

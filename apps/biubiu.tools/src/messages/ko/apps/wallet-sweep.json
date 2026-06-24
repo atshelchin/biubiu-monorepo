@@ -107,5 +107,7 @@
 	"ws.status.partial": "일부",
 	"ws.status.failed": "실패",
 	"ws.alert.dismiss": "닫기",
-	"ws.history.delete": "삭제"
+	"ws.history.delete": "삭제",
+	"ws.keys.import": "가져오기",
+	"ws.keys.clear": "지우기"
 }

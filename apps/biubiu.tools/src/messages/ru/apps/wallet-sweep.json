@@ -107,5 +107,7 @@
 	"ws.status.partial": "Частично",
 	"ws.status.failed": "Ошибка",
 	"ws.alert.dismiss": "Закрыть",
-	"ws.history.delete": "Удалить"
+	"ws.history.delete": "Удалить",
+	"ws.keys.import": "Импорт",
+	"ws.keys.clear": "Очистить"
 }

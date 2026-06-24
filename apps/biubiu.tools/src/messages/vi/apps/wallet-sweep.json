@@ -107,5 +107,7 @@
 	"ws.status.partial": "Một phần",
 	"ws.status.failed": "Thất bại",
 	"ws.alert.dismiss": "Đóng",
-	"ws.history.delete": "Xóa"
+	"ws.history.delete": "Xóa",
+	"ws.keys.import": "Nhập",
+	"ws.keys.clear": "Xóa hết"
 }

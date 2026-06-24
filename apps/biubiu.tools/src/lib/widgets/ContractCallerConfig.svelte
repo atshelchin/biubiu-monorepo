@@ -6,7 +6,7 @@
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
 	import NetworkPicker from '$lib/widgets/NetworkPicker.svelte';
-	import { ExternalLink } from '@lucide/svelte';
+	import { ExternalLink, ChevronDown } from '@lucide/svelte';
 
 	let addressTimer: ReturnType<typeof setTimeout>;
 	function handleAddressInput() {
@@ -15,6 +15,13 @@
 			if (store.addressValid) store.detectProxy();
 		}, 500);
 	}
+
+	// Auto-fetch is the recommended path; manual ABI paste is a collapsible
+	// fallback that opens itself if auto-fetch can't find anything.
+	let showManual = $state(false);
+	$effect(() => {
+		if (store.abiFetchError) showManual = true;
+	});
 
 	let copiedImpl = $state(false);
 	function copyImpl() {
@@ -72,15 +79,20 @@
 		/>
 		{#if store.proxyChecking}<span class="muted">{t('cc.config.checkingProxy')}</span>{/if}
 
+		<!-- Recommended path: discover the ABI straight from the chain. -->
 		<div class="autofetch-row">
 			<button
-				class="btn ghost"
+				class="btn primary"
 				onclick={() => store.autoFetchAbi()}
 				disabled={!store.addressValid || store.abiFetching}
 			>
 				{store.abiFetching ? t('cc.config.fetchingAbi') : t('cc.config.autoFetchAbi')}
 			</button>
-			<span class="muted">{t('cc.config.autoFetchHint')}</span>
+			<span class="muted"
+				>{store.addressValid
+					? t('cc.config.autoFetchHint')
+					: t('cc.config.autoFetchNeedAddress')}</span
+			>
 		</div>
 		{#if store.abiFetchError}<p class="err">{store.abiFetchError}</p>{/if}
 		{#if store.autoFetchInfo}
@@ -98,32 +110,50 @@
 			</p>
 		{/if}
 
-		<label class="field-label" for="cc-abi"
-			>{t('cc.config.abi')} <span class="muted">{t('cc.config.abiHint')}</span
-			></label
+		<!-- Manual fallback: paste an ABI yourself (opens on auto-fetch failure). -->
+		<button
+			class="disclosure"
+			onclick={() => (showManual = !showManual)}
+			aria-expanded={showManual}
 		>
-		<textarea
-			id="cc-abi"
-			class="input mono ta"
-			rows="6"
-			placeholder={t('cc.config.abiPlaceholder')}
-			bind:value={store.abiInput}
-		></textarea>
+			<span class="chevron" class:up={showManual}><ChevronDown size={14} aria-hidden="true" /></span
+			>
+			{showManual ? t('cc.config.hideManual') : t('cc.config.pasteManual')}
+		</button>
 
-		<div class="row-between">
-			<button class="btn primary" onclick={() => store.loadAbi()} disabled={!store.abiInput.trim()}>
-				{t('cc.config.loadAbi')}
-			</button>
-			{#if store.methods.length > 0}
-				<span class="muted"
-					>{t('cc.config.readWriteCount', {
-						read: store.readMethods.length,
-						write: store.writeMethods.length
-					})}</span
+		{#if showManual}
+			<div class="manual">
+				<label class="field-label" for="cc-abi"
+					>{t('cc.config.abi')} <span class="muted">{t('cc.config.abiHint')}</span></label
 				>
-			{/if}
-		</div>
-		{#if store.abiError}<p class="err">{store.abiError}</p>{/if}
+				<textarea
+					id="cc-abi"
+					class="input mono ta"
+					rows="6"
+					placeholder={t('cc.config.abiPlaceholder')}
+					bind:value={store.abiInput}
+				></textarea>
+
+				<div class="row-between">
+					<button
+						class="btn primary"
+						onclick={() => store.loadAbi()}
+						disabled={!store.abiInput.trim()}
+					>
+						{t('cc.config.loadAbi')}
+					</button>
+					{#if store.methods.length > 0}
+						<span class="muted"
+							>{t('cc.config.readWriteCount', {
+								read: store.readMethods.length,
+								write: store.writeMethods.length
+							})}</span
+						>
+					{/if}
+				</div>
+				{#if store.abiError}<p class="err">{store.abiError}</p>{/if}
+			</div>
+		{/if}
 	</section>
 
 	<!-- Proxy panel -->
@@ -281,14 +311,36 @@
 	.btn.primary:hover:not(:disabled) {
 		background: var(--accent-hover);
 	}
-	.btn.ghost {
+	.disclosure {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		align-self: flex-start;
 		background: transparent;
-		border-color: var(--border-base);
+		border: none;
+		padding: var(--space-1) 0;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
 		color: var(--fg-muted);
+		cursor: pointer;
+		transition: color var(--motion-fast) var(--easing);
 	}
-	.btn.ghost:hover {
+	.disclosure:hover {
 		color: var(--fg-base);
-		border-color: var(--border-strong);
+	}
+	.disclosure .chevron {
+		display: inline-flex;
+		align-items: center;
+		color: var(--fg-subtle);
+		transition: transform var(--motion-fast) var(--easing);
+	}
+	.disclosure .chevron.up {
+		transform: rotate(180deg);
+	}
+	.manual {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
 	}
 	.err {
 		font-size: var(--text-sm);

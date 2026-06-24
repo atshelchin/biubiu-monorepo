@@ -8,8 +8,10 @@
 	import type { ParsedMethod } from '$lib/contract-caller/types.js';
 	import { buildArgs, encodeCall } from '$lib/contract-caller/encode.js';
 	import { toOutputRows } from '$lib/contract-caller/read.js';
+	import { sendingLabel } from '$lib/contract-caller/send-status.js';
 	import SmartParamInput from './SmartParamInput.svelte';
 	import SmartOutput from './SmartOutput.svelte';
+	import { ChevronDown } from '@lucide/svelte';
 
 	const nativeSymbol = $derived(store.selectedChain?.nativeCurrency.symbol ?? 'ETH');
 
@@ -39,23 +41,6 @@
 		copied = key;
 		setTimeout(() => (copied = ''), 1500);
 	}
-
-	function sendingLabel(phase?: string): string {
-		switch (phase) {
-			case 'building':
-				return t('cc.send.building');
-			case 'estimating':
-				return t('cc.send.estimating');
-			case 'signing':
-				return t('cc.send.signing');
-			case 'submitting':
-				return t('cc.send.submitting');
-			case 'waiting':
-				return t('cc.send.waiting');
-			default:
-				return t('cc.send.checking');
-		}
-	}
 </script>
 
 {#snippet methodCard(method: ParsedMethod)}
@@ -65,14 +50,14 @@
 	{@const enc = encoded[sig]}
 	{@const w = store.writeState[sig]}
 	<div class="method" class:open={isOpen}>
-		<button class="method-head" onclick={() => store.toggleExpanded(sig)}>
+		<button class="method-head" onclick={() => store.toggleExpanded(sig)} aria-expanded={isOpen}>
 			<span class="method-name">{method.name}</span>
 			<span class="method-args">({method.inputs.map((i) => i.type).join(', ')})</span>
 			<span class="spacer"></span>
 			<span class="badge {method.isRead ? 'read' : 'write'}"
 				>{method.isRead ? t('cc.methods.badgeRead') : t('cc.methods.badgeWrite')}</span
 			>
-			<span class="chevron" class:up={isOpen}>▾</span>
+			<span class="chevron" class:up={isOpen}><ChevronDown size={16} aria-hidden="true" /></span>
 		</button>
 
 		{#if isOpen}
@@ -90,7 +75,8 @@
 				{#if method.payable}
 					<div class="param">
 						<span class="param-name"
-							>{t('cc.methods.ethValue')} <span class="param-type">{t('cc.methods.wei')}</span></span
+							>{t('cc.methods.ethValue')}
+							<span class="param-type">{t('cc.methods.wei')}</span></span
 						>
 						<input
 							class="input mono"
@@ -391,9 +377,10 @@
 		color: var(--warning);
 	}
 	.chevron {
+		display: inline-flex;
+		align-items: center;
 		color: var(--fg-subtle);
 		transition: transform var(--motion-fast) var(--easing);
-		font-size: var(--text-xs);
 	}
 	.chevron.up {
 		transform: rotate(180deg);

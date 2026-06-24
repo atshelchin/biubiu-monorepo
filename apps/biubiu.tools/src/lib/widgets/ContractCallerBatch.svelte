@@ -7,24 +7,8 @@
 	import { t } from '$lib/i18n';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
+	import { sendingLabel } from '$lib/contract-caller/send-status.js';
 	import { ArrowUp, ArrowDown, X } from '@lucide/svelte';
-
-	function sendingLabel(phase?: string): string {
-		switch (phase) {
-			case 'building':
-				return t('cc.send.building');
-			case 'estimating':
-				return t('cc.send.estimating');
-			case 'signing':
-				return t('cc.send.signing');
-			case 'submitting':
-				return t('cc.send.submitting');
-			case 'waiting':
-				return t('cc.send.waiting');
-			default:
-				return t('cc.send.checking');
-		}
-	}
 
 	const bs = $derived(store.batchState);
 </script>
@@ -83,7 +67,8 @@
 					<button class="btn primary" disabled>{t('cc.batch.signInToExecute')}</button>
 				{/if}
 			{/if}
-			<button class="btn" onclick={() => store.exportSafeBatch()}>{t('cc.batch.exportSafe')}</button>
+			<button class="btn" onclick={() => store.exportSafeBatch()}>{t('cc.batch.exportSafe')}</button
+			>
 			<button class="btn ghost" onclick={() => store.clearBatch()}>{t('cc.batch.clear')}</button>
 		</div>
 

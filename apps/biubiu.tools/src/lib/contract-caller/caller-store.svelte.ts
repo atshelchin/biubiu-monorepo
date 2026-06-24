@@ -8,6 +8,7 @@
  * both their own ABI and (optionally) the implementation's ABI.
  */
 import { type Address, isAddress, getAddress } from 'viem';
+import { t } from '$lib/i18n';
 import type {
 	AbiSource,
 	AutoFetchInfo,
@@ -44,9 +45,29 @@ import {
 import { parseAbiInput } from './abi.js';
 import { buildArgs, encodeCall } from './encode.js';
 import { executeRead } from './read.js';
+import { toOutputRows } from './read.js';
 import { detectProxy } from './proxy.js';
+import {
+	DEMO_ABI,
+	DEMO_ADDRESS,
+	DEMO_SCENARIOS,
+	demoDeployCalldata,
+	getDeployedDemos,
+	resolveDemoArg,
+	type DemoContractName,
+	type DemoProofLabel,
+	type DemoScenario
+} from './demos/demos.js';
 
 const RPC_STORAGE_KEY = 'contract-caller-rpc';
+
+/** A single proof read shown after a demo chain runs. */
+export interface DemoProofResult {
+	labelKey: DemoProofLabel;
+	value?: string;
+	type?: string;
+	error?: string;
+}
 
 class ContractCallerStore {
 	// ── Network selection ──
@@ -105,6 +126,21 @@ class ContractCallerStore {
 	chainHelperDeployed = $state<boolean | null>(null);
 	chainHelperDeploying = $state(false);
 	readonly chainHelperAddress = CHAINED_MULTISEND_ADDRESS;
+
+	// ── Chain demos (deterministic showcase contracts) ──
+	/** Per-contract deploy status on the current RPC. */
+	demoDeployed = $state<Record<string, boolean>>({});
+	demoChecking = $state(false);
+	/** Per-scenario deploy tx state, keyed by scenario id. */
+	demoState = $state<Record<string, WriteState>>({});
+	demoDeploying = $state<Record<string, boolean>>({});
+	/** Which scenario's pre-wired chain is currently loaded into the builder. */
+	demoLoadedId = $state<string | null>(null);
+	/** Verify (proof read) results, keyed by scenario id. */
+	demoProof = $state<Record<string, DemoProofResult[]>>({});
+	demoVerifying = $state<Record<string, boolean>>({});
+	/** Parsed demo method cache (contract → fn name → method). */
+	private demoMethodCache = new Map<DemoContractName, Map<string, ParsedMethod>>();
 
 	// ── Computed ──
 
@@ -190,6 +226,9 @@ class ContractCallerStore {
 		this.chainError = '';
 		this.searchResults = [];
 		this.searchQuery = '';
+		// Demo deploy status is per-chain — reset it for the new chain.
+		this.demoDeployed = {};
+		this.chainHelperDeployed = null;
 		try {
 			const chain = await loadChainInfo(chainId);
 			this.selectedChain = chain;
@@ -201,11 +240,11 @@ class ContractCallerStore {
 			} else {
 				await this.findBestRpc(chain.rpcUrls);
 			}
-			if (!this.rpcUrl) throw new Error('All RPC endpoints are unreachable');
+			if (!this.rpcUrl) throw new Error(t('cc.err.allRpcUnreachable'));
 
 			this.probeAllRpcs(chain.rpcUrls);
 		} catch (e) {
-			this.chainError = e instanceof Error ? e.message : 'Failed to load chain';
+			this.chainError = e instanceof Error ? e.message : t('cc.err.loadChainFailed');
 			this.selectedChain = null;
 		} finally {
 			this.loadingChain = false;
@@ -227,11 +266,14 @@ class ContractCallerStore {
 			const result = (await rpcCall(url, 'eth_chainId', [])) as string;
 			const remoteChainId = parseInt(result, 16);
 			if (this.selectedChain && remoteChainId !== this.selectedChain.chainId) {
-				this.rpcError = `Chain ID mismatch: RPC is chain ${remoteChainId}, expected ${this.selectedChain.chainId}`;
+				this.rpcError = t('cc.err.chainIdMismatch', {
+					actual: remoteChainId,
+					expected: this.selectedChain.chainId
+				});
 				return;
 			}
 		} catch (e) {
-			this.rpcError = e instanceof Error ? e.message : 'RPC is unreachable';
+			this.rpcError = e instanceof Error ? e.message : t('cc.err.rpcUnreachable');
 			return;
 		}
 		this.rpcUrl = url;
@@ -274,7 +316,7 @@ class ContractCallerStore {
 		this.abiError = '';
 		const result = parseAbiInput(this.abiInput);
 		if (!result.ok || !result.methods) {
-			this.abiError = result.error ?? 'Invalid ABI';
+			this.abiError = result.error ?? t('cc.err.invalidAbi');
 			this.primaryMethods = [];
 			return;
 		}
@@ -300,11 +342,11 @@ class ContractCallerStore {
 	/** Discover the ABI from chain data via WhatsABI (verified ABI or bytecode). */
 	async autoFetchAbi() {
 		if (!this.addressValid) {
-			this.abiFetchError = 'Enter a valid contract address first.';
+			this.abiFetchError = t('cc.err.invalidAddress');
 			return;
 		}
 		if (!this.selectedChain || !this.rpcUrl) {
-			this.abiFetchError = 'Select a network first.';
+			this.abiFetchError = t('cc.err.selectNetworkFirst');
 			return;
 		}
 		this.abiFetchError = '';
@@ -317,13 +359,13 @@ class ContractCallerStore {
 				getAddress(this.contractAddress.trim()) as Address
 			);
 			if (!res.ok || !res.abi) {
-				this.abiFetchError = res.error ?? 'No ABI found at this address.';
+				this.abiFetchError = res.error ?? t('cc.err.noAbiFound');
 				return;
 			}
 			this.abiInput = JSON.stringify(res.abi, null, 2);
 			this.loadAbi(false); // WhatsABI already resolved proxies — skip our detection
 			if (this.primaryMethods.length === 0) {
-				this.abiFetchError = 'Found a contract but no callable methods.';
+				this.abiFetchError = t('cc.err.noCallableMethods');
 				return;
 			}
 			this.autoFetchInfo = {
@@ -341,7 +383,7 @@ class ContractCallerStore {
 		this.implAbiError = '';
 		const result = parseAbiInput(this.implAbiInput);
 		if (!result.ok || !result.methods) {
-			this.implAbiError = result.error ?? 'Invalid ABI';
+			this.implAbiError = result.error ?? t('cc.err.invalidAbi');
 			this.implMethods = [];
 			return;
 		}
@@ -359,7 +401,10 @@ class ContractCallerStore {
 		if (!this.addressValid || !this.rpcUrl) return;
 		this.proxyChecking = true;
 		try {
-			const info = await detectProxy(this.rpcUrl, getAddress(this.contractAddress.trim()) as Address);
+			const info = await detectProxy(
+				this.rpcUrl,
+				getAddress(this.contractAddress.trim()) as Address
+			);
 			this.proxyInfo = info.kind === 'none' ? null : info;
 			// Prefill the implementation address into the impl ABI hint area is handled in UI.
 		} catch {
@@ -400,7 +445,7 @@ class ContractCallerStore {
 		if (!this.addressValid) {
 			this.readResults[method.signature] = {
 				status: 'error',
-				error: 'Enter a valid contract address first'
+				error: t('cc.err.invalidAddress')
 			};
 			return;
 		}
@@ -438,19 +483,19 @@ class ContractCallerStore {
 		const sig = method.signature;
 		const wallet = walletStore.activeWallet;
 		if (!wallet) {
-			this.writeState[sig] = { status: 'error', error: 'Connect your wallet first (top-right).' };
+			this.writeState[sig] = { status: 'error', error: t('cc.err.connectWallet') };
 			return;
 		}
 		// `writeNetwork` gates to chains the active wallet supports (Phase 1: biubiu's set).
 		if (!this.selectedChain || (wallet.kind === 'biubiu' && !this.writeNetwork)) {
 			this.writeState[sig] = {
 				status: 'error',
-				error: 'This network is read-only in-app. Use the encoded calldata to execute elsewhere.'
+				error: t('cc.err.readOnlyMethod')
 			};
 			return;
 		}
 		if (!this.addressValid) {
-			this.writeState[sig] = { status: 'error', error: 'Enter a valid contract address first.' };
+			this.writeState[sig] = { status: 'error', error: t('cc.err.invalidAddress') };
 			return;
 		}
 		const built = buildArgs(method, this.paramValues[sig] ?? []);
@@ -462,7 +507,10 @@ class ContractCallerStore {
 		try {
 			data = encodeCall(method, built.args ?? []);
 		} catch (e) {
-			this.writeState[sig] = { status: 'error', error: e instanceof Error ? e.message : 'Encode failed' };
+			this.writeState[sig] = {
+				status: 'error',
+				error: e instanceof Error ? e.message : t('cc.methods.encodeFailed')
+			};
 			return;
 		}
 
@@ -492,9 +540,7 @@ class ContractCallerStore {
 	// ── Batch ──
 
 	private callLabel(method: ParsedMethod, raw: string[]): string {
-		const args = raw
-			.map((v) => (v.length > 14 ? `${v.slice(0, 8)}…${v.slice(-4)}` : v))
-			.join(', ');
+		const args = raw.map((v) => (v.length > 14 ? `${v.slice(0, 8)}…${v.slice(-4)}` : v)).join(', ');
 		return `${method.name}(${args})`;
 	}
 
@@ -502,7 +548,7 @@ class ContractCallerStore {
 	addToBatch(method: ParsedMethod) {
 		const sig = method.signature;
 		if (!this.addressValid) {
-			this.writeState[sig] = { status: 'error', error: 'Enter a valid contract address first.' };
+			this.writeState[sig] = { status: 'error', error: t('cc.err.invalidAddress') };
 			return;
 		}
 		const raw = this.paramValues[sig] ?? [];
@@ -515,7 +561,10 @@ class ContractCallerStore {
 		try {
 			data = encodeCall(method, built.args ?? []);
 		} catch (e) {
-			this.writeState[sig] = { status: 'error', error: e instanceof Error ? e.message : 'Encode failed' };
+			this.writeState[sig] = {
+				status: 'error',
+				error: e instanceof Error ? e.message : t('cc.methods.encodeFailed')
+			};
 			return;
 		}
 		this.batch.push({
@@ -551,13 +600,13 @@ class ContractCallerStore {
 	async sendBatch() {
 		const wallet = walletStore.activeWallet;
 		if (!wallet) {
-			this.batchState = { status: 'error', error: 'Connect your wallet first (top-right).' };
+			this.batchState = { status: 'error', error: t('cc.err.connectWallet') };
 			return;
 		}
 		if (!this.selectedChain || (wallet.kind === 'biubiu' && !this.writeNetwork)) {
 			this.batchState = {
 				status: 'error',
-				error: 'This network is read-only in-app. Export the Safe batch and run it from your Safe.'
+				error: t('cc.err.readOnlyBatch')
 			};
 			return;
 		}
@@ -571,7 +620,8 @@ class ContractCallerStore {
 			chainId: this.selectedChain.chainId,
 			explorerTxBaseUrl: this.explorerBaseUrl ? `${this.explorerBaseUrl}/tx/` : undefined,
 			onPhase: (s) => {
-				if (this.batchState.status === 'sending') this.batchState = { ...this.batchState, phase: s };
+				if (this.batchState.status === 'sending')
+					this.batchState = { ...this.batchState, phase: s };
 			}
 		});
 		this.batchState = res.success
@@ -598,7 +648,7 @@ class ContractCallerStore {
 		if (!this.addressValid) {
 			this.writeState[method.signature] = {
 				status: 'error',
-				error: 'Enter a valid contract address first.'
+				error: t('cc.err.invalidAddress')
 			};
 			return;
 		}
@@ -679,11 +729,11 @@ class ContractCallerStore {
 	async deployChainHelper() {
 		const wallet = walletStore.activeWallet;
 		if (!wallet) {
-			this.chainState = { status: 'error', error: 'Connect your wallet first (top-right).' };
+			this.chainState = { status: 'error', error: t('cc.err.connectWallet') };
 			return;
 		}
 		if (!this.selectedChain || (wallet.kind === 'biubiu' && !this.writeNetwork)) {
-			this.chainState = { status: 'error', error: 'This network is read-only in-app.' };
+			this.chainState = { status: 'error', error: t('cc.err.readOnly') };
 			return;
 		}
 		const { to, data } = chainedDeployCalldata();
@@ -692,7 +742,8 @@ class ContractCallerStore {
 		const res = await wallet.sendCalls([{ to, value: 0n, data }], {
 			chainId: this.selectedChain.chainId,
 			onPhase: (s) => {
-				if (this.chainState.status === 'sending') this.chainState = { ...this.chainState, phase: s };
+				if (this.chainState.status === 'sending')
+					this.chainState = { ...this.chainState, phase: s };
 			}
 		});
 		this.chainHelperDeploying = false;
@@ -726,7 +777,10 @@ class ContractCallerStore {
 			try {
 				data = encodeCall(step.method, args);
 			} catch (e) {
-				return { ok: false, error: `Step ${i + 1}: ${e instanceof Error ? e.message : 'encode failed'}` };
+				return {
+					ok: false,
+					error: `Step ${i + 1}: ${e instanceof Error ? e.message : 'encode failed'}`
+				};
 			}
 			const returnRefs = step.refs
 				.map((ref, idx) =>
@@ -758,16 +812,16 @@ class ContractCallerStore {
 	async sendChain() {
 		const wallet = walletStore.activeWallet;
 		if (!wallet) {
-			this.chainState = { status: 'error', error: 'Connect your wallet first (top-right).' };
+			this.chainState = { status: 'error', error: t('cc.err.connectWallet') };
 			return;
 		}
 		if (!this.selectedChain || (wallet.kind === 'biubiu' && !this.writeNetwork)) {
-			this.chainState = { status: 'error', error: 'Chaining requires a chain the in-app wallet supports.' };
+			this.chainState = { status: 'error', error: t('cc.err.chainUnsupported') };
 			return;
 		}
 		if (this.chain.length === 0) return;
 		if (!this.chainHelperDeployed) {
-			this.chainState = { status: 'error', error: 'Deploy the chain helper first.' };
+			this.chainState = { status: 'error', error: t('cc.err.deployHelperFirst') };
 			return;
 		}
 		const built = this.buildChainedCalls();
@@ -780,7 +834,7 @@ class ContractCallerStore {
 		if (!wallet.sendDelegateCall) {
 			this.chainState = {
 				status: 'error',
-				error: 'Atomic chaining requires the built-in biubiu wallet.'
+				error: t('cc.err.chainNeedsBiubiu')
 			};
 			return;
 		}
@@ -791,13 +845,157 @@ class ContractCallerStore {
 			{
 				chainId: this.selectedChain.chainId,
 				onPhase: (s) => {
-					if (this.chainState.status === 'sending') this.chainState = { ...this.chainState, phase: s };
+					if (this.chainState.status === 'sending')
+						this.chainState = { ...this.chainState, phase: s };
 				}
 			}
 		);
 		this.chainState = res.success
 			? { status: 'done', txHash: res.txHash, explorerUrl: res.explorerUrl }
 			: { status: 'error', error: res.error };
+	}
+
+	// ── Chain demos ──
+
+	/** Parse a demo contract's ABI once and look up a function by name. */
+	private getDemoMethod(contract: DemoContractName, fn: string): ParsedMethod {
+		let byName = this.demoMethodCache.get(contract);
+		if (!byName) {
+			const res = parseAbiInput(DEMO_ABI[contract].join('\n'));
+			byName = new Map((res.methods ?? []).map((m) => [m.name, m]));
+			this.demoMethodCache.set(contract, byName);
+		}
+		const method = byName.get(fn);
+		if (!method) throw new Error(`Demo method ${contract}.${fn} not found`);
+		return method;
+	}
+
+	/** True once every contract a scenario needs is deployed on this chain. */
+	scenarioReady(scenario: DemoScenario): boolean {
+		return scenario.contracts.every((c) => this.demoDeployed[c]);
+	}
+
+	/** Probe which demo contracts are already deployed on the current RPC. */
+	async checkDemos() {
+		if (!this.rpcUrl) return;
+		this.demoChecking = true;
+		try {
+			const names = [...new Set(DEMO_SCENARIOS.flatMap((s) => s.contracts))];
+			this.demoDeployed = await getDeployedDemos(this.rpcUrl, names);
+		} catch {
+			/* leave statuses as-is on a probe failure */
+		} finally {
+			this.demoChecking = false;
+		}
+	}
+
+	/** Deploy a scenario's missing contracts (one CREATE2 batch). */
+	async deployDemo(scenarioId: string) {
+		const scenario = DEMO_SCENARIOS.find((s) => s.id === scenarioId);
+		if (!scenario) return;
+		const wallet = walletStore.activeWallet;
+		if (!wallet) {
+			this.demoState[scenarioId] = { status: 'error', error: t('cc.err.connectWallet') };
+			return;
+		}
+		if (!this.selectedChain || (wallet.kind === 'biubiu' && !this.writeNetwork)) {
+			this.demoState[scenarioId] = { status: 'error', error: t('cc.err.readOnly') };
+			return;
+		}
+		const missing = scenario.contracts.filter((c) => !this.demoDeployed[c]);
+		if (missing.length === 0) return;
+		const calls = missing.map((c) => {
+			const { to, data } = demoDeployCalldata(c);
+			return { to, value: 0n, data };
+		});
+		this.demoDeploying[scenarioId] = true;
+		this.demoState[scenarioId] = { status: 'sending', phase: 'checking' };
+		const res = await wallet.sendCalls(calls, {
+			chainId: this.selectedChain.chainId,
+			explorerTxBaseUrl: this.explorerBaseUrl ? `${this.explorerBaseUrl}/tx/` : undefined,
+			onPhase: (s) => {
+				const cur = this.demoState[scenarioId];
+				if (cur && cur.status === 'sending') this.demoState[scenarioId] = { ...cur, phase: s };
+			}
+		});
+		this.demoDeploying[scenarioId] = false;
+		if (res.success) {
+			for (const c of missing) this.demoDeployed[c] = true;
+			this.demoState[scenarioId] = {
+				status: 'done',
+				txHash: res.txHash,
+				explorerUrl: res.explorerUrl
+			};
+		} else {
+			this.demoState[scenarioId] = { status: 'error', error: res.error };
+		}
+	}
+
+	/** Load a scenario's pre-wired chain into the chain builder. */
+	loadDemoChain(scenarioId: string) {
+		const scenario = DEMO_SCENARIOS.find((s) => s.id === scenarioId);
+		if (!scenario) return;
+		this.chain = scenario.steps.map((step) => {
+			const method = this.getDemoMethod(step.contract, step.fn);
+			const values = method.inputs.map((_, idx) => {
+				const a = step.args[idx];
+				return a && a.kind !== 'ref' ? resolveDemoArg(a) : '';
+			});
+			const refs = method.inputs.map((_, idx) => {
+				const a = step.args[idx];
+				return a && a.kind === 'ref'
+					? { kind: 'ref' as const, sourceStep: a.step, outputSlot: 0 }
+					: { kind: 'literal' as const };
+			});
+			return {
+				id: crypto.randomUUID(),
+				signature: method.signature,
+				name: method.name,
+				to: DEMO_ADDRESS[step.contract],
+				method,
+				values,
+				refs,
+				payableValue: ''
+			};
+		});
+		this.chainState = { status: 'idle' };
+		this.demoLoadedId = scenarioId;
+		delete this.demoProof[scenarioId];
+		if (this.chainHelperDeployed === null) this.checkChainHelper();
+	}
+
+	/** Run a scenario's proof reads to show the chain actually did its thing. */
+	async verifyDemo(scenarioId: string) {
+		const scenario = DEMO_SCENARIOS.find((s) => s.id === scenarioId);
+		if (!scenario || !this.rpcUrl) return;
+		this.demoVerifying[scenarioId] = true;
+		const results: DemoProofResult[] = [];
+		for (const p of scenario.proofs) {
+			const method = this.getDemoMethod(p.contract, p.fn);
+			const rawArgs = method.inputs.map((_, idx) => {
+				const a = p.args[idx];
+				return a && a.kind !== 'ref' ? resolveDemoArg(a) : '';
+			});
+			const built = buildArgs(method, rawArgs);
+			if (!built.ok) {
+				results.push({ labelKey: p.labelKey, error: built.error });
+				continue;
+			}
+			const res = await executeRead(
+				this.rpcUrl,
+				DEMO_ADDRESS[p.contract],
+				method,
+				built.args ?? []
+			);
+			if (res.ok) {
+				const row = toOutputRows(method, res.decoded)[0];
+				results.push({ labelKey: p.labelKey, value: row?.value ?? '', type: row?.type });
+			} else {
+				results.push({ labelKey: p.labelKey, error: res.error });
+			}
+		}
+		this.demoProof[scenarioId] = results;
+		this.demoVerifying[scenarioId] = false;
 	}
 
 	// ── Navigation ──

@@ -8,29 +8,13 @@
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 	import { staticOutputSlots, isStaticWordType } from '$lib/contract-caller/abi.js';
 	import { shortenAddress } from '$lib/contract-caller/format.js';
+	import { sendingLabel } from '$lib/contract-caller/send-status.js';
 	import type { ChainStep } from '$lib/contract-caller/types.js';
 	import SmartParamInput from './SmartParamInput.svelte';
 	import { ArrowUp, ArrowDown, X, CornerDownRight } from '@lucide/svelte';
 
 	const nativeSymbol = $derived(store.selectedChain?.nativeCurrency.symbol ?? 'ETH');
 	const cs = $derived(store.chainState);
-
-	function sendingLabel(phase?: string): string {
-		switch (phase) {
-			case 'building':
-				return t('cc.send.building');
-			case 'estimating':
-				return t('cc.send.estimating');
-			case 'signing':
-				return t('cc.send.signing');
-			case 'submitting':
-				return t('cc.send.submitting');
-			case 'waiting':
-				return t('cc.send.waiting');
-			default:
-				return t('cc.send.checking');
-		}
-	}
 
 	/** Ref-source options for param `idx` of step at position `stepPos`. */
 	function refOptions(stepPos: number) {
@@ -118,7 +102,8 @@
 													class="link-btn ref-btn"
 													onclick={() => store.setChainParamSource(step.id, idx, opts[0].value)}
 												>
-													<CornerDownRight size={12} /> {t('cc.chain.usePreviousResult')}
+													<CornerDownRight size={12} />
+													{t('cc.chain.usePreviousResult')}
 												</button>
 											{/if}
 										{/if}

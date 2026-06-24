@@ -9,6 +9,7 @@
 	import ContractCallerMethods from '$lib/widgets/ContractCallerMethods.svelte';
 	import ContractCallerBatch from '$lib/widgets/ContractCallerBatch.svelte';
 	import ContractCallerChain from '$lib/widgets/ContractCallerChain.svelte';
+	import ContractCallerDemos from '$lib/widgets/ContractCallerDemos.svelte';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
 
 	const seoProps = $derived(
@@ -33,12 +34,42 @@
 		<p class="page-subtitle">{t('cc.subtitle')}</p>
 	</header>
 
+	{#if !store.selectedChain}
+		<ol class="guide" use:fadeInUp={{ delay: 30 }}>
+			<li class="guide-step">
+				<span class="guide-num">1</span>
+				<div class="guide-text">
+					<span class="guide-title">{t('cc.guide.step1Title')}</span>
+					<span class="guide-desc">{t('cc.guide.step1Desc')}</span>
+				</div>
+			</li>
+			<li class="guide-step">
+				<span class="guide-num">2</span>
+				<div class="guide-text">
+					<span class="guide-title">{t('cc.guide.step2Title')}</span>
+					<span class="guide-desc">{t('cc.guide.step2Desc')}</span>
+				</div>
+			</li>
+			<li class="guide-step">
+				<span class="guide-num">3</span>
+				<div class="guide-text">
+					<span class="guide-title">{t('cc.guide.step3Title')}</span>
+					<span class="guide-desc">{t('cc.guide.step3Desc')}</span>
+				</div>
+			</li>
+		</ol>
+	{/if}
+
 	<div class="layout">
 		<div class="main-col" use:fadeInUp={{ delay: 50 }}>
 			<ContractCallerConfig />
 
 			{#if store.hasChain && store.methods.length > 0}
 				<ContractCallerMethods />
+			{/if}
+
+			{#if store.hasChain && store.canChain}
+				<ContractCallerDemos />
 			{/if}
 		</div>
 
@@ -100,7 +131,59 @@
 	}
 	.page-header {
 		text-align: center;
-		margin-bottom: var(--space-8);
+		margin-bottom: var(--space-6);
+	}
+	/* First-open orientation: the three steps the user is about to take. */
+	.guide {
+		list-style: none;
+		margin: 0 0 var(--space-5);
+		padding: var(--space-4);
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: var(--space-4);
+		background: var(--bg-raised);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-xl);
+	}
+	.guide-step {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
+		min-width: 0;
+	}
+	.guide-num {
+		flex: 0 0 auto;
+		width: 24px;
+		height: 24px;
+		display: grid;
+		place-items: center;
+		background: var(--accent-subtle);
+		color: var(--accent);
+		border-radius: var(--radius-full);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-semibold);
+	}
+	.guide-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+	.guide-title {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+		color: var(--fg-base);
+	}
+	.guide-desc {
+		font-size: var(--text-xs);
+		color: var(--fg-muted);
+		line-height: var(--leading-snug);
+	}
+	@media (max-width: 640px) {
+		.guide {
+			grid-template-columns: 1fr;
+			gap: var(--space-3);
+		}
 	}
 	.page-title {
 		font-size: var(--text-4xl);

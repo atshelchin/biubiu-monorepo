@@ -18,6 +18,7 @@ import { encodeSeal } from './contract/encode.js';
 import { cooldownRemaining, entryCount, fetchEntriesPage, type ForeverEntry } from './contract/reader.js';
 import { rpcCall } from './contract/rpc.js';
 import { WRITE_NETWORKS, networkBySlug } from './networks.js';
+import { fetchBundlerAccountInfo, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
 import { evaluatePrf, isWebAuthnAvailable, type EncryptionCredential } from './crypto/prf.js';
 import { deriveContentKey, decryptContent, encryptContent } from './crypto/envelope.js';
 import {
@@ -86,6 +87,10 @@ class ForeverStore {
 	entries = $state<TimelineEntry[]>([]);
 	entriesTotal = $state(0);
 	loadingEntries = $state(false);
+
+	/** When set, the seal hit an empty bundler gas account → show the funding modal
+	 *  (BundlerFundingModal handles sponsorship + self-fund; we just retry on success). */
+	funding = $state<GasAccountFunding | null>(null);
 
 	constructor() {
 		if (!browser) return;
@@ -317,7 +322,14 @@ class ForeverStore {
 					(this.message =
 						s === 'signing' ? t('capsule.status.signing') : t('capsule.status.sealing', { step: s }))
 			});
-			if (!res.success) return this.fail(this.friendlyError(res.error ?? t('capsule.error.sealFailed')));
+			if (!res.success) {
+				const raw = res.error ?? t('capsule.error.sealFailed');
+				// Empty bundler gas account → offer sponsorship or self-funding instead of a dead-end error.
+				if (/bundler gas account|insufficient native balance on dedicated/i.test(raw)) {
+					return this.openFunding(raw);
+				}
+				return this.fail(this.friendlyError(raw));
+			}
 
 			this.lastTxHash = res.txHash ?? null;
 			this.text = '';
@@ -421,6 +433,51 @@ class ForeverStore {
 	/** Leave to the region gate to pick a different chain. */
 	exitChain(): void {
 		this.chainEntered = false;
+	}
+
+	/** Surface the gas-account funding modal — parse the relayer error for amount + address. */
+	private async openFunding(rawError: string): Promise<false> {
+		const user = authStore.user;
+		const net = this.network;
+		const rm = rawError.match(/required:\s*(\d+)/i);
+		const required = rm ? BigInt(rm[1]) : 0n;
+		let depositAddress = '';
+		let currentWei = 0n;
+		const dm = rawError.match(/Deposit to:\s*(0x[a-fA-F0-9]{40})/i);
+		if (dm) depositAddress = dm[1];
+		const sm = rawError.match(/Spendable:\s*(\d+)/i);
+		if (sm) currentWei = BigInt(sm[1]);
+		// Prefer fresh on-chain info (more accurate address + balance) when reachable.
+		if (user && net) {
+			const info = await fetchBundlerAccountInfo(net.chainId, user.safeAddress).catch(() => null);
+			if (info?.depositAddress) {
+				depositAddress = info.depositAddress;
+				currentWei = info.spendableBalance;
+			}
+		}
+		this.funding = {
+			chainId: net?.chainId ?? 0,
+			safeAddress: user?.safeAddress ?? '',
+			depositAddress,
+			nativeSym: net?.nativeSymbol ?? '',
+			requiredWei: required,
+			currentWei
+		};
+		this.status = 'idle';
+		this.message = '';
+		return false;
+	}
+
+	/** Retry the seal after the gas account has been funded (sponsored or self-funded). */
+	async retrySeal(): Promise<void> {
+		this.funding = null;
+		this.status = 'idle';
+		await this.seal();
+	}
+
+	/** Dismiss the funding modal without sealing. */
+	dismissFunding(): void {
+		this.funding = null;
 	}
 
 	clearStatus(): void {

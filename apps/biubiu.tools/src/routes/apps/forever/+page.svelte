@@ -2,6 +2,7 @@
 	import ForeverOnboard from '$lib/pda-apps/forever/ForeverOnboard.svelte';
 	import CapsuleDatePicker from '$lib/pda-apps/forever/CapsuleDatePicker.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
+	import BundlerFundingModal from '$lib/auth/BundlerFundingModal.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
@@ -316,6 +317,14 @@
 			<SettingsPanel />
 		</div>
 	</ResponsiveModal>
+
+	<!-- Empty bundler gas account → offer free sponsorship or self-funding (with QR). -->
+	<BundlerFundingModal
+		open={!!store.funding}
+		funding={store.funding}
+		onFunded={() => store.retrySeal()}
+		onClose={() => store.dismissFunding()}
+	/>
 </div>
 
 <style>

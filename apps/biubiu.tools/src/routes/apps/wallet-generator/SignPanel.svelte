@@ -6,10 +6,11 @@
 	import {
 		parseSignRequest,
 		signRequest,
-		type ParsedSignRequest,
+		type ParsedSignRequest
 	} from '$lib/pda-apps/wallet-generator/crypto/sign';
 	import AnimatedQr from './AnimatedQr.svelte';
 	import UrScanner from './UrScanner.svelte';
+	import { TriangleAlert } from '@lucide/svelte';
 
 	let scanner = $state<UrScanner | null>(null);
 	let parsed = $state<ParsedSignRequest | null>(null);
@@ -57,13 +58,7 @@
 	}
 
 	const dtKey = $derived(
-		parsed
-			? parsed.dataType === 2
-				? 'typedData'
-				: parsed.dataType === 3
-					? 'message'
-					: 'tx'
-			: 'tx',
+		parsed ? (parsed.dataType === 2 ? 'typedData' : parsed.dataType === 3 ? 'message' : 'tx') : 'tx'
 	);
 
 	function short(v: string, n = 10): string {
@@ -74,7 +69,12 @@
 <div class="sign">
 	<UrScanner bind:this={scanner} {onComplete} onCancel={() => {}} />
 
-	{#if err}<p class="err">{err}</p>{/if}
+	{#if err}
+		<div class="alert" role="alert">
+			<TriangleAlert size={16} />
+			<span>{err}</span>
+		</div>
+	{/if}
 
 	{#if fragments}
 		<!-- ── Signature result ── -->
@@ -226,10 +226,19 @@
 		max-width: 420px;
 		margin: 0;
 	}
-	.err {
+	.alert {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		width: 100%;
+		max-width: 520px;
+		padding: var(--space-3) var(--space-4);
+		background: var(--error-subtle);
+		border: 1px solid var(--error-muted);
+		border-radius: var(--radius-md);
 		color: var(--error);
 		font-size: var(--text-sm);
-		text-align: center;
+		line-height: var(--leading-snug);
 	}
 	.mono {
 		font-family: var(--font-mono);
@@ -253,7 +262,7 @@
 	}
 	.btn.primary {
 		background: var(--accent);
-		color: var(--accent-fg, #fff);
+		color: var(--accent-fg);
 		border-color: transparent;
 	}
 	.btn.ghost {

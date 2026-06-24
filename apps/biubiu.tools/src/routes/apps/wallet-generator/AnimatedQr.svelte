@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { encode } from 'uqr';
-	import { onDestroy } from 'svelte';
 
 	interface Props {
 		/** One or more UR fragment strings. >1 → animated (fountain QR). */
@@ -30,8 +29,6 @@
 		if (!text) return null;
 		return encode(text, { ecc: 'L' });
 	});
-
-	onDestroy(() => {});
 </script>
 
 {#if matrix}
@@ -48,14 +45,14 @@
 		{#each matrix.data as row, y (y)}
 			{#each row as cell, x (x)}
 				{#if cell}
-					<rect x={x} y={y} width="1" height="1" fill="#000" />
+					<rect {x} {y} width="1" height="1" fill="#000" />
 				{/if}
 			{/each}
 		{/each}
 	</svg>
 	{#if frames.length > 1}
 		<div class="frame-dots">
-			{#each frames as _, i (i)}
+			{#each [...Array(frames.length).keys()] as i (i)}
 				<span class="dot" class:on={i === idx}></span>
 			{/each}
 		</div>

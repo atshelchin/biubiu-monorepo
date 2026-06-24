@@ -29,7 +29,8 @@
 	let decoder: any = null;
 	let done = false;
 
-	const supported = typeof (globalThis as { BarcodeDetector?: unknown }).BarcodeDetector !== 'undefined';
+	const supported =
+		typeof (globalThis as { BarcodeDetector?: unknown }).BarcodeDetector !== 'undefined';
 
 	export async function start() {
 		error = '';
@@ -39,7 +40,7 @@
 		try {
 			decoder = await createUrDecoder();
 			stream = await navigator.mediaDevices.getUserMedia({
-				video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 720 } },
+				video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 720 } }
 			});
 			await new Promise((r) => requestAnimationFrame(r));
 			if (videoRef) {
@@ -113,7 +114,6 @@
 				<button class="scan-close" onclick={cancel} aria-label="Close">✕</button>
 			</div>
 			<div class="scan-video-wrap">
-				<!-- svelte-ignore element_invalid_self_closing_tag -->
 				<video bind:this={videoRef} class="scan-video" playsinline muted></video>
 				<div class="scan-frame"></div>
 			</div>
@@ -138,13 +138,13 @@
 		backdrop-filter: blur(4px);
 	}
 	.scan-modal {
-		background: var(--bg-elevated, #1a1a1a);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
 		overflow: hidden;
 		width: 320px;
 		max-width: 92vw;
-		box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-lg);
 	}
 	.scan-header {
 		display: flex;

@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Firma in corso…",
 	"wg.sign.resultTitle": "Firma",
 	"wg.sign.resultTip": "Scansiona questo di nuovo nel wallet watch-only per trasmetterlo.",
-	"wg.sign.error": "Impossibile leggere questa richiesta. Assicurati che sia un QR eth-sign-request."
+	"wg.sign.error": "Impossibile leggere questa richiesta. Assicurati che sia un QR eth-sign-request.",
+
+	"wg.gen.max": "Fino a {n} wallet per lotto.",
+	"wg.download.warnTitle": "Esportare le chiavi private in chiaro?",
+	"wg.download.warnBody": "Questo file salva le tue chiavi private non cifrate: chiunque lo apra può prelevare i tuoi fondi. Salvalo solo in un luogo offline e cifrato ed eliminalo al termine.",
+	"wg.download.warnConfirm": "Scarica comunque",
+	"wg.advanced": "Avanzate"
 }

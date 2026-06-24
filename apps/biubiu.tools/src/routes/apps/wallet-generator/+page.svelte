@@ -1,13 +1,18 @@
 <script lang="ts">
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
-	import { t, locale } from '$lib/i18n';
+	import { t, locale, formatNumber } from '$lib/i18n';
 	import type { TranslationKey } from '$i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
 	import PageFooter from '$lib/ui/PageFooter.svelte';
+	import Stepper from '$lib/ui/Stepper.svelte';
+	import ProgressBar from '$lib/ui/ProgressBar.svelte';
+	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
+	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { walletGenerator as s, type Tab } from '$lib/pda-apps/wallet-generator/store.svelte.js';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { CHAIN_IDS as chainIds } from '$lib/pda-apps/wallet-generator/infra/chains';
+	import { ArrowLeft, Copy, Check, ShieldCheck } from '@lucide/svelte';
 	import XpubPanel from './XpubPanel.svelte';
 	import SignPanel from './SignPanel.svelte';
 
@@ -23,42 +28,58 @@
 					description: t('wg.meta.description'),
 					applicationCategory: 'WebApplication',
 					operatingSystem: 'Web Browser',
-					offers: { price: 0, priceCurrency: 'USD' },
-				},
-			},
-		}),
+					offers: { price: 0, priceCurrency: 'USD' }
+				}
+			}
+		})
 	);
 
 	// Strength meter: map ~bits to a 0–100% bar (128 bits ≈ full).
 	const strengthPct = $derived(Math.min(100, Math.round((s.strength.bits / 128) * 100)));
 
-	let copied = $state(false);
-	async function copyMnemonic() {
-		if (!s.mnemonic) return;
+	// Single copy-feedback channel shared by the mnemonic + every table row.
+	let copiedKey = $state('');
+	let copyTimer: ReturnType<typeof setTimeout>;
+	async function copyText(key: string, text: string) {
+		if (!text) return;
 		try {
-			await navigator.clipboard.writeText(s.mnemonic);
-			copied = true;
-			setTimeout(() => (copied = false), 1500);
+			await navigator.clipboard.writeText(text);
+			copiedKey = key;
+			clearTimeout(copyTimer);
+			copyTimer = setTimeout(() => (copiedKey = ''), 1500);
 		} catch {
 			/* clipboard blocked — ignore */
 		}
 	}
 
-	// Custom range inputs (string-bound for clean empty states).
+	// Count input (string-bound for clean empty states + validation). Quick chips
+	// just fill the count; there's one Generate action so the path stays obvious.
 	let startInput = $state('0');
 	let countInput = $state('1000');
+	const customStart = $derived(Math.max(0, Math.floor(Number(startInput) || 0)));
+	const customCount = $derived(Math.floor(Number(countInput)));
+	const customValid = $derived(Number.isFinite(customCount) && customCount >= 1);
 	function runCustom() {
-		s.generate(parseInt(startInput || '0', 10), parseInt(countInput || '1', 10));
+		if (!customValid) return;
+		s.generate(customStart, customCount);
 	}
 
-	const tabs: { id: Tab; soon: boolean }[] = [
-		{ id: 'generate', soon: false },
-		{ id: 'xpub', soon: false },
-		{ id: 'sign', soon: false },
-	];
+	// Step 1 advanced summary: shown on the collapsed disclosure so the current
+	// chain/path is visible at a glance without expanding.
+	const hdShort = $derived(
+		(s.chainConfig.hdPaths.find((p) => p.value === s.hdPathType)?.label ?? '').split('—')[0].trim()
+	);
+	const advSummary = $derived(`${s.chainConfig.name} · ${hdShort}`);
+	const advMarked = $derived(s.hdPathType !== 'bip44' || s.addressType !== 'default');
 
-	function short(v: string): string {
-		return v.length > 16 ? `${v.slice(0, 8)}…${v.slice(-6)}` : v;
+	const tabs: Tab[] = ['generate', 'xpub', 'sign'];
+
+	// Gate plaintext-secret exports behind a confirmation.
+	let pendingExport = $state<'pks' | 'all' | null>(null);
+	function confirmExport() {
+		if (pendingExport === 'pks') s.downloadPrivateKeys();
+		else if (pendingExport === 'all') s.downloadAll();
+		pendingExport = null;
 	}
 </script>
 
@@ -72,17 +93,24 @@
 		<p class="subtitle">{t('wg.subtitle')}</p>
 	</header>
 
-	<!-- Security / offline warning -->
-	<div class="warn glass-card" use:fadeInUp={{ delay: 40 }}>
-		<strong>{t('wg.security.title')}</strong>
-		<p>{t('wg.security.body')}</p>
+	<!-- Security / offline note — compact; details available on expand. -->
+	<div class="warn" use:fadeInUp={{ delay: 40 }}>
+		<ShieldCheck class="warn-icon" size={18} />
+		<div class="warn-body">
+			<strong>{t('wg.security.title')}</strong>
+			<p>{t('wg.security.body')}</p>
+		</div>
 	</div>
 
 	<!-- Step indicator -->
-	<div class="steps" use:fadeInUp={{ delay: 60 }}>
-		<span class="step" class:active={s.step === 1}>1 · {t('wg.step.secret')}</span>
-		<span class="dash"></span>
-		<span class="step" class:active={s.step === 2}>2 · {t('wg.step.wallets')}</span>
+	<div class="steps-wrap" use:fadeInUp={{ delay: 60 }}>
+		<Stepper
+			steps={[t('wg.step.secret'), t('wg.step.wallets')]}
+			current={s.step - 1}
+			onNavigate={(i) => {
+				if (i === 0) s.back();
+			}}
+		/>
 	</div>
 
 	{#if s.step === 1}
@@ -98,7 +126,9 @@
 			></textarea>
 
 			<div class="strength">
-				<div class="bar"><div class="fill" data-level={s.strength.label} style="width:{strengthPct}%"></div></div>
+				<div class="bar">
+					<div class="fill" data-level={s.strength.label} style="width:{strengthPct}%"></div>
+				</div>
 				<span class="strength-text" data-level={s.strength.label}>
 					{t(`wg.strength.${s.strength.label}` as TranslationKey)}
 					{#if s.strength.bits > 0}· {t('wg.strength.bits', { bits: s.strength.bits })}{/if}
@@ -118,54 +148,85 @@
 				</div>
 			</div>
 
-			<!-- Mnemonic preview -->
-			<div class="mnemonic">
-				<div class="mnemonic-head">
-					<span class="field-label">{t('wg.mnemonic.label')}</span>
-					<div class="mnemonic-actions">
-						<button class="link" onclick={() => (s.revealMnemonic = !s.revealMnemonic)}>
-							{s.revealMnemonic ? t('wg.mnemonic.hide') : t('wg.mnemonic.reveal')}
-						</button>
-						<button class="link" disabled={!s.mnemonic} onclick={copyMnemonic}>
-							{copied ? t('wg.mnemonic.copied') : t('wg.mnemonic.copy')}
-						</button>
-					</div>
-				</div>
-				<div class="mnemonic-box mono" class:masked={!s.revealMnemonic}>
-					{#if !s.mnemonic}
-						<span class="muted">—</span>
-					{:else if s.revealMnemonic}
-						{s.mnemonic}
-					{:else}
-						<span class="muted">{t('wg.mnemonic.hidden')}</span>
-					{/if}
-				</div>
-			</div>
+			<!-- Advanced: mnemonic preview + chain/path. Hidden by default so a
+			     first-time user only sees secret → length → continue. The summary
+			     keeps the current chain/path visible without expanding. -->
+			<div class="advanced">
+				<Disclosure title={t('wg.advanced')} summary={advSummary} marked={advMarked}>
+					<div class="adv-body">
+						<div class="mnemonic">
+							<div class="mnemonic-head">
+								<span class="field-label">{t('wg.mnemonic.label')}</span>
+								<div class="mnemonic-actions">
+									<button
+										class="link"
+										aria-pressed={s.revealMnemonic}
+										onclick={() => (s.revealMnemonic = !s.revealMnemonic)}
+									>
+										{s.revealMnemonic ? t('wg.mnemonic.hide') : t('wg.mnemonic.reveal')}
+									</button>
+									<button
+										class="link"
+										disabled={!s.mnemonic}
+										onclick={() => copyText('mnemonic', s.mnemonic)}
+									>
+										{copiedKey === 'mnemonic' ? t('wg.mnemonic.copied') : t('wg.mnemonic.copy')}
+									</button>
+								</div>
+							</div>
+							<div class="mnemonic-box mono" class:masked={!s.revealMnemonic}>
+								{#if !s.mnemonic}
+									<span class="muted">—</span>
+								{:else if s.revealMnemonic}
+									{s.mnemonic}
+								{:else}
+									<span class="muted">{t('wg.mnemonic.hidden')}</span>
+								{/if}
+							</div>
+						</div>
 
-			<!-- Chain / address type / HD path -->
-			<div class="grid3">
-				<label class="select-field">
-					<span class="field-label">{t('wg.chain.label')}</span>
-					<select value={s.chain} onchange={(e) => s.setChain(e.currentTarget.value as 'evm')}>
-						<option value="evm">{s.chainConfig.name}</option>
-					</select>
-				</label>
-				<label class="select-field">
-					<span class="field-label">{t('wg.addressType.label')}</span>
-					<select bind:value={s.addressType}>
-						{#each s.chainConfig.addressTypes as a (a.value)}
-							<option value={a.value}>{a.label}</option>
-						{/each}
-					</select>
-				</label>
-				<label class="select-field">
-					<span class="field-label">{t('wg.hdPath.label')}</span>
-					<select bind:value={s.hdPathType}>
-						{#each s.chainConfig.hdPaths as p (p.value)}
-							<option value={p.value}>{p.label}</option>
-						{/each}
-					</select>
-				</label>
+						<div class="opts">
+							<div class="opt">
+								<span class="field-label">{t('wg.chain.label')}</span>
+								{#if chainIds.length > 1}
+									<select
+										class="opt-select"
+										value={s.chain}
+										onchange={(e) => s.setChain(e.currentTarget.value as 'evm')}
+									>
+										{#each chainIds as id (id)}
+											<option value={id}>{id.toUpperCase()}</option>
+										{/each}
+									</select>
+								{:else}
+									<div class="opt-static">{s.chainConfig.name}</div>
+								{/if}
+							</div>
+							{#if s.chainConfig.addressTypes.length > 1}
+								<div class="opt">
+									<span class="field-label">{t('wg.addressType.label')}</span>
+									<select class="opt-select" bind:value={s.addressType}>
+										{#each s.chainConfig.addressTypes as a (a.value)}
+											<option value={a.value}>{a.label}</option>
+										{/each}
+									</select>
+								</div>
+							{/if}
+							<div class="opt">
+								<span class="field-label">{t('wg.hdPath.label')}</span>
+								{#if s.chainConfig.hdPaths.length > 1}
+									<select class="opt-select" bind:value={s.hdPathType}>
+										{#each s.chainConfig.hdPaths as p (p.value)}
+											<option value={p.value}>{p.label}</option>
+										{/each}
+									</select>
+								{:else}
+									<div class="opt-static">{s.chainConfig.hdPaths[0].label}</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+				</Disclosure>
 			</div>
 
 			<div class="actions-end">
@@ -181,47 +242,68 @@
 				<button class="btn ghost back-btn" onclick={() => s.back()}
 					><ArrowLeft size={14} /> {t('wg.back')}</button
 				>
-				<div class="tabbar">
-					{#each tabs as tb (tb.id)}
+				<div class="tabbar" role="tablist">
+					{#each tabs as id (id)}
 						<button
 							class="tab"
-							class:active={s.tab === tb.id}
-							disabled={tb.soon}
-							onclick={() => (s.tab = tb.id)}
+							class:active={s.tab === id}
+							role="tab"
+							aria-selected={s.tab === id}
+							onclick={() => (s.tab = id)}
 						>
-							{t(`wg.tab.${tb.id}` as TranslationKey)}
-							{#if tb.soon}<span class="soon-badge">{t('wg.tab.soon')}</span>{/if}
+							{t(`wg.tab.${id}` as TranslationKey)}
 						</button>
 					{/each}
 				</div>
 			</div>
 
 			{#if s.tab === 'generate'}
-				<div class="gen-controls">
-					<button class="btn" disabled={s.generating} onclick={() => s.generate(0, 100)}>
-						{t('wg.gen.get100')}
-					</button>
-					<button class="btn" disabled={s.generating} onclick={() => s.generate(0, 1000)}>
-						{t('wg.gen.get1000')}
-					</button>
-					<span class="divider"></span>
-					<label class="inline-field">
-						<span>{t('wg.gen.start')}</span>
-						<input class="num" type="text" inputmode="numeric" bind:value={startInput} />
-					</label>
-					<label class="inline-field">
-						<span>{t('wg.gen.count')}</span>
-						<input class="num" type="text" inputmode="numeric" bind:value={countInput} />
-					</label>
-					<button class="btn primary" disabled={s.generating} onclick={runCustom}>
-						{t('wg.gen.run')}
-					</button>
+				<div class="gen">
+					<div class="gen-row">
+						<label class="inline-field grow">
+							<span>{t('wg.gen.count')}</span>
+							<input
+								class="num wide"
+								class:invalid={countInput !== '' && !customValid}
+								type="text"
+								inputmode="numeric"
+								bind:value={countInput}
+							/>
+						</label>
+						<button class="btn primary" disabled={s.generating || !customValid} onclick={runCustom}>
+							{t('wg.gen.run')}
+						</button>
+					</div>
+					<div class="gen-quick">
+						<button class="chip" disabled={s.generating} onclick={() => (countInput = '100')}
+							>100</button
+						>
+						<button class="chip" disabled={s.generating} onclick={() => (countInput = '1000')}>
+							1000
+						</button>
+						<button class="chip" disabled={s.generating} onclick={() => (countInput = '10000')}>
+							10000
+						</button>
+						<span class="gen-max">{t('wg.gen.max', { n: formatNumber(s.maxCount) })}</span>
+					</div>
+					<Disclosure
+						title={t('wg.advanced')}
+						summary="{t('wg.gen.start')} {customStart}"
+						marked={customStart > 0}
+					>
+						<label class="inline-field">
+							<span>{t('wg.gen.start')}</span>
+							<input class="num" type="text" inputmode="numeric" bind:value={startInput} />
+						</label>
+					</Disclosure>
 				</div>
 
 				{#if s.generating}
-					<div class="progress">
-						<div class="progress-fill" style="width:{s.progressPct}%"></div>
-						<span class="progress-label">{t('wg.gen.generating', { pct: s.progressPct })}</span>
+					<div class="gen-progress">
+						<ProgressBar
+							percent={s.progressPct}
+							status={t('wg.gen.generating', { pct: s.progressPct })}
+						/>
 					</div>
 				{/if}
 
@@ -229,14 +311,26 @@
 					<p class="muted empty">{t('wg.gen.empty')}</p>
 				{:else if s.wallets.length > 0}
 					<div class="results-head">
-						<span class="count">{t('wg.gen.done', { n: s.wallets.length })}</span>
+						<span class="count">{t('wg.gen.done', { n: formatNumber(s.wallets.length) })}</span>
 						<div class="results-actions">
-							<button class="link" onclick={() => (s.revealKeys = !s.revealKeys)}>
+							<button
+								class="link"
+								aria-pressed={s.revealKeys}
+								onclick={() => (s.revealKeys = !s.revealKeys)}
+							>
 								{s.revealKeys ? t('wg.keys.hide') : t('wg.keys.reveal')}
 							</button>
-							<button class="btn small" onclick={() => s.downloadAddresses()}>{t('wg.download.addresses')}</button>
-							<button class="btn small" onclick={() => s.downloadPrivateKeys()}>{t('wg.download.pks')}</button>
-							<button class="btn small" onclick={() => s.downloadAll()}>{t('wg.download.all')}</button>
+							<span class="dl-group">
+								<button class="btn ghost small" onclick={() => s.downloadAddresses()}
+									>{t('wg.download.addresses')}</button
+								>
+								<button class="btn ghost small" onclick={() => (pendingExport = 'pks')}
+									>{t('wg.download.pks')}</button
+								>
+								<button class="btn ghost small" onclick={() => (pendingExport = 'all')}
+									>{t('wg.download.all')}</button
+								>
+							</span>
 						</div>
 					</div>
 
@@ -255,9 +349,39 @@
 									<tr>
 										<td class="muted">{w.index}</td>
 										<td class="mono small">{w.path}</td>
-										<td class="mono">{w.address}</td>
+										<td class="mono">
+											<span class="cell">
+												<span class="cell-val">{w.address}</span>
+												<button
+													class="copy-btn"
+													title={t('wg.mnemonic.copy')}
+													aria-label={t('wg.mnemonic.copy')}
+													onclick={() => copyText(`a${w.index}`, w.address)}
+												>
+													{#if copiedKey === `a${w.index}`}<Check size={13} />{:else}<Copy
+															size={13}
+														/>{/if}
+												</button>
+											</span>
+										</td>
 										<td class="mono small key">
-											{s.revealKeys ? w.privateKey : short(w.privateKey).replace(/./g, '•')}
+											{#if s.revealKeys}
+												<span class="cell">
+													<span class="cell-val">{w.privateKey}</span>
+													<button
+														class="copy-btn"
+														title={t('wg.mnemonic.copy')}
+														aria-label={t('wg.mnemonic.copy')}
+														onclick={() => copyText(`k${w.index}`, w.privateKey)}
+													>
+														{#if copiedKey === `k${w.index}`}<Check size={13} />{:else}<Copy
+																size={13}
+															/>{/if}
+													</button>
+												</span>
+											{:else}
+												<span class="masked" aria-label={t('wg.keys.hide')}>••••••••••••••••</span>
+											{/if}
 										</td>
 									</tr>
 								{/each}
@@ -267,7 +391,11 @@
 
 					{#if s.pageCount > 1}
 						<div class="pager">
-							<button class="btn small" disabled={s.page === 0} onclick={() => s.setPage(s.page - 1)}>
+							<button
+								class="btn small"
+								disabled={s.page === 0}
+								onclick={() => s.setPage(s.page - 1)}
+							>
 								{t('wg.page.prev')}
 							</button>
 							<span class="muted">{t('wg.page.of', { page: s.page + 1, total: s.pageCount })}</span>
@@ -289,6 +417,16 @@
 		</section>
 	{/if}
 </main>
+
+<ConfirmModal
+	open={pendingExport !== null}
+	destructive
+	title={t('wg.download.warnTitle')}
+	message={t('wg.download.warnBody')}
+	confirmText={t('wg.download.warnConfirm')}
+	onConfirm={confirmExport}
+	onCancel={() => (pendingExport = null)}
+/>
 
 <PageFooter />
 
@@ -320,47 +458,50 @@
 		max-width: 560px;
 	}
 
+	/* House card pattern (token-driven, theme-correct — see agent-rules/UI-DESIGN-RULES.md). */
 	.glass-card {
-		background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-		backdrop-filter: blur(20px) saturate(180%);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-base);
 		border-radius: var(--radius-xl);
-		box-shadow: var(--shadow-md);
+		box-shadow: var(--shadow-sm);
 		padding: var(--space-5) var(--space-6);
 	}
 
+	/* Compact security note — calm, not a billboard. */
 	.warn {
-		border-color: var(--warning-muted, rgba(251, 191, 36, 0.3));
+		display: flex;
+		gap: var(--space-3);
+		align-items: flex-start;
+		padding: var(--space-3) var(--space-4);
+		background: var(--warning-subtle);
+		border: 1px solid var(--warning-muted);
+		border-radius: var(--radius-lg);
+	}
+	.warn :global(.warn-icon) {
+		flex-shrink: 0;
+		margin-top: 1px;
+		color: var(--warning);
+	}
+	.warn-body {
+		min-width: 0;
 	}
 	.warn strong {
 		display: block;
-		color: var(--warning, #fbbf24);
-		font-size: var(--text-md);
-		margin-bottom: var(--space-2);
-	}
-	.warn p {
-		margin: 0;
-		color: var(--fg-muted);
+		color: var(--fg-base);
 		font-size: var(--text-sm);
-		line-height: var(--leading-relaxed);
-	}
-
-	.steps {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-3);
-		font-size: var(--text-sm);
-		color: var(--fg-subtle);
-	}
-	.step.active {
-		color: var(--accent);
 		font-weight: 600;
 	}
-	.dash {
-		width: 32px;
-		height: 1px;
-		background: var(--border-base);
+	.warn p {
+		margin: var(--space-1) 0 0;
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		line-height: var(--leading-normal);
+	}
+
+	.steps-wrap {
+		max-width: 420px;
+		width: 100%;
+		margin: 0 auto;
 	}
 
 	.field-label {
@@ -386,6 +527,7 @@
 	.pass-input:focus {
 		outline: none;
 		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-ring);
 	}
 
 	.strength {
@@ -406,13 +548,13 @@
 		transition: width var(--motion-normal) var(--easing);
 	}
 	.fill[data-level='weak'] {
-		background: var(--error, #f87171);
+		background: var(--error);
 	}
 	.fill[data-level='fair'] {
-		background: var(--warning, #fbbf24);
+		background: var(--warning);
 	}
 	.fill[data-level='strong'] {
-		background: var(--success, #34d399);
+		background: var(--success);
 	}
 	.strength-text {
 		font-size: var(--text-xs);
@@ -420,10 +562,13 @@
 		white-space: nowrap;
 	}
 	.strength-text[data-level='weak'] {
-		color: var(--error, #f87171);
+		color: var(--error);
+	}
+	.strength-text[data-level='fair'] {
+		color: var(--warning);
 	}
 	.strength-text[data-level='strong'] {
-		color: var(--success, #34d399);
+		color: var(--success);
 	}
 
 	.row {
@@ -458,7 +603,21 @@
 	}
 	.seg button.active {
 		background: var(--accent);
-		color: var(--accent-fg, #fff);
+		color: var(--accent-fg);
+	}
+
+	.advanced {
+		margin-top: var(--space-5);
+	}
+	.adv-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
+	}
+	/* Inside the disclosure the gap handles spacing — drop the standalone margins. */
+	.adv-body .mnemonic,
+	.adv-body .opts {
+		margin-top: 0;
 	}
 
 	.mnemonic {
@@ -489,13 +648,17 @@
 		font-style: italic;
 	}
 
-	.grid3 {
+	.opts {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 		gap: var(--space-3);
 		margin-top: var(--space-5);
 	}
-	.select-field select {
+	.opt {
+		display: flex;
+		flex-direction: column;
+	}
+	.opt-select {
 		width: 100%;
 		padding: var(--space-2) var(--space-3);
 		background: var(--bg-sunken);
@@ -503,6 +666,21 @@
 		border-radius: var(--radius-md);
 		color: var(--fg-base);
 		font-size: var(--text-sm);
+	}
+	.opt-select:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-ring);
+	}
+	/* Single-option fields: shown as read-only info, not a one-item dropdown. */
+	.opt-static {
+		padding: var(--space-2) var(--space-3);
+		background: var(--bg-sunken);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--fg-base);
+		font-size: var(--text-sm);
+		font-family: var(--font-mono);
 	}
 
 	.actions-end {
@@ -527,7 +705,7 @@
 	}
 	.btn.primary {
 		background: var(--accent);
-		color: var(--accent-fg, #fff);
+		color: var(--accent-fg);
 		border-color: transparent;
 	}
 	.btn.ghost {
@@ -592,33 +770,52 @@
 	}
 	.tab.active {
 		background: var(--accent);
-		color: var(--accent-fg, #fff);
+		color: var(--accent-fg);
 	}
 	.tab:disabled {
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
-	.soon-badge {
-		font-size: 9px;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		background: var(--bg-elevated);
-		color: var(--fg-subtle);
-		padding: 1px 5px;
-		border-radius: var(--radius-full);
+	.gen {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
 	}
-
-	.gen-controls {
+	.gen-row {
 		display: flex;
 		align-items: flex-end;
 		gap: var(--space-3);
+	}
+	.gen-quick {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 		flex-wrap: wrap;
 	}
-	.divider {
-		width: 1px;
-		align-self: stretch;
-		background: var(--border-base);
-		margin: 0 var(--space-1);
+	.chip {
+		padding: var(--space-1) var(--space-3);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		font-family: var(--font-mono);
+		cursor: pointer;
+		transition: all var(--motion-fast) var(--easing);
+	}
+	.chip:hover:not(:disabled) {
+		border-color: var(--border-strong);
+		color: var(--fg-base);
+	}
+	.chip:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	.gen-max {
+		margin-left: auto;
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
 	}
 	.inline-field {
 		display: flex;
@@ -626,6 +823,9 @@
 		gap: var(--space-1);
 		font-size: var(--text-xs);
 		color: var(--fg-muted);
+	}
+	.inline-field.grow {
+		flex: 1;
 	}
 	.num {
 		width: 100px;
@@ -637,28 +837,22 @@
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 	}
-
-	.progress {
-		position: relative;
+	.num.wide {
+		width: 100%;
+	}
+	.num:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-ring);
+	}
+	.num.invalid {
+		border-color: var(--error);
+	}
+	.num.invalid:focus {
+		box-shadow: 0 0 0 3px var(--error-muted);
+	}
+	.gen-progress {
 		margin-top: var(--space-4);
-		height: 24px;
-		background: var(--bg-sunken);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-	.progress-fill {
-		height: 100%;
-		background: var(--accent);
-		transition: width var(--motion-fast) var(--easing);
-	}
-	.progress-label {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: var(--text-xs);
-		color: var(--fg-base);
 	}
 
 	.results-head {
@@ -676,8 +870,12 @@
 	.results-actions {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-4);
 		flex-wrap: wrap;
+	}
+	.dl-group {
+		display: inline-flex;
+		gap: var(--space-1);
 	}
 
 	.table-wrap {
@@ -701,11 +899,51 @@
 	}
 	table.wallets td {
 		padding: var(--space-2) var(--space-3);
-		border-bottom: 1px solid var(--border-subtle, var(--border-base));
+		border-bottom: 1px solid var(--border-subtle);
 		white-space: nowrap;
 	}
 	td.key {
 		color: var(--fg-subtle);
+	}
+	.cell {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.copy-btn {
+		display: inline-grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		flex-shrink: 0;
+		border: none;
+		background: transparent;
+		color: var(--fg-subtle);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		opacity: 0;
+		transition:
+			opacity var(--motion-fast) var(--easing),
+			color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
+	}
+	tr:hover .copy-btn,
+	.copy-btn:focus-visible {
+		opacity: 1;
+	}
+	.copy-btn:hover {
+		color: var(--fg-base);
+		background: var(--bg-elevated);
+	}
+	/* Touch devices have no hover — keep the copy affordance visible. */
+	@media (hover: none) {
+		.copy-btn {
+			opacity: 1;
+		}
+	}
+	.masked {
+		color: var(--fg-faint);
+		letter-spacing: 2px;
 	}
 
 	.pager {
@@ -734,14 +972,14 @@
 		.title {
 			font-size: var(--text-3xl);
 		}
-		.grid3 {
-			grid-template-columns: 1fr;
+		.gen-row {
+			flex-wrap: wrap;
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.fill,
-		.progress-fill,
+		.copy-btn,
 		.btn {
 			transition: none;
 		}

@@ -94,5 +94,11 @@
 	"wg.sign.signing": "İmzalanıyor…",
 	"wg.sign.resultTitle": "İmza",
 	"wg.sign.resultTip": "Yayınlamak için bunu izleme amaçlı cüzdana geri tarayın.",
-	"wg.sign.error": "Bu istek okunamadı. Bunun bir eth-sign-request QR'ı olduğundan emin olun."
+	"wg.sign.error": "Bu istek okunamadı. Bunun bir eth-sign-request QR'ı olduğundan emin olun.",
+
+	"wg.gen.max": "Toplu işlem başına en fazla {n} cüzdan.",
+	"wg.download.warnTitle": "Özel anahtarlar düz metin olarak dışa aktarılsın mı?",
+	"wg.download.warnBody": "Bu dosya özel anahtarlarınızı şifrelenmemiş olarak saklar; dosyayı açan herkes paranızı alabilir. Yalnızca çevrimdışı ve şifreli bir konuma kaydedin ve işiniz bitince silin.",
+	"wg.download.warnConfirm": "Yine de indir",
+	"wg.advanced": "Gelişmiş"
 }

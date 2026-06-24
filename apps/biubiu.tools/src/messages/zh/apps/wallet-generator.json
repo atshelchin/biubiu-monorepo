@@ -94,5 +94,11 @@
 	"wg.sign.signing": "签名中……",
 	"wg.sign.resultTitle": "签名",
 	"wg.sign.resultTip": "把此码扫回观察钱包即可广播。",
-	"wg.sign.error": "无法读取此请求。请确认是 eth-sign-request 二维码。"
+	"wg.sign.error": "无法读取此请求。请确认是 eth-sign-request 二维码。",
+
+	"wg.gen.max": "每批最多 {n} 个钱包。",
+	"wg.download.warnTitle": "导出明文私钥？",
+	"wg.download.warnBody": "该文件以未加密的明文保存私钥——任何打开它的人都能转走你的资金。请只保存到离线、加密的位置，用完后立即删除。",
+	"wg.download.warnConfirm": "仍然下载",
+	"wg.advanced": "高级选项"
 }

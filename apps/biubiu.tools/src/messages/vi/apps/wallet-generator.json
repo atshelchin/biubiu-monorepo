@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Đang ký…",
 	"wg.sign.resultTitle": "Chữ ký",
 	"wg.sign.resultTip": "Quét cái này trở lại ví chỉ theo dõi để phát đi.",
-	"wg.sign.error": "Không đọc được yêu cầu này. Hãy chắc chắn đó là một QR eth-sign-request."
+	"wg.sign.error": "Không đọc được yêu cầu này. Hãy chắc chắn đó là một QR eth-sign-request.",
+
+	"wg.gen.max": "Tối đa {n} ví mỗi lần.",
+	"wg.download.warnTitle": "Xuất khóa riêng tư dưới dạng văn bản thuần?",
+	"wg.download.warnBody": "Tệp này lưu khóa riêng tư của bạn ở dạng không mã hóa — bất kỳ ai mở nó đều có thể lấy tiền của bạn. Chỉ lưu vào nơi ngoại tuyến, đã mã hóa và xóa sau khi dùng xong.",
+	"wg.download.warnConfirm": "Vẫn tải xuống",
+	"wg.advanced": "Nâng cao"
 }

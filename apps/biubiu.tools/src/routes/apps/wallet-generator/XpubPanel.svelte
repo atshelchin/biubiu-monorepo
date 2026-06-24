@@ -3,6 +3,7 @@
 	import { walletGenerator as s } from '$lib/pda-apps/wallet-generator/store.svelte.js';
 	import { buildXpubExport, type XpubExport } from '$lib/pda-apps/wallet-generator/crypto/xpub';
 	import AnimatedQr from './AnimatedQr.svelte';
+	import { TriangleAlert } from '@lucide/svelte';
 
 	let result = $state<XpubExport | null>(null);
 	let loading = $state(false);
@@ -50,7 +51,10 @@
 	{#if loading}
 		<p class="muted center">{t('wg.xpub.loading')}</p>
 	{:else if err}
-		<p class="err center">{err}</p>
+		<div class="alert" role="alert">
+			<TriangleAlert size={16} />
+			<span>{err}</span>
+		</div>
 	{:else if result}
 		<div class="qr-wrap">
 			<AnimatedQr frames={[result.ur]} size={240} />
@@ -67,7 +71,9 @@
 			</div>
 			<div class="meta-row">
 				<span class="meta-label">{t('wg.xpub.xpubLabel')}</span>
-				<button class="link" onclick={copyXpub}>{copied ? t('wg.mnemonic.copied') : t('wg.mnemonic.copy')}</button>
+				<button class="link" onclick={copyXpub}
+					>{copied ? t('wg.mnemonic.copied') : t('wg.mnemonic.copy')}</button
+				>
 			</div>
 			<div class="xpub-box mono">{result.xpub}</div>
 		</div>
@@ -129,8 +135,19 @@
 		text-align: center;
 		padding: var(--space-6) 0;
 	}
-	.err {
+	.alert {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		width: 100%;
+		max-width: 520px;
+		padding: var(--space-3) var(--space-4);
+		background: var(--error-subtle);
+		border: 1px solid var(--error-muted);
+		border-radius: var(--radius-md);
 		color: var(--error);
+		font-size: var(--text-sm);
+		line-height: var(--leading-snug);
 	}
 	.link {
 		background: none;

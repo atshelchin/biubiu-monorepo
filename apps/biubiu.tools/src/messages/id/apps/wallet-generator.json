@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Menandatangani…",
 	"wg.sign.resultTitle": "Tanda Tangan",
 	"wg.sign.resultTip": "Pindai ini kembali ke dompet watch-only untuk menyiarkannya.",
-	"wg.sign.error": "Tidak bisa membaca permintaan ini. Pastikan ini QR eth-sign-request."
+	"wg.sign.error": "Tidak bisa membaca permintaan ini. Pastikan ini QR eth-sign-request.",
+
+	"wg.gen.max": "Hingga {n} dompet per batch.",
+	"wg.download.warnTitle": "Ekspor kunci privat dalam teks biasa?",
+	"wg.download.warnBody": "File ini menyimpan kunci privat Anda tanpa enkripsi — siapa pun yang membukanya dapat mengambil dana Anda. Simpan hanya di lokasi offline yang terenkripsi dan hapus setelah selesai.",
+	"wg.download.warnConfirm": "Tetap unduh",
+	"wg.advanced": "Lanjutan"
 }

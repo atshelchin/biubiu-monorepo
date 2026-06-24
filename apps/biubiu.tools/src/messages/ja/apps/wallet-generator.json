@@ -94,5 +94,11 @@
 	"wg.sign.signing": "署名中…",
 	"wg.sign.resultTitle": "署名",
 	"wg.sign.resultTip": "これをウォッチオンリーウォレットに読み込み直すとブロードキャストできます。",
-	"wg.sign.error": "このリクエストを読み取れませんでした。eth-sign-request の QR であることを確認してください。"
+	"wg.sign.error": "このリクエストを読み取れませんでした。eth-sign-request の QR であることを確認してください。",
+
+	"wg.gen.max": "1 回あたり最大 {n} 個のウォレット。",
+	"wg.download.warnTitle": "秘密鍵を平文でエクスポートしますか？",
+	"wg.download.warnBody": "このファイルは秘密鍵を暗号化せずに保存します。開いた人は誰でも資金を持ち出せます。オフラインで暗号化された場所にのみ保存し、使い終わったら削除してください。",
+	"wg.download.warnConfirm": "それでもダウンロード",
+	"wg.advanced": "詳細設定"
 }

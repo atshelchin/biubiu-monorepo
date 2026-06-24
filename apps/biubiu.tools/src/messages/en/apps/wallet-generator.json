@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Signing…",
 	"wg.sign.resultTitle": "Signature",
 	"wg.sign.resultTip": "Scan this back into the watch-only wallet to broadcast.",
-	"wg.sign.error": "Could not read this request. Make sure it is an eth-sign-request QR."
+	"wg.sign.error": "Could not read this request. Make sure it is an eth-sign-request QR.",
+
+	"wg.gen.max": "Up to {n} wallets per batch.",
+	"wg.download.warnTitle": "Export private keys in plain text?",
+	"wg.download.warnBody": "This file stores your private keys unencrypted — anyone who opens it can take your funds. Save it only to an offline, encrypted location and delete it when you're done.",
+	"wg.download.warnConfirm": "Download anyway",
+	"wg.advanced": "Advanced"
 }

@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Wird signiert…",
 	"wg.sign.resultTitle": "Signatur",
 	"wg.sign.resultTip": "Scanne dies zurück ins Watch-only-Wallet, um zu senden.",
-	"wg.sign.error": "Diese Anfrage konnte nicht gelesen werden. Stelle sicher, dass es ein eth-sign-request-QR ist."
+	"wg.sign.error": "Diese Anfrage konnte nicht gelesen werden. Stelle sicher, dass es ein eth-sign-request-QR ist.",
+
+	"wg.gen.max": "Bis zu {n} Wallets pro Stapel.",
+	"wg.download.warnTitle": "Private Schlüssel im Klartext exportieren?",
+	"wg.download.warnBody": "Diese Datei speichert deine privaten Schlüssel unverschlüsselt – wer sie öffnet, kann dein Guthaben abräumen. Speichere sie nur an einem offline, verschlüsselten Ort und lösche sie danach.",
+	"wg.download.warnConfirm": "Trotzdem herunterladen",
+	"wg.advanced": "Erweitert"
 }

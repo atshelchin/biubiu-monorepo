@@ -40,20 +40,61 @@ function estimateStrength(passphrase: string): { bits: number; label: StrengthLa
 
 class WalletGeneratorStore {
 	// ── Step 1: secret + derivation options ──
-	passphrase = $state('');
-	wordsLen = $state<WordsLen>(24);
-	chain = $state<ChainId>('evm');
-	addressType = $state('default');
-	hdPathType = $state('bip44');
+	// These drive derivation, so changing any of them invalidates already-derived
+	// wallets — otherwise the table could show addresses that don't belong to the
+	// current secret. Backed by private $state + accessors that clear results.
+	#passphrase = $state('');
+	#wordsLen = $state<WordsLen>(24);
+	#chain = $state<ChainId>('evm');
+	#addressType = $state('default');
+	#hdPathType = $state('bip44');
 	revealMnemonic = $state(false);
+
+	get passphrase() {
+		return this.#passphrase;
+	}
+	set passphrase(v: string) {
+		if (v === this.#passphrase) return;
+		this.#passphrase = v;
+		this.clearResults();
+	}
+
+	get wordsLen() {
+		return this.#wordsLen;
+	}
+	set wordsLen(v: WordsLen) {
+		if (v === this.#wordsLen) return;
+		this.#wordsLen = v;
+		this.clearResults();
+	}
+
+	get chain() {
+		return this.#chain;
+	}
+
+	get addressType() {
+		return this.#addressType;
+	}
+	set addressType(v: string) {
+		if (v === this.#addressType) return;
+		this.#addressType = v;
+		this.clearResults();
+	}
+
+	get hdPathType() {
+		return this.#hdPathType;
+	}
+	set hdPathType(v: string) {
+		if (v === this.#hdPathType) return;
+		this.#hdPathType = v;
+		this.clearResults();
+	}
 
 	// ── Wizard / tabs ──
 	step = $state<WizardStep>(1);
 	tab = $state<Tab>('generate');
 
 	// ── Batch generate ──
-	startIndex = $state(0);
-	count = $state(1000);
 	wallets = $state<DerivedWallet[]>([]);
 	generating = $state(false);
 	progressCurrent = $state(0);
@@ -106,9 +147,10 @@ class WalletGeneratorStore {
 	setChain(id: ChainId) {
 		const chain = getChain(id);
 		if (!chain) return;
-		this.chain = id;
-		this.addressType = chain.addressTypes[0].value;
-		this.hdPathType = chain.hdPaths[0].value;
+		this.#chain = id;
+		this.#addressType = chain.addressTypes[0].value;
+		this.#hdPathType = chain.hdPaths[0].value;
+		this.clearResults();
 	}
 
 	proceed() {
@@ -127,8 +169,12 @@ class WalletGeneratorStore {
 	/** Derive `count` sequential wallets from `start`. Yields to keep UI live. */
 	async generate(start: number, count: number) {
 		if (this.generating || !this.hasPassphrase) return;
-		const safeStart = Math.max(0, Math.floor(start));
-		const safeCount = Math.min(Math.max(1, Math.floor(count)), MAX_COUNT);
+		// Non-finite input (e.g. a blank custom field parsed to NaN) would otherwise
+		// produce an empty batch with no feedback — coerce to safe defaults instead.
+		const safeStart = Number.isFinite(start) ? Math.max(0, Math.floor(start)) : 0;
+		const safeCount = Number.isFinite(count)
+			? Math.min(Math.max(1, Math.floor(count)), MAX_COUNT)
+			: 1;
 
 		this.generating = true;
 		this.wallets = [];
@@ -177,11 +223,13 @@ class WalletGeneratorStore {
 	downloadAll() {
 		this.download(
 			'wallets.txt',
-			this.wallets.map((w) => `${w.index}\t${w.address}\t${w.privateKey}`).join('\n'),
+			this.wallets.map((w) => `${w.index}\t${w.address}\t${w.privateKey}`).join('\n')
 		);
 	}
 
-	reset() {
+	/** Drop derived results. Called automatically when a derivation input changes. */
+	clearResults() {
+		if (this.wallets.length === 0 && this.progressTotal === 0) return;
 		this.wallets = [];
 		this.progressCurrent = 0;
 		this.progressTotal = 0;

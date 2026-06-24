@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Assinando…",
 	"wg.sign.resultTitle": "Assinatura",
 	"wg.sign.resultTip": "Escaneie isto de volta na carteira watch-only para transmitir.",
-	"wg.sign.error": "Não foi possível ler esta solicitação. Verifique se é um QR de eth-sign-request."
+	"wg.sign.error": "Não foi possível ler esta solicitação. Verifique se é um QR de eth-sign-request.",
+
+	"wg.gen.max": "Até {n} carteiras por lote.",
+	"wg.download.warnTitle": "Exportar as chaves privadas em texto simples?",
+	"wg.download.warnBody": "Este arquivo guarda suas chaves privadas sem criptografia — qualquer um que o abrir pode levar seus fundos. Salve-o apenas em um local off-line e criptografado e exclua-o ao terminar.",
+	"wg.download.warnConfirm": "Baixar mesmo assim",
+	"wg.advanced": "Avançado"
 }

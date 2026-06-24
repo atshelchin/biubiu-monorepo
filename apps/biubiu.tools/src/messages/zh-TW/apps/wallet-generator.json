@@ -94,5 +94,11 @@
 	"wg.sign.signing": "簽署中…",
 	"wg.sign.resultTitle": "簽章",
 	"wg.sign.resultTip": "把此碼掃回觀察錢包即可廣播。",
-	"wg.sign.error": "無法讀取此請求。請確認是 eth-sign-request QR Code。"
+	"wg.sign.error": "無法讀取此請求。請確認是 eth-sign-request QR Code。",
+
+	"wg.gen.max": "每批最多 {n} 個錢包。",
+	"wg.download.warnTitle": "匯出明文私鑰？",
+	"wg.download.warnBody": "此檔案以未加密的明文儲存私鑰——任何打開它的人都能轉走你的資金。請只儲存到離線、加密的位置，用完後立即刪除。",
+	"wg.download.warnConfirm": "仍要下載",
+	"wg.advanced": "進階選項"
 }

@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Firmando…",
 	"wg.sign.resultTitle": "Firma",
 	"wg.sign.resultTip": "Escanea esto de vuelta en la billetera de solo lectura para transmitir.",
-	"wg.sign.error": "No se pudo leer esta solicitud. Asegúrate de que sea un QR de eth-sign-request."
+	"wg.sign.error": "No se pudo leer esta solicitud. Asegúrate de que sea un QR de eth-sign-request.",
+
+	"wg.gen.max": "Hasta {n} wallets por lote.",
+	"wg.download.warnTitle": "¿Exportar las claves privadas en texto plano?",
+	"wg.download.warnBody": "Este archivo guarda tus claves privadas sin cifrar: cualquiera que lo abra puede vaciar tus fondos. Guárdalo solo en un lugar cifrado y sin conexión, y bórralo al terminar.",
+	"wg.download.warnConfirm": "Descargar de todos modos",
+	"wg.advanced": "Opciones avanzadas"
 }

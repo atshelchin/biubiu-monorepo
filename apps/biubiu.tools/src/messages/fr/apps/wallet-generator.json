@@ -94,5 +94,11 @@
 	"wg.sign.signing": "Signature…",
 	"wg.sign.resultTitle": "Signature",
 	"wg.sign.resultTip": "Scannez ceci dans le wallet en lecture seule pour la diffuser.",
-	"wg.sign.error": "Impossible de lire cette requête. Assurez-vous qu'il s'agit d'un QR eth-sign-request."
+	"wg.sign.error": "Impossible de lire cette requête. Assurez-vous qu'il s'agit d'un QR eth-sign-request.",
+
+	"wg.gen.max": "Jusqu'à {n} wallets par lot.",
+	"wg.download.warnTitle": "Exporter les clés privées en clair ?",
+	"wg.download.warnBody": "Ce fichier stocke vos clés privées en clair — quiconque l'ouvre peut vider vos fonds. Ne l'enregistrez que dans un emplacement hors ligne et chiffré, puis supprimez-le après usage.",
+	"wg.download.warnConfirm": "Télécharger quand même",
+	"wg.advanced": "Options avancées"
 }

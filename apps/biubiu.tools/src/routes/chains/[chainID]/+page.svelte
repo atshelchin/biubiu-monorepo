@@ -4,6 +4,7 @@
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import ChainSearch from '$lib/widgets/ChainSearch.svelte';
 	import PageHeader from '$lib/widgets/PageHeader.svelte';
+	import SponsorPromo from '$lib/widgets/SponsorPromo.svelte';
 	import PageFooter from '$lib/ui/PageFooter.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { browser } from '$app/environment';
@@ -301,6 +302,11 @@
 					{/if}
 				</div>
 			</div>
+		</section>
+
+		<!-- Sponsor: Vela Wallet (same author as BiuBiu Tools) -->
+		<section class="promo-section" use:fadeInUp={{ delay: 125 }}>
+			<SponsorPromo />
 		</section>
 
 		<!-- RPC Endpoints -->
@@ -726,6 +732,13 @@
 
 	.info-card {
 		padding: var(--space-5);
+	}
+
+	/* Sponsor promo */
+	.promo-section {
+		position: relative;
+		z-index: 1;
+		margin-bottom: var(--space-8);
 	}
 
 	.card-title {

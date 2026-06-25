@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Không thể thêm",
   "chains.rpc.fastest": "Nhanh nhất",
   "chains.rpc.unreachable": "Không thể kết nối",
-  "chains.addToWallet.dismiss": "Đóng"
+  "chains.addToWallet.dismiss": "Đóng",
+  "chains.promo.ad": "Quảng cáo",
+  "chains.promo.eyebrow": "Từ nhà phát triển BiuBiu Tools",
+  "chains.promo.title": "Ví Vela",
+  "chains.promo.desc": "Đăng nhập bằng Face ID — không cần cụm từ khôi phục. Hoàn toàn tự lưu ký.",
+  "chains.promo.cta": "Dùng thử Vela miễn phí",
+  "chains.promo.feature1": "Hợp đồng Safe 1.4.1 đã kiểm toán",
+  "chains.promo.feature2": "Mã nguồn mở, tự lưu trữ được"
 }

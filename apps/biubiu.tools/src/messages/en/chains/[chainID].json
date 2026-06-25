@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - Chain Details",
-  "chains.description": "Explore {name} blockchain network - RPC endpoints, block explorers, and network information.",
+  "chains.title": "{name} RPC URLs, Chain ID & Add to MetaMask",
+  "chains.description": "{name} network details: public RPC endpoints with live latency, chain ID, block explorers, and one-click add to MetaMask.",
   "chains.search.placeholder": "Search chains by name, symbol, or chain ID...",
   "chains.search.noResults": "No chains found",
   "chains.info.chainId": "Chain ID",
@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Couldn’t add",
   "chains.rpc.fastest": "Fastest",
   "chains.rpc.unreachable": "Unreachable",
-  "chains.addToWallet.dismiss": "Dismiss"
+  "chains.addToWallet.dismiss": "Dismiss",
+  "chains.promo.ad": "Ad",
+  "chains.promo.eyebrow": "From the maker of BiuBiu Tools",
+  "chains.promo.title": "Vela Wallet",
+  "chains.promo.desc": "Sign in with Face ID — no seed phrase. Fully self-custodial.",
+  "chains.promo.cta": "Try Vela free",
+  "chains.promo.feature1": "Audited Safe 1.4.1 contracts",
+  "chains.promo.feature2": "Open-source & self-hostable"
 }

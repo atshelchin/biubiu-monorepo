@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "追加できませんでした",
   "chains.rpc.fastest": "最速",
   "chains.rpc.unreachable": "接続できません",
-  "chains.addToWallet.dismiss": "閉じる"
+  "chains.addToWallet.dismiss": "閉じる",
+  "chains.promo.ad": "PR",
+  "chains.promo.eyebrow": "BiuBiu Tools の開発者が手がける",
+  "chains.promo.title": "Vela ウォレット",
+  "chains.promo.desc": "Face ID で署名、シードフレーズ不要。資産は完全に自己管理。",
+  "chains.promo.cta": "Vela を無料で試す",
+  "chains.promo.feature1": "監査済み Safe 1.4.1 コントラクト",
+  "chains.promo.feature2": "オープンソース・自己ホスト可能"
 }

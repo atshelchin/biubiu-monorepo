@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "추가하지 못했습니다",
   "chains.rpc.fastest": "가장 빠름",
   "chains.rpc.unreachable": "연결할 수 없음",
-  "chains.addToWallet.dismiss": "닫기"
+  "chains.addToWallet.dismiss": "닫기",
+  "chains.promo.ad": "광고",
+  "chains.promo.eyebrow": "BiuBiu Tools 제작자가 만든",
+  "chains.promo.title": "Vela 지갑",
+  "chains.promo.desc": "Face ID로 로그인, 시드 문구 없이. 완전한 자기수탁.",
+  "chains.promo.cta": "Vela 무료로 사용하기",
+  "chains.promo.feature1": "감사받은 Safe 1.4.1 컨트랙트",
+  "chains.promo.feature2": "오픈소스 · 자체 호스팅 가능"
 }

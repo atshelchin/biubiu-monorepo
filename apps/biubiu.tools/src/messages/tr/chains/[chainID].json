@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Eklenemedi",
   "chains.rpc.fastest": "En hızlı",
   "chains.rpc.unreachable": "Erişilemiyor",
-  "chains.addToWallet.dismiss": "Kapat"
+  "chains.addToWallet.dismiss": "Kapat",
+  "chains.promo.ad": "Reklam",
+  "chains.promo.eyebrow": "BiuBiu Tools'un yapımcısından",
+  "chains.promo.title": "Vela Cüzdan",
+  "chains.promo.desc": "Face ID ile giriş yapın — kurtarma ifadesi yok. Tamamen kendi kontrolünüzde.",
+  "chains.promo.cta": "Vela'yı ücretsiz dene",
+  "chains.promo.feature1": "Denetlenmiş Safe 1.4.1 kontratları",
+  "chains.promo.feature2": "Açık kaynak · kendi sunucunuzda"
 }

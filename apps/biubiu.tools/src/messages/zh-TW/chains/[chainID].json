@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "新增失敗",
   "chains.rpc.fastest": "最快",
   "chains.rpc.unreachable": "無法連線",
-  "chains.addToWallet.dismiss": "關閉"
+  "chains.addToWallet.dismiss": "關閉",
+  "chains.promo.ad": "推廣",
+  "chains.promo.eyebrow": "來自 BiuBiu Tools 作者",
+  "chains.promo.title": "Vela 錢包",
+  "chains.promo.desc": "用 Face ID 簽名，告別助記詞。資產完全自我保管。",
+  "chains.promo.cta": "免費體驗 Vela",
+  "chains.promo.feature1": "基於審計的 Safe 1.4.1 合約",
+  "chains.promo.feature2": "開源，可完全自行部署"
 }

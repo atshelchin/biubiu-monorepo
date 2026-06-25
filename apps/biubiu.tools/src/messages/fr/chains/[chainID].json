@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Échec de l’ajout",
   "chains.rpc.fastest": "Le plus rapide",
   "chains.rpc.unreachable": "Inaccessible",
-  "chains.addToWallet.dismiss": "Fermer"
+  "chains.addToWallet.dismiss": "Fermer",
+  "chains.promo.ad": "Annonce",
+  "chains.promo.eyebrow": "Par le créateur de BiuBiu Tools",
+  "chains.promo.title": "Vela Wallet",
+  "chains.promo.desc": "Connexion avec Face ID, sans phrase de récupération. Entièrement auto-conservé.",
+  "chains.promo.cta": "Essayer Vela gratuitement",
+  "chains.promo.feature1": "Contrats Safe 1.4.1 audités",
+  "chains.promo.feature2": "Open-source et auto-hébergeable"
 }

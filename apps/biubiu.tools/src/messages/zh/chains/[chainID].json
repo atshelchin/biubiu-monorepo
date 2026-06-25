@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - 链详情",
-  "chains.description": "探索 {name} 区块链网络——RPC 节点、区块浏览器与网络信息。",
+  "chains.title": "{name} RPC 节点、链 ID 与添加到 MetaMask",
+  "chains.description": "{name} 网络详情：公共 RPC 节点（含实时延迟）、链 ID、区块浏览器，一键添加到 MetaMask 钱包。",
   "chains.search.placeholder": "按名称、符号或链 ID 搜索…",
   "chains.search.noResults": "未找到链",
   "chains.info.chainId": "链 ID",
@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "添加失败",
   "chains.rpc.fastest": "最快",
   "chains.rpc.unreachable": "无法连接",
-  "chains.addToWallet.dismiss": "关闭"
+  "chains.addToWallet.dismiss": "关闭",
+  "chains.promo.ad": "推广",
+  "chains.promo.eyebrow": "来自 BiuBiu Tools 作者",
+  "chains.promo.title": "Vela 钱包",
+  "chains.promo.desc": "用 Face ID 签名，告别助记词。资产完全自托管。",
+  "chains.promo.cta": "免费体验 Vela",
+  "chains.promo.feature1": "基于审计的 Safe 1.4.1 合约",
+  "chains.promo.feature2": "开源，可完全自部署"
 }

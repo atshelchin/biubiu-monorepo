@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Gagal menambahkan",
   "chains.rpc.fastest": "Tercepat",
   "chains.rpc.unreachable": "Tidak terjangkau",
-  "chains.addToWallet.dismiss": "Tutup"
+  "chains.addToWallet.dismiss": "Tutup",
+  "chains.promo.ad": "Iklan",
+  "chains.promo.eyebrow": "Dari pembuat BiuBiu Tools",
+  "chains.promo.title": "Dompet Vela",
+  "chains.promo.desc": "Masuk dengan Face ID — tanpa seed phrase. Sepenuhnya non-kustodian.",
+  "chains.promo.cta": "Coba Vela gratis",
+  "chains.promo.feature1": "Kontrak Safe 1.4.1 teraudit",
+  "chains.promo.feature2": "Open-source & bisa self-host"
 }

@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Не удалось добавить",
   "chains.rpc.fastest": "Самый быстрый",
   "chains.rpc.unreachable": "Недоступен",
-  "chains.addToWallet.dismiss": "Закрыть"
+  "chains.addToWallet.dismiss": "Закрыть",
+  "chains.promo.ad": "Реклама",
+  "chains.promo.eyebrow": "От создателя BiuBiu Tools",
+  "chains.promo.title": "Кошелёк Vela",
+  "chains.promo.desc": "Вход по Face ID — без seed-фразы. Полностью некастодиальный.",
+  "chains.promo.cta": "Попробовать Vela бесплатно",
+  "chains.promo.feature1": "Аудированные контракты Safe 1.4.1",
+  "chains.promo.feature2": "Открытый код, можно self-host"
 }

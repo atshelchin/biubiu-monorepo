@@ -33,5 +33,12 @@
   "chains.addToWallet.failed": "Falha ao adicionar",
   "chains.rpc.fastest": "Mais rápido",
   "chains.rpc.unreachable": "Inacessível",
-  "chains.addToWallet.dismiss": "Dispensar"
+  "chains.addToWallet.dismiss": "Dispensar",
+  "chains.promo.ad": "Anúncio",
+  "chains.promo.eyebrow": "De quem criou o BiuBiu Tools",
+  "chains.promo.title": "Carteira Vela",
+  "chains.promo.desc": "Entre com Face ID, sem frase de recuperação. Totalmente auto-custódia.",
+  "chains.promo.cta": "Experimente a Vela grátis",
+  "chains.promo.feature1": "Contratos Safe 1.4.1 auditados",
+  "chains.promo.feature2": "Código aberto e auto-hospedável"
 }

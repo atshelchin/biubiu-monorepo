@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "鏈瀏覽器",
+  "chainsList.description": "瀏覽並搜尋區塊鏈網絡，尋找 RPC 節點、區塊瀏覽器與網絡詳情。",
+  "chainsList.allChains": "全部鏈",
+  "chainsList.totalChains": "{count} 條鏈"
+}

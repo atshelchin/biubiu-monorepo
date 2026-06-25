@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "체인 탐색기",
+  "chainsList.description": "블록체인 네트워크를 둘러보고 검색하세요. RPC 엔드포인트, 블록 탐색기, 네트워크 정보를 찾을 수 있습니다.",
+  "chainsList.allChains": "모든 체인",
+  "chainsList.totalChains": "체인 {count}개"
+}

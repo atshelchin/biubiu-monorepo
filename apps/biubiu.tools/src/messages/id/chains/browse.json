@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "Penjelajah Chain",
+  "chainsList.description": "Jelajahi dan cari jaringan blockchain. Temukan endpoint RPC, block explorer, dan detail jaringan.",
+  "chainsList.allChains": "Semua Chain",
+  "chainsList.totalChains": "{count} chain"
+}

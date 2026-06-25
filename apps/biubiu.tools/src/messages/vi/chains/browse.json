@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "Trình Duyệt Chuỗi",
+  "chainsList.description": "Duyệt và tìm kiếm các mạng blockchain. Tìm endpoint RPC, trình duyệt khối và thông tin mạng.",
+  "chainsList.allChains": "Tất cả các chuỗi",
+  "chainsList.totalChains": "{count} chuỗi"
+}

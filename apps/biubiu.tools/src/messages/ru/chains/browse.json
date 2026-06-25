@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "Обзор сетей",
+  "chainsList.description": "Просматривайте и ищите блокчейн-сети. Находите RPC-узлы, обозреватели блоков и сведения о сетях.",
+  "chainsList.allChains": "Все сети",
+  "chainsList.totalChains": "{count} сетей"
+}

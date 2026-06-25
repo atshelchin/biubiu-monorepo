@@ -64,6 +64,9 @@ const TEXT_BYTE_LIMIT = MAX_PAYLOAD - 29; // 1 version + 12 iv + 16 tag
 const CAPSULE_TEXT_LIMIT = 2500;
 const PAGE = 20; // timeline page size
 
+/** TEMP DEBUG helper — bytes → hex. Remove together with the debug key panel before release. */
+const toHexDbg = (b: Uint8Array): string => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+
 type Status = 'idle' | 'setup' | 'unlocking' | 'sealing' | 'done' | 'error';
 
 class CapsuleStore {
@@ -71,6 +74,11 @@ class CapsuleStore {
 	/** Deterministic content key (32 bytes). In-memory only (session) — never persisted. */
 	rawDek: Uint8Array | null = null;
 	unlocked = $state(false);
+
+	// ── TEMP DEBUG (cross-device key diagnosis) — SECRET key material surfaced for the UI panel.
+	//    Gated by DEBUG_SHOW_KEYS in the route; remove this + the panel + toHexDbg before release. ──
+	debugPrfHex = $state<string | null>(null);
+	debugDekHex = $state<string | null>(null);
 
 	networkSlug = $state('base-mainnet');
 	/** Region-gate: you pick a chain before entering; it's fixed until you explicitly exit. */
@@ -251,6 +259,10 @@ class CapsuleStore {
 		try {
 			const { prf } = await evaluatePrf(cred);
 			this.rawDek = await deriveContentKey(prf);
+			// TEMP DEBUG — surface the PRF output + derived content key (the same key encrypts & decrypts).
+			this.debugPrfHex = toHexDbg(prf);
+			this.debugDekHex = toHexDbg(this.rawDek);
+			console.log('[capsule-debug] PRF=', this.debugPrfHex, ' KEY=', this.debugDekHex);
 			this.credential = cred;
 			this.unlocked = true;
 			this.persist();

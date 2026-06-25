@@ -10,7 +10,7 @@
 	import { loadAllChains, getChainLogoUrl, DEFAULT_CHAIN_LOGO, type ChainListItem } from '$lib/chains';
 
 	// Popular chain IDs to feature, in display order.
-	const POPULAR_CHAIN_IDS = [1, 56, 137, 42161, 10, 43114, 8453, 324, 250, 1101, 59144, 534352];
+	const POPULAR_CHAIN_IDS = [1, 56, 137, 42161, 10, 43114, 8453, 143, 4217];
 	const PAGE_SIZE = 60;
 
 	const popularSkeletons = [...Array(POPULAR_CHAIN_IDS.length).keys()];

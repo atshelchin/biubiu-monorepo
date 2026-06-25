@@ -44,6 +44,19 @@ import {
 } from '$lib/wallet/infra/tempo.js';
 import { encodeMultiSendCall, MULTISEND_ADDRESS } from '$lib/contract-caller/batch.js';
 
+/**
+ * First-deploy verification-gas floor for native (non-Tempo) ERC-4337 chains.
+ *
+ * In EntryPoint v0.7 the factory (initCode) is executed with `verificationGasLimit` as its gas
+ * budget, so an undeployed passkey Safe whose verificationGasLimit is too low makes the DEPLOY run
+ * out of gas → the bundler returns "AA13 initCode failed or OOG". Deploying the Safe (proxy + 4337
+ * module + WebAuthn signer setup + first P256 verify) meters to ~2M gas on EVM chains, but the
+ * bundler's eth_estimateUserOperationGas UNDER-reports undeployed-account verification gas — so
+ * estimate×1.5 alone can land below the real cost. We floor it here, exactly like the Tempo path
+ * does via TEMPO_VERIFICATION_GAS_UNDEPLOYED. ~2M measured + headroom; tunable per heavier chains.
+ */
+const NATIVE_VERIFICATION_GAS_UNDEPLOYED = 2_500_000n;
+
 /** 可选 gas 覆盖：用户自定义 callGasLimit / maxFeePerGas / maxPriorityFeePerGas */
 export interface GasOverrides {
 	callGasLimit?: bigint;
@@ -125,7 +138,9 @@ async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 	const gasPrices = await getGasPrices(chainId);
 
 	const initialGas: GasParams = {
-		verificationGasLimit: deployed ? 300000n : 800000n,
+		// Undeployed: start the estimate's dummy op with the deploy floor so a bundler that honours
+		// the provided limit during simulation doesn't OOG the deploy and fail the estimate itself.
+		verificationGasLimit: deployed ? 300000n : NATIVE_VERIFICATION_GAS_UNDEPLOYED,
 		callGasLimit: 3000000n, // 合约部署可能需要很多 gas，给足初始值让 bundler 正确估算
 		preVerificationGas: 60000n,
 		...gasPrices
@@ -138,12 +153,19 @@ async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 	const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 15n) / 10n; // 1.5x buffer
 	const estimatedVerificationGasLimit = (BigInt(estimates.verificationGasLimit) * 15n) / 10n;
 
+	// First-deploy floor: a fresh Safe's initCode runs inside verificationGasLimit (EntryPoint v0.7),
+	// and the bundler under-reports it — without this floor the deploy OOGs → "AA13 initCode failed
+	// or OOG". Deployed ops keep the pure estimate (no initCode, cheap verification).
+	const finalVerificationGasLimit = deployed
+		? estimatedVerificationGasLimit
+		: bigintMax(estimatedVerificationGasLimit, NATIVE_VERIFICATION_GAS_UNDEPLOYED);
+
 	// Gas limit: use the LARGER of bundler estimate vs user override (never go below estimate)
 	const userCallGas = gasOverrides?.callGasLimit ?? 0n;
 	const finalCallGasLimit = userCallGas > estimatedCallGasLimit ? userCallGas : estimatedCallGasLimit;
 
 	const refinedGas: GasParams = {
-		verificationGasLimit: estimatedVerificationGasLimit,
+		verificationGasLimit: finalVerificationGasLimit,
 		callGasLimit: finalCallGasLimit,
 		preVerificationGas: BigInt(estimates.preVerificationGas) + 5000n,
 		maxFeePerGas: gasOverrides?.maxFeePerGas ?? gasPrices.maxFeePerGas,

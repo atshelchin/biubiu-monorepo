@@ -4,7 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "A letter to your future self — encrypted on-chain, readable only by you.",
-  "capsule.permanence": "Once sealed, it can't be edited or deleted — your words live as long as this chain does.",
+  "capsule.permanence": "Once sealed, it can't be edited or deleted — it lives as long as this chain.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",
@@ -50,7 +50,7 @@
 
   "capsule.status.checkingWallet": "Checking wallet…",
   "capsule.status.preparingEnc": "Preparing encryption with your passkey…",
-  "capsule.status.creatingKey": "Your account is older and can't encrypt yet — creating a dedicated key…",
+  "capsule.status.creatingKey": "Older account — creating a dedicated encryption key…",
   "capsule.status.publishingKey": "Publishing your encryption key on-chain…",
   "capsule.status.keySetup": "Key setup: {step}…",
   "capsule.status.unlocking": "Unlocking with your passkey…",
@@ -72,7 +72,7 @@
   "capsule.error.sealFailed": "Seal failed.",
   "capsule.error.unlockFailed": "Could not unlock with this passkey.",
   "capsule.error.unlockDetail": "Could not unlock — {error}",
-  "capsule.error.lowBalance": "Your wallet balance can't cover gas (a first-time wallet must also be deployed). Top up a little {symbol} and try again: {address}",
+  "capsule.error.lowBalance": "Not enough balance for gas (a first-time wallet also needs deploying). Top up some {symbol} to {address} and retry.",
   "capsule.error.loadFailed": "Could not load letters — {error}",
   "capsule.error.loadMoreFailed": "Could not load more — {error}",
   "capsule.error.cooldown": "You've already sealed a letter on this chain today — you can write again {when}.",
@@ -80,7 +80,7 @@
   "capsule.error.bundlerGas": "The gas relayer's account is out of funds. Deposit about {amount} {symbol} to {address}, then try again.",
 
   "capsule.gate.title": "Choose a chain",
-  "capsule.gate.subtitle": "This is where your letters will live. You're fixed to it once you enter — exit to switch.",
+  "capsule.gate.subtitle": "Your letters will live here. Fixed once you enter — exit to switch.",
   "capsule.chain.switch": "switch",
 
   "capsule.sort.newest": "Newest first",
@@ -102,7 +102,7 @@
   "capsule.onboard.createBtn": "Create mailbox",
   "capsule.onboard.back": "Back",
   "capsule.onboard.keyTitle": "Unlock your mailbox encryption",
-  "capsule.onboard.keyProse": "Derive an encryption key from the account passkey you just made — <strong>no second passkey</strong>, and it never leaves your device. From now on, only it can open each letter.",
+  "capsule.onboard.keyProse": "Derive an encryption key from the passkey you just made — <strong>no second passkey</strong>, and it never leaves your device. Only it can open your letters.",
   "capsule.onboard.step2": "Step 2 of 2 · Encryption",
   "capsule.onboard.enter": "Enter the mailbox",
   "capsule.onboard.errOpen": "Couldn't open — please try again.",

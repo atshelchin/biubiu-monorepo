@@ -4,7 +4,7 @@
 
   "capsule.brand": "Capsule",
   "capsule.tagline": "写给未来的自己。加密上链，只有你能再次开启。",
-  "capsule.permanence": "一旦封存，无法删改，无法撤回 —— 你写下的，会和这条链活得一样久。",
+  "capsule.permanence": "一旦封存，无法删改 —— 与这条链活得一样久。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "账户",
@@ -50,7 +50,7 @@
 
   "capsule.status.checkingWallet": "检查钱包…",
   "capsule.status.preparingEnc": "用你的账号 passkey 准备加密…",
-  "capsule.status.creatingKey": "你的账号较早、暂不支持加密，正在创建一把专用加密钥匙…",
+  "capsule.status.creatingKey": "账号较早，正在创建专用加密钥匙…",
   "capsule.status.publishingKey": "把加密钥匙发布上链…",
   "capsule.status.keySetup": "钥匙设置：{step}…",
   "capsule.status.unlocking": "用你的 passkey 开启…",
@@ -72,7 +72,7 @@
   "capsule.error.sealFailed": "封存失败。",
   "capsule.error.unlockFailed": "无法用这把 passkey 开启。",
   "capsule.error.unlockDetail": "无法开启 — {error}",
-  "capsule.error.lowBalance": "钱包余额不足以支付 gas（首次使用还需先部署钱包）。请给你的钱包充值一点 {symbol}，再重试：{address}",
+  "capsule.error.lowBalance": "余额不足以支付 gas（首次还需部署钱包）。请向 {address} 充值少量 {symbol} 后重试。",
   "capsule.error.loadFailed": "无法加载信件 — {error}",
   "capsule.error.loadMoreFailed": "无法加载更多 — {error}",
   "capsule.error.cooldown": "今天在这条链上已经封存过一封了 —— {when}可再写。",
@@ -80,7 +80,7 @@
   "capsule.error.bundlerGas": "Gas 中转账户余额不足。请向 {address} 充值约 {amount} {symbol}，再重试。",
 
   "capsule.gate.title": "选择落笔的链",
-  "capsule.gate.subtitle": "这是你信件的所在。进入后将固定在这条链——要换，先退出。",
+  "capsule.gate.subtitle": "信件将留在这条链上。进入后即固定，退出可换。",
   "capsule.chain.switch": "切换",
 
   "capsule.sort.newest": "从新到旧",
@@ -102,7 +102,7 @@
   "capsule.onboard.createBtn": "创建信匣",
   "capsule.onboard.back": "返回",
   "capsule.onboard.keyTitle": "开启你的信匣加密",
-  "capsule.onboard.keyProse": "用你刚才那把账号 passkey 派生一把加密钥匙——<strong>不另建 passkey</strong>、永不离开你的设备。此后每一封都只有它能开启。",
+  "capsule.onboard.keyProse": "用刚才的 passkey 派生加密钥匙——<strong>不另建 passkey</strong>，永不离开本设备。此后只有它能开启你的信。",
   "capsule.onboard.step2": "第二步 / 共两步 · 加密",
   "capsule.onboard.enter": "进入信匣",
   "capsule.onboard.errOpen": "打开失败，请重试。",

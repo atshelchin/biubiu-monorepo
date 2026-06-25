@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "Chain Explorer",
+  "chainsList.description": "Browse and search blockchain networks. Find RPC endpoints, block explorers, and network details.",
+  "chainsList.allChains": "All Chains",
+  "chainsList.totalChains": "{count} chains"
+}

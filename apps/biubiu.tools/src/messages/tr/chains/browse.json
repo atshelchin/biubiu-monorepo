@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "Zincir Gezgini",
+  "chainsList.description": "Blok zinciri ağlarına göz atın ve arayın. RPC uç noktalarını, blok gezginlerini ve ağ ayrıntılarını bulun.",
+  "chainsList.allChains": "Tüm zincirler",
+  "chainsList.totalChains": "{count} zincir"
+}

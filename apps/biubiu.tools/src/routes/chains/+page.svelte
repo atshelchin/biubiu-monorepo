@@ -138,6 +138,15 @@
 				</button>
 			</div>
 		{/if}
+
+		<!-- Always-rendered crawlable path to the full paginated index. The grid
+		     above lazy-loads via JS (crawlers don't scroll), so this link is how
+		     search engines reach every chain detail page. -->
+		<nav class="browse-all" aria-label={t('chainsList.allChains')}>
+			<a href={localizeHref('/chains/browse')} class="browse-all-link"
+				>{t('chainsList.allChains')} →</a
+			>
+		</nav>
 	</section>
 </main>
 
@@ -375,6 +384,26 @@
 	.load-more-btn:hover {
 		border-color: var(--border-strong);
 		background: var(--bg-raised);
+	}
+
+	.browse-all {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--space-6);
+	}
+
+	.browse-all-link {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-muted);
+		text-decoration: none;
+		padding: var(--space-2) var(--space-4);
+		border-radius: var(--radius-md);
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.browse-all-link:hover {
+		color: var(--accent);
 	}
 
 	/* Responsive */

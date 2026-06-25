@@ -1,0 +1,6 @@
+{
+  "chainsList.title": "チェーンエクスプローラー",
+  "chainsList.description": "ブロックチェーンネットワークを閲覧・検索。RPC エンドポイント、ブロックエクスプローラー、ネットワークの詳細を見つけられます。",
+  "chainsList.allChains": "すべてのチェーン",
+  "chainsList.totalChains": "{count} 件のチェーン"
+}

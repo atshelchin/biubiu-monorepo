@@ -355,6 +355,51 @@ describe('executor', () => {
         expect(output.results[0]).toMatchObject({ symbol: 'USDC', tokenAddress: USDC.address });
     });
 
+    it('routes a null-balance sub-call (failed read) to failures, not a zero result', async () => {
+        // A "completed" chunk can still contain a per-address sub-call that failed:
+        // viem allowFailure:true returns null for those. The executor must surface
+        // them as failures so the user never sees a failed read as a "0" balance.
+        const jobWithFailedSubcall = {
+            id: 'job-ethereum-ETH-chunk',
+            taskId: 'test-task-id',
+            input: {
+                network: 'ethereum',
+                token: NATIVE_ETH,
+                addresses: [ADDR1, ADDR2],
+            } as NetworkJob,
+            output: {
+                network: 'ethereum',
+                token: NATIVE_ETH,
+                results: [
+                    { address: ADDR1, balance: '1000000000000000000' },
+                    { address: ADDR2, balance: null },
+                ],
+            } as NetworkJobResult,
+            status: 'completed' as const,
+            attempts: 1,
+            createdAt: Date.now(),
+        };
+
+        mocks.mockTask.start.mockImplementation(async () => {
+            mocks.mockTask._emit('job:complete', jobWithFailedSubcall);
+        });
+
+        // confirm(show details?) → true
+        const ctx = createMockCtx([], [true]);
+        const output = await driveExecutor({ addresses: `${ADDR1},${ADDR2}`, networks: ['ethereum'] }, ctx);
+
+        // One real read, one failed sub-call — NOT two successes.
+        expect(output.stats).toMatchObject({ success: 1, failed: 1 });
+        expect(output.results).toHaveLength(1);
+        expect(output.results[0].address).toBe(ADDR1);
+        // The failure carries the address that failed, so the UI can flag it.
+        expect(output.failures).toEqual([
+            expect.objectContaining({ address: ADDR2, network: 'ethereum', symbol: 'ETH' }),
+        ]);
+        // No row should claim a balance of 0 for the failed address.
+        expect(output.results.some((r) => r.address === ADDR2)).toBe(false);
+    });
+
     it('collects failures and offers to show details', async () => {
         const job1 = makeCompletedJob(ADDR1, 'ethereum');
         const failedJob = makeFailedJob(ADDR1, 'polygon', 'RPC timeout');

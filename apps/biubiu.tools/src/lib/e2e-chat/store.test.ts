@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { privateKeyToAccount } from 'viem/accounts';
 import { parseInvite } from './relay.js';
+import { generateEphemeralKeyPair, toB64url } from './crypto.js';
 
 // ── Mock the WebSocket transport with a faithful 2-peer relay simulator ──────
 const H = vi.hoisted(() => {
@@ -259,5 +260,69 @@ describe('ChatStore — recovery & limits', () => {
 			if (B.phase !== 'ended') throw new Error('peer not notified');
 		});
 		expect(B.endReason).toBe('peer');
+	});
+});
+
+describe('ChatStore — malformed peer signal (DoS regression)', () => {
+	/** Stand up only the creator (role 'a') and return its FakeTransport. */
+	async function createOnly() {
+		const A = new ChatStore();
+		W.wallet = null; // anonymous creator: no expectedPeerPub → bad key reaches crypto
+		await A.create('/apps/chat');
+		await vi.waitFor(() => {
+			if (A.phase !== 'waiting') throw new Error('not waiting');
+		});
+		return { A, ta: H.transports[0] };
+	}
+
+	it('does NOT wedge the creator when a garbage (non-base64) peer key arrives', async () => {
+		const { A, ta } = await createOnly();
+		// A malicious relay/joiner pushes a handshake whose pub is not importable.
+		ta.deliver({ t: 'signal', data: { addr: '', pub: '!!!not-base64!!!', sig: '', kind: 'anon' } });
+
+		// Give the rejected importKey/deriveBits a few microtasks to settle.
+		await Promise.resolve();
+		await Promise.resolve();
+		await new Promise((r) => setTimeout(r, 0));
+
+		// The bad frame must be dropped, NOT commit the guard or advance the phase.
+		expect(A.phase).toBe('waiting');
+		expect(A.errorCode).toBeNull();
+	});
+
+	it('does NOT wedge the creator when an off-curve 65-byte point arrives', async () => {
+		const { A, ta } = await createOnly();
+		// 65 bytes, 0x04 (uncompressed) prefix, but coordinates that are not on P-256.
+		const offCurve = new Uint8Array(65);
+		offCurve[0] = 0x04;
+		offCurve.fill(0x01, 1);
+		const badPub = toB64url(offCurve);
+		ta.deliver({ t: 'signal', data: { addr: '', pub: badPub, sig: '', kind: 'anon' } });
+
+		await Promise.resolve();
+		await new Promise((r) => setTimeout(r, 0));
+
+		expect(A.phase).toBe('waiting');
+		expect(A.errorCode).toBeNull();
+	});
+
+	it('still reaches "connected" from a VALID signal after a malformed one', async () => {
+		const { A, ta } = await createOnly();
+		// First: the poison frame (would previously commit peerHandshake and block retries).
+		ta.deliver({ t: 'signal', data: { addr: '', pub: '@@@', sig: '', kind: 'anon' } });
+		await new Promise((r) => setTimeout(r, 0));
+		expect(A.phase).toBe('waiting'); // not wedged, not connected
+
+		// Then: a legitimate joiner's real ephemeral key must still connect the creator.
+		const eph = await generateEphemeralKeyPair();
+		ta.deliver({
+			t: 'signal',
+			data: { addr: '', pub: eph.publicKeyB64, sig: '', kind: 'anon' }
+		});
+		await vi.waitFor(() => {
+			if (A.phase !== 'connected') throw new Error('valid signal did not connect after bad one');
+		});
+		expect(A.errorCode).toBeNull();
+		expect(A.safety?.digits).toBeTruthy();
 	});
 });

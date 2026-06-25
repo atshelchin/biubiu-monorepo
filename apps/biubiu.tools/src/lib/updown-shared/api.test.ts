@@ -1,13 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
 	parseCurrentRound,
 	parseStats,
 	fetchCurrentRound,
 	fetchStats,
 	fetchStrategyStart,
+	fetchHourly,
 	type ApiFetchOptions,
 } from './api.js';
-import type { CurrentRoundResponse, Stats } from './types.js';
+import type { CurrentRoundResponse, Stats, HourlyStats } from './types.js';
 
 describe('parseCurrentRound', () => {
 	it('returns watching when data is null', () => {
@@ -176,5 +177,77 @@ describe('fetchStrategyStart', () => {
 		});
 		const result = await fetchStrategyStart({ baseUrl: 'http://test', fetchFn });
 		expect(result).toBeNull();
+	});
+});
+
+describe('fetchHourly local-hour bucketing', () => {
+	const makeRow = (hour: number): HourlyStats => ({
+		hour,
+		rounds: 1, wins: 1, losses: 0, invested: 10, payout: 20, profit: 10,
+		winRate: 1, avgProfit: 10,
+	});
+
+	const hourlyOpts = (rows: HourlyStats[]): { fetchFn: ApiFetchOptions['fetchFn']; opts: ApiFetchOptions } => {
+		const fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			json: () => Promise.resolve(rows),
+		});
+		return { fetchFn, opts: { baseUrl: 'http://test', fetchFn } };
+	};
+
+	// getTimezoneOffset returns minutes WEST of UTC: UTC+5:30 => -330.
+	let originalGetTimezoneOffset: () => number;
+	afterEach(() => {
+		if (originalGetTimezoneOffset) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(Date.prototype as any).getTimezoneOffset = originalGetTimezoneOffset;
+		}
+		vi.restoreAllMocks();
+	});
+	const stubOffsetMinutes = (minutes: number) => {
+		originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
+		vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(minutes);
+	};
+
+	it('produces INTEGER hour keys for half-hour timezone UTC+5:30', async () => {
+		stubOffsetMinutes(-330); // UTC+5:30 (India)
+		const { opts } = hourlyOpts([makeRow(0), makeRow(10), makeRow(23)]);
+		const result = await fetchHourly(opts, { from: '', to: '' });
+
+		// Every emitted hour must be a whole number 0..23 so HourlyChart's
+		// integer Map lookups can ever match (regression: was 5.5, 15.5, …).
+		expect(result.length).toBe(3);
+		for (const h of result) {
+			expect(Number.isInteger(h.hour)).toBe(true);
+			expect(h.hour).toBeGreaterThanOrEqual(0);
+			expect(h.hour).toBeLessThan(24);
+		}
+		// UTC hour 0 shifted by round(5.5)=6 -> 6, 10 -> 16, 23 -> wraps to 5.
+		expect(result.map((h) => h.hour)).toEqual([6, 16, 5]);
+	});
+
+	it('produces INTEGER hour keys for quarter-hour timezone UTC+5:45', async () => {
+		stubOffsetMinutes(-345); // UTC+5:45 (Nepal)
+		const { opts } = hourlyOpts([makeRow(0), makeRow(12)]);
+		const result = await fetchHourly(opts, { from: '', to: '' });
+		for (const h of result) {
+			expect(Number.isInteger(h.hour)).toBe(true);
+		}
+		// round(5.75) = 6
+		expect(result.map((h) => h.hour)).toEqual([6, 18]);
+	});
+
+	it('shifts correctly for a whole-hour timezone UTC+8', async () => {
+		stubOffsetMinutes(-480); // UTC+8
+		const { opts } = hourlyOpts([makeRow(0), makeRow(20)]);
+		const result = await fetchHourly(opts, { from: '', to: '' });
+		expect(result.map((h) => h.hour)).toEqual([8, 4]); // 20+8=28 -> 4
+		for (const h of result) expect(Number.isInteger(h.hour)).toBe(true);
+	});
+
+	it('returns [] on non-ok response', async () => {
+		const fetchFn = vi.fn().mockResolvedValue({ ok: false });
+		const result = await fetchHourly({ baseUrl: 'http://test', fetchFn }, { from: '', to: '' });
+		expect(result).toEqual([]);
 	});
 });

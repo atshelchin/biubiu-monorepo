@@ -13,6 +13,7 @@ import {
 	verifySafeTypedDataSignature
 } from './sign-message.js';
 import { buildContractSignatureWebAuthn } from './build-userop.js';
+import { P256_N } from '../crypto-utils.js';
 
 const SAFE = '0x1111111111111111111111111111111111111111' as Address;
 const CHAIN_ID = 8453;
@@ -32,7 +33,13 @@ function bigintFrom(bytes: Uint8Array): bigint {
  * SharedSigner would, signing with a freshly generated P-256 key. Returns the
  * signature bytes + the public key (uncompressed hex) the verifier expects.
  */
-async function forgeSignature(safeMessageHash: Hex): Promise<{ publicKeyHex: string; signature: Hex }> {
+async function forgeRaw(safeMessageHash: Hex): Promise<{
+	publicKeyHex: string;
+	authDataHex: Hex;
+	clientDataFields: string;
+	r: bigint;
+	s: bigint;
+}> {
 	const kp = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
 		'sign',
 		'verify'
@@ -63,7 +70,14 @@ async function forgeSignature(safeMessageHash: Hex): Promise<{ publicKeyHex: str
 	const r = bigintFrom(rawSig.slice(0, 32));
 	const s = bigintFrom(rawSig.slice(32));
 
-	const signature = buildContractSignatureWebAuthn(authDataHex, clientDataFields, r, s);
+	return { publicKeyHex, authDataHex, clientDataFields, r, s };
+}
+
+async function forgeSignature(safeMessageHash: Hex): Promise<{ publicKeyHex: string; signature: Hex }> {
+	const { publicKeyHex, authDataHex, clientDataFields, r, s } = await forgeRaw(safeMessageHash);
+	// Normalize to low-S so the canonical forge always reflects what the signer emits.
+	const lowS = s > P256_N / 2n ? P256_N - s : s;
+	const signature = buildContractSignatureWebAuthn(authDataHex, clientDataFields, r, lowS);
 	return { publicKeyHex, signature };
 }
 
@@ -115,6 +129,30 @@ describe('verifySafeMessageSignature (local WebAuthn P-256)', () => {
 		const { publicKeyHex: otherKey } = await forgeSignature(hash);
 		const ok = await verifySafeMessageSignature(otherKey, SAFE, CHAIN_ID, message, signature);
 		expect(ok).toBe(false);
+	});
+
+	it('rejects the malleated high-S counterpart of an otherwise-valid signature', async () => {
+		const message = 'authorize: pay 5 ETH';
+		const hash = calculateSafeMessageHash(SAFE, stringToHex(message), BigInt(CHAIN_ID));
+		const { publicKeyHex, authDataHex, clientDataFields, r, s } = await forgeRaw(hash);
+
+		// Low-S form (what the signer emits) must verify true.
+		const lowS = s > P256_N / 2n ? P256_N - s : s;
+		const lowSig = buildContractSignatureWebAuthn(authDataHex, clientDataFields, r, lowS);
+		expect(
+			await verifySafeMessageSignature(publicKeyHex, SAFE, CHAIN_ID, message, lowSig)
+		).toBe(true);
+
+		// The malleated high-S counterpart (r, n-s) is mathematically a valid ECDSA
+		// signature for the SAME message + key — WebCrypto.verify would accept it — but
+		// on-chain RIP-7212 (verifiers=0x100) rejects high-S. The local verifier must
+		// agree with on-chain and reject it.
+		const highS = P256_N - lowS;
+		expect(highS > P256_N / 2n).toBe(true); // sanity: it really is high-S
+		const highSig = buildContractSignatureWebAuthn(authDataHex, clientDataFields, r, highS);
+		expect(
+			await verifySafeMessageSignature(publicKeyHex, SAFE, CHAIN_ID, message, highSig)
+		).toBe(false);
 	});
 
 	it('returns false on malformed signature instead of throwing', async () => {

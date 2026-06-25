@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { configModule, buildTokenSelections, type TokenInfo } from './config.js';
+import { getCustomTokens } from '../infra/custom-store.js';
 
 const ADDR1 = '0x1111111111111111111111111111111111111111';
 const ADDR2 = '0x2222222222222222222222222222222222222222';
@@ -189,5 +190,136 @@ describe('config.hydrateCustom', () => {
 		await configModule.actions.hydrateCustom.execute({ input: {}, ctx });
 		expect(ctx.customNetworks).toEqual([]);
 		expect(ctx.customTokens).toEqual([]);
+	});
+});
+
+// ── removeCustomNetwork must delete orphaned token records from IndexedDB ─────
+//
+// Regression: removeCustomNetwork pruned ctx.customTokens BEFORE computing the
+// orphan list, so deleteCustomToken was never called. The stale rows survived in
+// IndexedDB and a network re-added with the same chainId resurrected them.
+
+/** Tiny IDB fake supporting exactly the ops custom-store.ts uses. */
+function createFakeIDB() {
+	const stores = new Map<string, { keyPath: string; data: Map<unknown, unknown> }>();
+	const storeNames = new Set<string>();
+
+	const handle = (name: string) => {
+		const s = stores.get(name)!;
+		return {
+			put(record: Record<string, unknown>) {
+				s.data.set(record[s.keyPath], record);
+			},
+			delete(key: unknown) {
+				s.data.delete(key);
+			},
+			getAll() {
+				const req: { onsuccess: (() => void) | null; result: unknown } = {
+					onsuccess: null,
+					result: undefined,
+				};
+				setTimeout(() => {
+					req.result = [...s.data.values()];
+					req.onsuccess?.();
+				}, 0);
+				return req;
+			},
+			createIndex() {},
+		};
+	};
+
+	const db = {
+		objectStoreNames: { contains: (n: string) => storeNames.has(n) },
+		createObjectStore(name: string, opts: { keyPath: string }) {
+			stores.set(name, { keyPath: opts.keyPath, data: new Map() });
+			storeNames.add(name);
+			return handle(name);
+		},
+		transaction() {
+			const tx: {
+				oncomplete: (() => void) | null;
+				onerror: (() => void) | null;
+				objectStore: (n: string) => ReturnType<typeof handle>;
+			} = { oncomplete: null, onerror: null, objectStore: handle };
+			setTimeout(() => tx.oncomplete?.(), 0);
+			return tx;
+		},
+	};
+
+	let initialized = false;
+	return {
+		open() {
+			const req: {
+				onupgradeneeded: (() => void) | null;
+				onsuccess: (() => void) | null;
+				onerror: (() => void) | null;
+				result: typeof db;
+			} = { onupgradeneeded: null, onsuccess: null, onerror: null, result: db };
+			setTimeout(() => {
+				if (!initialized) {
+					initialized = true;
+					req.onupgradeneeded?.();
+				}
+				req.onsuccess?.();
+			}, 0);
+			return req;
+		},
+	};
+}
+
+describe('config.removeCustomNetwork — orphaned token cleanup', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('deletes the network\'s tokens from IndexedDB so re-add does not resurrect them', async () => {
+		vi.stubGlobal('indexedDB', createFakeIDB());
+		const ctx = makeCtx();
+
+		// Add a custom network + a custom token on it.
+		await configModule.actions.addCustomNetwork.execute({
+			input: { name: 'BNB Chain', chainId: 56, rpcs: ['https://x'], symbol: 'BNB', decimals: 18 },
+			ctx,
+		});
+		await configModule.actions.addCustomToken.execute({
+			input: { network: 'custom-56', address: USDC, symbol: 'USDC', decimals: 6 },
+			ctx,
+		});
+
+		// Sanity: the token is persisted in IndexedDB.
+		expect(await getCustomTokens()).toHaveLength(1);
+
+		// Remove the network.
+		await configModule.actions.removeCustomNetwork.execute({ input: { chainId: 56 }, ctx });
+
+		// The orphaned token row must be gone from IndexedDB (not just from ctx).
+		expect(await getCustomTokens()).toEqual([]);
+		expect(ctx.customTokens).toEqual([]);
+	});
+
+	it('only deletes tokens belonging to the removed network, leaving others intact', async () => {
+		vi.stubGlobal('indexedDB', createFakeIDB());
+		const ctx = makeCtx();
+
+		await configModule.actions.addCustomNetwork.execute({
+			input: { name: 'BNB Chain', chainId: 56, rpcs: ['https://x'], symbol: 'BNB', decimals: 18 },
+			ctx,
+		});
+		// A custom token on the removable network and one on a built-in network.
+		await configModule.actions.addCustomToken.execute({
+			input: { network: 'custom-56', address: USDC, symbol: 'USDC', decimals: 6 },
+			ctx,
+		});
+		await configModule.actions.addCustomToken.execute({
+			input: { network: 'ethereum', address: ADDR2, symbol: 'TKN', decimals: 18 },
+			ctx,
+		});
+		expect(await getCustomTokens()).toHaveLength(2);
+
+		await configModule.actions.removeCustomNetwork.execute({ input: { chainId: 56 }, ctx });
+
+		const remaining = await getCustomTokens();
+		expect(remaining).toHaveLength(1);
+		expect(remaining[0].network).toBe('ethereum');
 	});
 });

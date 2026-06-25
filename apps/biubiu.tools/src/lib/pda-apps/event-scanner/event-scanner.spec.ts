@@ -5,7 +5,7 @@ import { extractEvents, buildTopicSlot, addressTopic } from './infra/events.js';
 import { decodeLogs } from './infra/decode.js';
 import { scanRangeAdaptive } from './infra/adaptive-chunk.js';
 import { resolveBlockRange } from './infra/time-to-block.js';
-import { mergeRanges, subtractRanges, totalBlocks } from './infra/ranges.js';
+import { mergeRanges, subtractRanges, totalBlocks, isFullyCovered } from './infra/ranges.js';
 import { ERC20_EVENT_ABI } from './infra/presets.js';
 import type { RawLog, ScanJob } from './types.js';
 
@@ -195,6 +195,19 @@ describe('ranges: gap-coverage arithmetic (auditability)', () => {
 				[6, 9]
 			])
 		).toBe(5); // overlap counted once
+	});
+
+	it('isFullyCovered: a recorded gap withholds completion even when all blocks were scanned', () => {
+		// No gaps + everything scanned → complete.
+		expect(isFullyCovered(100, 100, [])).toBe(true);
+		expect(isFullyCovered(120, 100, [])).toBe(true); // filterSet multiplier overshoot
+		// A terminally-failed range is recorded as a gap → MUST read as incomplete,
+		// even though scannedBlocks alone would have crossed the threshold. This is the
+		// regression for the "silent data hole" bug: a failed chunk no longer reads
+		// as a complete scan.
+		expect(isFullyCovered(100, 100, [[42, 50]])).toBe(false);
+		// Not enough scanned → incomplete regardless of gaps.
+		expect(isFullyCovered(50, 100, [])).toBe(false);
 	});
 });
 

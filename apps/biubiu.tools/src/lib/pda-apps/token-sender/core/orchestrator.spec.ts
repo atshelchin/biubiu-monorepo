@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { type Address, type Hex } from 'viem';
 import { planBatches, preflight, runSend } from './orchestrator.js';
 import type { SafeSenderWallet } from './wallet.js';
@@ -187,5 +187,118 @@ describe('runSend', () => {
 			batchSize: 2, fee: noFee, onProgress: (p) => phases.push(p.status),
 		});
 		expect(phases).toContain('building');
+	});
+
+	// ── resume: the fund-critical double-payout guard ──────────────────────────
+	describe('resume (completedBatchIndices) — no double-payout', () => {
+		it('skips already-completed batches: no re-send, no re-charged fee, no re-paid recipients', async () => {
+			const sentRecipients: Address[] = [];
+			const wallet = mockWallet({
+				// Capture every recipient that actually gets a transfer sub (skip the fee sub,
+				// which targets FEE_COLLECTOR), so we can prove already-paid addresses aren't re-sent.
+				sendBatch: vi.fn(async ({ calls }) => {
+					for (const c of calls) if (c.value !== undefined) sentRecipients.push(c.to);
+					return { txHash: '0xtx' as Hex, explorerUrl: 'u' };
+				}),
+			});
+			const out = await runSend({
+				wallet, network: NET, tokenType: 'native', recipients: recips(8),
+				batchSize: 2, fee: { amount: 7n, source: 'fallback' },
+				completedBatchIndices: new Set([0, 2]), // batches 0 & 2 already paid
+			});
+			// Only batches 1 (addr 3,4) and 3 (addr 7,8) are (re)sent.
+			expect(wallet.sendBatch).toHaveBeenCalledTimes(2);
+			expect(out.results.map((r) => r.batchIndex)).toEqual([1, 3]);
+			expect(out.failures).toHaveLength(0);
+			// The already-paid recipients (batch 0: addr 1,2; batch 2: addr 5,6) must NOT reappear.
+			const sent = new Set(sentRecipients.map((a) => a.toLowerCase()));
+			expect(sent.has(addr(1).toLowerCase())).toBe(false);
+			expect(sent.has(addr(2).toLowerCase())).toBe(false);
+			expect(sent.has(addr(5).toLowerCase())).toBe(false);
+			expect(sent.has(addr(6).toLowerCase())).toBe(false);
+			// And the not-yet-paid ones ARE sent exactly once.
+			expect(sentRecipients.filter((a) => a === addr(3))).toHaveLength(1);
+			expect(sentRecipients.filter((a) => a === addr(7))).toHaveLength(1);
+		});
+
+		it('all batches completed → full resume is a no-op (nothing sent again)', async () => {
+			const wallet = mockWallet();
+			const out = await runSend({
+				wallet, network: NET, tokenType: 'native', recipients: recips(4),
+				batchSize: 2, fee: noFee, completedBatchIndices: new Set([0, 1]),
+			});
+			expect(wallet.sendBatch).not.toHaveBeenCalled();
+			expect(out.results).toHaveLength(0);
+			expect(out.aborted).toBe(false);
+		});
+	});
+
+	// ── inter-batch delay + abort-during-delay (CLAUDE.md timer/abort discipline) ──
+	describe('interBatchDelayMs · abort during the delay', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('aborting while parked in the inter-batch delay stops after exactly 1 batch and leaks no timer', async () => {
+			vi.useFakeTimers();
+			const ac = new AbortController();
+			const sendOrder: number[] = [];
+
+			// First batch resolves immediately; we then abort while the delay timer is pending.
+			const wallet = mockWallet({
+				sendBatch: vi.fn(async () => {
+					sendOrder.push(sendOrder.length);
+					return { txHash: '0xtx' as Hex, explorerUrl: 'u' };
+				}),
+			});
+
+			const promise = runSend({
+				wallet, network: NET, tokenType: 'native', recipients: recips(4),
+				batchSize: 2, fee: noFee, signal: ac.signal,
+				interBatchDelayMs: 5_000,
+			});
+
+			// Let batch 0 send + park inside abortableDelay (a live 5s setTimeout now pending).
+			await vi.advanceTimersByTimeAsync(0);
+			expect(sendOrder).toEqual([0]);
+			// A timer for the inter-batch delay must currently be scheduled.
+			expect(vi.getTimerCount()).toBe(1);
+
+			// Abort while the timer is still pending → the abort listener must clearTimeout
+			// (so no leaked/late-firing timer) and resolve the delay so the loop can break.
+			ac.abort();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const out = await promise;
+			expect(out.aborted).toBe(true);
+			// Only the first batch was ever sent; the second never fired.
+			expect(wallet.sendBatch).toHaveBeenCalledTimes(1);
+			expect(out.results.map((r) => r.batchIndex)).toEqual([0]);
+			// No pending timer left behind (the abort path cleared it).
+			expect(vi.getTimerCount()).toBe(0);
+
+			// Sanity: advancing past the original delay must NOT fire a stale callback
+			// (would throw / re-enter if the timeout wasn't cleared).
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(wallet.sendBatch).toHaveBeenCalledTimes(1);
+		});
+
+		it('without abort, the delay fires and every remaining batch is sent', async () => {
+			vi.useFakeTimers();
+			const wallet = mockWallet();
+			const promise = runSend({
+				wallet, network: NET, tokenType: 'native', recipients: recips(4),
+				batchSize: 2, fee: noFee, interBatchDelayMs: 5_000,
+			});
+			// Batch 0 sends, then parks in the delay.
+			await vi.advanceTimersByTimeAsync(0);
+			expect(wallet.sendBatch).toHaveBeenCalledTimes(1);
+			// Fire the inter-batch delay → batch 1 sends.
+			await vi.advanceTimersByTimeAsync(5_000);
+			const out = await promise;
+			expect(out.aborted).toBe(false);
+			expect(wallet.sendBatch).toHaveBeenCalledTimes(2);
+			expect(vi.getTimerCount()).toBe(0);
+		});
 	});
 });

@@ -99,4 +99,47 @@ describe('parseRecipients · equal mode', () => {
 		expect(r.validCount).toBe(0);
 		expect(r.totalAmount).toBe(0n);
 	});
+
+	// Regression: total < recipientCount → integer share rounds to 0n. Must NOT emit
+	// zero-value transfers (gas + per-batch fee for nothing); reject the parse instead.
+	it('rejects when total is smaller than the recipient count (per-share would round to 0)', () => {
+		// decimals 0 so totalAmount '2' parses to 2n base units across 5 recipients → per = 0n
+		const r = parseRecipients({
+			text: [A1, A2, A3, '0x4444444444444444444444444444444444444444', '0x5555555555555555555555555555555555555555'].join('\n'),
+			mode: 'equal',
+			decimals: 0,
+			totalAmount: '2',
+		});
+		expect(r.validCount).toBe(0);
+		expect(r.recipients).toHaveLength(0);
+		expect(r.totalAmount).toBe(0n);
+		// No recipient should ever carry amount 0n (the footgun the finding describes).
+		expect(r.recipients.every((x) => x.amount > 0n)).toBe(true);
+		// The reason is surfaced for the UI (consistent with specified-mode invalid lines).
+		expect(r.invalid.map((i) => i.reason)).toContain('amount-too-small-for-recipient-count');
+	});
+
+	it('accepts when total exactly equals the recipient count (per-share = 1, no zeros)', () => {
+		const r = parseRecipients({
+			text: [A1, A2, A3].join('\n'),
+			mode: 'equal',
+			decimals: 0,
+			totalAmount: '3',
+		});
+		expect(r.validCount).toBe(3);
+		expect(r.recipients.map((x) => x.amount)).toEqual([1n, 1n, 1n]);
+		expect(r.recipients.every((x) => x.amount > 0n)).toBe(true);
+		expect(r.totalAmount).toBe(3n);
+	});
+
+	it('one recipient with tiny total still works (no division-to-zero)', () => {
+		const r = parseRecipients({
+			text: A1,
+			mode: 'equal',
+			decimals: 0,
+			totalAmount: '1',
+		});
+		expect(r.validCount).toBe(1);
+		expect(r.recipients[0].amount).toBe(1n);
+	});
 });

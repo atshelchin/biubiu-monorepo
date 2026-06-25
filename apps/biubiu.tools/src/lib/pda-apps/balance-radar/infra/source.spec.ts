@@ -121,6 +121,23 @@ describe('BalanceQuerySource.handler', () => {
 		expect(arg.contracts[0].address).toBe(USDC.address);
 	});
 
+	it('propagates a per-address sub-call failure as balance:null (not "0")', async () => {
+		mc.multicall.mockResolvedValue([
+			{ status: 'success', result: 10n },
+			{ status: 'failure', error: new Error('revert') },
+		]);
+		const source = makeSource([NATIVE]);
+		const out = await source.handler(
+			{ network: 'ethereum', token: NATIVE, addresses: [ADDR(1), ADDR(2)] },
+			{} as never,
+		);
+		// The failed entry must NOT be reported as a real zero balance.
+		expect(out.results).toEqual([
+			{ address: ADDR(1), balance: '10' },
+			{ address: ADDR(2), balance: null },
+		]);
+	});
+
 	it('throws for an unknown network', async () => {
 		const source = makeSource([NATIVE]);
 		await expect(

@@ -43,6 +43,9 @@ describe('createMulticallBalanceCall', () => {
 
 		const arg = multicall.mock.calls[0][0];
 		expect(arg.allowFailure).toBe(true);
+		// Must pass the canonical Multicall3 address explicitly, else viem throws
+		// ChainDoesNotSupportContract on user-added (custom) networks.
+		expect(arg.multicallAddress).toBe(MULTICALL3);
 		expect(arg.contracts).toHaveLength(2);
 		expect(arg.contracts[0]).toMatchObject({
 			address: MULTICALL3,
@@ -51,17 +54,27 @@ describe('createMulticallBalanceCall', () => {
 		});
 	});
 
-	it('maps a failed multicall entry to "0"', async () => {
+	it('maps a failed multicall entry to null (NOT a fake "0" balance)', async () => {
 		const multicall = vi.fn().mockResolvedValue([
 			{ status: 'failure', error: new Error('revert') },
 			{ status: 'success', result: 7n },
 		]);
 		const call = createMulticallBalanceCall([ADDR1, ADDR2]);
 		const result = await call.execute(mockClient({ multicall: multicall as never }));
+		// A failed sub-call must be distinguishable from a real zero balance: a
+		// balance-reporting tool surfacing a failed read as "0" would silently hide
+		// funds. null = "failed to read"; "0" is reserved for a genuine zero.
 		expect(result).toEqual([
-			{ address: ADDR1, balance: '0' },
+			{ address: ADDR1, balance: null },
 			{ address: ADDR2, balance: '7' },
 		]);
+	});
+
+	it('reports a genuine zero balance as the string "0", not null', async () => {
+		const multicall = vi.fn().mockResolvedValue([{ status: 'success', result: 0n }]);
+		const call = createMulticallBalanceCall([ADDR1]);
+		const result = await call.execute(mockClient({ multicall: multicall as never }));
+		expect(result).toEqual([{ address: ADDR1, balance: '0' }]);
 	});
 });
 
@@ -76,12 +89,14 @@ describe('createErc20BalanceCall', () => {
 		const call = createErc20BalanceCall([ADDR1, ADDR2], TOKEN);
 		const result = await call.execute(mockClient({ multicall: multicall as never }));
 
+		// Failed balanceOf → null (reverting token / partial response), not a fake 0.
 		expect(result).toEqual([
 			{ address: ADDR1, balance: '5000000' },
-			{ address: ADDR2, balance: '0' },
+			{ address: ADDR2, balance: null },
 		]);
 
 		const arg = multicall.mock.calls[0][0];
+		expect(arg.multicallAddress).toBe(MULTICALL3);
 		expect(arg.contracts[0]).toMatchObject({
 			address: TOKEN,
 			functionName: 'balanceOf',

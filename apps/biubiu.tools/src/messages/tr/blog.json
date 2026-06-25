@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "Blog — BiuBiu Tools",
+  "blog.meta.description": "BiuBiu Tools ekibinden ürün güncellemeleri, kılavuzlar ve notlar.",
+  "blog.title": "Blog",
+  "blog.subtitle": "Ürün güncellemeleri, derinlemesine incelemeler ve ekip notları.",
+  "blog.rss": "RSS akışı",
+  "blog.empty": "Henüz yazı yok — daha sonra tekrar bakın.",
+  "blog.minRead": "{min} dk okuma",
+  "blog.readPost": "Yazıyı oku →",
+  "blog.allPosts": "← Tüm yazılar",
+  "blog.older": "← Daha eski",
+  "blog.newer": "Daha yeni →"
+}

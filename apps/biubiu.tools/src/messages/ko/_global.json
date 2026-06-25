@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Wallet Lab 열기",
   "featured.walletLab.feature1": "지갑 3종",
   "featured.walletLab.feature2": "원자적 배치",
-  "featured.walletLab.feature3": "ERC-1271 서명"
+  "featured.walletLab.feature3": "ERC-1271 서명",
+  "nav.blog": "블로그"
 }

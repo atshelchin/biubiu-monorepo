@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Открыть Wallet Lab",
   "featured.walletLab.feature1": "3 типа кошельков",
   "featured.walletLab.feature2": "Атомарные пакеты",
-  "featured.walletLab.feature3": "Подпись ERC-1271"
+  "featured.walletLab.feature3": "Подпись ERC-1271",
+  "nav.blog": "Блог"
 }

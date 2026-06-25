@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Apri Wallet Lab",
   "featured.walletLab.feature1": "3 tipi di wallet",
   "featured.walletLab.feature2": "Batch atomici",
-  "featured.walletLab.feature3": "Firma ERC-1271"
+  "featured.walletLab.feature3": "Firma ERC-1271",
+  "nav.blog": "Blog"
 }

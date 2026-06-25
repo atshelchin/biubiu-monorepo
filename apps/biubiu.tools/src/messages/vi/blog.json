@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "Blog — BiuBiu Tools",
+  "blog.meta.description": "Cập nhật sản phẩm, hướng dẫn và ghi chú từ đội ngũ BiuBiu Tools.",
+  "blog.title": "Blog",
+  "blog.subtitle": "Cập nhật sản phẩm, phân tích chuyên sâu và ghi chú từ đội ngũ.",
+  "blog.rss": "Nguồn cấp RSS",
+  "blog.empty": "Chưa có bài viết nào — hãy quay lại sau.",
+  "blog.minRead": "Đọc {min} phút",
+  "blog.readPost": "Đọc bài →",
+  "blog.allPosts": "← Tất cả bài viết",
+  "blog.older": "← Cũ hơn",
+  "blog.newer": "Mới hơn →"
+}

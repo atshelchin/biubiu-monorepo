@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Wallet Lab’i aç",
   "featured.walletLab.feature1": "3 cüzdan türü",
   "featured.walletLab.feature2": "Atomik toplu işlem",
-  "featured.walletLab.feature3": "ERC-1271 imza"
+  "featured.walletLab.feature3": "ERC-1271 imza",
+  "nav.blog": "Blog"
 }

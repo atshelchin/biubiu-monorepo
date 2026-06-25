@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "ブログ — BiuBiu Tools",
+  "blog.meta.description": "BiuBiu Tools チームによる製品アップデート、ガイド、ノート。",
+  "blog.title": "ブログ",
+  "blog.subtitle": "製品アップデート、詳細解説、チームのノート。",
+  "blog.rss": "RSS フィード",
+  "blog.empty": "記事はまだありません。近日公開予定です。",
+  "blog.minRead": "約{min}分で読めます",
+  "blog.readPost": "記事を読む →",
+  "blog.allPosts": "← 記事一覧",
+  "blog.older": "← 古い記事",
+  "blog.newer": "新しい記事 →"
+}

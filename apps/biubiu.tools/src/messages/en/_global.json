@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Open Wallet Lab",
   "featured.walletLab.feature1": "3 wallet kinds",
   "featured.walletLab.feature2": "Atomic batches",
-  "featured.walletLab.feature3": "ERC-1271 signing"
+  "featured.walletLab.feature3": "ERC-1271 signing",
+  "nav.blog": "Blog"
 }

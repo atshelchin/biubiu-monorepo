@@ -9,9 +9,8 @@ const LOCALES = SUPPORTED_LOCALES;
 // Static pages that don't have dynamic parameters
 const STATIC_PAGES = [
 	'/' // Homepage
-	// Add more static pages here as they are created
-	// '/apps/balance-radar',
-	// '/docs',
+	// /docs and /blog indexes live in sitemap-docs.xml / sitemap-blog.xml.
+	// Add more static pages here as they are created.
 ];
 
 function generateUrl(path: string, lastmod?: string): string {

@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "Блог — BiuBiu Tools",
+  "blog.meta.description": "Обновления продукта, руководства и заметки команды BiuBiu Tools.",
+  "blog.title": "Блог",
+  "blog.subtitle": "Обновления продукта, подробные разборы и заметки команды.",
+  "blog.rss": "RSS-лента",
+  "blog.empty": "Записей пока нет — загляните позже.",
+  "blog.minRead": "{min} мин чтения",
+  "blog.readPost": "Читать статью →",
+  "blog.allPosts": "← Все записи",
+  "blog.older": "← Старее",
+  "blog.newer": "Новее →"
+}

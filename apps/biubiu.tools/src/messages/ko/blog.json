@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "블로그 — BiuBiu Tools",
+  "blog.meta.description": "BiuBiu Tools 팀의 제품 업데이트, 가이드 및 노트.",
+  "blog.title": "블로그",
+  "blog.subtitle": "제품 업데이트, 심층 분석, 팀 노트.",
+  "blog.rss": "RSS 피드",
+  "blog.empty": "아직 게시물이 없습니다. 곧 만나요.",
+  "blog.minRead": "{min}분 읽기",
+  "blog.readPost": "글 읽기 →",
+  "blog.allPosts": "← 모든 글",
+  "blog.older": "← 이전 글",
+  "blog.newer": "다음 글 →"
+}

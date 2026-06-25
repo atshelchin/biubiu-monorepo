@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Wallet Lab を開く",
   "featured.walletLab.feature1": "3 種類のウォレット",
   "featured.walletLab.feature2": "アトミックバッチ",
-  "featured.walletLab.feature3": "ERC-1271 署名"
+  "featured.walletLab.feature3": "ERC-1271 署名",
+  "nav.blog": "ブログ"
 }

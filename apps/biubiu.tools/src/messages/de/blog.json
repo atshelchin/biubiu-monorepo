@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "Blog — BiuBiu Tools",
+  "blog.meta.description": "Produktneuigkeiten, Anleitungen und Notizen vom BiuBiu-Tools-Team.",
+  "blog.title": "Blog",
+  "blog.subtitle": "Produktneuigkeiten, ausführliche Analysen und Team-Notizen.",
+  "blog.rss": "RSS-Feed",
+  "blog.empty": "Noch keine Beiträge – schau bald wieder vorbei.",
+  "blog.minRead": "{min} Min. Lesezeit",
+  "blog.readPost": "Beitrag lesen →",
+  "blog.allPosts": "← Alle Beiträge",
+  "blog.older": "← Ältere",
+  "blog.newer": "Neuere →"
+}

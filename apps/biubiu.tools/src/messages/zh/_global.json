@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "打开 Wallet Lab",
   "featured.walletLab.feature1": "3 种钱包",
   "featured.walletLab.feature2": "原子批量",
-  "featured.walletLab.feature3": "ERC-1271 签名"
+  "featured.walletLab.feature3": "ERC-1271 签名",
+  "nav.blog": "博客"
 }

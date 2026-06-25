@@ -1,0 +1,13 @@
+{
+  "blog.meta.title": "網誌 — BiuBiu Tools",
+  "blog.meta.description": "來自 BiuBiu Tools 團隊的產品更新、指南與筆記。",
+  "blog.title": "網誌",
+  "blog.subtitle": "產品更新、深度解析與團隊筆記。",
+  "blog.rss": "RSS 訂閱",
+  "blog.empty": "尚無文章，敬請期待。",
+  "blog.minRead": "{min} 分鐘閱讀",
+  "blog.readPost": "閱讀全文 →",
+  "blog.allPosts": "← 所有文章",
+  "blog.older": "← 較舊",
+  "blog.newer": "較新 →"
+}

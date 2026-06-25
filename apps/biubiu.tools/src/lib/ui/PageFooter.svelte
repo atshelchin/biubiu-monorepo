@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t, localizeHref } from '$lib/i18n';
 
 	const commitHash = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'dev';
 	const commitUrl = `https://github.com/atshelchin/biubiu-monorepo/tree/${commitHash}`;
@@ -7,6 +7,12 @@
 
 <footer class="footer">
 	<div class="footer-content">
+		<nav class="footer-nav" aria-label={t('nav.menu')}>
+			<a href={localizeHref('/')}>{t('nav.home')}</a>
+			<a href={localizeHref('/docs')}>{t('nav.docs')}</a>
+			<a href={localizeHref('/blog')}>{t('nav.blog')}</a>
+		</nav>
+
 		<div class="social-links">
 			<a href="https://github.com/atshelchin/biubiu-monorepo" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="GitHub">
 				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -55,6 +61,26 @@
 		margin: 0 auto;
 		padding: 0 var(--space-6);
 		text-align: center;
+	}
+
+	.footer-nav {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: var(--space-5);
+		margin-bottom: var(--space-5);
+	}
+
+	.footer-nav a {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--fg-muted);
+		text-decoration: none;
+		transition: color var(--motion-fast) var(--easing);
+	}
+
+	.footer-nav a:hover {
+		color: var(--fg-base);
 	}
 
 	.social-links {

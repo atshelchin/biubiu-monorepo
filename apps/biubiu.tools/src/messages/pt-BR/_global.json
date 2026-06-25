@@ -390,5 +390,6 @@
   "featured.walletLab.cta": "Abrir Wallet Lab",
   "featured.walletLab.feature1": "3 tipos de wallet",
   "featured.walletLab.feature2": "Lotes atômicos",
-  "featured.walletLab.feature3": "Assinatura ERC-1271"
+  "featured.walletLab.feature3": "Assinatura ERC-1271",
+  "nav.blog": "Blog"
 }

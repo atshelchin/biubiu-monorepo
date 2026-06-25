@@ -15,9 +15,6 @@
 	import { Lock, ExternalLink, AlertTriangle, Settings } from '@lucide/svelte';
 
 	const store = capsuleStore;
-	// TEMP DEBUG — show the encrypt/decrypt key in the UI for cross-device diagnosis.
-	// Flip to false (or delete the .dbg-keys block + store.debug* fields) before release.
-	const DEBUG_SHOW_KEYS = true;
 	let showProfile = $state(false);
 	let showSettings = $state(false);
 
@@ -99,21 +96,6 @@
 <SEO {...seoProps} />
 
 <div class="forever">
-	{#if DEBUG_SHOW_KEYS && store.debugDekHex}
-		<!-- TEMP DEBUG · 加解密密钥（symmetric — encrypt key == decrypt key）· remove before release -->
-		<div class="dbg-keys">
-			<div class="dbg-head">⚠ DEBUG · 加解密密钥（临时，发布前移除）· 点按复制</div>
-			<button type="button" class="dbg-row" onclick={() => navigator.clipboard?.writeText(store.debugCredId ?? '')}>
-				<span class="dbg-label">CID</span><code>{store.debugCredId}</code>
-			</button>
-			<button type="button" class="dbg-row" onclick={() => navigator.clipboard?.writeText(store.debugPrfHex ?? '')}>
-				<span class="dbg-label">PRF</span><code>{store.debugPrfHex}</code>
-			</button>
-			<button type="button" class="dbg-row" onclick={() => navigator.clipboard?.writeText(store.debugDekHex ?? '')}>
-				<span class="dbg-label">KEY</span><code>{store.debugDekHex}</code>
-			</button>
-		</div>
-	{/if}
 	<div class="topbar">
 		<a class="home" href={localizeHref('/')}>← {t('capsule.home')}</a>
 		<div class="topbar-actions">
@@ -988,51 +970,6 @@
 		--accent-hover: #a9781f;
 		--accent-muted: var(--seal-soft);
 		--accent-fg: #fff;
-	}
-
-	/* TEMP DEBUG key panel — fixed overlay, gold-on-dark, tap-to-copy. Remove before release. */
-	.dbg-keys {
-		position: fixed;
-		left: 8px;
-		right: 8px;
-		bottom: 8px;
-		z-index: 9999;
-		background: #1a1206;
-		border: 1px solid #b8862f;
-		border-radius: 10px;
-		padding: 8px 10px;
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-	}
-	.dbg-head {
-		color: #f0c674;
-		font-size: 11px;
-		font-weight: 700;
-		margin-bottom: 6px;
-	}
-	.dbg-row {
-		display: flex;
-		gap: 8px;
-		align-items: baseline;
-		width: 100%;
-		text-align: left;
-		background: none;
-		border: 0;
-		padding: 3px 0;
-		cursor: pointer;
-	}
-	.dbg-label {
-		color: #b8862f;
-		font-size: 10px;
-		font-weight: 700;
-		min-width: 30px;
-		font-family: ui-monospace, monospace;
-	}
-	.dbg-row code {
-		font-size: 10px;
-		line-height: 1.4;
-		word-break: break-all;
-		color: #e8d8b0;
-		font-family: ui-monospace, monospace;
 	}
 
 	@media (max-width: 560px) {

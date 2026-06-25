@@ -1,9 +1,9 @@
 <!--
-  The connected chat: identity header, trust bar (safety-code state), message
-  list, and the bottom region — which is the mandatory Safety-Code verification
-  panel until the user confirms the code, then the composer. Everything is
-  decrypted in-memory only. On mobile the room is a full-screen overlay whose
-  bottom region rides above the on-screen keyboard.
+  The connected chat: identity header, a slim trust bar (the safety code, tappable
+  for the optional out-of-band check), the message list, and the composer.
+  The channel auto-verifies via the encrypted handshake ACK, so there is no manual
+  step; the composer just stays locked ("securing…") until that lands. On mobile
+  the room is a full-screen overlay whose composer rides above the keyboard.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
@@ -29,15 +29,11 @@
 
 	const peerShort = $derived(shortenAddress(store.peer?.address ?? ''));
 	const degraded = $derived(store.conn !== 'open' || !store.peerOnline);
-	/** Stable, code-derived order for the 6-way picker (don't reshuffle on every render). */
-	const choices = $derived([...(store.safety?.choices ?? [])].sort());
-	/** A re-verify (vs the first one) — there's already history on screen. */
-	const isRekey = $derived(!store.verified && store.messages.length > 0);
 
 	// Focus the composer when it appears — but not on touch (avoids popping the
-	// on-screen keyboard the moment you connect / unlock).
+	// on-screen keyboard the moment you connect).
 	$effect(() => {
-		if (inputEl && window.matchMedia('(pointer: fine)').matches) inputEl.focus();
+		if (inputEl && store.verified && window.matchMedia('(pointer: fine)').matches) inputEl.focus();
 	});
 
 	// Auto-scroll to the newest message only when the user is already at the
@@ -47,9 +43,9 @@
 		if (listEl && pinned) listEl.scrollTop = listEl.scrollHeight;
 	});
 
-	// Mobile only: lock the page behind the full-screen room and lift the bottom
-	// region above the on-screen keyboard. iOS Safari doesn't resize the layout
-	// viewport, so visualViewport is required; Android/Chromium shrink 100dvh via
+	// Mobile only: lock the page behind the full-screen room and lift the composer
+	// above the on-screen keyboard. iOS Safari doesn't resize the layout viewport,
+	// so visualViewport is required; Android/Chromium shrink 100dvh via
 	// interactive-widget=resizes-content (then overlap is ~0 — no double-count).
 	$effect(() => {
 		const el = roomEl;
@@ -103,7 +99,7 @@
 
 	async function submit() {
 		const text = draft;
-		if (!text.trim()) return;
+		if (!text.trim() || !store.verified) return;
 		draft = '';
 		if (inputEl) inputEl.style.height = 'auto';
 		pinned = true;
@@ -143,26 +139,19 @@
 		<button class="end" onclick={() => (showEndConfirm = true)}>{t('chat.room.end')}</button>
 	</header>
 
-	<div class="trust" data-state={store.verified ? 'ok' : 'pending'}>
-		<button
-			class="trust-main"
-			onclick={() => (showSafety = true)}
-			aria-label={t('chat.safety.title')}
-		>
-			<span class="trust-label">{t('chat.room.safetyTitle')}</span>
-			{#if store.safety}
-				<span class="digits">{store.safety.digits}</span>
-				{#if store.verified}<span class="emoji">{store.safety.emoji}</span>{/if}
-			{/if}
-		</button>
-		{#if store.verified}
-			<span class="trust-pill ok">✓ {t('chat.room.confirmed')}</span>
-		{:else}
-			<span class="trust-pill warn">{t('chat.room.confirmPrompt')}</span>
+	<button class="trust" onclick={() => (showSafety = true)} aria-label={t('chat.safety.title')}>
+		<span class="lock" aria-hidden="true">🔒</span>
+		<span class="trust-label">{t('chat.room.safetyTitle')}</span>
+		{#if store.safety}
+			<span class="digits">{store.safety.digits}</span>
+			<span class="emoji">{store.safety.emoji}</span>
 		{/if}
-	</div>
+		<span class="trust-info" aria-hidden="true">ⓘ</span>
+	</button>
 
-	{#if degraded}
+	{#if !store.verified}
+		<div class="status info" role="status">{t('chat.securing.desc')}</div>
+	{:else if degraded}
 		<div class="status" role="status">
 			{store.conn !== 'open' ? t('chat.room.reconnecting') : t('chat.room.peerOffline')}
 		</div>
@@ -181,49 +170,30 @@
 		{/if}
 	</div>
 
-	{#if !store.verified}
-		<div class="verify">
-			<div class="verify-head">
-				<strong>{t('chat.verify.title')}</strong>
-				{#if isRekey}<span class="verify-rekey">{t('chat.verify.codeChanged')}</span>{/if}
-			</div>
-			{#if store.safety}
-				<div class="verify-code">
-					<span class="digits">{store.safety.digits}</span>
-					<span class="emoji">{store.safety.emoji}</span>
-				</div>
-			{/if}
-			<p class="verify-help">{t('chat.verify.help')}</p>
-			<div class="verify-choices" role="group" aria-label={t('chat.verify.pickAria')}>
-				{#each choices as choice (choice)}
-					<button class="choice" onclick={() => store.confirmSafety(choice)}>{choice}</button>
-				{/each}
-			</div>
-			{#if store.verifyMismatch}
-				<div class="verify-warn" role="alert">{t('chat.verify.mismatch')}</div>
-			{/if}
-		</div>
-	{:else}
-		<form
-			class="composer"
-			onsubmit={(e) => {
-				e.preventDefault();
-				void submit();
-			}}
-		>
-			<textarea
-				class="input"
-				rows="1"
-				bind:this={inputEl}
-				bind:value={draft}
-				oninput={autosize}
-				onkeydown={onKeydown}
-				placeholder={t('chat.room.placeholder')}
-				aria-label={t('chat.room.placeholder')}
-			></textarea>
-			<button class="send" type="submit" disabled={!draft.trim()}>{t('chat.room.send')}</button>
-		</form>
-	{/if}
+	<form
+		class="composer"
+		onsubmit={(e) => {
+			e.preventDefault();
+			void submit();
+		}}
+	>
+		<textarea
+			class="input"
+			rows="1"
+			bind:this={inputEl}
+			bind:value={draft}
+			oninput={autosize}
+			onkeydown={onKeydown}
+			autocomplete="off"
+			autocapitalize="sentences"
+			enterkeyhint="send"
+			placeholder={t('chat.room.placeholder')}
+			aria-label={t('chat.room.placeholder')}
+		></textarea>
+		<button class="send" type="submit" disabled={!store.verified || !draft.trim()}>
+			{t('chat.room.send')}
+		</button>
+	</form>
 </section>
 
 <ResponsiveModal
@@ -322,27 +292,22 @@
 		border-color: var(--error);
 	}
 
+	/* Slim trust bar — the safety code, tappable for the optional OOB check. */
 	.trust {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: var(--space-2) var(--space-3);
+		gap: var(--space-2);
 		width: 100%;
 		padding: var(--space-2) var(--space-4);
 		background: var(--bg-sunken);
-		border-bottom: 1px solid var(--border-subtle);
-	}
-	.trust-main {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-3);
-		min-width: 0;
-		padding: 0;
-		background: none;
 		border: none;
+		border-bottom: 1px solid var(--border-subtle);
 		cursor: pointer;
 		text-align: left;
+	}
+	.lock {
+		font-size: var(--text-sm);
+		line-height: 1;
 	}
 	.trust-label {
 		font-size: var(--text-xs);
@@ -352,30 +317,18 @@
 	}
 	.trust .digits {
 		font-family: var(--font-mono);
-		font-size: var(--text-md);
+		font-size: var(--text-sm);
 		font-weight: var(--weight-semibold);
-		letter-spacing: 0.08em;
+		letter-spacing: 0.06em;
 		color: var(--fg-base);
 	}
 	.trust .emoji {
-		font-size: var(--text-lg);
+		font-size: var(--text-base);
 	}
-	.trust-pill {
-		display: inline-flex;
-		align-items: center;
-		padding: 2px var(--space-2);
-		border-radius: var(--radius-full);
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		white-space: nowrap;
-	}
-	.trust-pill.ok {
-		color: var(--success);
-		background: var(--success-muted);
-	}
-	.trust-pill.warn {
-		color: var(--warning);
-		background: var(--warning-muted);
+	.trust-info {
+		margin-left: auto;
+		font-size: var(--text-sm);
+		color: var(--fg-faint);
 	}
 
 	.status {
@@ -384,6 +337,10 @@
 		color: var(--warning);
 		background: var(--warning-muted);
 		text-align: center;
+	}
+	.status.info {
+		color: var(--fg-muted);
+		background: var(--bg-sunken);
 	}
 
 	.list {
@@ -411,87 +368,6 @@
 		margin: 0;
 		font-size: var(--text-sm);
 		max-width: 320px;
-	}
-
-	/* ── verification panel (replaces the composer until the code is confirmed) ── */
-	.verify {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-		border-top: 1px solid var(--border-subtle);
-		background: var(--bg-elevated);
-	}
-	.verify-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-	}
-	.verify-head strong {
-		font-size: var(--text-sm);
-		font-weight: var(--weight-semibold);
-		color: var(--fg-base);
-	}
-	.verify-rekey {
-		font-size: var(--text-xs);
-		color: var(--warning);
-	}
-	.verify-code {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-	.verify-code .digits {
-		font-family: var(--font-mono);
-		font-size: var(--text-xl);
-		font-weight: var(--weight-bold);
-		letter-spacing: 0.12em;
-		color: var(--fg-base);
-	}
-	.verify-code .emoji {
-		font-size: var(--text-2xl);
-		line-height: 1;
-	}
-	.verify-help {
-		margin: 0;
-		font-size: var(--text-xs);
-		color: var(--fg-muted);
-		line-height: var(--leading-snug);
-	}
-	.verify-choices {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: var(--space-2);
-		margin-top: var(--space-1);
-	}
-	.choice {
-		padding: var(--space-2) 0;
-		font-size: var(--text-2xl);
-		line-height: 1;
-		background: var(--bg-base);
-		border: 1px solid var(--border-base);
-		border-radius: var(--radius-md);
-		cursor: pointer;
-		transition:
-			border-color var(--motion-fast) var(--easing),
-			transform var(--motion-fast) var(--easing);
-	}
-	.choice:hover {
-		border-color: var(--accent);
-	}
-	.choice:active {
-		transform: translateY(1px);
-	}
-	.verify-warn {
-		margin-top: var(--space-1);
-		padding: var(--space-2) var(--space-3);
-		font-size: var(--text-xs);
-		color: var(--error);
-		background: var(--error-muted);
-		border-radius: var(--radius-md);
-		line-height: var(--leading-snug);
 	}
 
 	.composer {
@@ -604,15 +480,12 @@
 		.head {
 			padding-top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
 		}
-		.room[data-kb-open='true'] .composer,
-		.room[data-kb-open='true'] .verify {
+		.room[data-kb-open='true'] .composer {
 			padding-bottom: var(--space-3);
 		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.choice {
-			transition: none;
+		/* 16px keeps iOS from auto-zooming the page when the field is focused. */
+		.input {
+			font-size: 16px;
 		}
 	}
 </style>

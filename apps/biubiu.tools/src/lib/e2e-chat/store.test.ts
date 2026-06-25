@@ -148,13 +148,12 @@ async function connectPair(wa: unknown = eoaWallet, wb: unknown = scWallet) {
 	W.wallet = wb;
 	await B.join(invite.roomId, invite.creatorPub);
 
+	// Both reach 'connected' AND auto-verify by exchanging the encrypted handshake
+	// ACK (proves a shared key → no relay MITM). No manual step.
 	await vi.waitFor(() => {
 		if (A.phase !== 'connected' || B.phase !== 'connected') throw new Error('not connected');
+		if (!A.verified || !B.verified) throw new Error('not verified');
 	});
-	// Outbound messaging is gated behind the mandatory Safety-Code confirmation.
-	// Both peers compute the same code, so each can confirm with its own emoji.
-	A.confirmSafety(A.safety!.emoji);
-	B.confirmSafety(B.safety!.emoji);
 	return { A, B };
 }
 
@@ -180,12 +179,13 @@ describe('ChatStore — two-peer handshake', () => {
 		expect(B.peer?.avatar).toBeTruthy();
 	});
 
-	it('offers 6 distinct emoji choices (incl. the real one), identical on both sides', async () => {
+	it('auto-verifies both peers via the encrypted handshake ACK (no manual step)', async () => {
 		const { A, B } = await connectPair();
-		expect(A.safety?.choices).toHaveLength(6);
-		expect(new Set(A.safety!.choices).size).toBe(6); // all distinct
-		expect(A.safety!.choices).toContain(A.safety!.emoji); // the real code is an option
-		expect(A.safety?.choices).toEqual(B.safety?.choices); // deterministic across peers
+		expect(A.verified).toBe(true);
+		expect(B.verified).toBe(true);
+		// The ACK lives at the reserved seq 0 and is consumed, never shown.
+		expect(A.messages.length).toBe(0);
+		expect(B.messages.length).toBe(0);
 	});
 
 	it('lets two anonymous peers (no wallet) connect and chat', async () => {
@@ -275,44 +275,20 @@ describe('ChatStore — recovery & limits', () => {
 	});
 });
 
-describe('ChatStore — Safety-Code gate (MITM defense)', () => {
-	/** Connect a pair but do NOT confirm the code, to exercise the gate. */
-	async function connectUnverified() {
-		const A = new ChatStore();
-		const B = new ChatStore();
-		W.wallet = null;
-		await A.create('/apps/chat');
-		const invite = parseInvite(A.inviteUrl!.slice(A.inviteUrl!.indexOf('#')))!;
-		await B.join(invite.roomId, invite.creatorPub);
-		await vi.waitFor(() => {
-			if (A.phase !== 'connected' || B.phase !== 'connected') throw new Error('not connected');
-		});
-		return { A, B };
-	}
+describe('ChatStore — outbound gate (MITM defense)', () => {
+	it('send() leaks nothing while unverified, and unlocks once verified', async () => {
+		const { A } = await connectPair();
+		// Simulate the pre-ACK window (or a relay MITM that never lets the ACK
+		// decrypt): with verified=false, nothing must leave.
+		A.verified = false;
+		const outBefore = A.messages.filter((m) => m.dir === 'out').length;
+		await A.send('must not leak to a MITM');
+		expect(A.messages.filter((m) => m.dir === 'out').length).toBe(outBefore);
 
-	it('blocks outbound messages until the code is confirmed', async () => {
-		const { A } = await connectUnverified();
-		expect(A.verified).toBe(false);
-		await A.send('must not leave before verification');
-		expect(A.messages.some((m) => m.dir === 'out')).toBe(false); // gated, nothing queued
-	});
-
-	it('a wrong pick raises the mismatch warning and keeps the gate shut', async () => {
-		const { A } = await connectUnverified();
-		A.confirmSafety('definitely-not-the-code');
-		expect(A.verified).toBe(false);
-		expect(A.verifyMismatch).toBe(true);
-	});
-
-	it('the correct pick unlocks sending', async () => {
-		const { A, B } = await connectUnverified();
-		A.confirmSafety(A.safety!.emoji);
-		B.confirmSafety(B.safety!.emoji);
-		expect(A.verified).toBe(true);
-		await A.send('now allowed');
-		await vi.waitFor(() => {
-			if (!B.messages.some((m) => m.text === 'now allowed')) throw new Error('not delivered');
-		});
+		// Once the channel verifies, sending works again.
+		A.verified = true;
+		await A.send('now ok');
+		expect(A.messages.filter((m) => m.dir === 'out').length).toBe(outBefore + 1);
 	});
 });
 

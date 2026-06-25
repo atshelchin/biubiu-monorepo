@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} — сведения о сети",
-  "chains.description": "Изучите блокчейн-сеть {name} — RPC-узлы, обозреватели блоков и информацию о сети.",
+  "chains.title": "{name}: RPC-узлы, Chain ID и добавление в MetaMask",
+  "chains.description": "Сведения о сети {name}: публичные RPC-эндпоинты с задержкой в реальном времени, Chain ID, блок-эксплореры и добавление в MetaMask в один клик.",
   "chains.search.placeholder": "Поиск сетей по названию, символу или Chain ID…",
   "chains.search.noResults": "Сети не найдены",
   "chains.info.chainId": "Chain ID",

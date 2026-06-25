@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - Detalhes da chain",
-  "chains.description": "Explore a rede blockchain {name} - endpoints RPC, exploradores de blocos e informações da rede.",
+  "chains.title": "{name} URLs RPC, Chain ID e adicionar à MetaMask",
+  "chains.description": "Detalhes da rede {name}: endpoints RPC públicos com latência ao vivo, Chain ID, exploradores de blocos e adicionar à MetaMask com um clique.",
   "chains.search.placeholder": "Busque chains por nome, símbolo ou Chain ID…",
   "chains.search.noResults": "Nenhuma chain encontrada",
   "chains.info.chainId": "Chain ID",

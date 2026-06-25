@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - Chi tiết chuỗi",
-  "chains.description": "Khám phá mạng blockchain {name} - endpoint RPC, trình duyệt khối và thông tin mạng.",
+  "chains.title": "{name} URL RPC, Chain ID & thêm vào MetaMask",
+  "chains.description": "Chi tiết mạng {name}: các điểm cuối RPC công khai với độ trễ trực tiếp, Chain ID, trình khám phá khối và thêm vào MetaMask chỉ với một cú nhấp.",
   "chains.search.placeholder": "Tìm chuỗi theo tên, ký hiệu hoặc Chain ID…",
   "chains.search.noResults": "Không tìm thấy chuỗi nào",
   "chains.info.chainId": "Chain ID",

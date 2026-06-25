@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - 체인 상세",
-  "chains.description": "{name} 블록체인 네트워크 탐색 — RPC 엔드포인트, 블록 탐색기, 네트워크 정보.",
+  "chains.title": "{name} RPC URL, 체인 ID 및 MetaMask 추가",
+  "chains.description": "{name} 네트워크 정보: 실시간 지연 시간이 표시되는 공용 RPC 엔드포인트, 체인 ID, 블록 익스플로러, MetaMask 원클릭 추가.",
   "chains.search.placeholder": "이름, 심볼, 체인 ID로 체인 검색…",
   "chains.search.noResults": "체인을 찾을 수 없습니다",
   "chains.info.chainId": "체인 ID",

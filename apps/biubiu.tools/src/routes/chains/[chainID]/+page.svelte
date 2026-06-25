@@ -34,6 +34,8 @@
 
 	let { data }: { data: PageData } = $props();
 
+	const SITE_URL = 'https://biubiu.tools';
+
 	let copiedIndex = $state<number | null>(null);
 	let logoError = $state(false);
 	const rpcLatencies = new SvelteMap<string, RpcProbe>();
@@ -87,7 +89,19 @@
 			? getBaseSEO({
 					title: t('chains.title', { name: data.chain.name }),
 					description: t('chains.description', { name: data.chain.name }),
-					currentLocale: locale.value
+					currentLocale: locale.value,
+					// Breadcrumb trail (BiuBiu Tools › Chains › <chain>) — earns the
+					// breadcrumb display in search results and reinforces site structure.
+					jsonLd: {
+						type: 'BreadcrumbList',
+						data: {
+							items: [
+								{ name: 'BiuBiu Tools', url: SITE_URL },
+								{ name: 'Chains', url: `${SITE_URL}/chains` },
+								{ name: data.chain.name, url: `${SITE_URL}/chains/${data.chain.chainId}` }
+							]
+						}
+					}
 				})
 			: getBaseSEO({
 					title: t('chains.notFound'),

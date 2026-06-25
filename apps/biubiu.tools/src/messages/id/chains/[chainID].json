@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - Detail Chain",
-  "chains.description": "Jelajahi jaringan blockchain {name} - endpoint RPC, block explorer, dan informasi jaringan.",
+  "chains.title": "{name} URL RPC, Chain ID & Tambah ke MetaMask",
+  "chains.description": "Detail jaringan {name}: endpoint RPC publik dengan latensi langsung, Chain ID, block explorer, dan tambah ke MetaMask sekali klik.",
   "chains.search.placeholder": "Cari chain berdasarkan nama, simbol, atau chain ID…",
   "chains.search.noResults": "Tidak ada chain ditemukan",
   "chains.info.chainId": "Chain ID",

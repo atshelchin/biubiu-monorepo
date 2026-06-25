@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - Zincir Ayrıntıları",
-  "chains.description": "{name} blok zinciri ağını keşfedin - RPC uç noktaları, blok gezginleri ve ağ bilgileri.",
+  "chains.title": "{name} RPC URL'leri, Chain ID ve MetaMask'e ekleme",
+  "chains.description": "{name} ağ ayrıntıları: canlı gecikmeli genel RPC uç noktaları, Chain ID, blok gezginleri ve tek tıkla MetaMask'e ekleme.",
   "chains.search.placeholder": "Zincirleri ada, sembole veya zincir ID'sine göre arayın…",
   "chains.search.noResults": "Zincir bulunamadı",
   "chains.info.chainId": "Zincir ID'si",

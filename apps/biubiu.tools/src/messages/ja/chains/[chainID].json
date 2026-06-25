@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - チェーン詳細",
-  "chains.description": "{name} ブロックチェーンネットワークを探索 — RPC エンドポイント、ブロックエクスプローラー、ネットワーク情報。",
+  "chains.title": "{name} RPC URL・チェーンID・MetaMask 追加",
+  "chains.description": "{name} のネットワーク詳細：実測レイテンシ付きの公開 RPC エンドポイント、チェーンID、ブロックエクスプローラー、MetaMask へのワンクリック追加。",
   "chains.search.placeholder": "名前、シンボル、またはチェーン ID でチェーンを検索…",
   "chains.search.noResults": "チェーンが見つかりません",
   "chains.info.chainId": "チェーン ID",

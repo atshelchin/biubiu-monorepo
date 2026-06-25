@@ -1,6 +1,6 @@
 {
-  "chains.title": "{name} - 鏈詳情",
-  "chains.description": "探索 {name} 區塊鏈網絡——RPC 節點、區塊瀏覽器與網絡資訊。",
+  "chains.title": "{name} RPC 節點、鏈 ID 與加入 MetaMask",
+  "chains.description": "{name} 網絡詳情：公共 RPC 節點（含即時延遲）、鏈 ID、區塊瀏覽器，一鍵加入 MetaMask 錢包。",
   "chains.search.placeholder": "按名稱、符號或鏈 ID 搜尋…",
   "chains.search.noResults": "找不到鏈",
   "chains.info.chainId": "鏈 ID",

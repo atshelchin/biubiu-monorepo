@@ -18,6 +18,8 @@
 	const safeMissing = $derived(check?.safeContracts.filter((c) => !c.deployed) ?? []);
 	const safeOk = $derived(!!check && safeMissing.length === 0);
 	const p256Ok = $derived(check?.p256Precompile.available ?? false);
+	// We couldn't get a definitive answer (RPC call failed) — NOT a confirmed absence.
+	const p256Unknown = $derived(!!check && check.p256Precompile.checked && !check.p256Precompile.verified);
 	const gasOk = $derived(check?.gasBalance == null || check.gasBalance > 0n);
 
 	// CREATE2 proxy + the Safe stack are deployable via the chain-setup tool.
@@ -25,7 +27,8 @@
 	// P256 (RIP-7212) is the ONLY chain-level capability that can't be deployed.
 	// The vela bundler serves every chain, so it's not a gate; once contracts +
 	// P256 exist, the user just funds the gas account on this chain.
-	const hardBlock = $derived(!!check && !p256Ok);
+	// Only a DEFINITIVE absence is a hard block — an unverifiable probe is a retry, not a verdict.
+	const hardBlock = $derived(!!check && check.p256Precompile.verified && !p256Ok);
 
 	const setupHref = $derived(
 		localizeHref(
@@ -110,8 +113,8 @@
 						<span class="nr-name">{t('deploy.ready.safe')}{#if safeMissing.length > 0} ({safeMissing.length}){/if}</span>
 						<span class="nr-tag fix">{t('deploy.ready.deployable')}</span>
 					</li>
-					<li class:bad={!p256Ok}>
-						{#if p256Ok}<Check size={13} class="ic-ok" />{:else}<X size={13} class="ic-bad" />{/if}
+					<li class:bad={!p256Ok && !p256Unknown} class:unknown={p256Unknown}>
+						{#if p256Ok}<Check size={13} class="ic-ok" />{:else if p256Unknown}<AlertTriangle size={13} class="ic-unknown" />{:else}<X size={13} class="ic-bad" />{/if}
 						<span class="nr-name">{t('deploy.ready.p256')}</span>
 						<span class="nr-tag">{t('deploy.ready.chainLevel')}</span>
 					</li>
@@ -140,6 +143,8 @@
 							{#if copied}<Check size={12} />{:else}<Copy size={12} />{/if}
 						</button>
 					{/if}
+				{:else if p256Unknown}
+					<p class="nr-hint">{t('deploy.chain.rpcEndpointError')}</p>
 				{/if}
 			</div>
 		{/if}
@@ -202,6 +207,13 @@
 	.nr-list :global(.ic-bad) {
 		color: var(--error);
 		flex-shrink: 0;
+	}
+	.nr-list :global(.ic-unknown) {
+		color: var(--warning);
+		flex-shrink: 0;
+	}
+	.nr-list li.unknown .nr-name {
+		color: var(--fg-base);
 	}
 	.nr-tag {
 		font-size: 10px;

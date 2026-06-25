@@ -50,6 +50,13 @@ export interface NetworkCheckResult {
 	p256Precompile: {
 		available: boolean;
 		checked: boolean;
+		/**
+		 * Whether we got a DEFINITIVE answer from the chain. `false` means the
+		 * eth_call kept failing (timeout / rate-limit / transport) — that is NOT
+		 * proof the precompile is absent, so callers must not treat it as a hard
+		 * "this chain can't do passkey" block.
+		 */
+		verified: boolean;
 	};
 
 	/** Bundler supports this chain */
@@ -88,6 +95,18 @@ async function getBalance(rpcUrl: string, address: string): Promise<bigint> {
 	return BigInt(result);
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Result of the RIP-7212 probe:
+ *  - 'available'   — the chain answered AND returned 1 (precompile present & working)
+ *  - 'unavailable' — the chain answered but returned empty/non-1 (precompile absent)
+ *  - 'unknown'     — the eth_call kept failing (timeout / rate-limit / transport).
+ *                    A transient RPC error is NOT proof the chain lacks the precompile,
+ *                    so this must never be collapsed into 'unavailable'.
+ */
+type P256Status = 'available' | 'unavailable' | 'unknown';
+
 /**
  * Check RIP-7212 P256 precompile by verifying a known-valid ECDSA P-256 signature.
  *
@@ -96,8 +115,13 @@ async function getBalance(rpcUrl: string, address: string): Promise<bigint> {
  * signature to distinguish "precompile exists" from "no precompile".
  *
  * Test vector: sha256("test") signed with a fixed P-256 key.
+ *
+ * This single eth_call is otherwise easily lost to a rate-limit burst (it runs
+ * alongside ~9 other readiness calls), and a lost call must not masquerade as
+ * "chain unsupported" — so we retry transient failures and report 'unknown' only
+ * after the retries are exhausted.
  */
-async function checkP256Precompile(rpcUrl: string): Promise<boolean> {
+async function checkP256Precompile(rpcUrl: string): Promise<P256Status> {
 	// Fixed valid P-256 signature: hash(32) + r(32) + s(32) + x(32) + y(32) = 160 bytes
 	// sha256("test") signed with a known key — verified on Base, Ethereum, Polygon, Arbitrum, BNB
 	const VALID_P256_CALL =
@@ -108,17 +132,24 @@ async function checkP256Precompile(rpcUrl: string): Promise<boolean> {
 		'3be8cbcb3f590087711ae5ed74b9cd06a88058d0bbe700b5f0ec5a1bfac15592' + // x
 		'f989ef9bfaae0fee03c36625e88eae99806a879d813411f876e7e03a2ffd8314'; // y
 
-	try {
-		const result = (await rpcCall(rpcUrl, 'eth_call', [
-			{ to: P256_PRECOMPILE, data: VALID_P256_CALL },
-			'latest'
-		])) as string;
+	const ATTEMPTS = 3;
+	for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+		try {
+			const result = (await rpcCall(rpcUrl, 'eth_call', [
+				{ to: P256_PRECOMPILE, data: VALID_P256_CALL },
+				'latest'
+			])) as string;
 
-		// Precompile returns 32 bytes with value 1 for valid signature
-		return result !== '0x' && result.length >= 66 && BigInt(result) === 1n;
-	} catch {
-		return false;
+			// The chain answered — present iff it returns 32 bytes == 1.
+			return result !== '0x' && result.length >= 66 && BigInt(result) === 1n
+				? 'available'
+				: 'unavailable';
+		} catch {
+			// Transient (rate-limit / timeout): back off and retry, except after the last try.
+			if (attempt < ATTEMPTS - 1) await sleep(300 * (attempt + 1));
+		}
 	}
+	return 'unknown';
 }
 
 // ─── Cache (contract checks only, gas always live) ───
@@ -204,6 +235,8 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 	let create2Proxy: ContractCheckResult;
 	let safeContracts: ContractCheckResult[];
 	let p256Available: boolean;
+	// Only the live path can produce 'unknown'; a cache hit is always a definitive positive.
+	let p256Verified = true;
 
 	const cached = !forceRefresh ? getCachedContracts(chainId) : null;
 
@@ -227,7 +260,7 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 				ready: false,
 				create2Proxy: { name: 'Arachnid CREATE2 Proxy', address: CREATE2_PROXY, deployed: false },
 				safeContracts: Object.entries(SAFE_CONTRACTS).map(([name, address]) => ({ name, address, deployed: false })),
-				p256Precompile: { available: false, checked: false },
+				p256Precompile: { available: false, checked: false, verified: false },
 				bundlerSupported: false,
 				gasBalance: null,
 				rpcError: true,
@@ -239,7 +272,13 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 		const deployed = await hasCode(rpcUrl, CREATE2_PROXY).catch(() => false);
 		create2Proxy = { name: 'Arachnid CREATE2 Proxy', address: CREATE2_PROXY, deployed };
 
-		// 2. Safe contracts (parallel)
+		// 2. RIP-7212 P256 precompile — run BEFORE the 8-way Safe burst so it isn't
+		//    the call that gets dropped when a public RPC rate-limits the batch tail.
+		const p256Status = await checkP256Precompile(rpcUrl).catch((): P256Status => 'unknown');
+		p256Available = p256Status === 'available';
+		p256Verified = p256Status !== 'unknown';
+
+		// 3. Safe contracts (parallel)
 		safeContracts = await Promise.all(
 			Object.entries(SAFE_CONTRACTS).map(async ([name, address]) => ({
 				name,
@@ -247,9 +286,6 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 				deployed: await hasCode(rpcUrl, address).catch(() => false)
 			}))
 		);
-
-		// 3. RIP-7212 P256 precompile
-		p256Available = await checkP256Precompile(rpcUrl).catch(() => false);
 
 		// Cache if all contract checks passed
 		const allContractsOk =
@@ -271,7 +307,11 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 		issues.push(`Missing Safe contracts: ${missingSafe.map((c) => c.name).join(', ')}`);
 	}
 	if (!p256Available) {
-		issues.push('RIP-7212 P256 precompile not available (passkey signatures will fail)');
+		issues.push(
+			p256Verified
+				? 'RIP-7212 P256 precompile not available (passkey signatures will fail)'
+				: 'Could not verify RIP-7212 P256 precompile — RPC call failed, try another RPC or refresh'
+		);
 	}
 
 	// ── Bundler: the vela bundler serves every network by default, so it is NOT a
@@ -303,7 +343,7 @@ export async function checkNetworkSupport(params: NetworkCheckParams): Promise<N
 		ready,
 		create2Proxy,
 		safeContracts,
-		p256Precompile: { available: p256Available, checked: true },
+		p256Precompile: { available: p256Available, checked: true, verified: p256Verified },
 		bundlerSupported,
 		gasBalance,
 		rpcError: false,

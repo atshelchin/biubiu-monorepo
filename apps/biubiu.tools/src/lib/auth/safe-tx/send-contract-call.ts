@@ -45,17 +45,19 @@ import {
 import { encodeMultiSendCall, MULTISEND_ADDRESS } from '$lib/contract-caller/batch.js';
 
 /**
- * First-deploy verification-gas floor for native (non-Tempo) ERC-4337 chains.
+ * verificationGasLimit for a first-deploy (undeployed Safe) on native (non-Tempo) ERC-4337 chains.
  *
- * In EntryPoint v0.7 the factory (initCode) is executed with `verificationGasLimit` as its gas
- * budget, so an undeployed passkey Safe whose verificationGasLimit is too low makes the DEPLOY run
- * out of gas → the bundler returns "AA13 initCode failed or OOG". Deploying the Safe (proxy + 4337
- * module + WebAuthn signer setup + first P256 verify) meters to ~2M gas on EVM chains, but the
- * bundler's eth_estimateUserOperationGas UNDER-reports undeployed-account verification gas — so
- * estimate×1.5 alone can land below the real cost. We floor it here, exactly like the Tempo path
- * does via TEMPO_VERIFICATION_GAS_UNDEPLOYED. ~2M measured + headroom; tunable per heavier chains.
+ * In EntryPoint v0.7 the factory (initCode) executes inside `verificationGasLimit`, and an EVM Safe
+ * deploy (proxy + 4337 module + WebAuthn signer setup + first P256 verify) meters to ~2M gas. Two
+ * failure modes bracket the right value, so we PIN it to the bundler's hard cap:
+ *   - too LOW (e.g. the bundler's own under-reported estimate) → the deploy OOGs → "AA13 initCode
+ *     failed or OOG".
+ *   - too HIGH → the bundler rejects it → "verificationGasLimit exceeds max 2000000".
+ * The vela bundler caps verification at 2,000,000 on these chains, and that cap is ~exactly the
+ * deploy cost — so 2M is both the max allowed and enough. (Tempo's cap is higher, 8M; see
+ * TEMPO_VERIFICATION_GAS_UNDEPLOYED.)
  */
-const NATIVE_VERIFICATION_GAS_UNDEPLOYED = 2_500_000n;
+const NATIVE_VERIFICATION_GAS_UNDEPLOYED = 2_000_000n;
 
 /** 可选 gas 覆盖：用户自定义 callGasLimit / maxFeePerGas / maxPriorityFeePerGas */
 export interface GasOverrides {
@@ -153,12 +155,13 @@ async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 	const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 15n) / 10n; // 1.5x buffer
 	const estimatedVerificationGasLimit = (BigInt(estimates.verificationGasLimit) * 15n) / 10n;
 
-	// First-deploy floor: a fresh Safe's initCode runs inside verificationGasLimit (EntryPoint v0.7),
-	// and the bundler under-reports it — without this floor the deploy OOGs → "AA13 initCode failed
-	// or OOG". Deployed ops keep the pure estimate (no initCode, cheap verification).
+	// First-deploy: PIN verificationGasLimit to the bundler cap (= enough for the ~2M deploy, and the
+	// max the bundler accepts). We deliberately do NOT use the estimate here: it under-reports the
+	// undeployed deploy (→ AA13 OOG), and estimate×1.5 could also exceed the cap (→ "exceeds max").
+	// Deployed ops use the pure estimate (no initCode, cheap verification, well under the cap).
 	const finalVerificationGasLimit = deployed
 		? estimatedVerificationGasLimit
-		: bigintMax(estimatedVerificationGasLimit, NATIVE_VERIFICATION_GAS_UNDEPLOYED);
+		: NATIVE_VERIFICATION_GAS_UNDEPLOYED;
 
 	// Gas limit: use the LARGER of bundler estimate vs user override (never go below estimate)
 	const userCallGas = gasOverrides?.callGasLimit ?? 0n;

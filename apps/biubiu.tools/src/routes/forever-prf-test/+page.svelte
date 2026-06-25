@@ -31,6 +31,7 @@
 	let expectedHex = $state<string>(''); // editable: paste a hex from device A to compare
 	let lastHex = $state<string | null>(null);
 	let lastCredUsed = $state<string | null>(null);
+	let lastAttachment = $state<string | null>(null); // 'platform' | 'cross-platform' | null
 	let prfEnabledAtCreate = $state<boolean | null>(null);
 	let sessionHexes = $state<string[]>([]);
 	let storedHex = $state<string | null>(null);
@@ -83,12 +84,22 @@
 	// Result handling shared by create / evaluate. Centralises the two comparisons:
 	//  • Expected hex  → cross-DEVICE portability (the real question)
 	//  • Stored hex    → same-device cross-session stability
-	function handleHex(hex: string, usedId: string, source: string) {
+	function handleHex(hex: string, usedId: string, source: string, attachment: string | null) {
 		lastHex = hex;
 		lastCredUsed = usedId;
+		lastAttachment = attachment;
 		credentialId = usedId; // so it can be copied / reused as a pinned target
 		sessionHexes = [...sessionHexes, hex];
-		say(`✅ PRF (${hex.length / 2} bytes) via ${source}, cred ${usedId.slice(0, 12)}… → ${hex}`);
+		// The hidden variable: WHICH authenticator answered. 'platform' = this device's own
+		// (Touch ID / Windows Hello / local Google); 'cross-platform' = a scanned phone / security key.
+		// Different attachment for the same credentialId is exactly when PRF diverges.
+		const who =
+			attachment === 'platform'
+				? ' [platform — this device’s own]'
+				: attachment === 'cross-platform'
+					? ' [cross-platform — scanned phone / security key]'
+					: '';
+		say(`✅ PRF (${hex.length / 2} bytes) via ${source}${who}, cred ${usedId.slice(0, 12)}… → ${hex}`);
 
 		const exp = expectedHex.trim().toLowerCase();
 		if (exp) {
@@ -137,7 +148,7 @@
 				(prfEnabledAtCreate === false ? '  ⚠️ authenticator reports PRF NOT supported.' : ''));
 
 			const first = ext.prf?.results?.first;
-			if (first) handleHex(bufToHex(first), id, 'create');
+			if (first) handleHex(bufToHex(first), id, 'create', cred.authenticatorAttachment);
 			else {
 				credentialId = id;
 				persist();
@@ -175,7 +186,7 @@
 				say('❌ No prf.results.first returned — this authenticator/browser/transport did not give PRF.');
 				return;
 			}
-			handleHex(bufToHex(first), usedId, source);
+			handleHex(bufToHex(first), usedId, source, assertion.authenticatorAttachment);
 		} catch (e) {
 			say(`❌ get() failed: ${(e as Error).message}`);
 		} finally {
@@ -261,6 +272,9 @@
 		</div>
 		<div class="row"><span>prf.enabled @ create</span>
 			<b class={prfEnabledAtCreate === false ? 'bad' : prfEnabledAtCreate ? 'ok' : ''}>{prfEnabledAtCreate == null ? '—' : String(prfEnabledAtCreate)}</b>
+		</div>
+		<div class="row"><span>Last authenticator</span>
+			<b>{lastAttachment ?? '—'}{lastAttachment === 'cross-platform' ? ' (scanned / key)' : lastAttachment === 'platform' ? ' (this device)' : ''}</b>
 		</div>
 		<div class="row"><span>This-session evaluations</span>
 			<b class={sessionHexes.length >= 2 ? (allSessionMatch ? 'ok' : 'bad') : ''}>

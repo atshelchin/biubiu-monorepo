@@ -26,7 +26,7 @@
 	<header class="intro">
 		<h1>{t('blog.title')}</h1>
 		<p>{t('blog.subtitle')}</p>
-		<a class="rss" href="/blog/rss.xml">
+		<a class="rss" href="/blog/rss.xml" data-sveltekit-reload>
 			<Rss size={14} aria-hidden="true" />
 			{t('blog.rss')}
 		</a>

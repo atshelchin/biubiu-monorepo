@@ -7,17 +7,17 @@
 	import ChainSearch from '$lib/widgets/ChainSearch.svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { loadAllChains, getChainLogoUrl, DEFAULT_CHAIN_LOGO, type ChainListItem } from '$lib/chains';
+	import { getChainLogoUrl, DEFAULT_CHAIN_LOGO, type ChainListItem } from '$lib/chains';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	// Popular chain IDs to feature, in display order.
 	const POPULAR_CHAIN_IDS = [1, 56, 137, 42161, 10, 43114, 8453, 143, 4217];
 	const PAGE_SIZE = 60;
 
-	const popularSkeletons = [...Array(POPULAR_CHAIN_IDS.length).keys()];
-	const rowSkeletons = [...Array(24).keys()];
-
-	let allChains = $state<ChainListItem[]>([]);
-	let isLoading = $state(true);
+	// Chains arrive from `+page.ts` load() — already in the SSR HTML.
+	const allChains = $derived(data.chains);
 	const logoErrors = new SvelteSet<number>();
 	let visibleCount = $state(PAGE_SIZE);
 
@@ -36,13 +36,6 @@
 			currentLocale: locale.value
 		})
 	);
-
-	$effect(() => {
-		isLoading = true;
-		loadAllChains()
-			.then((chains) => (allChains = chains))
-			.finally(() => (isLoading = false));
-	});
 
 	function logoSrc(chainId: number): string {
 		return logoErrors.has(chainId) ? DEFAULT_CHAIN_LOGO : getChainLogoUrl(chainId);
@@ -88,33 +81,21 @@
 	<section class="popular-section" use:fadeInUp={{ delay: 50 }}>
 		<h2 class="section-title">{t('chainsList.popularChains')}</h2>
 		<div class="chains-grid">
-			{#if isLoading}
-				{#each popularSkeletons as i (i)}
-					<div class="chain-card skeleton-card">
-						<div class="skeleton skeleton-logo"></div>
-						<div class="skeleton-lines">
-							<div class="skeleton skeleton-line lg"></div>
-							<div class="skeleton skeleton-line sm"></div>
-						</div>
+			{#each popularChains as chain (chain.chainId)}
+				<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-card">
+					<img
+						src={logoSrc(chain.chainId)}
+						alt={chain.name}
+						class="chain-logo"
+						onerror={() => handleLogoError(chain.chainId)}
+					/>
+					<div class="chain-info">
+						<span class="chain-name">{chain.name}</span>
+						<span class="chain-meta">{chain.shortName} · {chain.nativeCurrencySymbol}</span>
 					</div>
-				{/each}
-			{:else}
-				{#each popularChains as chain (chain.chainId)}
-					<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-card">
-						<img
-							src={logoSrc(chain.chainId)}
-							alt={chain.name}
-							class="chain-logo"
-							onerror={() => handleLogoError(chain.chainId)}
-						/>
-						<div class="chain-info">
-							<span class="chain-name">{chain.name}</span>
-							<span class="chain-meta">{chain.shortName} · {chain.nativeCurrencySymbol}</span>
-						</div>
-						<span class="chain-id">#{chain.chainId}</span>
-					</a>
-				{/each}
-			{/if}
+					<span class="chain-id">#{chain.chainId}</span>
+				</a>
+			{/each}
 		</div>
 	</section>
 
@@ -122,53 +103,40 @@
 	<section class="all-section" use:fadeInUp={{ delay: 100 }}>
 		<div class="section-header-row">
 			<h2 class="section-title">{t('chainsList.allChains')}</h2>
-			{#if !isLoading}
-				<span class="chain-count"
-					>{t('chainsList.totalChains', { count: allChains.length.toString() })}</span
-				>
-			{/if}
+			<span class="chain-count"
+				>{t('chainsList.totalChains', { count: allChains.length.toString() })}</span
+			>
 		</div>
 
-		{#if isLoading}
-			<div class="all-chains-grid">
-				{#each rowSkeletons as i (i)}
-					<div class="chain-row skeleton-row">
-						<div class="skeleton skeleton-logo sm"></div>
-						<div class="skeleton skeleton-line"></div>
-					</div>
-				{/each}
-			</div>
-		{:else}
-			<div class="all-chains-grid">
-				{#each visibleChains as chain (chain.chainId)}
-					<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-row">
-						<img
-							src={logoSrc(chain.chainId)}
-							alt=""
-							class="chain-row-logo"
-							loading="lazy"
-							onerror={() => handleLogoError(chain.chainId)}
-						/>
-						<span class="chain-row-name">{chain.name}</span>
-						<span class="chain-row-symbol">{chain.nativeCurrencySymbol}</span>
-						<span class="chain-row-id">#{chain.chainId}</span>
-					</a>
-				{/each}
-			</div>
+		<div class="all-chains-grid">
+			{#each visibleChains as chain (chain.chainId)}
+				<a href={localizeHref(`/chains/${chain.chainId}`)} class="chain-row">
+					<img
+						src={logoSrc(chain.chainId)}
+						alt=""
+						class="chain-row-logo"
+						loading="lazy"
+						onerror={() => handleLogoError(chain.chainId)}
+					/>
+					<span class="chain-row-name">{chain.name}</span>
+					<span class="chain-row-symbol">{chain.nativeCurrencySymbol}</span>
+					<span class="chain-row-id">#{chain.chainId}</span>
+				</a>
+			{/each}
+		</div>
 
-			{#if hasMore}
-				<div class="load-more" use:infiniteScroll>
-					<span class="showing-count"
-						>{t('chainsList.showing', {
-							shown: visibleChains.length.toString(),
-							total: allChains.length.toString()
-						})}</span
-					>
-					<button type="button" class="load-more-btn" onclick={loadMore}>
-						{t('chainsList.loadMore')}
-					</button>
-				</div>
-			{/if}
+		{#if hasMore}
+			<div class="load-more" use:infiniteScroll>
+				<span class="showing-count"
+					>{t('chainsList.showing', {
+						shown: visibleChains.length.toString(),
+						total: allChains.length.toString()
+					})}</span
+				>
+				<button type="button" class="load-more-btn" onclick={loadMore}>
+					{t('chainsList.loadMore')}
+				</button>
+			</div>
 		{/if}
 	</section>
 </main>
@@ -409,73 +377,6 @@
 		background: var(--bg-raised);
 	}
 
-	/* Skeletons */
-	.skeleton-card,
-	.skeleton-row {
-		pointer-events: none;
-	}
-
-	.skeleton-lines {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		flex: 1;
-	}
-
-	.skeleton {
-		background: var(--bg-sunken);
-		border-radius: var(--radius-sm);
-		position: relative;
-		overflow: hidden;
-	}
-
-	.skeleton::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		transform: translateX(-100%);
-		background: linear-gradient(
-			90deg,
-			transparent,
-			color-mix(in srgb, var(--fg-faint) 18%, transparent),
-			transparent
-		);
-		animation: shimmer 1.4s ease-in-out infinite;
-	}
-
-	.skeleton-logo {
-		width: 40px;
-		height: 40px;
-		border-radius: var(--radius-md);
-		flex-shrink: 0;
-	}
-
-	.skeleton-logo.sm {
-		width: 24px;
-		height: 24px;
-	}
-
-	.skeleton-line {
-		height: 12px;
-		width: 100%;
-	}
-
-	.skeleton-line.lg {
-		width: 60%;
-		height: 13px;
-	}
-
-	.skeleton-line.sm {
-		width: 40%;
-		height: 11px;
-	}
-
-	@keyframes shimmer {
-		to {
-			transform: translateX(100%);
-		}
-	}
-
 	/* Responsive */
 	@media (max-width: 768px) {
 		main.page {
@@ -501,9 +402,6 @@
 		.chain-row,
 		.load-more-btn {
 			transition: none;
-		}
-		.skeleton::after {
-			animation: none;
 		}
 	}
 </style>

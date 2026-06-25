@@ -960,10 +960,16 @@
 	}
 
 	/* ── Settings (reuse the shared panel, re-tinted to the seal palette) ── */
+	/* ResponsiveModal portals to <body>, so this escapes the `.forever` scope where --seal/--seal-soft
+	   live — define them HERE too, otherwise var(--seal) is undefined and the panel silently falls back
+	   to the default green accent (which is exactly the "doesn't match Capsule" bug). */
 	.capsule-settings {
+		--seal: #b8862f;
+		--seal-soft: rgba(184, 134, 47, 0.12);
 		--accent: var(--seal);
 		--accent-hover: #a9781f;
 		--accent-muted: var(--seal-soft);
+		--accent-fg: #fff;
 	}
 
 	@media (max-width: 560px) {

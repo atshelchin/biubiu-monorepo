@@ -11,14 +11,38 @@
 		<!-- webmcp relay widget -->
 		<script src="/webmcp/embed.js"></script>
 		<script>
-			// Blocking script to prevent theme and text-scale flash
+			// Blocking script to prevent theme and text-scale flash.
+			// Reads the authoritative unified-settings store first ('biubiu-settings'),
+			// then falls back to legacy keys (for users not yet migrated). This must
+			// stay in sync with $lib/settings.ts so the first paint never disagrees
+			// with the value the client applies on mount.
 			(function() {
-				var theme = localStorage.getItem('theme');
+				var validScales = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+				var theme = null;
+				var textScale = null;
+
+				try {
+					var raw = localStorage.getItem('biubiu-settings');
+					if (raw) {
+						var s = JSON.parse(raw);
+						if (s) {
+							theme = s.theme;
+							textScale = s.textScale;
+						}
+					}
+				} catch (e) {}
+
+				// Legacy fallback (pre-migration installs still use these flat keys)
+				if (theme !== 'dark' && theme !== 'light') {
+					theme = localStorage.getItem('theme');
+				}
+				if (validScales.indexOf(textScale) === -1) {
+					textScale = localStorage.getItem('text-scale');
+				}
+
 				if (theme === 'dark' || theme === 'light') {
 					document.documentElement.setAttribute('data-theme', theme);
 				}
-				var textScale = localStorage.getItem('text-scale');
-				var validScales = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 				if (textScale && validScales.indexOf(textScale) !== -1) {
 					document.documentElement.setAttribute('data-text-scale', textScale);
 				}

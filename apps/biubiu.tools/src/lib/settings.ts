@@ -127,6 +127,22 @@ export function loadSettings(): Settings {
 }
 
 /**
+ * Sync all settings to cookies so SSR (hooks.server.ts) renders the correct
+ * theme/text-scale/format on the very first paint. Kept separate from
+ * saveSettings so it can also run on mount without dispatching a change event.
+ */
+function syncSettingsCookies(settings: Settings): void {
+  if (!browser) return;
+  const cookieOptions = ';path=/;max-age=31536000;SameSite=Lax';
+  document.cookie = `theme=${settings.theme}${cookieOptions}`;
+  document.cookie = `text-scale=${settings.textScale}${cookieOptions}`;
+  document.cookie = `number-locale=${settings.numberLocale}${cookieOptions}`;
+  document.cookie = `date-locale=${settings.dateLocale}${cookieOptions}`;
+  document.cookie = `currency=${settings.currency}${cookieOptions}`;
+  document.cookie = `timezone=${encodeURIComponent(settings.timezone)}${cookieOptions}`;
+}
+
+/**
  * Save settings to localStorage and sync cookies for SSR
  */
 export function saveSettings(settings: Settings): void {
@@ -139,13 +155,7 @@ export function saveSettings(settings: Settings): void {
   window.dispatchEvent(new CustomEvent('settings-changed', { detail: settings }));
 
   // Sync all settings to cookies for SSR
-  const cookieOptions = ';path=/;max-age=31536000;SameSite=Lax';
-  document.cookie = `theme=${settings.theme}${cookieOptions}`;
-  document.cookie = `text-scale=${settings.textScale}${cookieOptions}`;
-  document.cookie = `number-locale=${settings.numberLocale}${cookieOptions}`;
-  document.cookie = `date-locale=${settings.dateLocale}${cookieOptions}`;
-  document.cookie = `currency=${settings.currency}${cookieOptions}`;
-  document.cookie = `timezone=${encodeURIComponent(settings.timezone)}${cookieOptions}`;
+  syncSettingsCookies(settings);
 }
 
 /**
@@ -226,5 +236,10 @@ export function initSettings(): Settings {
   const settings = loadSettings();
   applyTheme(settings.theme);
   applyTextScale(settings.textScale);
+  // Re-sync SSR cookies from the authoritative localStorage store. loadSettings()
+  // does not write cookies when biubiu-settings already exists, so a cleared or
+  // stale cookie would otherwise make the server render the wrong theme on the
+  // next refresh (the cause of the light→dark flash).
+  syncSettingsCookies(settings);
   return settings;
 }

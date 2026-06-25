@@ -51,6 +51,11 @@ jobs:
         run: bun run build:biubiu
         env:
           BUILD_TARGET: ${{ matrix.target }}
+          # macos-latest runners have only ~7 GB RAM and `vite build` was being
+          # OOM-killed (exit 137 / SIGKILL) mid-transform. Cap V8's old-space
+          # below physical RAM so it GCs instead of ballooning, leaving headroom
+          # for off-heap (WASM/esbuild) so the OS doesn't kill the process.
+          NODE_OPTIONS: --max-old-space-size=5120
 
       - name: Rename artifact
         shell: bash

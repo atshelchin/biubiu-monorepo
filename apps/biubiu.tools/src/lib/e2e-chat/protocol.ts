@@ -68,11 +68,19 @@ export type ServerFrame =
 
 // ── Handshake payload (opaque to the relay) ──────────────────────────────────
 
-/** One peer's identity + ephemeral key + wallet signature over the challenge. */
+/**
+ * One peer's identity + ephemeral key + wallet signature over the challenge.
+ *
+ * `epoch` lets a peer that reloaded (and re-handshakes with a FRESH ephemeral
+ * key) be accepted by the still-present peer: a strictly higher epoch triggers a
+ * key rotation rather than being dropped as a duplicate. It lives inside the
+ * opaque `signal.data`, so the relay never sees it and its mirror is unchanged.
+ */
 export interface Handshake {
 	addr: string;
 	pub: string;
 	sig: string;
 	kind: string;
 	chainId: number;
+	epoch: number;
 }

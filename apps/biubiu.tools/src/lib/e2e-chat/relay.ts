@@ -1,6 +1,7 @@
 /**
  * Relay endpoint + invite-link helpers (no framework, no circular deps).
  */
+import type { Role } from './protocol.js';
 
 /**
  * Relay endpoint. Dev points at a local `wrangler dev`; production at the
@@ -45,4 +46,66 @@ export function buildInviteUrl(basePath: string, roomId: string, creatorPub: str
 	const origin = typeof location !== 'undefined' ? location.origin : 'https://biubiu.tools';
 	const params = new URLSearchParams({ r: roomId, k: creatorPub });
 	return `${origin}${basePath}#${params.toString()}`;
+}
+
+// ── reload resume (tab-scoped, NON-secret context only) ──────────────────────
+//
+// To survive a full page reload we persist the MINIMUM needed to re-handshake:
+// the room id, our role, the joiner's creator-key pin, and the relay slot token.
+// We deliberately persist NO key material, NO message counters, and NO plaintext
+// — a reload always re-handshakes with a FRESH ephemeral key (a key rotation),
+// so AES-GCM counters legitimately restart under a never-used key (zero nonce
+// reuse). sessionStorage is per-tab and cleared when the tab closes, which
+// matches the ephemeral-session model; it is wiped on end / peer-gone / error.
+
+const RESUME_KEY = 'biubiu-chat:v1:resume';
+/** Slightly beyond the relay's 90s grace — a stale snapshot can't be reclaimed anyway. */
+const RESUME_MAX_AGE_MS = 120_000;
+
+export interface ResumeContext {
+	v: 1;
+	roomId: string;
+	role: Role;
+	/** The joiner's creator-key pin (#k=), or null for the creator. */
+	expectedPeerPub: string | null;
+	/** Server-issued slot token, used once to re-claim the held slot. */
+	resumeToken: string;
+	/** Our handshake epoch at save time; the resumed session uses epoch+1. */
+	myEpoch: number;
+	savedAt: number;
+}
+
+export function saveResumeContext(ctx: ResumeContext): void {
+	try {
+		sessionStorage.setItem(RESUME_KEY, JSON.stringify(ctx));
+	} catch {
+		/* storage unavailable / quota — resume is best-effort */
+	}
+}
+
+export function loadResumeContext(): ResumeContext | null {
+	try {
+		const raw = sessionStorage.getItem(RESUME_KEY);
+		if (!raw) return null;
+		const ctx = JSON.parse(raw) as ResumeContext;
+		if (ctx?.v !== 1 || !ctx.roomId || !ctx.resumeToken || (ctx.role !== 'a' && ctx.role !== 'b')) {
+			clearResumeContext();
+			return null;
+		}
+		if (Date.now() - ctx.savedAt > RESUME_MAX_AGE_MS) {
+			clearResumeContext();
+			return null;
+		}
+		return ctx;
+	} catch {
+		return null;
+	}
+}
+
+export function clearResumeContext(): void {
+	try {
+		sessionStorage.removeItem(RESUME_KEY);
+	} catch {
+		/* noop */
+	}
 }

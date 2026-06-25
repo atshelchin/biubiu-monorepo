@@ -2,7 +2,10 @@
 <html lang="%lang%" data-theme="%theme%" data-text-scale="%text-scale%">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+		/>
 		<link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
 		<link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
 		<link rel="shortcut icon" href="/favicon/favicon.ico" />
@@ -16,7 +19,7 @@
 			// then falls back to legacy keys (for users not yet migrated). This must
 			// stay in sync with $lib/settings.ts so the first paint never disagrees
 			// with the value the client applies on mount.
-			(function() {
+			(function () {
 				var validScales = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
 				var theme = null;
 				var textScale = null;
@@ -52,10 +55,6 @@
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
-		<script
-			src="https://tj.appsdata.org/api/script.js"
-			data-site-id="bec8b40684c3"
-			defer
-		></script>
+		<script src="https://tj.appsdata.org/api/script.js" data-site-id="bec8b40684c3" defer></script>
 	</body>
 </html>

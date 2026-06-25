@@ -171,6 +171,13 @@ export class RoomDO {
           slot.graceTimer = null;
         }
         slot.ws = ws;
+        // Rotate the token on every (re)claim so a leaked token is short-lived:
+        // once the slot is reclaimed, the previous token can no longer claim it.
+        // (During the 90s grace window a leaked token could still let whoever
+        // sends `hello` first hold the slot — but a reclaim forces a fresh
+        // re-handshake, and the mandatory Safety-Code re-verify makes a hijack
+        // detectable to the peer.)
+        slot.token = crypto.randomUUID();
         this.send(ws, {
           t: "welcome",
           role: slot.role,

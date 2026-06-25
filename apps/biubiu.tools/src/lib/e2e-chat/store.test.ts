@@ -151,6 +151,10 @@ async function connectPair(wa: unknown = eoaWallet, wb: unknown = scWallet) {
 	await vi.waitFor(() => {
 		if (A.phase !== 'connected' || B.phase !== 'connected') throw new Error('not connected');
 	});
+	// Outbound messaging is gated behind the mandatory Safety-Code confirmation.
+	// Both peers compute the same code, so each can confirm with its own emoji.
+	A.confirmSafety(A.safety!.emoji);
+	B.confirmSafety(B.safety!.emoji);
 	return { A, B };
 }
 
@@ -174,6 +178,14 @@ describe('ChatStore — two-peer handshake', () => {
 		expect(B.peer?.address.toLowerCase()).toBe(eoaWallet.address.toLowerCase());
 		expect(A.peer?.avatar).toBeTruthy();
 		expect(B.peer?.avatar).toBeTruthy();
+	});
+
+	it('offers 6 distinct emoji choices (incl. the real one), identical on both sides', async () => {
+		const { A, B } = await connectPair();
+		expect(A.safety?.choices).toHaveLength(6);
+		expect(new Set(A.safety!.choices).size).toBe(6); // all distinct
+		expect(A.safety!.choices).toContain(A.safety!.emoji); // the real code is an option
+		expect(A.safety?.choices).toEqual(B.safety?.choices); // deterministic across peers
 	});
 
 	it('lets two anonymous peers (no wallet) connect and chat', async () => {
@@ -260,6 +272,134 @@ describe('ChatStore — recovery & limits', () => {
 			if (B.phase !== 'ended') throw new Error('peer not notified');
 		});
 		expect(B.endReason).toBe('peer');
+	});
+});
+
+describe('ChatStore — Safety-Code gate (MITM defense)', () => {
+	/** Connect a pair but do NOT confirm the code, to exercise the gate. */
+	async function connectUnverified() {
+		const A = new ChatStore();
+		const B = new ChatStore();
+		W.wallet = null;
+		await A.create('/apps/chat');
+		const invite = parseInvite(A.inviteUrl!.slice(A.inviteUrl!.indexOf('#')))!;
+		await B.join(invite.roomId, invite.creatorPub);
+		await vi.waitFor(() => {
+			if (A.phase !== 'connected' || B.phase !== 'connected') throw new Error('not connected');
+		});
+		return { A, B };
+	}
+
+	it('blocks outbound messages until the code is confirmed', async () => {
+		const { A } = await connectUnverified();
+		expect(A.verified).toBe(false);
+		await A.send('must not leave before verification');
+		expect(A.messages.some((m) => m.dir === 'out')).toBe(false); // gated, nothing queued
+	});
+
+	it('a wrong pick raises the mismatch warning and keeps the gate shut', async () => {
+		const { A } = await connectUnverified();
+		A.confirmSafety('definitely-not-the-code');
+		expect(A.verified).toBe(false);
+		expect(A.verifyMismatch).toBe(true);
+	});
+
+	it('the correct pick unlocks sending', async () => {
+		const { A, B } = await connectUnverified();
+		A.confirmSafety(A.safety!.emoji);
+		B.confirmSafety(B.safety!.emoji);
+		expect(A.verified).toBe(true);
+		await A.send('now allowed');
+		await vi.waitFor(() => {
+			if (!B.messages.some((m) => m.text === 'now allowed')) throw new Error('not delivered');
+		});
+	});
+});
+
+describe('ChatStore — epoch rekey (reload re-handshake)', () => {
+	it('a higher-epoch peer signal rotates keys, re-locks the gate, and recomputes the code', async () => {
+		const { A } = await connectPair(null, null); // A is creator (role 'a', no key pin)
+		expect(A.verified).toBe(true);
+		const ta = H.transports[0]; // A's transport
+
+		// The peer "reloads": a brand-new ephemeral key at a higher epoch.
+		const eph = await generateEphemeralKeyPair();
+		ta.deliver({
+			t: 'signal',
+			data: { addr: '', pub: eph.publicKeyB64, sig: '', kind: 'anon', epoch: 1 }
+		});
+
+		await vi.waitFor(() => {
+			if (A.verified) throw new Error('still verified after rekey');
+		});
+		expect(A.phase).toBe('connected'); // stayed connected
+		expect(A.verified).toBe(false); // must re-confirm the new code
+		expect(A.safety?.digits).toBeTruthy(); // code recomputed against the new key
+	});
+
+	it('ignores a stale/duplicate signal at an already-seen epoch', async () => {
+		const { A } = await connectPair(null, null);
+		const digitsBefore = A.safety!.digits;
+		const ta = H.transports[0];
+		// epoch 0 was already accepted during the handshake → this must be a no-op.
+		const eph = await generateEphemeralKeyPair();
+		ta.deliver({
+			t: 'signal',
+			data: { addr: '', pub: eph.publicKeyB64, sig: '', kind: 'anon', epoch: 0 }
+		});
+		await new Promise((r) => setTimeout(r, 0));
+		expect(A.verified).toBe(true); // unchanged
+		expect(A.safety!.digits).toBe(digitsBefore); // not recomputed
+	});
+
+	it('a rekey from a peer that CHANGED its key is not flagged as tampering (pin is first-contact only)', async () => {
+		const { B } = await connectPair(); // B = joiner, holds the creator-key (#k=) pin
+		expect(B.verified).toBe(true);
+		const tb = H.transports[1]; // B's transport
+
+		// The creator "reloads" → brand-new ephemeral key at a higher epoch. The pin
+		// must NOT fire (peerEpoch >= 0); the mandatory SAS re-verify guards instead.
+		const eph = await generateEphemeralKeyPair();
+		tb.deliver({
+			t: 'signal',
+			data: { addr: '', pub: eph.publicKeyB64, sig: '', kind: 'anon', epoch: 1 }
+		});
+
+		await vi.waitFor(() => {
+			if (B.verified) throw new Error('still verified after rekey');
+		});
+		expect(B.phase).toBe('connected');
+		expect(B.errorCode).not.toBe('tampered'); // pin skipped on rekey
+		expect(B.verified).toBe(false); // must re-confirm the new code
+	});
+
+	it('resume() does not re-apply the #k= pin (a rotated peer key must not false-trip tampered)', async () => {
+		const store = new ChatStore();
+		W.wallet = null;
+		// Resume with a saved pin that will NOT match the peer's (rotated) key.
+		await store.resume({
+			v: 1,
+			roomId: 'resume-room',
+			role: 'b',
+			expectedPeerPub: 'a-stale-creator-key-that-will-not-match',
+			resumeToken: 'tok',
+			myEpoch: 0,
+			savedAt: Date.now()
+		});
+		await vi.waitFor(() => {
+			if (store.conn !== 'open') throw new Error('not open');
+		});
+		const tr = H.transports[H.transports.length - 1];
+		const eph = await generateEphemeralKeyPair();
+		tr.deliver({
+			t: 'signal',
+			data: { addr: '', pub: eph.publicKeyB64, sig: '', kind: 'anon', epoch: 0 }
+		});
+		await vi.waitFor(() => {
+			if (store.phase !== 'connected') throw new Error('not connected');
+		});
+		expect(store.errorCode).not.toBe('tampered'); // pin not enforced on resume
+		expect(store.verified).toBe(false); // re-verification still mandatory
 	});
 });
 

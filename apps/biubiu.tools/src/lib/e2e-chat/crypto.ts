@@ -206,6 +206,20 @@ export interface SafetyCode {
 	digits: string;
 	/** Three emoji, e.g. "🦊🍀🚀". */
 	emoji: string;
+	/**
+	 * Six candidate emoji triples — the real `emoji` plus five decoys. The order
+	 * here is fixed (real first); the UI reorders them for display. Used for the
+	 * interactive "tap the set your peer reads aloud" verification: a real
+	 * out-of-band compare lands on `emoji`, a guess does not. Always contains
+	 * `emoji`, and all six are distinct.
+	 */
+	choices: string[];
+}
+
+/** Map three bytes to an emoji triple from the safety alphabet. */
+function tripleFromBytes(b0: number, b1: number, b2: number): string {
+	const n = SAFETY_EMOJI.length;
+	return SAFETY_EMOJI[b0 % n] + SAFETY_EMOJI[b1 % n] + SAFETY_EMOJI[b2 % n];
 }
 
 /**
@@ -217,10 +231,24 @@ export async function computeSafetyCode(transcript: string): Promise<SafetyCode>
 	const view = new DataView(hash.buffer);
 	const n = view.getUint32(0) % 1_000_000;
 	const digits = n.toString().padStart(6, '0');
-	const emoji = [hash[4], hash[5], hash[6]]
-		.map((b) => SAFETY_EMOJI[b % SAFETY_EMOJI.length])
-		.join('');
-	return { digits: `${digits.slice(0, 3)} ${digits.slice(3)}`, emoji };
+	const emoji = tripleFromBytes(hash[4], hash[5], hash[6]);
+
+	// Five decoys + the real triple, all distinct. Emoji uses hash bytes [4:7];
+	// decoys come from [7:32] (deterministic so both peers agree, and so a unit
+	// test can assert they never collide with the real code). The UI reorders
+	// these into a stable display order.
+	const choices = [emoji];
+	for (let p = 7; p + 3 <= hash.length && choices.length < 6; p += 3) {
+		const t = tripleFromBytes(hash[p], hash[p + 1], hash[p + 2]);
+		if (!choices.includes(t)) choices.push(t);
+	}
+	// Pad deterministically if dedup left us short (astronomically rare).
+	for (let salt = 0; choices.length < 6; salt++) {
+		const t = tripleFromBytes(hash[7] + salt, hash[8] + salt * 3 + 1, hash[9] + salt * 7 + 2);
+		if (!choices.includes(t)) choices.push(t);
+	}
+
+	return { digits: `${digits.slice(0, 3)} ${digits.slice(3)}`, emoji, choices };
 }
 
 /** A stable single-emoji avatar derived from a peer's ephemeral public key. */

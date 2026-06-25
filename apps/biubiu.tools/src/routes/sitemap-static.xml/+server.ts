@@ -1,10 +1,10 @@
 import type { RequestHandler } from './$types';
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '$lib/locales';
 
 export const prerender = true;
 
 const BASE_URL = 'https://biubiu.tools';
-const LOCALES = ['en'];
-const DEFAULT_LOCALE = 'en';
+const LOCALES = SUPPORTED_LOCALES;
 
 // Static pages that don't have dynamic parameters
 const STATIC_PAGES = [
@@ -14,9 +14,10 @@ const STATIC_PAGES = [
 	// '/docs',
 ];
 
-function generateUrl(path: string, locale: string, lastmod?: string): string {
-	const locPath = locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
-	const fullUrl = `${BASE_URL}${locPath}`;
+function generateUrl(path: string, lastmod?: string): string {
+	// Canonical <loc> is the prefix-free English URL; every language version is
+	// declared via the hreflang alternates below (one <url> per page).
+	const fullUrl = `${BASE_URL}${path}`;
 
 	// Generate alternate links for all locales
 	const alternates = LOCALES.map((loc) => {
@@ -37,9 +38,7 @@ export const GET: RequestHandler = async () => {
 
 	// Generate URLs for each static page in each locale
 	for (const page of STATIC_PAGES) {
-		for (const locale of LOCALES) {
-			urls.push(generateUrl(page, locale));
-		}
+		urls.push(generateUrl(page));
 	}
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

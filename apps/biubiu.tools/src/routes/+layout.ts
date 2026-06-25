@@ -1,6 +1,7 @@
 import type { LayoutLoad } from './$types';
-import { matchRoute, setRouteMessages } from '@shelchin/i18n-sveltekit';
+import { matchRoute, setRouteMessages, removeLocaleFromPathname } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
+import { SUPPORTED_LOCALES } from '$lib/locales';
 
 // Ensure route messages are registered (hooks.server.ts does this for SSR,
 // but on the client this module may load before $lib/i18n.ts)
@@ -59,7 +60,8 @@ export const load: LayoutLoad = async ({ url, data, depends }) => {
 
   // `data.locale` comes from +layout.server.ts (resolved in hooks.server.ts)
   const locale = data?.locale ?? 'en';
-  const routePath = url.pathname;
+  // De-prefix the locale (e.g. /zh/chains → /chains) so namespace matching works.
+  const routePath = removeLocaleFromPathname(url.pathname, [...SUPPORTED_LOCALES]);
   const messages = await loadMessagesForRoute(routePath, locale);
   return { ...data, messages, locale };
 };

@@ -4,7 +4,9 @@ import {
   enableProductionDevTools,
   disableProductionDevTools,
   isProductionDevToolsEnabled,
+  localizeHref as libLocalizeHref,
 } from '@shelchin/i18n-sveltekit';
+import { DEFAULT_LOCALE } from '$lib/locales';
 import type { TranslationKey, InterpolateParams } from '$i18n';
 import { routeMessages } from '$i18n/routes';
 import { lineIndex } from '$i18n/line-index';
@@ -60,8 +62,16 @@ export const t = _t as (key: TranslationKey, params?: InterpolateParams) => stri
 
 export { locale, preferences, formatNumber, formatCurrency, formatDate, formatDateTime, formatRelativeTime, parseNumber };
 
-// localizeHref - English only, no locale prefix needed
-export const localizeHref = (path: string) => path;
+// localizeHref - the single chokepoint every internal link goes through.
+// Locales live in the URL: English stays bare (/chains), the other 14 get a
+// prefix (/zh/chains, /ja/chains). It reads the current locale from i18nState
+// (set per-request on the server, synced from page data on the client), so
+// every <a href={localizeHref(...)}>/goto(localizeHref(...)) gets the right
+// prefix automatically — no call-site changes.
+// (The eslint rule svelte/no-navigation-without-resolve can't see through this
+//  wrapper, so it stays disabled in eslint.config.js.)
+export const localizeHref = (path: string): string =>
+  libLocalizeHref(path, { defaultLocale: DEFAULT_LOCALE });
 
 // Export devTools functions for translation debugging
 export { enableProductionDevTools, disableProductionDevTools, isProductionDevToolsEnabled };

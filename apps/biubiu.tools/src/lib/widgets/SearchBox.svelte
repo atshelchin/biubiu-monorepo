@@ -18,9 +18,9 @@
 				tool.id.includes(query)
 			);
 			if (match) {
-				goto(localizeHref(`/tools/${match.id}`));
+				goto(localizeHref(`/apps/${match.id}`));
 			} else {
-				goto(localizeHref('/tools'));
+				goto(localizeHref('/'));
 			}
 		}
 	}

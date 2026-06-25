@@ -29,6 +29,12 @@ export interface SEOProps {
   currentLocale?: string;
   /** Default locale for x-default */
   defaultLocale?: string;
+  /**
+   * Whether the default locale is prefixed in URLs (e.g. `/en/page`).
+   * Set `false` when the default locale is served prefix-free (`/page`) so its
+   * hreflang + x-default match the bare canonical. Defaults to `true`.
+   */
+  prefixDefaultLocale?: boolean;
 
   /** Twitter card type */
   twitterCard?: 'summary' | 'summary_large_image';

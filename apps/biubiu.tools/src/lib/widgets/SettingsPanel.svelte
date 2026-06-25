@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t, preferences, locale } from '$lib/i18n';
-	import { SUPPORTED_LOCALES, LOCALE_NAMES, type AppLanguage } from '$lib/locales';
+	import { SUPPORTED_LOCALES, DEFAULT_LOCALE, LOCALE_NAMES, type AppLanguage } from '$lib/locales';
+	import { localizeHref as buildLocaleHref, removeLocaleFromPathname } from '@shelchin/i18n-sveltekit';
 	import { browser } from '$app/environment';
 	import {
 		loadSettings,
@@ -87,9 +88,16 @@
 
 	function handleSetLocale(code: AppLanguage) {
 		if (!browser || code === currentLocale) return;
-		// Persist for SSR; a reload re-renders the whole page in the new locale.
+		// Locales live in the URL (English bare, others prefixed). Navigate to the
+		// SAME page under the new locale; a full load re-renders it server-side in
+		// that language. The cookie just remembers the choice for the bare-root redirect.
 		document.cookie = `locale=${code};path=/;max-age=31536000;SameSite=Lax`;
-		location.reload();
+		const base = removeLocaleFromPathname(location.pathname, [...SUPPORTED_LOCALES]);
+		const target =
+			buildLocaleHref(base, { locale: code, defaultLocale: DEFAULT_LOCALE }) +
+			location.search +
+			location.hash;
+		location.assign(target);
 	}
 
 	// Handlers

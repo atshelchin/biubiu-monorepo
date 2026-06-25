@@ -22,7 +22,13 @@ export default defineConfig(
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-			"no-undef": 'off'
+			"no-undef": 'off',
+			// Every internal link/navigation goes through localizeHref() ($lib/i18n),
+			// which calls SvelteKit's resolve() internally. This rule does static
+			// analysis at the call site and can't see through that wrapper, so it
+			// false-positives on every href/goto. The resolve() invariant is upheld
+			// by the helper, so the rule is redundant here.
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

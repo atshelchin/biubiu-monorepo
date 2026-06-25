@@ -1,7 +1,14 @@
 import { type Handle } from '@sveltejs/kit';
-import { i18nState, setMessageLoader, setRouteMessages, matchRoute } from '@shelchin/i18n-sveltekit';
+import {
+  i18nState,
+  setMessageLoader,
+  setRouteMessages,
+  matchRoute,
+  extractLocaleFromPathname,
+  removeLocaleFromPathname,
+} from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
-import { resolveLocale, DEFAULT_LOCALE } from '$lib/locales';
+import { isSupportedLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '$lib/locales';
 
 const DEFAULT_THEME = 'dark';
 const DEFAULT_TEXT_SCALE = 'md';
@@ -96,15 +103,32 @@ export const handle: Handle = async ({ event, resolve }) => {
     return apiResponse;
   }
 
-  // Resolve locale: explicit cookie wins, else the browser's Accept-Language, else English
-  const locale = resolveLocale(
-    event.cookies.get('locale'),
-    event.request.headers.get('accept-language')
-  );
+  const supported = [...SUPPORTED_LOCALES];
+  const urlLocale = extractLocaleFromPathname(pathname, supported);
+
+  // Canonicalize bare English: /en/x → /x (English is served prefix-free, so an
+  // /en/ prefix would be a duplicate URL). 301 so crawlers fold it into /x.
+  if (urlLocale === DEFAULT_LOCALE) {
+    const location = removeLocaleFromPathname(pathname, supported) + event.url.search;
+    return new Response(null, { status: 301, headers: { location } });
+  }
+
+  // Returning users: on the bare root only, honor a previously chosen language.
+  // Cookie-gated + root-only, so crawlers (no cookie) always get the English root.
+  if (!urlLocale && pathname === '/') {
+    const cookieLocale = event.cookies.get('locale');
+    if (isSupportedLocale(cookieLocale) && cookieLocale !== DEFAULT_LOCALE) {
+      return new Response(null, { status: 302, headers: { location: `/${cookieLocale}` } });
+    }
+  }
+
+  // The URL is the source of truth for locale; bare paths are English.
+  const locale = urlLocale ?? DEFAULT_LOCALE;
   event.locals.locale = locale;
   i18nState.locale = locale;
 
-  const routePath = pathname;
+  // Namespace matching runs against the de-prefixed path (e.g. /zh/chains → /chains).
+  const routePath = removeLocaleFromPathname(pathname, supported);
 
   // Use matchRoute to automatically match namespaces (supports dynamic routes)
   let namespaces = matchRoute(routePath);

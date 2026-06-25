@@ -16,6 +16,7 @@
     locales = [],
     currentLocale,
     defaultLocale,
+    prefixDefaultLocale = true,
     twitterCard = 'summary_large_image',
     twitterSite,
     twitterCreator,
@@ -70,6 +71,13 @@
 
   // Full title with site name
   const fullTitle = $derived(siteName ? `${title} | ${siteName}` : title);
+
+  // Build the hreflang URL for a locale. The default locale is emitted prefix-free
+  // when `prefixDefaultLocale` is false, so it matches the bare canonical.
+  const hreflangHref = (locale: string) => {
+    const prefix = prefixDefaultLocale || locale !== defaultLocale ? `/${locale}` : '';
+    return `${domain}${prefix}${basePathWithoutLocale()}`;
+  };
 </script>
 
 <svelte:head>
@@ -112,18 +120,10 @@
   <!-- Hreflang for multi-language -->
   {#if locales.length > 0 && domain}
     {#each locales as locale}
-      <link
-        rel="alternate"
-        hreflang={locale}
-        href="{domain}/{locale}{basePathWithoutLocale()}"
-      />
+      <link rel="alternate" hreflang={locale} href={hreflangHref(locale)} />
     {/each}
     {#if defaultLocale}
-      <link
-        rel="alternate"
-        hreflang="x-default"
-        href="{domain}/{defaultLocale}{basePathWithoutLocale()}"
-      />
+      <link rel="alternate" hreflang="x-default" href={hreflangHref(defaultLocale)} />
     {/if}
   {/if}
 

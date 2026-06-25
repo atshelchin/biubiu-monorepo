@@ -1,11 +1,11 @@
 import type { RequestHandler } from './$types';
 import { xmlEscape, isValidChainId, isValidAddress } from '../sitemap-xml';
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '$lib/locales';
 
 export const prerender = true;
 
 const BASE_URL = 'https://biubiu.tools';
-const LOCALES = ['en'];
-const DEFAULT_LOCALE = 'en';
+const LOCALES = SUPPORTED_LOCALES;
 const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
 
 interface ContractItem {
@@ -14,10 +14,12 @@ interface ContractItem {
 	name: string;
 }
 
-function generateUrl(chainId: number, address: string, locale: string): string {
+function generateUrl(chainId: number, address: string): string {
 	const path = `/contracts/${chainId}/${xmlEscape(address)}`;
-	const locPath = locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
-	const fullUrl = `${BASE_URL}${locPath}`;
+	// Canonical <loc> is the prefix-free English URL; every language version is
+	// declared via the hreflang alternates below. One <url> per item (not one per
+	// locale) keeps the sitemap under Google's 50MB / 50,000-URL limits.
+	const fullUrl = `${BASE_URL}${path}`;
 
 	// Generate alternate links for all locales
 	const alternates = LOCALES.map((loc) => {
@@ -46,9 +48,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
 		// Skip entries whose values don't conform — never emit them into the XML.
 		for (const contract of contracts) {
 			if (!isValidChainId(contract.chainId) || !isValidAddress(contract.address)) continue;
-			for (const locale of LOCALES) {
-				urls.push(generateUrl(contract.chainId, contract.address, locale));
-			}
+			urls.push(generateUrl(contract.chainId, contract.address));
 		}
 
 		const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

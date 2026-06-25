@@ -1,11 +1,11 @@
 import type { RequestHandler } from './$types';
 import { xmlEscape, isValidChainId } from '../sitemap-xml';
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '$lib/locales';
 
 export const prerender = true;
 
 const BASE_URL = 'https://biubiu.tools';
-const LOCALES = ['en'];
-const DEFAULT_LOCALE = 'en';
+const LOCALES = SUPPORTED_LOCALES;
 const ETHEREUM_DATA_BASE_URL = 'https://ethereum-data.awesometools.dev';
 
 interface ChainItem {
@@ -15,10 +15,12 @@ interface ChainItem {
 	nativeCurrencySymbol: string;
 }
 
-function generateUrl(chainId: number, locale: string): string {
+function generateUrl(chainId: number): string {
 	const path = `/chains/${chainId}`;
-	const locPath = locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
-	const fullUrl = `${BASE_URL}${locPath}`;
+	// Canonical <loc> is the prefix-free English URL; every language version is
+	// declared via the hreflang alternates below. One <url> per item (not one per
+	// locale) keeps the sitemap under Google's 50MB / 50,000-URL limits.
+	const fullUrl = `${BASE_URL}${path}`;
 
 	// Generate alternate links for all locales
 	const alternates = LOCALES.map((loc) => {
@@ -47,9 +49,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
 		// Skip entries whose chainId isn't a positive integer — never emit them.
 		for (const chain of chains) {
 			if (!isValidChainId(chain.chainId)) continue;
-			for (const locale of LOCALES) {
-				urls.push(generateUrl(chain.chainId, locale));
-			}
+			urls.push(generateUrl(chain.chainId));
 		}
 
 		const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

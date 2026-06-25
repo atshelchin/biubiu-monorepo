@@ -5,7 +5,7 @@
 	 * chain isn't ready, the checklist below says exactly what's missing and whether
 	 * it's fixable (deployable contracts → chain-setup) or a hard chain-level limit.
 	 */
-	import { t } from '$lib/i18n';
+	import { t, localizeHref } from '$lib/i18n';
 	import { Check, X, AlertTriangle, ArrowUpRight, Copy } from '@lucide/svelte';
 	import NetworkPicker from '$lib/widgets/NetworkPicker.svelte';
 	import { walletStore } from '$lib/wallet';
@@ -28,9 +28,11 @@
 	const hardBlock = $derived(!!check && !p256Ok);
 
 	const setupHref = $derived(
-		store.selectedChain
-			? `/apps/vela-wallet-chain-setup?chainId=${store.selectedChain.chainId}`
-			: '/apps/vela-wallet-chain-setup'
+		localizeHref(
+			store.selectedChain
+				? `/apps/vela-wallet-chain-setup?chainId=${store.selectedChain.chainId}`
+				: '/apps/vela-wallet-chain-setup'
+		)
 	);
 
 	let copied = $state(false);

@@ -24,6 +24,9 @@ export function getBaseSEO(
     domain: seoConfig.domain,
     locales: [...seoConfig.locales],
     defaultLocale: seoConfig.defaultLocale,
+    // English is served prefix-free (/chains, not /en/chains), so hreflang=en and
+    // x-default must point at the bare URL to match the canonical.
+    prefixDefaultLocale: false,
     twitterCard: 'summary_large_image',
     twitterSite: seoConfig.twitterSite,
     // OG images are now generated dynamically via /api/og (using WASM)

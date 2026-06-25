@@ -10,14 +10,47 @@ const defaultPreferences: Preferences = {
   weekStartDay: 1,
 };
 
+/**
+ * Request-scoped context resolver. On the server, the AsyncLocalStorage-backed
+ * module `@shelchin/i18n-sveltekit/server` (node-only) registers a resolver so
+ * each in-flight request reads its OWN locale/messages instead of the shared
+ * singleton — preventing cross-request bleed during concurrent SSR. When no
+ * resolver is set (the browser, or server code outside a request) the getters
+ * fall back to the reactive singleton, so client behaviour is unchanged.
+ */
+export type I18nContext = { preferences: Preferences; messages: Messages };
+let contextResolver: (() => I18nContext | undefined) | undefined;
+export function setI18nContextResolver(
+  resolver: (() => I18nContext | undefined) | undefined
+): void {
+  contextResolver = resolver;
+}
+
 /** 全局 i18n 状态 */
 class I18nState {
-  preferences = $state<Preferences>({ ...defaultPreferences });
-  messages = $state<Messages>({});
+  // Backing reactive singletons (used on the client, and as the server fallback
+  // when no request context is active). The public getters below prefer the
+  // per-request context when one is set.
+  #preferences = $state<Preferences>({ ...defaultPreferences });
+  #messages = $state<Messages>({});
   config = $state<I18nConfig>({
     defaultLocale: 'zh-CN',
     fallbackLocale: 'en',
   });
+
+  get preferences(): Preferences {
+    return contextResolver?.()?.preferences ?? this.#preferences;
+  }
+  set preferences(value: Preferences) {
+    this.#preferences = value;
+  }
+
+  get messages(): Messages {
+    return contextResolver?.()?.messages ?? this.#messages;
+  }
+  set messages(value: Messages) {
+    this.#messages = value;
+  }
 
   /** 当前 locale 快捷访问 */
   get locale() {

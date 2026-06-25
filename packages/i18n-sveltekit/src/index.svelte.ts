@@ -1,5 +1,11 @@
 // Core
-export { i18nState, preferences, locale } from './core/state.svelte.js';
+export {
+  i18nState,
+  preferences,
+  locale,
+  setI18nContextResolver,
+  type I18nContext,
+} from './core/state.svelte.js';
 export { t, createT } from './core/translator.js';
 export {
   loadMessages,

@@ -1,14 +1,24 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { type Handle } from '@sveltejs/kit';
 import {
-  i18nState,
   setMessageLoader,
   setRouteMessages,
   matchRoute,
   extractLocaleFromPathname,
   removeLocaleFromPathname,
+  setI18nContextResolver,
+  type I18nContext,
 } from '@shelchin/i18n-sveltekit';
 import { routeMessages } from '$i18n/routes';
 import { isSupportedLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES } from '$lib/locales';
+
+// Per-request i18n context. The i18n state singleton is module-global and would
+// otherwise bleed locale/messages across concurrent SSR requests; AsyncLocalStorage
+// gives each request its own. The resolver is read by the library's getters (t,
+// localizeHref, format*); when no context is active (browser, or non-request server
+// code) they fall back to the singleton, so client behaviour is unchanged.
+const i18nALS = new AsyncLocalStorage<I18nContext>();
+setI18nContextResolver(() => i18nALS.getStore());
 
 const DEFAULT_THEME = 'dark';
 const DEFAULT_TEXT_SCALE = 'md';
@@ -83,14 +93,15 @@ async function serverMessageLoader(locale: string, namespace: string) {
 // Set server-side message loader
 setMessageLoader(serverMessageLoader);
 
-// Load and merge messages
+// Load and merge messages for the request (returned, not written to the global —
+// the caller puts them in the per-request i18n context).
 async function loadAndMergeMessages(locale: string, namespaces: string[]) {
   const messages: Record<string, string> = {};
   for (const ns of namespaces) {
     const nsMessages = await serverMessageLoader(locale, ns);
     Object.assign(messages, nsMessages);
   }
-  i18nState.setMessages(messages);
+  return messages;
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -125,7 +136,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   // The URL is the source of truth for locale; bare paths are English.
   const locale = urlLocale ?? DEFAULT_LOCALE;
   event.locals.locale = locale;
-  i18nState.locale = locale;
 
   // Namespace matching runs against the de-prefixed path (e.g. /zh/chains → /chains).
   const routePath = removeLocaleFromPathname(pathname, supported);
@@ -146,8 +156,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  // Load messages
-  await loadAndMergeMessages(locale, namespaces);
+  // Load messages for this request
+  const messages = await loadAndMergeMessages(locale, namespaces);
 
   // Get theme from cookie (default to dark)
   const themeCookie = event.cookies.get('theme');
@@ -159,28 +169,30 @@ export const handle: Handle = async ({ event, resolve }) => {
     ? textScaleCookie
     : DEFAULT_TEXT_SCALE;
 
-  // Get format preferences from cookies and set in i18nState
+  // Get format preferences from cookies (applied via the per-request i18n context below)
   const numberLocale = event.cookies.get('number-locale') || DEFAULT_NUMBER_LOCALE;
   const dateLocale = event.cookies.get('date-locale') || DEFAULT_DATE_LOCALE;
   const currency = event.cookies.get('currency') || DEFAULT_CURRENCY;
   const timezoneCookie = event.cookies.get('timezone');
   const timezone = timezoneCookie ? decodeURIComponent(timezoneCookie) : DEFAULT_TIMEZONE;
 
-  // Apply format preferences to i18nState for SSR
-  i18nState.preferences.numberLocale = numberLocale;
-  i18nState.preferences.dateLocale = dateLocale;
-  i18nState.preferences.currency = currency;
-  i18nState.preferences.timezone = timezone;
+  // Build this request's isolated i18n context and render inside it, so locale,
+  // messages, and format preferences can't bleed across concurrent SSR requests.
+  const i18nContext: I18nContext = {
+    preferences: { locale, numberLocale, dateLocale, currency, timezone, weekStartDay: 1 },
+    messages,
+  };
 
-  // Handle request
-  const response = await resolve(event, {
-    transformPageChunk: ({ html }) => {
-      return html
-        .replace('%lang%', locale)
-        .replace('%theme%', theme)
-        .replace('%text-scale%', textScale);
-    },
-  });
+  const response = await i18nALS.run(i18nContext, () =>
+    resolve(event, {
+      transformPageChunk: ({ html }) => {
+        return html
+          .replace('%lang%', locale)
+          .replace('%theme%', theme)
+          .replace('%text-scale%', textScale);
+      },
+    })
+  );
 
   applySecurityHeaders(response.headers);
   return response;

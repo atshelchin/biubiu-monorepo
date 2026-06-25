@@ -103,6 +103,9 @@
 		<!-- TEMP DEBUG · 加解密密钥（symmetric — encrypt key == decrypt key）· remove before release -->
 		<div class="dbg-keys">
 			<div class="dbg-head">⚠ DEBUG · 加解密密钥（临时，发布前移除）· 点按复制</div>
+			<button type="button" class="dbg-row" onclick={() => navigator.clipboard?.writeText(store.debugCredId ?? '')}>
+				<span class="dbg-label">CID</span><code>{store.debugCredId}</code>
+			</button>
 			<button type="button" class="dbg-row" onclick={() => navigator.clipboard?.writeText(store.debugPrfHex ?? '')}>
 				<span class="dbg-label">PRF</span><code>{store.debugPrfHex}</code>
 			</button>

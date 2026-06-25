@@ -79,6 +79,7 @@ class CapsuleStore {
 	//    Gated by DEBUG_SHOW_KEYS in the route; remove this + the panel + toHexDbg before release. ──
 	debugPrfHex = $state<string | null>(null);
 	debugDekHex = $state<string | null>(null);
+	debugCredId = $state<string | null>(null);
 
 	networkSlug = $state('base-mainnet');
 	/** Region-gate: you pick a chain before entering; it's fixed until you explicitly exit. */
@@ -257,12 +258,15 @@ class CapsuleStore {
 	 */
 	private async deriveKey(cred: EncryptionCredential, restoreStatus: Status): Promise<boolean> {
 		try {
-			const { prf } = await evaluatePrf(cred);
+			const { prf, credentialId } = await evaluatePrf(cred);
 			this.rawDek = await deriveContentKey(prf);
-			// TEMP DEBUG — surface the PRF output + derived content key (the same key encrypts & decrypts).
+			// TEMP DEBUG — surface credentialId + PRF + derived key. KEY DIAGNOSTIC: if the CID matches
+			// across two devices but the PRF differs, the AUTHENTICATOR (not the app) is producing a
+			// per-device PRF for the same credential. If the CID differs, they're two different passkeys.
+			this.debugCredId = credentialId;
 			this.debugPrfHex = toHexDbg(prf);
 			this.debugDekHex = toHexDbg(this.rawDek);
-			console.log('[capsule-debug] PRF=', this.debugPrfHex, ' KEY=', this.debugDekHex);
+			console.log('[capsule-debug] CID=', credentialId, ' PRF=', this.debugPrfHex, ' KEY=', this.debugDekHex);
 			this.credential = cred;
 			this.unlocked = true;
 			this.persist();

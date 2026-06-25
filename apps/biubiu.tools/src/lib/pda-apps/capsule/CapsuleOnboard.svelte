@@ -114,6 +114,7 @@
 		<div class="mark"><KeyRound size={22} /></div>
 		<h2>{t('capsule.onboard.keyTitle')}</h2>
 		<p class="prose">{@html t('capsule.onboard.keyProse')}</p>
+		<p class="compat-note">{t('capsule.onboard.compat')}</p>
 		{#if !store.hasKey}<span class="steps">{t('capsule.onboard.step2')}</span>{/if}
 		<button class="seal-btn" onclick={() => store.setupKey()} disabled={keyBusy}>
 			{keyBusy ? t('capsule.status.preparing') : t('capsule.onboard.enter')}
@@ -160,6 +161,20 @@
 		color: var(--fg-muted);
 		line-height: var(--leading-relaxed);
 		margin: 0;
+	}
+	/* Calm, non-alarming compatibility heads-up (Apple OS version note). Sans, not the serif
+	   prose voice — it reads as a practical note rather than part of the letter. */
+	.compat-note {
+		max-width: 38ch;
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		line-height: var(--leading-normal);
+		color: var(--fg-subtle);
+		background: rgba(184, 134, 47, 0.08);
+		border: 1px solid rgba(184, 134, 47, 0.18);
+		border-radius: var(--radius-md);
+		padding: var(--space-2) var(--space-3);
+		margin: var(--space-1) 0 0;
 	}
 	.steps {
 		font-size: var(--text-xs);

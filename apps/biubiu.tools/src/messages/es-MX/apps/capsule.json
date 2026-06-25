@@ -3,6 +3,7 @@
   "capsule.meta.description": "Escribe una carta a tu yo del futuro. Cifrada en la cadena, nunca se pierde, solo tú puedes leerla; y, si quieres, sellada hasta el día que tú decidas.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Tu clave de cifrado proviene de tu passkey. Mantén los dispositivos Apple en iOS 26.5 / macOS 26.5.1 o posterior; de lo contrario, la misma carta puede generar claves distintas en iPhone y Mac y no poder abrirse.",
   "capsule.tagline": "Una carta a tu yo del futuro: cifrada en la cadena, solo tú puedes leerla.",
   "capsule.permanence": "Una vez sellado, no se puede editar ni borrar —— tus palabras viven tanto como esta cadena.",
 

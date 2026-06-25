@@ -3,6 +3,7 @@
   "capsule.meta.description": "Scrivi una lettera al te del futuro. Cifrata on-chain, mai perduta, leggibile solo da te — e, se vuoi, sigillata fino a un giorno che decidi tu.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "La tua chiave di cifratura deriva dalla tua passkey. Tieni i dispositivi Apple su iOS 26.5 / macOS 26.5.1 o successivo, altrimenti la stessa lettera può generare chiavi diverse su iPhone e Mac e non aprirsi.",
   "capsule.tagline": "Una lettera al te del futuro — cifrata on-chain, leggibile solo da te.",
   "capsule.permanence": "Una volta sigillato, non si può modificare o cancellare —— le tue parole vivono quanto questa catena.",
 

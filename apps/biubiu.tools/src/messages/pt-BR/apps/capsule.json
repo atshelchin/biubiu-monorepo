@@ -3,6 +3,7 @@
   "capsule.meta.description": "Escreva uma carta para o seu eu do futuro. Criptografada on-chain, nunca perdida, legível só por você — e, se quiser, trancada até um dia que você definir.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Sua chave de criptografia vem da sua passkey. Mantenha os dispositivos Apple no iOS 26.5 / macOS 26.5.1 ou mais recente — caso contrário, a mesma carta pode gerar chaves diferentes no iPhone e no Mac e não abrir.",
   "capsule.tagline": "Uma carta para o seu eu do futuro — criptografada on-chain, legível só por você.",
   "capsule.permanence": "Depois de selado, não dá para editar ou apagar —— suas palavras vivem enquanto esta rede existir.",
 

@@ -3,6 +3,7 @@
   "capsule.meta.description": "Schreibe einen Brief an dein zukünftiges Ich. Verschlüsselt on-chain, nie verloren, lesbar nur für dich — und, wenn du möchtest, verschlossen bis zu einem Tag, den du wählst.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Dein Verschlüsselungsschlüssel stammt aus deinem Passkey. Halte Apple-Geräte auf iOS 26.5 / macOS 26.5.1 oder neuer — sonst kann derselbe Brief auf iPhone und Mac unterschiedliche Schlüssel ergeben und sich nicht öffnen lassen.",
   "capsule.tagline": "Ein Brief an dein zukünftiges Ich — verschlüsselt on-chain, lesbar nur für dich.",
   "capsule.permanence": "Einmal versiegelt, nicht mehr änderbar oder löschbar —— deine Worte leben so lange wie diese Chain.",
 

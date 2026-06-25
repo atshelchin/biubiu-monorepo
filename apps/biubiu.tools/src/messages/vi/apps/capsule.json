@@ -3,6 +3,7 @@
   "capsule.meta.description": "Viết một lá thư gửi chính mình trong tương lai. Mã hóa trên chuỗi, không bao giờ thất lạc, chỉ mình bạn đọc được — và nếu muốn, khóa lại cho đến ngày bạn chọn.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Khóa mã hóa của bạn bắt nguồn từ passkey. Hãy giữ các thiết bị Apple ở iOS 26.5 / macOS 26.5.1 trở lên — nếu không, cùng một lá thư có thể tạo ra khóa khác nhau trên iPhone và Mac và không mở được.",
   "capsule.tagline": "Một lá thư gửi chính mình mai sau — mã hóa trên chuỗi, chỉ mình bạn đọc được.",
   "capsule.permanence": "Một khi đã niêm phong, không thể sửa hay xóa —— những dòng bạn viết sống lâu như chính chuỗi này.",
 

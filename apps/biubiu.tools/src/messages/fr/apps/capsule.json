@@ -3,6 +3,7 @@
   "capsule.meta.description": "Écrivez une lettre à votre futur vous. Chiffrée sur la blockchain, jamais perdue, lisible par vous seul — et, si vous le souhaitez, verrouillée jusqu'au jour que vous fixez.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Ta clé de chiffrement provient de ta passkey. Garde les appareils Apple sur iOS 26.5 / macOS 26.5.1 ou version ultérieure, sinon une même lettre peut générer des clés différentes sur iPhone et Mac et ne plus s’ouvrir.",
   "capsule.tagline": "Une lettre à votre futur vous — chiffrée sur la blockchain, lisible par vous seul.",
   "capsule.permanence": "Une fois scellé, impossible de modifier ou supprimer —— vos mots vivent aussi longtemps que cette chaîne.",
 

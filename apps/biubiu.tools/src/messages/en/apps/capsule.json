@@ -3,6 +3,7 @@
   "capsule.meta.description": "Write a letter to your future self. Encrypted on-chain, never lost, readable only by you — and, if you choose, locked until a day you set.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Your encryption key comes from your passkey. Keep Apple devices on iOS 26.5 / macOS 26.5.1 or later — otherwise the same letter can derive different keys on iPhone vs Mac and fail to open.",
   "capsule.tagline": "A letter to your future self — encrypted on-chain, readable only by you.",
   "capsule.permanence": "Once sealed, it can't be edited or deleted — it lives as long as this chain.",
 

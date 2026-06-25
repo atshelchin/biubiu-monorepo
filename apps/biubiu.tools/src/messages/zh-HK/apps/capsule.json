@@ -3,6 +3,7 @@
   "capsule.meta.description": "寫一封信給未來的自己。加密上鏈，永不遺失，只有你能讀；若你願意，更可封存到你設定的那一天。",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "加密金鑰來自你的 passkey。Apple 裝置請保持 iOS 26.5 / macOS 26.5.1 或以上 —— 否則同一封信在 iPhone 與 Mac 之間可能算出不同的金鑰、互相打不開。",
   "capsule.tagline": "寫給未來的自己。加密上鏈，只有你能再次開啟。",
   "capsule.permanence": "一旦封存，無法刪改，無法撤回 —— 你寫低嘅，會同呢條鏈活得一樣耐。",
 

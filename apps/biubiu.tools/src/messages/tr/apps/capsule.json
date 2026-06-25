@@ -3,6 +3,7 @@
   "capsule.meta.description": "Gelecekteki kendine bir mektup yaz. Zincir üzerinde şifrelenir, asla kaybolmaz, yalnızca senin okuyabileceğin — ve dilersen, belirlediğin güne kadar kilitli.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Şifreleme anahtarın passkey’inden türetilir. Apple cihazlarını iOS 26.5 / macOS 26.5.1 veya üzerinde tut — aksi hâlde aynı mektup iPhone ve Mac’te farklı anahtarlar üretip açılmayabilir.",
   "capsule.tagline": "Gelecekteki kendine bir mektup — zincirde şifreli, yalnızca senin okuyabileceğin.",
   "capsule.permanence": "Mühürlendikten sonra düzenlenemez ya da silinemez —— yazdıkların bu zincir yaşadıkça yaşar.",
 

@@ -3,6 +3,7 @@
   "capsule.meta.description": "Tulislah surat untuk dirimu di masa depan. Terenkripsi di on-chain, tak pernah hilang, hanya bisa kaubaca sendiri — dan, jika kaumau, terkunci hingga hari yang kautentukan.",
 
   "capsule.brand": "Capsule",
+  "capsule.onboard.compat": "Kunci enkripsi kamu berasal dari passkey. Jaga perangkat Apple di iOS 26.5 / macOS 26.5.1 atau lebih baru — jika tidak, surat yang sama bisa menghasilkan kunci berbeda di iPhone dan Mac sehingga tidak bisa dibuka.",
   "capsule.tagline": "Sepucuk surat untuk dirimu di masa depan — terenkripsi di on-chain, hanya bisa kaubaca sendiri.",
   "capsule.permanence": "Setelah disegel, tak bisa diubah atau dihapus —— tulisanmu hidup selama rantai ini ada.",
 

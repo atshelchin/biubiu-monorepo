@@ -39,6 +39,11 @@
 	let addStatus = $state<'idle' | 'adding' | 'added'>('idle');
 	let addError = $state<string | null>(null);
 
+	// Confirmation timers ("copied ✓" / "added ✓"), tracked so a rapid repeat or a
+	// navigation can cancel the pending reset instead of clearing the new one early.
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
+	let addTimer: ReturnType<typeof setTimeout> | undefined;
+
 	const publicRpcs = $derived(data.chain ? getPublicRpcEndpoints(data.chain.rpc ?? []) : []);
 
 	// Sort: fastest successes first, then still-probing, then untestable, then failed.
@@ -90,9 +95,28 @@
 				})
 	);
 
+	// Reset per-chain UI state when the route param changes: SvelteKit reuses this
+	// component across /chains/[chainID] navigations, so the previous chain's
+	// logo-error, copied index, and add-to-wallet status/alert would otherwise leak.
+	let shownChainId: string | undefined;
+	$effect(() => {
+		if (data.chainId === shownChainId) return;
+		shownChainId = data.chainId;
+		logoError = false;
+		addError = null;
+		addStatus = 'idle';
+		copiedIndex = null;
+		clearTimeout(copyTimer);
+		clearTimeout(addTimer);
+	});
+
 	// Probe every testable endpoint once the page is interactive.
 	$effect(() => {
 		if (!browser || publicRpcs.length === 0) return;
+
+		// In-flight probes from a previous chain must not write into the cleared map
+		// after we navigate; the teardown flips this so late results are dropped.
+		let cancelled = false;
 
 		rpcLatencies.clear();
 		for (const rpc of publicRpcs) {
@@ -101,15 +125,22 @@
 
 		for (const rpc of publicRpcs) {
 			if (!isTestableRpc(rpc)) continue;
-			probeRpcLatency(rpc).then((result) => rpcLatencies.set(rpc, result));
+			probeRpcLatency(rpc).then((result) => {
+				if (!cancelled) rpcLatencies.set(rpc, result);
+			});
 		}
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function copyToClipboard(text: string, index: number) {
 		try {
 			await navigator.clipboard.writeText(text);
 			copiedIndex = index;
-			setTimeout(() => (copiedIndex = null), 2000);
+			clearTimeout(copyTimer);
+			copyTimer = setTimeout(() => (copiedIndex = null), 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
 		}
@@ -123,7 +154,8 @@
 
 		if (status === 'added') {
 			addStatus = 'added';
-			setTimeout(() => (addStatus = 'idle'), 2500);
+			clearTimeout(addTimer);
+			addTimer = setTimeout(() => (addStatus = 'idle'), 2500);
 			return;
 		}
 

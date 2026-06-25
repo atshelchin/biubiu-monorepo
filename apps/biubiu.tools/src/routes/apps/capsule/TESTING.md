@@ -2,21 +2,21 @@
 
 **怎么用这份文档 / How to use this**
 
-> 跟任意 code agent 说：「参考 `apps/biubiu.tools/src/routes/apps/forever/TESTING.md`，用 chrome-devtools MCP 把 **Capsule / Forever 时光胶囊** (`/apps/forever`) 完整测试一遍，按清单逐项执行并报告 PASS/FAIL（FAIL 要附实际现象 + 截图/快照）。」
+> 跟任意 code agent 说：「参考 `apps/biubiu.tools/src/routes/apps/capsule/TESTING.md`，用 chrome-devtools MCP 把 **Capsule / Forever 时光胶囊** (`/apps/capsule`) 完整测试一遍，按清单逐项执行并报告 PASS/FAIL（FAIL 要附实际现象 + 截图/快照）。」
 
 This is an executable QA script. An agent with the **chrome-devtools MCP** drives the real app, checks every state/flow/edge case below, and reports a PASS/FAIL table. It also captures the hard‑won quirks of *this* app so the agent doesn't re‑discover them.
 
-- App URL: `http://localhost:5173/apps/forever`
-- Route file: `src/routes/apps/forever/+page.svelte`; store: `src/lib/pda-apps/forever/store.svelte.ts`; onboarding: `src/lib/pda-apps/forever/ForeverOnboard.svelte`; date picker: `src/lib/pda-apps/forever/CapsuleDatePicker.svelte`; networks: `src/lib/pda-apps/forever/networks.ts`; i18n: `src/messages/en/apps/forever.json` (prefix **`capsule.`** — yes, the *route* is `forever` but the strings are `capsule.*`).
+- App URL: `http://localhost:5173/apps/capsule`
+- Route file: `src/routes/apps/capsule/+page.svelte`; store: `src/lib/pda-apps/capsule/store.svelte.ts`; onboarding: `src/lib/pda-apps/capsule/CapsuleOnboard.svelte`; date picker: `src/lib/pda-apps/capsule/CapsuleDatePicker.svelte`; networks: `src/lib/pda-apps/capsule/networks.ts`; i18n: `src/messages/en/apps/capsule.json` (key prefix **`capsule.`**). The route, code dirs and i18n files are all `capsule` now; the app was renamed from its original `forever` slug. The on-chain protocol contract is still named **Forever**, and the crypto salts / `forever.*` localStorage keys are deliberately frozen under the old name (changing them would orphan existing capsules) — see the FROZEN comments in `crypto/envelope.ts`, `crypto/prf.ts` and `store.svelte.ts`.
 - What it does: write a letter "to your future self", **AES‑GCM encrypted client‑side**, then **sealed on‑chain** through a passkey Safe (ERC‑4337). Optionally **time‑locked** (drand quicknet / `tlock-js`): the ciphertext is wrapped so that *not even the author* can open it until a chosen future day. A per‑write fee of **0.001 native** is charged; one letter per chain, per day. Past letters are read back from chain and decrypted in the timeline ("The past").
 
-> **⚠️ Hard automation ceiling — read first.** Beyond the **chain gate**, *everything* sits behind a **biubiu passkey wallet** (`ForeverOnboard`): you must (1) create/open a passkey identity (WebAuthn `navigator.credentials.create/get` + Touch ID/biometric) and (2) derive a **PRF** encryption key (another passkey touch). A headless/MCP Chrome has **no authenticator and no PRF**, so the writing sheet, archive, seal, time‑lock, funding modal, and toast are **not reachable without a real funded passkey wallet + a human biometric tap.** Scope those to **"UI + validation + error‑state only; full flow needs a funded passkey wallet + manual biometric"** (exactly like wallet‑generator scopes the camera). The **fully automatable surface** is: chain‑gate, masthead/SEO, onboarding step‑1/step‑2 UI, settings, i18n, theme, responsive, console hygiene. Items below are tagged **[AUTO]** (drive it) or **[GATED]** (verify UI/validation/error copy only, or do it manually with a real wallet).
+> **⚠️ Hard automation ceiling — read first.** Beyond the **chain gate**, *everything* sits behind a **biubiu passkey wallet** (`CapsuleOnboard`): you must (1) create/open a passkey identity (WebAuthn `navigator.credentials.create/get` + Touch ID/biometric) and (2) derive a **PRF** encryption key (another passkey touch). A headless/MCP Chrome has **no authenticator and no PRF**, so the writing sheet, archive, seal, time‑lock, funding modal, and toast are **not reachable without a real funded passkey wallet + a human biometric tap.** Scope those to **"UI + validation + error‑state only; full flow needs a funded passkey wallet + manual biometric"** (exactly like wallet‑generator scopes the camera). The **fully automatable surface** is: chain‑gate, masthead/SEO, onboarding step‑1/step‑2 UI, settings, i18n, theme, responsive, console hygiene. Items below are tagged **[AUTO]** (drive it) or **[GATED]** (verify UI/validation/error copy only, or do it manually with a real wallet).
 
 ---
 
 ## 0. Setup & environment
 
-1. **Dev server** must be up: `curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/apps/forever` → expect `200`. If not, start it (`cd apps/biubiu.tools && bun run dev`).
+1. **Dev server** must be up: `curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/apps/capsule` → expect `200`. If not, start it (`cd apps/biubiu.tools && bun run dev`).
 2. Use the **chrome-devtools MCP** tools (`navigate_page`, `take_snapshot`, `take_screenshot`, `click`, `fill`, `type_text`, `press_key`, `evaluate_script`, `resize_page`, `list_console_messages`, `list_network_requests`, `wait_for`).
 3. Desktop viewport: `resize_page` to `1280×900`. Mobile: `390×844`.
 
@@ -57,13 +57,13 @@ This is an executable QA script. An agent with the **chrome-devtools MCP** drive
   // navigate_page initScript:
   document.cookie = 'locale=zh;path=/;max-age=31536000;SameSite=Lax';
   ```
-  then navigate to `/apps/forever` again. Valid codes: `de en es-MX fr id it ja ko pt-BR ru tr vi zh-HK zh-TW zh`.
+  then navigate to `/apps/capsule` again. Valid codes: `de en es-MX fr id it ja ko pt-BR ru tr vi zh-HK zh-TW zh`.
 - **Default chain = Base** (`networkSlug = 'base-mainnet'`), but the gate shows all chains and you must click one. The chain choice persists in `localStorage` (`forever.chain` + `forever.entered`). To **reset to the gate** between runs:
   ```js
   // navigate_page initScript:
   ['forever.chain','forever.entered','forever.enc.cred'].forEach(k => localStorage.removeItem(k));
   ```
-- **`forever.enc.cred` in localStorage does NOT skip onboarding.** The page renders children only when `authStore.isLoggedIn && store.unlocked` are *both* true (see `ForeverOnboard.svelte` line 78). `store.unlocked` is set only by an actual PRF derivation (a live Touch ID), and it is **in‑memory only** (never persisted). So a saved credential still drops you on the **step‑2 "Unlock your mailbox encryption"** card on every reload. You cannot fake past this in MCP.
+- **`forever.enc.cred` in localStorage does NOT skip onboarding.** The page renders children only when `authStore.isLoggedIn && store.unlocked` are *both* true (see `CapsuleOnboard.svelte` line 78). `store.unlocked` is set only by an actual PRF derivation (a live Touch ID), and it is **in‑memory only** (never persisted). So a saved credential still drops you on the **step‑2 "Unlock your mailbox encryption"** card on every reload. You cannot fake past this in MCP.
 - **Letter box is ruled‑paper styled** (`repeating-linear-gradient` baseline) and the time‑lock date input is the **custom `CapsuleDatePicker`** (a portaled paper calendar, *not* native `<input type=datetime-local>`). The picker emits `"YYYY-MM-DDT09:00"` (a capsule opens 09:00 local of the chosen day).
 - **Time‑lock needs live `api.drand.sh`** (`tlock-js` is dynamically imported). If the box is offline, sealing a *locked* letter will fail at the time‑lock step. (Network request only fires on a real seal/open — gated.)
 
@@ -96,7 +96,7 @@ This is an executable QA script. An agent with the **chrome-devtools MCP** drive
 - [ ] **Disabled while busy:** the switch link is disabled during any passkey/seal flow (only observable in the gated path).
 
 ### C. Onboarding step 1 — identity (logged out) — [AUTO for UI, GATED for the WebAuthn action]
-After entering a chain while logged out, `ForeverOnboard` renders the **identity** card:
+After entering a chain while logged out, `CapsuleOnboard` renders the **identity** card:
 - [ ] Lock icon mark; `<h2>` **"Open your mailbox"** (zh **"开启你的信匣"**); prose **"First, an identity that is yours alone — a passkey on this device. No password, no seed phrase."**; step label **"Step 1 of 2 · Identity"**.
 - [ ] Primary button **"Create a new mailbox"**; secondary quiet button **"I already have a mailbox"**.
 - [ ] Click **"Create a new mailbox"** → switches to the **name** sub‑view: `<h2>` **"Name your mailbox"**, prose mentions the name is public + immutable, an `<input>` with placeholder **"e.g. satoshi"** (`maxlength=40`), a disabled‑until‑typed **"Create mailbox"** button, and a **"Back"** quiet button.
@@ -169,7 +169,7 @@ These are the store's error branches; verify their copy + UI surfacing (toast/mo
 - [ ] Set `locale` cookie to a non‑zh (e.g. `ja`) and a zh variant (`zh`, `zh-HK`), re‑navigate, and read **visible** text on the **gate**, **masthead**, **onboarding step‑1** screens (the only states reachable without a wallet). Every visible string must translate; **no raw `capsule.*` key** may appear on screen.
 - [ ] Spot‑check translations exist & differ: gate title (en "Choose a chain" / zh "选择落笔的链"), view tabs (en "Now"/"The past" / zh "此刻"/"往昔"), seal button (en "Seal" / zh "封缄"), lock toggle (en "Lock until a date" / zh "封存到某一天").
 - [ ] **Brand intentionally untranslated:** `capsule.brand` is "Capsule" in all locales — that is **expected**, not a miss.
-- [ ] Confirm all 15 locale files exist (`ls src/messages/*/apps/forever.json` → 15). A missing one is a FAIL.
+- [ ] Confirm all 15 locale files exist (`ls src/messages/*/apps/capsule.json` → 15). A missing one is a FAIL.
 - [ ] Weekday/month names in the date picker localize via `Intl` (gated, but verify if you reach it).
 
 ### N. Theme correctness (light + dark) — [AUTO]

@@ -42,6 +42,10 @@ export interface TimelineEntry {
 	failed?: boolean;
 }
 
+// NOTE: these `forever.*` storage-key strings are FROZEN — they are the original
+// keys existing users' saved credential/chain/gate state lives under. The app was
+// renamed forever → capsule, but renaming these values would orphan that state
+// (users would silently lose their saved capsule credential). Do not "fix" them.
 const LS_CRED = 'forever.enc.cred';
 const LS_CHAIN = 'forever.chain'; // remember the chosen chain
 const LS_ENTERED = 'forever.entered'; // remember the gate was passed (skip it on reload)
@@ -62,7 +66,7 @@ const PAGE = 20; // timeline page size
 
 type Status = 'idle' | 'setup' | 'unlocking' | 'sealing' | 'done' | 'error';
 
-class ForeverStore {
+class CapsuleStore {
 	credential = $state<EncryptionCredential | null>(null);
 	/** Deterministic content key (32 bytes). In-memory only (session) — never persisted. */
 	rawDek: Uint8Array | null = null;
@@ -529,4 +533,4 @@ class ForeverStore {
 	}
 }
 
-export const foreverStore = new ForeverStore();
+export const capsuleStore = new CapsuleStore();

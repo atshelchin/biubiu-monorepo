@@ -1,20 +1,20 @@
 <script lang="ts">
-	import ForeverOnboard from '$lib/pda-apps/forever/ForeverOnboard.svelte';
-	import CapsuleDatePicker from '$lib/pda-apps/forever/CapsuleDatePicker.svelte';
+	import CapsuleOnboard from '$lib/pda-apps/capsule/CapsuleOnboard.svelte';
+	import CapsuleDatePicker from '$lib/pda-apps/capsule/CapsuleDatePicker.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import BundlerFundingModal from '$lib/auth/BundlerFundingModal.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
-	import { foreverStore, FEE_WEI } from '$lib/pda-apps/forever/store.svelte.js';
+	import { capsuleStore, FEE_WEI } from '$lib/pda-apps/capsule/store.svelte.js';
 	import { t, locale, formatDate, localizeHref } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
 	import { formatUnits } from 'viem';
 	import { Lock, ExternalLink, AlertTriangle, Settings } from '@lucide/svelte';
 
-	const store = foreverStore;
+	const store = capsuleStore;
 	let showProfile = $state(false);
 	let showSettings = $state(false);
 
@@ -153,7 +153,7 @@
 		</section>
 	{:else}
 
-	<ForeverOnboard>
+	<CapsuleOnboard>
 			<!-- One focus at a time: write the present, or look back. Never both. -->
 			<div class="view-switch" role="tablist" aria-label="view">
 				<button
@@ -294,7 +294,7 @@
 				{/if}
 			</section>
 		{/if}
-	</ForeverOnboard>
+	</CapsuleOnboard>
 	{/if}
 
 	{#if store.message}

@@ -12,6 +12,10 @@
  */
 import { aesOpen, aesSeal, concat, fromUtf8, hkdfAesKey, hkdfBytes, importAesKey, randomBytes, utf8 } from './core.js';
 
+// FROZEN — these `forever.*` HKDF domain separators are part of the key-derivation
+// path for every capsule ever sealed. The app was renamed forever → capsule, but
+// changing any of these salts/info strings would make all existing capsules
+// permanently undecryptable. They are deliberately NOT renamed. Do not "fix" them.
 const KEK_SALT = utf8('forever.biubiu.tools/kek/v1'); // fixed application salt
 const KEK_INFO = 'forever-kek-v1';
 const CONTENT_KEY_SALT = utf8('forever.biubiu.tools/content-key/v1');

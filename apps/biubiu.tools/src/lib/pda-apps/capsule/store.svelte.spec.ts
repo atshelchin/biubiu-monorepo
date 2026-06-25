@@ -1,5 +1,5 @@
 /**
- * Regression tests for the two forever-store P2 findings (REVIEW-FINDINGS pda-apps/forever):
+ * Regression tests for the two capsule-store P2 findings (REVIEW-FINDINGS pda-apps/capsule):
  *
  *  1. unlock()/deriveKey() guard unification — when unlock() runs as a SUB-STEP of seal()
  *     it must restore the caller's status ('sealing') instead of hard-stamping 'idle'. Before
@@ -98,21 +98,21 @@ vi.mock('$lib/wallet/infra/bundler-account.js', () => ({
 	fetchBundlerAccountInfo: vi.fn(async () => null)
 }));
 
-import { foreverStore, FEE_WEI } from './store.svelte.js';
+import { capsuleStore, FEE_WEI } from './store.svelte.js';
 
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));
 
 function resetStore() {
-	foreverStore.rawDek = null;
-	foreverStore.unlocked = false;
-	foreverStore.credential = null;
-	foreverStore.status = 'idle';
-	foreverStore.message = '';
-	foreverStore.text = '';
-	foreverStore.locked = false;
-	foreverStore.networkSlug = 'base-mainnet';
-	foreverStore.lastTxHash = null;
-	foreverStore.funding = null;
+	capsuleStore.rawDek = null;
+	capsuleStore.unlocked = false;
+	capsuleStore.credential = null;
+	capsuleStore.status = 'idle';
+	capsuleStore.message = '';
+	capsuleStore.text = '';
+	capsuleStore.locked = false;
+	capsuleStore.networkSlug = 'base-mainnet';
+	capsuleStore.lastTxHash = null;
+	capsuleStore.funding = null;
 }
 
 beforeEach(() => {
@@ -125,10 +125,10 @@ beforeEach(() => {
 	resetStore();
 });
 
-describe('forever store — feeShortfall preflight (P2 #2: fee vs fee+gas)', () => {
+describe('capsule store — feeShortfall preflight (P2 #2: fee vs fee+gas)', () => {
 	it('reports the wei shortfall when the Safe is below the protocol fee floor', async () => {
 		H.balance.hex = '0x0'; // empty Safe
-		const short = await foreverStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
+		const short = await capsuleStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
 		expect(short).toBe(FEE_WEI);
 	});
 
@@ -136,14 +136,14 @@ describe('forever store — feeShortfall preflight (P2 #2: fee vs fee+gas)', () 
 		// The crux of the finding: a Safe with exactly FEE_WEI must NOT be pre-rejected, because
 		// 4337 gas can be paid by a bundler gas-account / sponsor. No gas reserve is added.
 		H.balance.hex = '0x' + FEE_WEI.toString(16);
-		const short = await foreverStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
+		const short = await capsuleStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
 		expect(short).toBe(0n);
 	});
 
 	it('reports the exact gap for a partially-funded Safe', async () => {
 		const have = FEE_WEI - 1n;
 		H.balance.hex = '0x' + have.toString(16);
-		const short = await foreverStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
+		const short = await capsuleStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
 		expect(short).toBe(1n);
 	});
 
@@ -151,22 +151,22 @@ describe('forever store — feeShortfall preflight (P2 #2: fee vs fee+gas)', () 
 		H.rpcCall.mockImplementationOnce(async () => {
 			throw new Error('rpc down');
 		});
-		const short = await foreverStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
+		const short = await capsuleStore.feeShortfall('0x000000000000000000000000000000000000dEaD');
 		expect(short).toBe(0n);
 	});
 });
 
-describe('forever store — unlock guard unification (P2 #1: status owned by one place)', () => {
+describe('capsule store — unlock guard unification (P2 #1: status owned by one place)', () => {
 	it('setupKey() leaves status idle after a successful key derivation', async () => {
-		const p = foreverStore.setupKey();
+		const p = capsuleStore.setupKey();
 		await flush();
-		expect(foreverStore.status).toBe('setup'); // busy while PRF prompt is open
+		expect(capsuleStore.status).toBe('setup'); // busy while PRF prompt is open
 		expect(H.prfPending).toHaveLength(1);
 		H.prfPending[0]({ prf: new Uint8Array(32), credentialId: 'cred-1' });
 		await p;
 		// Top-level entry point: when the key is confirmed the flow is over → idle.
-		expect(foreverStore.status).toBe('idle');
-		expect(foreverStore.unlocked).toBe(true);
+		expect(capsuleStore.status).toBe('idle');
+		expect(capsuleStore.unlocked).toBe(true);
 	});
 
 	it('unlock() invoked as a sub-step RESTORES the caller status instead of hard-stamping idle', async () => {
@@ -174,51 +174,51 @@ describe('forever store — unlock guard unification (P2 #1: status owned by one
 		// when it calls unlock() to lazily derive the key. Before the fix deriveKey() unconditionally
 		// set status='idle' (the flap the finding describes, masked only by a fragile re-assert in
 		// seal). After the fix the single status owner restores 'sealing'.
-		foreverStore.status = 'sealing';
-		const p = foreverStore.unlock();
+		capsuleStore.status = 'sealing';
+		const p = capsuleStore.unlock();
 		await flush();
-		expect(foreverStore.status).toBe('unlocking');
+		expect(capsuleStore.status).toBe('unlocking');
 		H.prfPending[0]({ prf: new Uint8Array(32), credentialId: 'cred-1' });
 		expect(await p).toBe(true);
 		// THE REGRESSION ASSERTION: must be 'sealing' (restored), NOT 'idle' (old hard-stamp).
-		expect(foreverStore.status).toBe('sealing');
+		expect(capsuleStore.status).toBe('sealing');
 	});
 
 	it('end-to-end seal() never drops out of a busy status across the lazy-unlock sub-step', async () => {
-		foreverStore.text = 'hello future';
-		expect(foreverStore.rawDek).toBeNull();
+		capsuleStore.text = 'hello future';
+		expect(capsuleStore.rawDek).toBeNull();
 		H.balance.hex = '0x' + (FEE_WEI * 10n).toString(16); // well-funded so preflight passes
 
-		const sealP = foreverStore.seal();
+		const sealP = capsuleStore.seal();
 		await flush();
-		expect(foreverStore.busy).toBe(true);
+		expect(capsuleStore.busy).toBe(true);
 		expect(H.prfPending).toHaveLength(1);
 
 		H.prfPending[0]({ prf: new Uint8Array(32), credentialId: 'cred-1' });
 		await flush();
-		expect(foreverStore.status).toBe('sealing');
-		expect(foreverStore.busy).toBe(true);
+		expect(capsuleStore.status).toBe('sealing');
+		expect(capsuleStore.busy).toBe(true);
 
 		expect(H.sendPending).toHaveLength(1);
 		H.sendPending[0]({ success: true, txHash: '0xabc' });
 		const ok = await sealP;
 		expect(ok).toBe(true);
-		expect(foreverStore.status).toBe('done');
+		expect(capsuleStore.status).toBe('done');
 	});
 
 	it('a single coalesced unlock() restores idle (no busy caller)', async () => {
-		const p = foreverStore.unlock();
+		const p = capsuleStore.unlock();
 		await flush();
-		expect(foreverStore.status).toBe('unlocking');
+		expect(capsuleStore.status).toBe('unlocking');
 		H.prfPending[0]({ prf: new Uint8Array(32), credentialId: 'cred-1' });
 		await p;
-		expect(foreverStore.status).toBe('idle');
-		expect(foreverStore.rawDek).not.toBeNull();
+		expect(capsuleStore.status).toBe('idle');
+		expect(capsuleStore.rawDek).not.toBeNull();
 	});
 
 	it('concurrent unlock() calls share ONE WebAuthn prompt (coalescer)', async () => {
-		const a = foreverStore.unlock();
-		const b = foreverStore.unlock();
+		const a = capsuleStore.unlock();
+		const b = capsuleStore.unlock();
 		await flush();
 		expect(H.evaluatePrf).toHaveBeenCalledTimes(1); // coalesced
 		H.prfPending[0]({ prf: new Uint8Array(32), credentialId: 'cred-1' });

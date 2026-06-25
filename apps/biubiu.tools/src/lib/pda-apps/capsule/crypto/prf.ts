@@ -11,6 +11,9 @@ import { browser } from '$app/environment';
 import { fromBase64url, toBase64url } from '$lib/auth/crypto-utils.js';
 
 const RP_NAME = 'BiuBiu Forever';
+// FROZEN — this PRF salt derives the root encryption key for every existing user.
+// The app was renamed forever → capsule, but changing this value would derive a
+// different key and orphan all previously sealed capsules. Do not "fix" it.
 const SALT_TEXT = 'forever.biubiu.tools/prf/v1';
 
 /** The fixed PRF salt as a standalone ArrayBuffer (the least ambiguous BufferSource type). */

@@ -2,7 +2,7 @@
 	/**
 	 * Dedicated, passkey-only onboarding for Capsule.
 	 *
-	 * Forever only accepts the built-in biubiu passkey wallet, so the generic multi-wallet
+	 * Capsule only accepts the built-in biubiu passkey wallet, so the generic multi-wallet
 	 * picker is wrong here. This presents one cohesive "open your mailbox" ritual:
 	 *   ① identity  (create / open a biubiu passkey — same account used across all tools)
 	 *   ② key       (the dedicated PRF encryption key)
@@ -15,12 +15,12 @@
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { registerPasskey, retryUpload } from '$lib/auth/passkey-auth.js';
 	import type { LocalKey } from '$lib/auth/types.js';
-	import { foreverStore } from './store.svelte.js';
+	import { capsuleStore } from './store.svelte.js';
 	import { t } from '$lib/i18n';
 	import { Lock, KeyRound } from '@lucide/svelte';
 
 	let { children }: { children: Snippet } = $props();
-	const store = foreverStore;
+	const store = capsuleStore;
 
 	let idView = $state<'choose' | 'create'>('choose');
 	let name = $state('');

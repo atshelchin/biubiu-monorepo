@@ -140,6 +140,15 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Namespace matching runs against the de-prefixed path (e.g. /zh/chains → /chains).
   const routePath = removeLocaleFromPathname(pathname, supported);
 
+  // Legacy slug redirect: the Capsule app's route was renamed /apps/forever → /apps/capsule.
+  // 301 so inbound links, bookmarks and crawlers fold into the new canonical URL. We rewrite
+  // only the de-prefixed segment, so the locale prefix (and any query string) is preserved
+  // for all 15 locales (/zh-HK/apps/forever → /zh-HK/apps/capsule).
+  if (routePath === '/apps/forever') {
+    const location = pathname.replace('/apps/forever', '/apps/capsule') + event.url.search;
+    return new Response(null, { status: 301, headers: { location } });
+  }
+
   // Use matchRoute to automatically match namespaces (supports dynamic routes)
   let namespaces = matchRoute(routePath);
 

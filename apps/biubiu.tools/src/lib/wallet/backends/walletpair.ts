@@ -27,7 +27,9 @@ const DAPP_META = {
 	name: 'BiuBiu Tools',
 	description: 'Smart contract wallet toolbox',
 	url: 'https://biubiu.tools',
-	icon: 'https://biubiu.tools/favicon.png'
+	// Must be a real, reachable URL — wallets fetch this to show the dApp icon in
+	// the connect prompt. `/favicon.png` 404s; the icons live under `/favicon/`.
+	icon: 'https://biubiu.tools/favicon/web-app-manifest-192x192.png'
 };
 
 /** dApp 打算调用的 EVM 方法（写进配对 URI 的 scope）。 */

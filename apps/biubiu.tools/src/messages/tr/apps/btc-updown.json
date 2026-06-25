@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Kâr al",
   "btcUpdown.filter.stopLoss": "Zarar durdur",
   "btcUpdown.disclaimer": "Bu yalnızca bir simülasyondur — gerçek para söz konusu değildir. Lütfen sorumlu kumar oynayın. Kumarı teşvik etmiyoruz.",
-
   "btcUpdown.live.sectionTitle": "Canlı",
   "btcUpdown.live.passkeyRegistered": "Passkey kaydedildi",
   "btcUpdown.live.registerPasskey": "Passkey kaydet",
   "btcUpdown.live.remove": "Kaldır",
-
   "btcUpdown.instance.title": "Strateji örnekleri",
   "btcUpdown.instance.refresh": "Yenile",
   "btcUpdown.instance.create": "Oluştur",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Dışa aktar",
   "btcUpdown.instance.import": "İçe aktar",
   "btcUpdown.instance.statusUnknown": "bilinmiyor",
-
   "btcUpdown.configurator.createTitle": "Strateji örneği oluştur",
   "btcUpdown.configurator.editTitle": "Strateji yapılandırmasını düzenle",
   "btcUpdown.configurator.editConfig": "Düzenle",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "harcandı",
   "btcUpdown.v70.up": "YUKARI",
   "btcUpdown.v70.down": "AŞAĞI",
-
   "btcUpdown.round.exitReason": "Çıkış nedeni",
   "btcUpdown.exit.stopLoss": "Zarar durdur",
   "btcUpdown.exit.binanceStopLoss": "Binance zarar durdur",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Saat filtresini temizle",
   "btcUpdown.chart.am": "ÖÖ",
   "btcUpdown.chart.pm": "ÖS",
-
   "btcUpdown.live.priceToBeat": "Hedef fiyat",
   "btcUpdown.strategy.close": "Kapat",
-
   "btcUpdown.control.errFailedLoad": "Yüklenemedi",
   "btcUpdown.control.errFailed": "Başarısız",
   "btcUpdown.control.errActionFailed": "İşlem başarısız",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Pe",
   "btcUpdown.control.weekday.fr": "Cu",
   "btcUpdown.control.weekday.sa": "Ct",
-
   "btcUpdown.endpoint.title": "Yönetilen uç noktalar",
   "btcUpdown.endpoint.add": "+ Ekle",
   "btcUpdown.endpoint.urlPlaceholder": "Uç nokta URL'si (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Passkey kaydet",
   "btcUpdown.endpoint.remove": "Uç noktayı kaldır",
   "btcUpdown.endpoint.dismiss": "Kapat",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Başlangıç",
   "btcUpdown.cfg.startFromTemplate": "Şablondan başla",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "İz süren stop",
   "btcUpdown.cfg.exitCheckpoint": "Kontrol noktası",
   "btcUpdown.cfg.fallback": "yedek",
-  "btcUpdown.cfg.nameYourStrategy": "Stratejinize ad verin..."
+  "btcUpdown.cfg.nameYourStrategy": "Stratejinize ad verin...",
+  "btcUpdown.strategy.notFound": "Bu uç noktada strateji bulunamadı"
 }

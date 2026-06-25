@@ -61,6 +61,15 @@ class RevokeStore {
 
 	/** Guards the page-driven auto-scan so it fires once per owner+chain. */
 	private lastScanKey = '';
+	/**
+	 * Monotonic scan token. Captured at the start of every scan() and bumped on
+	 * every chain switch / new scan; a scan only writes its results if its token
+	 * still matches `scanGen`. This discards results from a scan that started on a
+	 * now-stale chain (chain switched mid-scan) and ensures only the latest of
+	 * overlapping scans (e.g. add/remove custom token fired in quick succession)
+	 * wins — no cross-chain rows, no inconsistent loading state.
+	 */
+	private scanGen = 0;
 
 	// ── derived ──
 	get networks(): RevokeNetwork[] {
@@ -113,6 +122,10 @@ class RevokeStore {
 	setNetwork(slug: string): void {
 		if (slug === this.networkSlug) return;
 		this.networkSlug = slug;
+		// Invalidate any in-flight scan started on the previous chain so its results
+		// (chain-A approvals) can never land on the now-selected chain.
+		this.scanGen++;
+		this.scanning = false;
 		this.rows = [];
 		this.scanned = false;
 		this.scanError = null;
@@ -133,22 +146,31 @@ class RevokeStore {
 	async scan(): Promise<void> {
 		const owner = this.owner;
 		if (!owner) return;
+		// Claim this scan generation; any concurrent or later scan / chain switch
+		// bumps scanGen, so a stale scan's results are dropped below.
+		const gen = ++this.scanGen;
+		const network = this.network; // pin the target chain for this scan
 		this.scanning = true;
 		this.scanError = null;
 		this.selectedIds = [];
 		try {
-			this.rows = await discover({
-				network: this.network,
+			const rows = await discover({
+				network,
 				owner,
-				customTokens: this.chainTokens,
-				customSpenders: this.chainSpenders,
+				customTokens: this.customTokens[network.chainId] ?? [],
+				customSpenders: this.customSpenders[network.chainId] ?? [],
 			});
+			if (gen !== this.scanGen) return; // superseded — discard stale results
+			this.rows = rows;
 			this.scanned = true;
 		} catch (e) {
+			if (gen !== this.scanGen) return; // superseded — don't surface a stale error
 			this.scanError = e instanceof Error ? e.message : String(e);
 			this.rows = [];
 		} finally {
-			this.scanning = false;
+			// Only the latest scan owns the loading flag; an earlier scan hitting
+			// finally must not clear the spinner for a scan still in flight.
+			if (gen === this.scanGen) this.scanning = false;
 		}
 	}
 

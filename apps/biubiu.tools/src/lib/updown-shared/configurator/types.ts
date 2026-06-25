@@ -243,9 +243,6 @@ export interface SignalRuleDefinition {
 	required?: boolean;
 }
 
-/** @deprecated Use SignalScoreParams in direction.params instead */
-export type SignalConfig = SignalScoreParams;
-
 // ═══════════════════════════════════════════
 // Exit — 退出规则
 // ═══════════════════════════════════════════

@@ -11,7 +11,7 @@
  */
 import { type Address, type Hex, getAddress } from 'viem';
 import { CREATE2_PROXY, predictCreate2Address } from '$lib/deploy/create2.js';
-import { makeClient } from '../rpc-client.js';
+import { makeClient, isDeployedWith } from '../rpc-client.js';
 import { DEMO_BYTECODE, type DemoContractName } from './bytecode.js';
 
 export type { DemoContractName };
@@ -195,12 +195,7 @@ export async function getDeployedDemos(
 	const out: Record<string, boolean> = {};
 	await Promise.all(
 		names.map(async (n) => {
-			try {
-				const code = await client.getCode({ address: DEMO_ADDRESS[n] });
-				out[n] = !!code && code !== '0x';
-			} catch {
-				out[n] = false;
-			}
+			out[n] = await isDeployedWith(client, DEMO_ADDRESS[n]);
 		})
 	);
 	return out;

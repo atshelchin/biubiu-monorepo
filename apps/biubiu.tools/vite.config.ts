@@ -5,6 +5,11 @@ import { playwright } from '@vitest/browser-playwright';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { i18nPlugin } from '@shelchin/i18n-sveltekit/vite';
 import { execSync } from 'child_process';
+// The monorepo resolves two vite versions (6 and 7); sveltekit()/i18nPlugin()
+// return Plugin objects typed against vite 6, which are nominally — not
+// structurally — incompatible with this app's vite 7 `plugins` type. The plugins
+// are runtime-compatible (the build passes), so cast the array to vite 7's type.
+import type { PluginOption } from 'vite';
 
 function getGitCommitHash(): string {
 	try {
@@ -48,7 +53,7 @@ export default defineConfig({
 		i18nPlugin({
 			messagesDir: 'src/messages'
 		}),
-	],
+	] as PluginOption[],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

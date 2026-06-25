@@ -9,7 +9,10 @@
  * Each attempt is bounded by an AbortController timeout — without it a hung
  * endpoint (one that accepts the socket but never responds) would block the
  * whole flow forever and never trigger failover, leaving the UI spinning with
- * no error. On timeout we abort and fall through to the next RPC.
+ * no error. The timer is cleared only AFTER res.json() resolves, so the abort
+ * signal stays armed across the body read too: a server that sends headers then
+ * stalls the body is aborted, res.json() throws, and we fall through to the next
+ * RPC. On timeout we abort and fall through to the next RPC.
  */
 const RPC_TIMEOUT_MS = 8_000;
 
@@ -30,11 +33,13 @@ export async function rpcCall(
 				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
 				signal: controller.signal,
 			});
-			clearTimeout(timer);
 			if (!res.ok) {
 				lastErr = new Error(`HTTP ${res.status}`);
 				continue;
 			}
+			// Keep the abort signal armed across the body read: a server that sends
+			// headers then stalls the body would otherwise hang forever. Aborting
+			// the fetch rejects res.json(), which falls through to the next RPC.
 			const json = await res.json();
 			if (json.error) {
 				lastErr = new Error(json.error.message);
@@ -42,11 +47,12 @@ export async function rpcCall(
 			}
 			return json.result;
 		} catch (e) {
-			clearTimeout(timer);
 			lastErr =
 				e instanceof DOMException && e.name === 'AbortError'
 					? new Error(`RPC timed out after ${timeoutMs}ms`)
 					: e;
+		} finally {
+			clearTimeout(timer);
 		}
 	}
 	throw lastErr instanceof Error ? lastErr : new Error('All RPCs failed');

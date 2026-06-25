@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "利益確定",
   "btcUpdown.filter.stopLoss": "ストップロス",
   "btcUpdown.disclaimer": "これはシミュレーションのみで、実際の資金は一切使いません。節度を持って参加してください。私たちはギャンブルを推奨しません。",
-
   "btcUpdown.live.sectionTitle": "ライブ",
   "btcUpdown.live.passkeyRegistered": "passkey 登録済み",
   "btcUpdown.live.registerPasskey": "passkey を登録",
   "btcUpdown.live.remove": "削除",
-
   "btcUpdown.instance.title": "戦略インスタンス",
   "btcUpdown.instance.refresh": "更新",
   "btcUpdown.instance.create": "作成",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "エクスポート",
   "btcUpdown.instance.import": "インポート",
   "btcUpdown.instance.statusUnknown": "不明",
-
   "btcUpdown.configurator.createTitle": "戦略インスタンスを作成",
   "btcUpdown.configurator.editTitle": "戦略の設定を編集",
   "btcUpdown.configurator.editConfig": "編集",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "支出",
   "btcUpdown.v70.up": "UP",
   "btcUpdown.v70.down": "DOWN",
-
   "btcUpdown.round.exitReason": "エグジット理由",
   "btcUpdown.exit.stopLoss": "ストップロス",
   "btcUpdown.exit.binanceStopLoss": "バイナンス ストップロス",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "時間フィルターをクリア",
   "btcUpdown.chart.am": "午前",
   "btcUpdown.chart.pm": "午後",
-
   "btcUpdown.live.priceToBeat": "目標価格",
   "btcUpdown.strategy.close": "閉じる",
-
   "btcUpdown.control.errFailedLoad": "読み込みに失敗しました",
   "btcUpdown.control.errFailed": "失敗しました",
   "btcUpdown.control.errActionFailed": "操作に失敗しました",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "木",
   "btcUpdown.control.weekday.fr": "金",
   "btcUpdown.control.weekday.sa": "土",
-
   "btcUpdown.endpoint.title": "管理対象エンドポイント",
   "btcUpdown.endpoint.add": "+ 追加",
   "btcUpdown.endpoint.urlPlaceholder": "エンドポイント URL（https://...）",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "passkey を登録",
   "btcUpdown.endpoint.remove": "エンドポイントを削除",
   "btcUpdown.endpoint.dismiss": "閉じる",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "開始",
   "btcUpdown.cfg.startFromTemplate": "テンプレートから始める",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "トレーリングストップ",
   "btcUpdown.cfg.exitCheckpoint": "チェックポイント",
   "btcUpdown.cfg.fallback": "フォールバック",
-  "btcUpdown.cfg.nameYourStrategy": "戦略に名前を付けてください…"
+  "btcUpdown.cfg.nameYourStrategy": "戦略に名前を付けてください…",
+  "btcUpdown.strategy.notFound": "このエンドポイントに戦略が見つかりません"
 }

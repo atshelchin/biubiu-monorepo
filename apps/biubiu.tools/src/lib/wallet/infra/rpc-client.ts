@@ -11,14 +11,8 @@
 import type { Hex } from 'viem';
 import { chainInfo } from './chains.js';
 import { getNetworkConfig, getProviderKeys } from './endpoints.js';
+import { jsonRpcPost } from './json-rpc.js';
 import { PROVIDER_ORDER, buildProviderRpcUrl } from './providers.js';
-
-interface RpcResponse<T = unknown> {
-	jsonrpc: '2.0';
-	id: number;
-	result?: T;
-	error?: { code: number; message: string; data?: unknown };
-}
 
 /** A JSON-RPC error returned by a reachable node (revert / bad params / range limit).
  *  This is the node's authoritative answer, so it propagates — we do NOT failover. */
@@ -120,17 +114,12 @@ async function tryEndpoint<T>(url: string, method: string, params: unknown[]): P
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 	try {
-		const res = await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-			signal: controller.signal
+		return await jsonRpcPost<T>(url, method, params, {
+			signal: controller.signal,
+			validate: (json) =>
+				!json || typeof json !== 'object' ? new Error('Invalid response') : undefined,
+			rpcError: (error) => new RpcError(error.message, error.code)
 		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		const json = (await res.json()) as RpcResponse<T>;
-		if (!json || typeof json !== 'object') throw new Error('Invalid response');
-		if (json.error) throw new RpcError(json.error.message, json.error.code);
-		return json.result as T;
 	} finally {
 		clearTimeout(timer);
 	}
@@ -140,21 +129,46 @@ async function tryEndpoint<T>(url: string, method: string, params: unknown[]): P
 const chainIdCache = new Map<string, number>();
 
 /**
+ * Probe `eth_chainId` once and cache the result. Throws on transport failure (so the
+ * caller can decide how to treat "unknown"); resolves to the reported numeric chainId
+ * otherwise. Shared by the lenient `reportsChain` (failover ranking) and the strict
+ * `servesChain` (single-URL disclosure to the bundler).
+ */
+async function probeChainId(url: string): Promise<number> {
+	const cached = chainIdCache.get(url);
+	if (cached !== undefined) return cached;
+	const hex = await tryEndpoint<Hex>(url, 'eth_chainId', []);
+	const got = Number(BigInt(hex));
+	chainIdCache.set(url, got);
+	return got;
+}
+
+/**
  * Does `url` actually serve `chainId`? Probes eth_chainId once and caches. Returns
  * true on a transport failure (can't determine — don't exclude on a network blip);
  * returns false only when the endpoint affirmatively reports a DIFFERENT chain.
+ *
+ * LENIENT — only for failover RANKING in rpcCall, where we still try the next endpoint
+ * on failure. Do NOT use this to pick a single URL to disclose to the bundler: a dead
+ * endpoint would resolve `true` and could be forwarded as the bundler's RPC. Use
+ * `servesChain` for that.
  */
 async function reportsChain(url: string, chainId: number): Promise<boolean> {
-	const cached = chainIdCache.get(url);
-	if (cached !== undefined) return cached === chainId;
 	try {
-		const hex = await tryEndpoint<Hex>(url, 'eth_chainId', []);
-		const got = Number(BigInt(hex));
-		chainIdCache.set(url, got);
-		return got === chainId;
+		return (await probeChainId(url)) === chainId;
 	} catch {
 		return true;
 	}
+}
+
+/**
+ * STRICT variant for picking a single reachable URL: REQUIRES a successful eth_chainId
+ * that equals `chainId`. Throws on transport failure (so `Promise.any` moves on to the
+ * next candidate) and throws on a wrong-chain answer. Used only by pickBundlerRpcUrl.
+ */
+async function servesChain(url: string, chainId: number): Promise<string> {
+	if ((await probeChainId(url)) !== chainId) throw new Error('wrong chain');
+	return url;
 }
 
 /** JSON-RPC call against a chain's best available endpoint, with transport failover. */
@@ -201,11 +215,18 @@ export async function rpcCall<T>(method: string, params: unknown[], chainId: num
 export async function pickBundlerRpcUrl(chainId: number): Promise<string | undefined> {
 	const publicUrls = chainInfo(chainId)?.rpcUrls ?? [];
 	if (publicUrls.length === 0) return getNetworkConfig(chainId)?.rpcURL;
-	// First public endpoint that responds AND reports the right chainId.
-	return Promise.any(
-		publicUrls.map(async (url) => {
-			if (!(await reportsChain(url, chainId))) throw new Error('wrong chain');
-			return url;
-		})
-	).catch(() => publicUrls[0]);
+	// First public endpoint that REACHABLY reports the right chainId. servesChain throws
+	// on transport failure (dead endpoint) and on a wrong-chain answer, so Promise.any
+	// moves on to the next candidate and only rejects when EVERY probe fails — in which
+	// case we fall back to the first public URL (best-effort; bundler will surface the
+	// error if it too is unreachable). Never hand the bundler a dead URL when a healthy
+	// sibling endpoint exists.
+	return Promise.any(publicUrls.map((url) => servesChain(url, chainId))).catch(
+		() => publicUrls[0]
+	);
+}
+
+/** Test-only: clear the per-URL eth_chainId probe cache so selection tests stay deterministic. */
+export function __resetChainIdCacheForTest(): void {
+	chainIdCache.clear();
 }

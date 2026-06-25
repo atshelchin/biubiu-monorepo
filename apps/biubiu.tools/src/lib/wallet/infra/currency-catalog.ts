@@ -46,9 +46,3 @@ export const CURRENCIES: CurrencyMeta[] = [
 	{ code: 'ILS', name: 'Israeli Shekel' },
 	{ code: 'ISK', name: 'Icelandic Krona' }
 ];
-
-const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));
-
-export function currencyName(code: string): string {
-	return BY_CODE.get(code.toUpperCase())?.name ?? code.toUpperCase();
-}

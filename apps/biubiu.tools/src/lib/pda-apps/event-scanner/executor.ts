@@ -23,7 +23,12 @@ import { resolveBlockRange } from './infra/time-to-block.js';
 import { scanRangeAdaptive } from './infra/adaptive-chunk.js';
 import { decodeLogs } from './infra/decode.js';
 import { countEvents, getEventPks, getScan, putEvents, saveScan } from './infra/event-store.js';
-import { mergeRanges, totalBlocks as countRangeBlocks, type BlockRange } from './infra/ranges.js';
+import {
+	mergeRanges,
+	totalBlocks as countRangeBlocks,
+	isFullyCovered,
+	type BlockRange
+} from './infra/ranges.js';
 import { InterruptQueue } from '$lib/async/interrupt-queue';
 
 const DEFAULT_CHUNK = 2_000;
@@ -215,6 +220,9 @@ async function* run(
 	const seen = new Set<string>(await getEventPks(scanId));
 	let eventCount = seen.size;
 	let scannedBlocks = 0;
+	// Ranges of terminally-failed jobs (retries exhausted). NOT covered — recorded
+	// as gaps so the scan reads as incomplete and fillGaps can re-scan them.
+	const failedRanges: BlockRange[] = [];
 	const pendingWrites: Promise<unknown>[] = [];
 
 	const hub = await createTaskHub();
@@ -276,7 +284,9 @@ async function* run(
 	const interrupts = new InterruptQueue();
 	task.on('job:complete', (job: Job<ScanJob, ScanJobResult>) => ingest(job.output));
 	task.on('job:failed', (job: Job<ScanJob, ScanJobResult>, error: Error) => {
-		scannedBlocks += job.input.toBlock - job.input.fromBlock + 1;
+		// Record the range as a gap. Do NOT add it to scannedBlocks: a failed range
+		// is not covered, so counting it would falsely mark the scan complete.
+		failedRanges.push([job.input.fromBlock, job.input.toBlock]);
 		ctx.info(
 			`Failed blocks ${job.input.fromBlock}–${job.input.toBlock}: ${error.message}`,
 			'warning'
@@ -350,12 +360,16 @@ async function* run(
 	// Carry forward any gaps from prior sessions (resume only re-runs failed/pending
 	// jobs, so skip-completed gaps aren't re-discovered this run) and merge this
 	// run's new gaps. Persisted so completeness is auditable after reload.
-	const gaps = mergeRanges([...(existingMeta?.gaps ?? []), ...source.skippedRanges]);
-	// Only claim full coverage when every job was actually processed. If the run
-	// ended early (e.g. a fatal error kept partial results), leave lastScannedBlock
-	// behind so the scan honestly reads as incomplete (→ Resume) rather than as a
-	// silent partial "success" — critical when the output is accounting data.
-	const fullyProcessed = scannedBlocks >= totalBlocks;
+	const gaps = mergeRanges([
+		...(existingMeta?.gaps ?? []),
+		...source.skippedRanges,
+		...failedRanges
+	]);
+	// Only claim full coverage when every job was actually processed AND no gaps
+	// remain. A terminally-failed chunk records a gap, which must withhold the
+	// "Complete" badge and keep lastScannedBlock behind (→ Resume / Re-scan gaps)
+	// rather than reading as a silent partial "success" — critical for accounting data.
+	const fullyProcessed = isFullyCovered(scannedBlocks, totalBlocks, gaps);
 	await saveScan({
 		...meta,
 		eventCount: finalCount,

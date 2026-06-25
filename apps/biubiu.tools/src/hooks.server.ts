@@ -13,6 +13,37 @@ const DEFAULT_DATE_LOCALE = 'en-US';
 const DEFAULT_CURRENCY = 'USD';
 const DEFAULT_TIMEZONE = 'UTC';
 
+// Conservative, provably-safe security headers.
+//
+// The CSP intentionally only restricts directives the app never uses
+// (framing, plugin objects, <base> injection). It does NOT constrain
+// script/style/connect/img/font sources, so it cannot break script loading,
+// WASM (OG image generation), wallet connections, or RPC/upstream fetches.
+// `frame-ancestors 'none'` is the modern, provably-equivalent successor to
+// X-Frame-Options: DENY — critical for a wallet/sign/sweep/revoke app where
+// any framing enables clickjacking / UI-redress on on-chain actions.
+const SECURITY_CSP =
+  "frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
+
+export function applySecurityHeaders(headers: Headers): Headers {
+  // Don't sniff MIME types (defends against content-type confusion).
+  if (!headers.has('X-Content-Type-Options')) {
+    headers.set('X-Content-Type-Options', 'nosniff');
+  }
+  // Belt-and-suspenders clickjacking defense alongside CSP frame-ancestors.
+  if (!headers.has('X-Frame-Options')) {
+    headers.set('X-Frame-Options', 'DENY');
+  }
+  // Don't leak full URLs (which may carry addresses) to other origins.
+  if (!headers.has('Referrer-Policy')) {
+    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  }
+  if (!headers.has('Content-Security-Policy')) {
+    headers.set('Content-Security-Policy', SECURITY_CSP);
+  }
+  return headers;
+}
+
 // Set route messages mapping (server-side initialization)
 setRouteMessages(routeMessages);
 
@@ -60,7 +91,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   // Skip i18n for API routes (they don't need locale prefix)
   if (pathname.startsWith('/api/')) {
-    return resolve(event);
+    const apiResponse = await resolve(event);
+    applySecurityHeaders(apiResponse.headers);
+    return apiResponse;
   }
 
   // Resolve locale: explicit cookie wins, else the browser's Accept-Language, else English
@@ -125,5 +158,6 @@ export const handle: Handle = async ({ event, resolve }) => {
     },
   });
 
+  applySecurityHeaders(response.headers);
   return response;
 };

@@ -6,10 +6,15 @@
 	import type { ChainSearchResult } from '$lib/contract-caller/types.js';
 	import { debug } from './debug-store.svelte.js';
 	import { CURATED_CHAINS, debounce, resolveAddProvider, addOrSwitchChain } from './helpers.js';
+	import { canAddChainToWallet } from './gating.js';
 	import Panel from './Panel.svelte';
 	import { Network, Search, Plus, Check } from '@lucide/svelte';
 
 	const wallet = $derived(debug.wallet);
+	// biubiu is a chainless passkey Safe (reads via the RPC pool, no EIP-1193
+	// provider). "Add any network" only applies to external wallets — never drive
+	// an unrelated injected extension on biubiu's behalf.
+	const canAddChain = $derived(canAddChainToWallet(wallet));
 
 	// Chain logos load from ethereum-data; fall back to the colored label on error.
 	const logoFailed = new SvelteSet<number>();
@@ -66,6 +71,9 @@
 
 	let addedChain = $state<number | null>(null);
 	async function addChain(r: ChainSearchResult) {
+		// Defensive: the section is hidden for biubiu, but never drive a chain add
+		// for a wallet that can't have chains added (would hit an unrelated extension).
+		if (!canAddChain) return;
 		const provider = resolveAddProvider(wallet);
 		if (!provider) {
 			debug.push('wallet_addEthereumChain', false, { reason: 'no-wallet' });
@@ -121,11 +129,12 @@
 		{/each}
 	</div>
 
-	<div class="divider"></div>
+	{#if canAddChain}
+		<div class="divider"></div>
 
-	<p class="wd-eyebrow">{t('wd.net.searchHeading')}</p>
-	<p class="wd-hint top-hint">{t('wd.net.searchHint')}</p>
-	<div class="search">
+		<p class="wd-eyebrow">{t('wd.net.searchHeading')}</p>
+		<p class="wd-hint top-hint">{t('wd.net.searchHint')}</p>
+		<div class="search">
 		<Search size={15} class="search-ic" />
 		<input
 			class="wd-input search-input"
@@ -172,6 +181,7 @@
 				</li>
 			{/each}
 		</ul>
+		{/if}
 	{/if}
 </Panel>
 

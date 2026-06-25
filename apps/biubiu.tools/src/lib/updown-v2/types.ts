@@ -38,6 +38,7 @@ export interface Instance {
 	status: 'stopped' | 'starting' | 'running' | 'paused' | 'error';
 	spaceId: string;
 	spaceName: string;
+	/** winRate is a PERCENT (0-100, e.g. 58.3) — the canonical unit across updown-v2; format with fmtPct() only. */
 	stats: { rounds: number; winRate: number; profit: number };
 	profits: { hour: number; day: number; thirtyDay: number };
 	createdAt: string;

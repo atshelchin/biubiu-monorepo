@@ -1,4 +1,5 @@
 <script lang="ts" generics="T">
+	import { untrack } from 'svelte';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
 	import type { Column, FilterOption } from './data-table';
 	import type { Snippet } from 'svelte';
@@ -41,17 +42,12 @@
 		emptyMessage
 	}: Props = $props();
 
-	// Sort state (initialized once from defaults)
-	let sortKey = $state('');
-	let sortDir = $state<'asc' | 'desc'>('desc');
-	let initialized = false;
-	$effect(() => {
-		if (!initialized) {
-			sortKey = defaultSortKey;
-			sortDir = defaultSortDir;
-			initialized = true;
-		}
-	});
+	// Sort state — seeded ONCE from the default* props (intentional initial value via
+	// untrack), then owned by user interaction (toggleSort). This drops the previous
+	// init $effect + non-reactive `initialized` flag, which deferred the first sort to
+	// after mount and could be clobbered.
+	let sortKey = $state(untrack(() => defaultSortKey));
+	let sortDir = $state<'asc' | 'desc'>(untrack(() => defaultSortDir));
 
 	// Pagination state
 	let currentPage = $state(0);
@@ -103,9 +99,11 @@
 	const totalPages = $derived(Math.max(1, Math.ceil(sorted.length / pageSize)));
 	const pageData = $derived(sorted.slice(currentPage * pageSize, (currentPage + 1) * pageSize));
 
-	// Reset page when data changes
+	// Intentional: when the underlying data SET changes size (e.g. parent applies a
+	// mode/status filter that shrinks the array), reset to the first page so the user
+	// is never stranded on a now-empty page. Filter/sort toggles already reset the page
+	// via handleFilter/toggleSort. Documented behavior — data-length change resets page.
 	$effect(() => {
-		// Access data.length to track changes
 		data.length;
 		currentPage = 0;
 	});

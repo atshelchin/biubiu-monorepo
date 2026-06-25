@@ -198,7 +198,8 @@ class ForeverStore {
 		if (!isWebAuthnAvailable()) return this.fail(t('capsule.error.noWebAuthn'));
 		this.status = 'setup';
 		this.message = t('capsule.status.preparingEnc');
-		return this.deriveKey(this.credentialFor(user));
+		// Top-level entry point: when the key is confirmed the flow is over → go idle.
+		return this.deriveKey(this.credentialFor(user), 'idle');
 	}
 
 	/** Coalesces concurrent unlocks so only ONE WebAuthn prompt is ever in flight at a time. */
@@ -220,11 +221,14 @@ class ForeverStore {
 	private async _unlock(): Promise<boolean> {
 		const user = authStore.user;
 		if (!user) return this.fail(t('capsule.error.signIn'));
+		// Remember the caller's status so a sub-step unlock (seal → 'sealing', loadEntries → 'idle')
+		// restores it instead of the unlock hard-stamping 'idle'. One owner of the top-level status.
+		const prior = this.status;
 		this.status = 'unlocking';
 		this.message = t('capsule.status.unlocking');
 		// ALWAYS the wallet passkey — never a stored credential, which on accounts migrated from the
 		// old scheme could be a dedicated encryption passkey and would derive a divergent key.
-		return this.deriveKey(this.credentialFor(user));
+		return this.deriveKey(this.credentialFor(user), prior === 'unlocking' ? 'idle' : prior);
 	}
 
 	/** The PRF credential to target — always the wallet passkey, pinned by its credentialId. */
@@ -239,18 +243,40 @@ class ForeverStore {
 	 * browser/device the passkey is available on. If PRF is unavailable we fail loudly rather than
 	 * silently mint a divergent key — that silent fork is what used to make letters undecryptable.
 	 */
-	private async deriveKey(cred: EncryptionCredential): Promise<boolean> {
+	private async deriveKey(cred: EncryptionCredential, restoreStatus: Status): Promise<boolean> {
 		try {
 			const { prf } = await evaluatePrf(cred);
 			this.rawDek = await deriveContentKey(prf);
 			this.credential = cred;
 			this.unlocked = true;
 			this.persist();
-			this.status = 'idle';
+			// Hand the top-level status back to the caller's flow instead of hard-stamping 'idle'
+			// (which made status flap idle→sealing when unlock ran as a sub-step of seal()).
+			this.status = restoreStatus;
 			this.message = '';
 			return true;
 		} catch {
 			return this.fail(t('capsule.error.noPrf'));
+		}
+	}
+
+	/**
+	 * Best-effort balance preflight: how far the Safe is below the protocol fee floor it must pay
+	 * as msg.value (FEE_WEI). Returns the wei shortfall (>0 ⇒ provably cannot even pay the fee),
+	 * 0 if it can cover the fee, and 0 on any RPC failure (defer to the bundler's precise errors).
+	 *
+	 * NOTE: this deliberately does NOT add a gas reserve. 4337 gas may be paid by a bundler
+	 * gas-account / sponsor, so a Safe holding exactly FEE_WEI can still seal — adding a reserve
+	 * would false-reject that sponsored case. The fee itself, by contrast, is always paid by the
+	 * Safe, so a balance below FEE_WEI is unspendable no matter who sponsors gas. Pure + testable.
+	 */
+	async feeShortfall(safeAddress: string): Promise<bigint> {
+		try {
+			const balHex = await rpcCall<string>(this.networkSlug, 'eth_getBalance', [safeAddress, 'latest']);
+			const bal = BigInt(balHex);
+			return bal < FEE_WEI ? FEE_WEI - bal : 0n;
+		} catch {
+			return 0n; // non-fatal: let the bundler report precise AA21 / gas-account errors
 		}
 	}
 
@@ -276,16 +302,20 @@ class ForeverStore {
 			/* best-effort: contract absent → 0; on RPC error fall through to the real attempt */
 		}
 
+		// unlock() now restores the prior status ('sealing') on success, so the busy guard holds
+		// across the sub-step — no fragile re-assert needed.
 		if (!this.rawDek && !(await this.unlock())) return false;
-		this.status = 'sealing'; // unlock() may have toggled status; re-assert busy
 
-		// Preflight: a fresh/empty Safe can't pay the fee + gas.
-		try {
-			const balHex = await rpcCall<string>(this.networkSlug, 'eth_getBalance', [user.safeAddress, 'latest']);
-			if (BigInt(balHex) < FEE_WEI) return this.fail(this.friendlyError('AA21'));
-		} catch {
-			/* non-fatal: fall through and let the bundler report precise errors */
-		}
+		// Balance preflight (best-effort early-out). The Safe must pay the protocol FEE_WEI *plus*
+		// 4337 gas — UNLESS a bundler gas-account / sponsor covers the gas, in which case it needs
+		// only FEE_WEI. So there is no single "fee + gas" threshold we can compare against without
+		// either (a) false-OK'ing a self-paying Safe that holds exactly the fee, or (b) false-reject
+		// the sponsored Safe that legitimately holds exactly the fee. We therefore only short-circuit
+		// the *provably* unspendable case — balance below the fee floor, where no sponsor can help
+		// because the fee itself is paid by the Safe as msg.value. Everything else defers to the
+		// bundler's precise AA21 / gas-account errors (friendlyError / openFunding handle both).
+		const shortfall = await this.feeShortfall(user.safeAddress);
+		if (shortfall > 0n) return this.fail(this.friendlyError('AA21'));
 
 		this.message = t('capsule.status.encrypting');
 		try {

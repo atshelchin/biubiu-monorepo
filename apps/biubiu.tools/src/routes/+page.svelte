@@ -108,7 +108,6 @@
 		};
 	});
 
-	declare const __COMMIT_HASH__: string;
 	const commitHash = __COMMIT_HASH__;
 	const commitUrl = `https://github.com/atshelchin/biubiu-monorepo/tree/${commitHash}`;
 

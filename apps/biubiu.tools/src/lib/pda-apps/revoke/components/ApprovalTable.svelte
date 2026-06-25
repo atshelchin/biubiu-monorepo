@@ -107,7 +107,7 @@
 
 			<!-- Action -->
 			<div class="td action">
-				<button class="revoke-btn" onclick={() => s.revokeOne(row)} disabled={s.revoking}>
+				<button class="revoke-btn" onclick={() => s.revokeOne(row)} disabled={s.revoking || !s.sendSupported}>
 					{#if pending}
 						<LoaderCircle size={14} class="spin" /> {t('revoke.table.revoking')}
 					{:else}

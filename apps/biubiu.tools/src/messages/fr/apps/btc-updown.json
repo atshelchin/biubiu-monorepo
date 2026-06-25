@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Prise de profit",
   "btcUpdown.filter.stopLoss": "Stop loss",
   "btcUpdown.disclaimer": "Ceci est une simulation uniquement — aucun argent réel n'est impliqué. Jouez de manière responsable. Nous n'encourageons pas les jeux d'argent.",
-
   "btcUpdown.live.sectionTitle": "En direct",
   "btcUpdown.live.passkeyRegistered": "Passkey enregistré",
   "btcUpdown.live.registerPasskey": "Enregistrer un passkey",
   "btcUpdown.live.remove": "Retirer",
-
   "btcUpdown.instance.title": "Instances de stratégie",
   "btcUpdown.instance.refresh": "Actualiser",
   "btcUpdown.instance.create": "Créer",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Exporter",
   "btcUpdown.instance.import": "Importer",
   "btcUpdown.instance.statusUnknown": "inconnu",
-
   "btcUpdown.configurator.createTitle": "Créer une instance de stratégie",
   "btcUpdown.configurator.editTitle": "Modifier la config de stratégie",
   "btcUpdown.configurator.editConfig": "Modifier",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "dépensé",
   "btcUpdown.v70.up": "UP",
   "btcUpdown.v70.down": "DOWN",
-
   "btcUpdown.round.exitReason": "Motif de sortie",
   "btcUpdown.exit.stopLoss": "Stop loss",
   "btcUpdown.exit.binanceStopLoss": "Stop loss Binance",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Effacer le filtre horaire",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "btcUpdown.live.priceToBeat": "Prix à battre",
   "btcUpdown.strategy.close": "Fermer",
-
   "btcUpdown.control.errFailedLoad": "Échec du chargement",
   "btcUpdown.control.errFailed": "Échec",
   "btcUpdown.control.errActionFailed": "Échec de l'action",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Je",
   "btcUpdown.control.weekday.fr": "Ve",
   "btcUpdown.control.weekday.sa": "Sa",
-
   "btcUpdown.endpoint.title": "Endpoints gérés",
   "btcUpdown.endpoint.add": "+ Ajouter",
   "btcUpdown.endpoint.urlPlaceholder": "URL de l'endpoint (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Enregistrer un passkey",
   "btcUpdown.endpoint.remove": "Retirer l'endpoint",
   "btcUpdown.endpoint.dismiss": "Ignorer",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Début",
   "btcUpdown.cfg.startFromTemplate": "Partir d'un modèle",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Stop suiveur",
   "btcUpdown.cfg.exitCheckpoint": "Point de contrôle",
   "btcUpdown.cfg.fallback": "secours",
-  "btcUpdown.cfg.nameYourStrategy": "Nommez votre stratégie..."
+  "btcUpdown.cfg.nameYourStrategy": "Nommez votre stratégie...",
+  "btcUpdown.strategy.notFound": "Aucune stratégie trouvée à ce point de terminaison"
 }

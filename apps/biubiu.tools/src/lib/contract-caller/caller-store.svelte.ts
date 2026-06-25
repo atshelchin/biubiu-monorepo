@@ -46,6 +46,7 @@ import { parseAbiInput } from './abi.js';
 import { buildArgs, encodeCall } from './encode.js';
 import { executeReadWithFailover } from './read.js';
 import { toOutputRows } from './read.js';
+import { dedupRpcs } from './rpc-client.js';
 import { detectProxy } from './proxy.js';
 import {
 	DEMO_ABI,
@@ -209,7 +210,7 @@ class ContractCallerStore {
 	 */
 	get readRpcs(): string[] {
 		const healthy = this.rpcOptions.filter((o) => o.status === 'ok').map((o) => o.url);
-		return [...new Set([this.rpcUrl, ...healthy].filter(Boolean))];
+		return dedupRpcs([this.rpcUrl, ...healthy]);
 	}
 
 	// ── Network actions ──

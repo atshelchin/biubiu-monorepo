@@ -82,6 +82,8 @@ export interface Round {
 	platform_fee: number | null;
 	total_profit: number | null;
 	signal_action: string | null;
+	/** JSON-encoded extra details for some signal actions (e.g. v80 dual-sweep). */
+	signal_rules?: string | null;
 	skip_reason: string | null;
 	swing_mode: number | null;
 	swing_exit_reason: string | null;
@@ -131,18 +133,6 @@ export interface DailyStat {
 	invested: number;
 	payout: number;
 	profit: number;
-}
-
-export interface WeekdayStats {
-	/** 0 = Monday, 6 = Sunday */
-	day: number;
-	label: string;
-	rounds: number;
-	wins: number;
-	losses: number;
-	winRate: number;
-	profit: number;
-	avgProfit: number;
 }
 
 export interface WalletInfo {

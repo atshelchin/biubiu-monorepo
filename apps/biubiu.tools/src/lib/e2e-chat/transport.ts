@@ -7,7 +7,7 @@
  */
 import type { ClientFrame, ServerFrame } from './protocol';
 
-export type ConnState = 'connecting' | 'open' | 'reconnecting' | 'closed';
+export type ConnState = 'connecting' | 'open' | 'reconnecting' | 'closed' | 'failed';
 
 export interface TransportCallbacks {
 	onFrame: (frame: ServerFrame) => void;
@@ -16,12 +16,24 @@ export interface TransportCallbacks {
 
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 15_000;
+/**
+ * How long to keep retrying an *initial* connection before giving up and
+ * surfacing a terminal 'failed' state. Once a socket has opened at least once,
+ * we never give up — transient blips reconnect indefinitely (keys are in
+ * memory, so the session is worth recovering). This deadline only guards the
+ * "relay never reachable" case so the UI doesn't spin forever.
+ */
+const CONNECT_DEADLINE_MS = 20_000;
 
 export class ChatTransport {
 	private ws: WebSocket | null = null;
 	private retryTimer: ReturnType<typeof setTimeout> | null = null;
 	private attempts = 0;
 	private stopped = false;
+	/** True once any socket has opened — disables the initial-connect deadline. */
+	private everConnected = false;
+	/** Timestamp (ms) of the very first connect attempt; gates CONNECT_DEADLINE_MS. */
+	private firstAttemptAt = 0;
 
 	/** Set from the server's `welcome`; replayed as `hello.resume` on reconnect. */
 	resumeToken: string | null = null;
@@ -33,6 +45,7 @@ export class ChatTransport {
 
 	start(): void {
 		this.stopped = false;
+		this.firstAttemptAt = Date.now();
 		this.openSocket(false);
 	}
 
@@ -51,6 +64,7 @@ export class ChatTransport {
 
 		ws.addEventListener('open', () => {
 			this.attempts = 0;
+			this.everConnected = true;
 			this.cb.onState('open');
 			this.send({ t: 'hello', resume: this.resumeToken ?? undefined });
 		});
@@ -77,6 +91,15 @@ export class ChatTransport {
 
 	private scheduleReconnect(): void {
 		if (this.stopped || this.retryTimer) return;
+
+		// Give up only on the INITIAL connect (relay unreachable). Once we have
+		// opened at least once, retry forever — a session is worth recovering.
+		if (!this.everConnected && Date.now() - this.firstAttemptAt >= CONNECT_DEADLINE_MS) {
+			this.stopped = true;
+			this.cb.onState('failed');
+			return;
+		}
+
 		this.cb.onState('reconnecting');
 		const delay = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** this.attempts);
 		const jitter = delay * 0.25 * Math.random();
@@ -107,6 +130,7 @@ export class ChatTransport {
 	/** Best-effort graceful close, then stop reconnecting. */
 	stop(sendBye: boolean): void {
 		this.stopped = true;
+		this.everConnected = false;
 		if (this.retryTimer) {
 			clearTimeout(this.retryTimer);
 			this.retryTimer = null;

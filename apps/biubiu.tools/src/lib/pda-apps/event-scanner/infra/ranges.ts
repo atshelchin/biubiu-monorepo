@@ -47,3 +47,17 @@ export function subtractRanges(base: BlockRange[], covered: BlockRange[]): Block
 export function totalBlocks(ranges: BlockRange[]): number {
 	return mergeRanges(ranges).reduce((sum, [a, b]) => sum + (b - a + 1), 0);
 }
+
+/**
+ * A scan is "complete" only when every block was processed AND no gaps remain.
+ * A single recorded gap (a terminally-failed or unservable range) must withhold
+ * completion so the scan reads as incomplete (→ Resume / Re-scan gaps) instead of
+ * a silent partial "success" — critical when the output is accounting data.
+ */
+export function isFullyCovered(
+	scannedBlocks: number,
+	total: number,
+	gaps: BlockRange[]
+): boolean {
+	return scannedBlocks >= total && mergeRanges(gaps).length === 0;
+}

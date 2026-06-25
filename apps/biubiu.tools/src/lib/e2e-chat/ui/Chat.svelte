@@ -42,7 +42,13 @@
 	{:else if store.phase === 'connected'}
 		<ChatRoom {store} />
 	{:else if store.phase === 'handshaking'}
-		<StatusView loading title={t('chat.securing.title')} description={t('chat.securing.desc')} />
+		<StatusView
+			loading
+			title={t('chat.securing.title')}
+			description={store.conn === 'reconnecting' || store.conn === 'connecting'
+				? t('chat.room.reconnecting')
+				: t('chat.securing.desc')}
+		/>
 	{:else}
 		<ChatLanding {store} {invite} {basePath} />
 	{/if}

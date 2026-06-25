@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "Nhận quyền quản trị",
   "updown5m.space.admin.claimTitle": "Trở thành quản trị viên",
   "updown5m.space.noStrategies": "Chưa có chiến lược nào trong không gian này",
-
   "btcUpdown.stats.wallet": "Ví",
   "btcUpdown.stats.portfolio": "Danh mục",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "Tín hiệu bỏ qua (score={score})",
   "btcUpdown.skip.marketExpired": "Thị trường đã hết hạn",
   "btcUpdown.skip.windowExpired": "Cửa sổ đã hết hạn",
-
   "btcUpdown.round.exitReason": "Lý do thoát",
   "btcUpdown.exit.stopLoss": "Cắt lỗ",
   "btcUpdown.exit.binanceStopLoss": "Cắt lỗ Binance",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "Xóa bộ lọc theo giờ",
   "btcUpdown.chart.am": "Sáng",
   "btcUpdown.chart.pm": "Chiều",
-
   "updown5m.back": "Quay lại",
   "updown5m.spaceFallback": "Không gian",
   "updown5m.userFallback": "Người dùng",
@@ -295,7 +292,6 @@
   "updown5m.claim": "Nhận",
   "updown5m.newShort": "+ Mới",
   "updown5m.starting": "đang khởi động...",
-
   "updown5m.detail.col1h": "1h",
   "updown5m.detail.col30d": "30 ngày",
   "updown5m.detail.showSidebar": "Hiện thanh bên",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "HỒI PHỤC",
   "updown5m.detail.perRound": "{value}/vòng",
   "updown5m.detail.netCost": "Chi phí ròng:",
-
   "updown5m.member.safeAddress": "Địa chỉ Safe",
   "updown5m.member.tier": "Hạng",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "Không có phiên bản đang hoạt động trong không gian này.",
   "updown5m.member.performanceSummary": "Tóm tắt hiệu suất",
   "updown5m.member.userNotFound": "Không tìm thấy người dùng",
-
   "updown5m.table.prevPage": "Trang trước",
-  "updown5m.table.nextPage": "Trang sau"
+  "updown5m.table.nextPage": "Trang sau",
+  "btcUpdown.round.hedgeFilledAt": "Đã khớp phòng hộ",
+  "btcUpdown.round.hedgeSoldAt": "Đã bán phòng hộ"
 }

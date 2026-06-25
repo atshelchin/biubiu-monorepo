@@ -4,7 +4,7 @@
  */
 import { type Address, type Hex } from 'viem';
 import { FoundryClient } from './foundry-client.js';
-import { buildInitCode, predictCreate2Address, CREATE2_PROXY } from './create2.js';
+import { buildInitCode, predictCreate2Address, isValidSalt, CREATE2_PROXY } from './create2.js';
 import { saveDeployment, getDeployments, markVerified, clearDeployments } from './history.js';
 import { type GasOverrides } from '$lib/auth/safe-tx/send-contract-call.js';
 import type { SendStatus } from '$lib/auth/safe-tx/send-token.js';
@@ -56,6 +56,7 @@ export type DeployBlocker =
 	| 'server'
 	| 'wallet'
 	| 'contract'
+	| 'salt'
 	| 'network'
 	| 'rpc'
 	| 'notReady'
@@ -118,6 +119,16 @@ class DeployStore {
 	// Network readiness check (CREATE2 proxy, Safe contracts, P256, bundler, gas)
 	networkCheck = $state<NetworkCheckResult | null>(null);
 	networkChecking = $state(false);
+
+	/**
+	 * Monotonic generation token bumped on every chain/RPC selection change.
+	 * `runNetworkCheck` / `fetchGasPrices` capture it at start and discard their
+	 * (async) results if it changed — so a slow check for chain A can never write
+	 * its readiness/gas onto a chain B the user has since switched to. NOT $state:
+	 * it's an internal guard, never rendered, and we don't want it to re-trigger
+	 * effects.
+	 */
+	private _checkToken = 0;
 
 	// RPC endpoint for the selected chain
 	rpcUrl = $state('');
@@ -236,7 +247,7 @@ class DeployStore {
 			this.selectedChain !== null &&
 			this.networkCheck?.ready === true &&
 			this.rpcUrl !== '' &&
-			this.salt.length === 66 &&
+			isValidSalt(this.salt) &&
 			!this.deploying &&
 			!this.addressAlreadyDeployed
 		);
@@ -247,6 +258,10 @@ class DeployStore {
 		if (this.serverStatus !== 'connected') return 'server';
 		if (!walletStore.isConnected) return 'wallet';
 		if (!this.selectedContract) return 'contract';
+		// An invalid salt blocks deploy; the card surfaces the dedicated inline
+		// `deploy.error.invalidSalt` message under the salt input, so we report it
+		// here as a distinct blocker the UI maps to that existing key.
+		if (!isValidSalt(this.salt)) return 'salt';
 		if (!this.selectedChain) return 'network';
 		if (!this.rpcUrl) return 'rpc';
 		if (this.networkCheck?.ready !== true) return 'notReady';
@@ -381,6 +396,8 @@ class DeployStore {
 
 	/** Load a chain by id, auto-pick the fastest RPC, then run the readiness check. */
 	async selectChain(chainId: number): Promise<void> {
+		// Invalidate any in-flight readiness/gas check for the previous chain.
+		this._checkToken++;
 		this.loadingChain = true;
 		this.chainError = '';
 		this.searchResults = [];
@@ -420,6 +437,7 @@ class DeployStore {
 
 	/** Go back to the chain search. */
 	changeNetwork(): void {
+		this._checkToken++;
 		this.selectedChain = null;
 		this.searchQuery = '';
 		this.searchResults = COMMON_CHAINS;
@@ -432,10 +450,15 @@ class DeployStore {
 		this.networkCheck = null;
 		this.predictedAddress = null;
 		this.addressAlreadyDeployed = false;
+		// No new check is started here, and the in-flight one (now stale) will skip
+		// clearing this — so clear it now or the search view shows a stuck spinner.
+		this.networkChecking = false;
 	}
 
 	/** User picked a different RPC from the list — re-check readiness + gas. */
 	switchRpc(url: string): void {
+		// New RPC → invalidate the previous RPC's in-flight check/gas results.
+		this._checkToken++;
 		this.rpcUrl = url;
 		this.usingCustomRpc = false;
 		this.rpcLatency = this.rpcOptions.find((r) => r.url === url)?.latencyMs ?? null;
@@ -459,6 +482,8 @@ class DeployStore {
 			this.rpcError = e instanceof Error ? e.message : 'RPC is unreachable';
 			return;
 		}
+		// New RPC → invalidate the previous RPC's in-flight check/gas results.
+		this._checkToken++;
 		this.rpcUrl = url;
 		this.usingCustomRpc = true;
 		this.rpcLatency = null;
@@ -476,6 +501,11 @@ class DeployStore {
 			return;
 		}
 
+		// Capture the generation; a later chain/RPC switch bumps _checkToken and
+		// makes this run stale — we then drop its result instead of writing it
+		// onto a chain the user has since switched away from.
+		const token = this._checkToken;
+
 		this.networkChecking = true;
 		this.networkCheck = null;
 		this.log(`Checking ${chain.name} (${chain.chainId})...`);
@@ -486,6 +516,8 @@ class DeployStore {
 				chainId: chain.chainId,
 				safeAddress: walletStore.activeWallet?.address
 			});
+
+			if (token !== this._checkToken) return; // stale — a newer selection won
 
 			this.networkCheck = result;
 
@@ -501,9 +533,10 @@ class DeployStore {
 				}
 			}
 		} catch (e) {
+			if (token !== this._checkToken) return; // stale — ignore late failure
 			this.log('Network check failed: ' + (e instanceof Error ? e.message : String(e)), 'error');
 		} finally {
-			this.networkChecking = false;
+			if (token === this._checkToken) this.networkChecking = false;
 		}
 	}
 
@@ -541,6 +574,10 @@ class DeployStore {
 		const chain = this.selectedChain;
 		if (!rpc || !chain) return;
 
+		// Capture the generation so a stale (slow) gas fetch for the old chain
+		// can't overwrite the gas-field prefills of the chain just switched to.
+		const token = this._checkToken;
+
 		try {
 			// Fetch chain RPC price + bundler price in parallel
 			const [chainRes, bundlerData] = await Promise.all([
@@ -571,6 +608,8 @@ class DeployStore {
 				? chainGasWei / 2n
 				: bundlerPriority;
 
+			if (token !== this._checkToken) return; // stale — a newer selection won
+
 			const maxFeeNum = Number(maxFeeWei);
 			const priorityNum = Number(priorityWei);
 
@@ -594,7 +633,7 @@ class DeployStore {
 
 	updatePredictedAddress(): void {
 		const contract = this.selectedContract;
-		if (!contract || this.salt.length !== 66) {
+		if (!contract || !isValidSalt(this.salt)) {
 			this.predictedAddress = null;
 			return;
 		}

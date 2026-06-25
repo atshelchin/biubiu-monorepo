@@ -5,7 +5,7 @@
  * 1-native fallback. Membership only waives THIS service fee — the relay still
  * pays network gas / bundler / on-chain costs.
  */
-import { createPublicClient, http, fallback, parseUnits } from 'viem';
+import { createPublicClient, http, fallback, parseUnits, isAddress } from 'viem';
 import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import {
 	FEE_USD,
@@ -38,7 +38,9 @@ const AGGREGATOR_ABI = [
 
 async function fetchNativeUsdPrice(network: SweepNetwork): Promise<number | null> {
 	const feed = network.chainlinkNativeUsdFeed;
-	if (!feed) return null;
+	// Guard a malformed feed address (a bad constant would otherwise cost a wasted
+	// RPC round-trip before viem rejects it) — degrade to the next fee tier.
+	if (!feed || !isAddress(feed)) return null;
 	try {
 		const client = createPublicClient({ transport: fallback(resolveRpcUrls(network.chainId, network.rpcs).map((u) => http(u))) });
 		const [round, dec] = await Promise.all([

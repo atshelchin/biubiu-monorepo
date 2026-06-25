@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "Reivindicar admin",
   "updown5m.space.admin.claimTitle": "Tornar-se admin",
   "updown5m.space.noStrategies": "Ainda não há estratégias neste espaço",
-
   "btcUpdown.stats.wallet": "Carteira",
   "btcUpdown.stats.portfolio": "Portfólio",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "Sinal de pular (pontuação={score})",
   "btcUpdown.skip.marketExpired": "Mercado expirado",
   "btcUpdown.skip.windowExpired": "Janela expirada",
-
   "btcUpdown.round.exitReason": "Motivo da saída",
   "btcUpdown.exit.stopLoss": "Stop loss",
   "btcUpdown.exit.binanceStopLoss": "Stop loss da Binance",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "Limpar filtro de hora",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "updown5m.back": "Voltar",
   "updown5m.spaceFallback": "Espaço",
   "updown5m.userFallback": "Usuário",
@@ -295,7 +292,6 @@
   "updown5m.claim": "Reivindicar",
   "updown5m.newShort": "+ Nova",
   "updown5m.starting": "iniciando...",
-
   "updown5m.detail.col1h": "1H",
   "updown5m.detail.col30d": "30D",
   "updown5m.detail.showSidebar": "Mostrar barra lateral",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "RECUPERAÇÃO",
   "updown5m.detail.perRound": "{value}/rodada",
   "updown5m.detail.netCost": "Custo líquido:",
-
   "updown5m.member.safeAddress": "Endereço da Safe",
   "updown5m.member.tier": "Plano",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "Nenhuma instância ativa neste espaço.",
   "updown5m.member.performanceSummary": "Resumo de desempenho",
   "updown5m.member.userNotFound": "Usuário não encontrado",
-
   "updown5m.table.prevPage": "Página anterior",
-  "updown5m.table.nextPage": "Próxima página"
+  "updown5m.table.nextPage": "Próxima página",
+  "btcUpdown.round.hedgeFilledAt": "Hedge executado",
+  "btcUpdown.round.hedgeSoldAt": "Hedge vendido"
 }

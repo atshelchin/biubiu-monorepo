@@ -12,6 +12,7 @@
 	import { explorerTxUrl } from '$lib/wallet/infra/chains.js';
 	import { debug } from './debug-store.svelte.js';
 	import { nativeToWei, tokenToUnits, encodeErc20Transfer, isAddress } from './helpers.js';
+	import { usesMultiSend } from './gating.js';
 	import { PHASE_KEY } from './labels.js';
 	import Panel from './Panel.svelte';
 	import Btn from './Btn.svelte';
@@ -26,6 +27,10 @@
 	}
 
 	const wallet = $derived(debug.wallet);
+	// MultiSend is biubiu-only. External EIP-1193 wallets broadcast via
+	// eth_sendTransaction / EIP-5792 wallet_sendCalls and never delegatecall a
+	// MultiSend, so the MultiSend calldata preview only applies to biubiu.
+	const showMultiSendPreview = $derived(usesMultiSend(wallet));
 	let seq = 2;
 	let calls = $state<Draft[]>([{ id: 1, to: '', value: '', data: '0x' }]);
 
@@ -94,6 +99,12 @@
 
 	function togglePreview() {
 		err = null;
+		// Guard: MultiSend encoding only describes biubiu's batching. Never show it
+		// for an external wallet that broadcasts via eth_sendTransaction / EIP-5792.
+		if (!showMultiSendPreview) {
+			preview = null;
+			return;
+		}
 		if (preview) {
 			preview = null;
 			return;
@@ -104,6 +115,12 @@
 			err = e instanceof Error ? e.message : String(e);
 		}
 	}
+
+	// Drop a stale biubiu preview if the active wallet changes to one that doesn't
+	// use MultiSend (e.g. switching from biubiu to an injected wallet).
+	$effect(() => {
+		if (!showMultiSendPreview && preview) preview = null;
+	});
 
 	async function doEstimate() {
 		if (!wallet) return;
@@ -226,7 +243,9 @@
 	{/if}
 
 	<div class="footer">
-		<Btn size="sm" variant="ghost" onclick={togglePreview}>{t('wd.tx.preview')}</Btn>
+		{#if showMultiSendPreview}
+			<Btn size="sm" variant="ghost" onclick={togglePreview}>{t('wd.tx.preview')}</Btn>
+		{/if}
 		<Btn size="sm" loading={estimating} onclick={doEstimate}><Gauge size={14} />{t('wd.tx.estimate')}</Btn>
 		<Btn variant="primary" loading={sending} disabled={!wallet} onclick={send}>
 			<Send size={14} />{t('wd.tx.send')}
@@ -236,7 +255,7 @@
 	{#if estimate}
 		<p class="line">{t('wd.tx.estimateResult', { gas: estimate })}</p>
 	{/if}
-	{#if preview}
+	{#if preview && showMultiSendPreview}
 		<CodeBlock value={preview} label={t('wd.tx.previewLabel')} />
 		<p class="wd-hint">{t('wd.tx.previewNote')}</p>
 	{/if}

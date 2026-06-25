@@ -1,4 +1,5 @@
 import type { RequestHandler } from './$types';
+import { xmlEscape, isValidChainId, isValidAddress } from '../sitemap-xml';
 
 export const prerender = true;
 
@@ -14,14 +15,14 @@ interface ContractItem {
 }
 
 function generateUrl(chainId: number, address: string, locale: string): string {
-	const path = `/contracts/${chainId}/${address}`;
+	const path = `/contracts/${chainId}/${xmlEscape(address)}`;
 	const locPath = locale === DEFAULT_LOCALE ? path : `/${locale}${path}`;
 	const fullUrl = `${BASE_URL}${locPath}`;
 
 	// Generate alternate links for all locales
 	const alternates = LOCALES.map((loc) => {
 		const altPath = loc === DEFAULT_LOCALE ? path : `/${loc}${path}`;
-		return `    <xhtml:link rel="alternate" hreflang="${loc}" href="${BASE_URL}${altPath}"/>`;
+		return `    <xhtml:link rel="alternate" hreflang="${xmlEscape(loc)}" href="${BASE_URL}${altPath}"/>`;
 	}).join('\n');
 
 	return `  <url>
@@ -41,8 +42,10 @@ export const GET: RequestHandler = async ({ fetch }) => {
 
 		const urls: string[] = [];
 
-		// Generate URLs for each contract in each locale
+		// Generate URLs for each contract in each locale.
+		// Skip entries whose values don't conform — never emit them into the XML.
 		for (const contract of contracts) {
+			if (!isValidChainId(contract.chainId) || !isValidAddress(contract.address)) continue;
 			for (const locale of LOCALES) {
 				urls.push(generateUrl(contract.chainId, contract.address, locale));
 			}

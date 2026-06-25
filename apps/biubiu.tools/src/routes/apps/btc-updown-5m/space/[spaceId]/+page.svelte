@@ -3,8 +3,9 @@
 	import { goto } from '$app/navigation';
 	import { t, formatNumber } from '$lib/i18n';
 	import { fadeInUp } from '$lib/actions/fadeInUp';
+	import { authStore } from '$lib/auth';
 	import { routes } from '$lib/updown-v2/routes';
-	import { profitClass, fmt, fmtShort, fmtPct, fmtDate, statusDot } from '$lib/updown-v2/utils';
+	import { profitClass, fmt, fmtShort, fmtPct, fmtDate, statusDot, isSpaceAdmin } from '$lib/updown-v2/utils';
 	import { spaces, instances, spaceTab } from '$lib/updown-v2/store.svelte';
 	import { MOCK_SPACE_MEMBERS, MOCK_SPACE_STATS, MOCK_SPACE_SETTINGS } from '$lib/updown-v2/mock';
 
@@ -15,7 +16,10 @@
 	const spaceMembers = $derived(MOCK_SPACE_MEMBERS[spaceId ?? ''] ?? []);
 	const spaceSt = $derived(MOCK_SPACE_STATS[spaceId ?? '']);
 	const spaceSettings = $derived(MOCK_SPACE_SETTINGS[spaceId ?? '']);
-	const isAdmin = $derived(spaceMembers.some(m => m.userId === 'user_shelchin' && m.role === 'admin'));
+	// Gate admin surface on the REAL authenticated identity (Safe address), never a
+	// hardcoded userId. In the mock, member Safe addresses are fabricated and cannot
+	// match a real logged-in Safe, so admin codes/secrets stay hidden by default.
+	const isAdmin = $derived(isSpaceAdmin(spaceMembers, authStore.user));
 	const sortedMembers = $derived([...spaceMembers].sort((a, b) => b.totalProfit - a.totalProfit));
 </script>
 

@@ -1,4 +1,5 @@
 import type { RequestHandler } from './$types';
+import { xmlEscape, isValidChainId } from '../sitemap-xml';
 
 export const prerender = true;
 
@@ -22,7 +23,7 @@ function generateUrl(chainId: number, locale: string): string {
 	// Generate alternate links for all locales
 	const alternates = LOCALES.map((loc) => {
 		const altPath = loc === DEFAULT_LOCALE ? path : `/${loc}${path}`;
-		return `    <xhtml:link rel="alternate" hreflang="${loc}" href="${BASE_URL}${altPath}"/>`;
+		return `    <xhtml:link rel="alternate" hreflang="${xmlEscape(loc)}" href="${BASE_URL}${altPath}"/>`;
 	}).join('\n');
 
 	return `  <url>
@@ -42,8 +43,10 @@ export const GET: RequestHandler = async ({ fetch }) => {
 
 		const urls: string[] = [];
 
-		// Generate URLs for each chain in each locale
+		// Generate URLs for each chain in each locale.
+		// Skip entries whose chainId isn't a positive integer — never emit them.
 		for (const chain of chains) {
+			if (!isValidChainId(chain.chainId)) continue;
 			for (const locale of LOCALES) {
 				urls.push(generateUrl(chain.chainId, locale));
 			}

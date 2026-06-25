@@ -113,7 +113,9 @@ export const NETWORKS: Record<string, SweepNetwork> = {
 		rpcs: ['https://rpc.gnosischain.com', 'https://gnosis-rpc.publicnode.com'],
 		explorerTxUrl: 'https://gnosisscan.io/tx/',
 		explorerAddressUrl: 'https://gnosisscan.io/address/',
-		chainlinkNativeUsdFeed: '0x678df341fc31947dA4324eC63212874be5a82f8',
+		// TODO: no valid Chainlink xDAI/USD feed wired — the previous constant was a
+		// malformed 41-char address that silently failed into the fallback. Left
+		// undefined → fee uses the native fallback tier until a correct feed is added.
 	}),
 	'base-sepolia': net({
 		slug: 'base-sepolia',

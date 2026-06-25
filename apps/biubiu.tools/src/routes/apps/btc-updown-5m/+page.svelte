@@ -137,7 +137,7 @@
 					{:else if key === 'thirtyDay'}
 						<span class={profitClass(row.profits.thirtyDay)}>{fmtShort(row.profits.thirtyDay)}</span>
 					{:else if key === 'winRate'}
-						{row.stats.winRate}%
+						{fmtPct(row.stats.winRate)}
 					{/if}
 				{/snippet}
 			</DataTable>

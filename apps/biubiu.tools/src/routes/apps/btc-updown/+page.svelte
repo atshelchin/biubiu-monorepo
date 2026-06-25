@@ -80,6 +80,15 @@
 		type StrategyInstance,
 	} from '$lib/updown-shared/auth/engine-client.js';
 	import type { ManagedEndpoint } from '$lib/updown-shared/auth/types.js';
+	import type { TranslateFn } from '$lib/updown-shared/labels';
+	import type { TranslationKey } from '$i18n';
+
+	// V70 batch-buy result shape (named so .filter/.reduce resolve correctly)
+	type V70Result = { slug: string; success: boolean; shares?: number; cost?: number; error?: string };
+
+	// Adapter: app's `t` has a narrowed `TranslationKey` key; components expect the
+	// broader `TranslateFn` (string key). Contravariant — bridge with a thin wrapper.
+	const tFn: TranslateFn = (k, p) => t(k as TranslationKey, p);
 
 	// --- Exchange rate (USD → user currency) ---
 	let exchangeRate = $state(1);
@@ -92,6 +101,9 @@
 	// --- Formatter context (bridges i18n reactive state to pure functions) ---
 
 	function getFormatterCtx(): FormatterContext {
+		// i18n's formatNumber/formatCurrency are runtime-compatible with
+		// FormatterContext's Intl-typed fields; the difference is only the
+		// allowed `style` union (no 'unit'). Param-type contravariance — assert.
 		return {
 			formatNumber,
 			formatCurrency,
@@ -100,7 +112,7 @@
 			timezone: preferences.timezone,
 			timeFormat,
 			exchangeRate,
-		};
+		} as FormatterContext;
 	}
 
 	// Convenience wrappers (bind formatter context)
@@ -586,7 +598,7 @@
 	let v70MaxPrice = $state(0.51);
 	let v70Loading = $state(false);
 	let v70Error = $state('');
-	let v70Results = $state<Array<{ slug: string; success: boolean; shares?: number; cost?: number; error?: string }> | null>(null);
+	let v70Results = $state<V70Result[] | null>(null);
 
 	function isV70Url(): boolean {
 		return parseEngineUrl(activeStrategy.baseUrl)?.strategyId === 'v70';
@@ -610,7 +622,7 @@
 					...auth,
 				}),
 			});
-			const result = await res.json() as { ok: boolean; results?: typeof v70Results; error?: string };
+			const result = await res.json() as { ok: boolean; results?: V70Result[]; error?: string };
 			if (result.ok && result.results) {
 				v70Results = result.results;
 				const filled = result.results.filter(r => r.success).length;
@@ -923,7 +935,7 @@
 		const result = await discoverStrategies(endpointUrl, '/api/strategies', lang, strategyFetch);
 		if (!result || result.strategies.length === 0) {
 			validationSteps = [{ step: 'discovery', status: 'fail' }];
-			customUrlError = 'No strategies found at this endpoint';
+			customUrlError = t('btcUpdown.strategy.notFound');
 			customUrlValidating = false;
 			return;
 		}
@@ -1011,7 +1023,6 @@
 		for (const sib of siblings) visibleDiscoveredIds.delete(sib.id);
 		visibleDiscoveredIds = new SvelteSet(visibleDiscoveredIds);
 		discoveredSiblings.delete(host);
-		configPanelSection = null;
 		// Switch active if needed
 		if (
 			hostStrategies.some((s) => s.id === activeStrategyId) ||
@@ -1971,14 +1982,14 @@
 						open={true}
 						onClose={() => { configuratorEndpoint = null; }}
 						onSave={handleConfiguratorSave}
-						{t}
+						t={tFn}
 					/>
 				</div>
 			{:else}
 			<!-- Live Endpoint Management (shown when a managed endpoint with trading is active) -->
 			{#if showManagementEndpoint?.permissions?.trading && showManagementEndpoint}
 				<div class="live-management glass-card" use:fadeInUp={{ delay: 15 }}>
-					<StrategyControlPanel endpoint={showManagementEndpoint} {t} onInstanceChange={() => refreshEndpointInstances().then(() => fetchAllStrategyProfits())} onConfiguratorToggle={(open) => { if (open && showManagementEndpoint) configuratorEndpoint = showManagementEndpoint; }} />
+					<StrategyControlPanel endpoint={showManagementEndpoint} t={tFn} onInstanceChange={() => refreshEndpointInstances().then(() => fetchAllStrategyProfits())} onConfiguratorToggle={(open) => { if (open && showManagementEndpoint) configuratorEndpoint = showManagementEndpoint; }} />
 				</div>
 			{/if}
 
@@ -2296,7 +2307,7 @@
 						stats={store.stats}
 						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
-						{t}
+						t={tFn}
 						onClearHour={() => { store.selectHour(null); }}
 						wallet={isLiveMode ? store.wallet : null}
 						polymarketStats={isLiveMode ? store.polymarketStats : null}
@@ -2310,7 +2321,7 @@
 						filterDateFrom={store.filterDate.from}
 						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
-						{t}
+						t={tFn}
 						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
 				{/if}
@@ -2320,14 +2331,14 @@
 					<WeekdayChart
 						dailyData={store.dailyData}
 						ctx={getFormatterCtx()}
-						{t}
+						t={tFn}
 					/>
 					<HourlyChart
 						hourlyData={store.hourlyData}
 						filterDateFrom={store.filterDate.from}
 						selectedHour={store.selectedHour}
 						ctx={getFormatterCtx()}
-						{t}
+						t={tFn}
 						titleKey="btcUpdown.chart.hourlyProfitAgg"
 						onSelectHour={(hour) => { store.selectHour(hour); }}
 					/>
@@ -2370,7 +2381,7 @@
 						resultFilter={store.resultFilter}
 						stats={store.stats}
 						ctx={getFormatterCtx()}
-						{t}
+						t={tFn}
 						{formatCurrency}
 						onPageChange={(page) => { store.setPage(page); }}
 						onFilterChange={(f) => store.setFilter(f)}
@@ -2384,8 +2395,8 @@
 						events={store.events}
 						connectionStatus={store.connectionStatus}
 						ctx={getFormatterCtx()}
-						{t}
-						{formatNumber}
+						t={tFn}
+						formatNumber={formatNumber as (value: number, opts?: Intl.NumberFormatOptions) => string}
 						{formatCurrency}
 						{getEventMessage}
 					/>
@@ -2405,7 +2416,7 @@
 		urlError={customUrlError}
 		validating={customUrlValidating}
 		{validationSteps}
-		{t}
+		t={tFn}
 		onClose={() => { showAddStrategy = false; customUrlError = ''; validationSteps = []; }}
 		onSubmit={addCustomStrategy}
 		onUrlChange={(v) => { customUrlInput = v; }}

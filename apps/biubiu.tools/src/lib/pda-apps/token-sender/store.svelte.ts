@@ -5,7 +5,7 @@
  * 发送层依赖注入 core/，UI 仅消费此 store。
  */
 import type { Address } from 'viem';
-import { formatUnits } from 'viem';
+import { formatUnits, isAddress } from 'viem';
 import { walletStore } from '$lib/wallet';
 import {
 	memberWaiver,
@@ -27,7 +27,7 @@ import { listNetworks } from './infra/networks.js';
 import { parseRecipients, type ParseResult } from './core/parse.js';
 import { quoteFee } from './core/fee.js';
 import { preflight, type PreflightResult } from './core/orchestrator.js';
-import { runSend } from './core/orchestrator.js';
+import { runSend, type RunSendDeps, type RunSendResult } from './core/orchestrator.js';
 import { createConnectedWallet } from './core/wallet.js';
 import { putSend, listSends } from './history/send-history.js';
 import {
@@ -180,7 +180,10 @@ class TokenSenderStore {
 			this.tokenMetaError = 'no-wallet';
 			return;
 		}
-		if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+		// Shape-only check (mirrors the previous /^0x[a-fA-F0-9]{40}$/ regex). strict:false
+		// keeps non-checksummed mixed-case addresses accepted exactly as before — viem's
+		// default strict:true would reject them and change behavior.
+		if (!isAddress(addr, { strict: false })) {
 			this.tokenMetaError = 'invalid-token-address';
 			this.tokenMeta = null;
 			return;
@@ -258,7 +261,24 @@ class TokenSenderStore {
 		this.sendStartedAt = Date.now();
 		const startedAt = this.sendStartedAt;
 
-		const outcome = await runSend({
+		const outcome = await this.runWithCallbacks(wallet);
+
+		this.execStatus = outcome.aborted ? 'aborted' : 'done';
+
+		await this.persistHistory(startedAt, outcome.results, outcome.failures);
+	}
+
+	/**
+	 * 共享的 runSend 调用：组装两条发送路径（send/resume）完全相同的 deps + 进度/结果回调，
+	 * 仅由 `extra` 注入差异（resume 传 completedBatchIndices）。这样 send()/resume() 只各自
+	 * 负责 state 的初始化/善后（reset results、step、execStatus），避免两份 deps 抄写漂移。
+	 */
+	private runWithCallbacks(
+		wallet: ReturnType<typeof createConnectedWallet>,
+		extra?: Partial<RunSendDeps>
+	): Promise<RunSendResult> {
+		if (!this.parsed || !this.fee) throw new Error('runWithCallbacks: parsed/fee required');
+		return runSend({
 			wallet,
 			network: this.network,
 			tokenType: this.tokenType,
@@ -267,7 +287,7 @@ class TokenSenderStore {
 			batchSize: this.batchSize,
 			fee: this.fee,
 			interBatchDelayMs: 2500,
-			signal: this.abortController.signal,
+			signal: this.abortController!.signal,
 			onProgress: (p) => {
 				this.progress = {
 					batchIndex: p.batchIndex,
@@ -280,12 +300,9 @@ class TokenSenderStore {
 			},
 			onBatchFailed: (f) => {
 				this.failures = [...this.failures, f];
-			}
+			},
+			...extra
 		});
-
-		this.execStatus = outcome.aborted ? 'aborted' : 'done';
-
-		await this.persistHistory(startedAt, outcome.results, outcome.failures);
 	}
 
 	abort(): void {
@@ -314,31 +331,7 @@ class TokenSenderStore {
 		const wallet = createConnectedWallet(connected);
 		const startedAt = this.sendStartedAt || Date.now();
 
-		const outcome = await runSend({
-			wallet,
-			network: this.network,
-			tokenType: this.tokenType,
-			tokenAddress: this.tokenType === 'erc20' ? (this.tokenAddress.trim() as Address) : undefined,
-			recipients: this.parsed.recipients,
-			batchSize: this.batchSize,
-			fee: this.fee,
-			interBatchDelayMs: 2500,
-			completedBatchIndices: completed,
-			signal: this.abortController.signal,
-			onProgress: (p) => {
-				this.progress = {
-					batchIndex: p.batchIndex,
-					totalBatches: p.totalBatches,
-					phase: String(p.status)
-				};
-			},
-			onBatchDone: (b) => {
-				this.results = [...this.results, b];
-			},
-			onBatchFailed: (f) => {
-				this.failures = [...this.failures, f];
-			}
-		});
+		const outcome = await this.runWithCallbacks(wallet, { completedBatchIndices: completed });
 
 		this.execStatus = outcome.aborted ? 'aborted' : 'done';
 		await this.persistHistory(startedAt, this.results, outcome.failures);

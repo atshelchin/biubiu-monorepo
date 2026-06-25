@@ -358,14 +358,16 @@ export const configModule = defineModule({
 			async execute({ input, ctx }) {
 				const key = customNetworkKey(input.chainId);
 				await deleteCustomNetwork(key);
+				// Capture the orphaned token records BEFORE pruning the in-memory list —
+				// otherwise the cleanup filter runs against an already-empty array and
+				// deleteCustomToken is never called, leaving stale rows in IndexedDB that
+				// resurrect when a network with the same chainId is re-added.
+				const orphans = ctx.customTokens.filter((t) => t.network === key);
 				ctx.customNetworks = ctx.customNetworks.filter((n) => n.chainId !== input.chainId);
 				ctx.customTokens = ctx.customTokens.filter((t) => t.network !== key);
-				// Best-effort cleanup of orphaned token records
-				await Promise.all(
-					ctx.customTokens
-						.filter((t) => t.network === key)
-						.map((t) => deleteCustomToken(t.id).catch(() => {})),
-				);
+				// Best-effort cleanup of orphaned token records (non-critical: a failed
+				// delete must not abort network removal).
+				await Promise.all(orphans.map((t) => deleteCustomToken(t.id).catch(() => {})));
 				recomputeRegistry(ctx);
 				recomputeDerived(ctx);
 			},

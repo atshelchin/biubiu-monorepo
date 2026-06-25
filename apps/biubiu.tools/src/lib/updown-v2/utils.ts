@@ -2,7 +2,26 @@
  * Shared utility functions for btc-updown-5m pages.
  * Import from any page or component that needs these helpers.
  */
-import { formatNumber, formatCurrency, formatDate, preferences } from '$lib/i18n';
+import { formatNumber, formatCurrency, formatDate } from '$lib/i18n';
+
+/** Minimal shape needed to decide admin access. */
+type AdminMember = { role: string; safeAddress: string };
+type AdminIdentity = { safeAddress?: string | null } | null | undefined;
+
+/**
+ * Decide whether the authenticated identity is an admin of a space.
+ *
+ * Gated on the REAL logged-in user's `safeAddress` (case-insensitive) matching a
+ * member whose role is 'admin' — NOT a hardcoded userId. If no user is logged in,
+ * or no admin member's Safe matches the user's Safe, returns false, so admin-only
+ * surfaces (e.g. admin codes / secrets) stay hidden. Safe-by-default: an empty /
+ * absent safeAddress can never match.
+ */
+export function isSpaceAdmin(members: AdminMember[], user: AdminIdentity): boolean {
+	const addr = user?.safeAddress?.trim().toLowerCase();
+	if (!addr) return false;
+	return members.some((m) => m.role === 'admin' && m.safeAddress.trim().toLowerCase() === addr);
+}
 
 /** CSS class for profit coloring */
 export function profitClass(v: number): string {
@@ -36,17 +55,5 @@ export function fmtPct(v: number): string {
 /** Format date short (respects user's dateLocale + timezone) */
 export function fmtDate(ts: string): string {
 	return formatDate(ts);
-}
-
-/** Locale-aware short date (e.g. "Mar 23" or "3月23日") */
-export function shortDate(d: Date): string {
-	const { dateLocale, timezone } = preferences;
-	return new Intl.DateTimeFormat(dateLocale, { month: 'short', day: 'numeric', timeZone: timezone }).format(d);
-}
-
-/** Locale-aware short date+hour (e.g. "Mar 23 14:00") */
-export function shortDateHour(d: Date): string {
-	const { dateLocale, timezone } = preferences;
-	return new Intl.DateTimeFormat(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: timezone }).format(d);
 }
 

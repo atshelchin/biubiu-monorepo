@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Take Profit",
   "btcUpdown.filter.stopLoss": "Stop Loss",
   "btcUpdown.disclaimer": "This is a simulation only — no real money is involved. Please gamble responsibly. We do not encourage gambling.",
-
   "btcUpdown.live.sectionTitle": "Live",
   "btcUpdown.live.passkeyRegistered": "Passkey registered",
   "btcUpdown.live.registerPasskey": "Register passkey",
   "btcUpdown.live.remove": "Remove",
-
   "btcUpdown.instance.title": "Strategy Instances",
   "btcUpdown.instance.refresh": "Refresh",
   "btcUpdown.instance.create": "Create",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Export",
   "btcUpdown.instance.import": "Import",
   "btcUpdown.instance.statusUnknown": "unknown",
-
   "btcUpdown.configurator.createTitle": "Create Strategy Instance",
   "btcUpdown.configurator.editTitle": "Edit Strategy Config",
   "btcUpdown.configurator.editConfig": "Edit",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "spent",
   "btcUpdown.v70.up": "UP",
   "btcUpdown.v70.down": "DOWN",
-
   "btcUpdown.round.exitReason": "Exit Reason",
   "btcUpdown.exit.stopLoss": "Stop Loss",
   "btcUpdown.exit.binanceStopLoss": "Binance Stop Loss",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Clear hour filter",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "btcUpdown.live.priceToBeat": "Price to Beat",
   "btcUpdown.strategy.close": "Close",
-
   "btcUpdown.control.errFailedLoad": "Failed to load",
   "btcUpdown.control.errFailed": "Failed",
   "btcUpdown.control.errActionFailed": "Action failed",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Th",
   "btcUpdown.control.weekday.fr": "Fr",
   "btcUpdown.control.weekday.sa": "Sa",
-
   "btcUpdown.endpoint.title": "Managed Endpoints",
   "btcUpdown.endpoint.add": "+ Add",
   "btcUpdown.endpoint.urlPlaceholder": "Endpoint URL (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Register passkey",
   "btcUpdown.endpoint.remove": "Remove endpoint",
   "btcUpdown.endpoint.dismiss": "Dismiss",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Start",
   "btcUpdown.cfg.startFromTemplate": "Start from template",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Trailing Stop",
   "btcUpdown.cfg.exitCheckpoint": "Checkpoint",
   "btcUpdown.cfg.fallback": "fallback",
-  "btcUpdown.cfg.nameYourStrategy": "Name your strategy..."
+  "btcUpdown.cfg.nameYourStrategy": "Name your strategy...",
+  "btcUpdown.strategy.notFound": "No strategies found at this endpoint"
 }

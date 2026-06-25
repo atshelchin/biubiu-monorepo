@@ -8,10 +8,10 @@
  *
  * 之前这里只认 passkey（createPasskeyWallet）；现在三种钱包统一走这套。
  */
-import { createPublicClient, http, fallback, type Address, type Hex } from 'viem';
+import { type Address, type Hex } from 'viem';
 import type { ConnectedWallet, SendStatus } from '$lib/wallet';
-import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
 import { ERC20_ABI } from '../infra/erc20.js';
+import { publicClientFor } from './public-client.js';
 import type { SubTransaction, TokenSenderNetwork } from '../types.js';
 
 export interface SendMultiSendResult {
@@ -30,13 +30,6 @@ export interface SafeSenderWallet {
 	getNativeBalance(network: TokenSenderNetwork): Promise<bigint>;
 	getErc20Balance(network: TokenSenderNetwork, token: Address): Promise<bigint>;
 	getErc20Meta(network: TokenSenderNetwork, token: Address): Promise<{ symbol: string; decimals: number }>;
-}
-
-function clientFor(network: TokenSenderNetwork) {
-	// Honour shared service-node settings (user RPC override / provider key) first,
-	// falling back to this app's curated RPCs.
-	const urls = resolveRpcUrls(network.chainId, network.rpcs);
-	return createPublicClient({ transport: fallback(urls.map((u) => http(u))) });
 }
 
 /**
@@ -65,11 +58,11 @@ export function createConnectedWallet(wallet: ConnectedWallet): SafeSenderWallet
 		},
 
 		getNativeBalance(network) {
-			return clientFor(network).getBalance({ address: account });
+			return publicClientFor(network).getBalance({ address: account });
 		},
 
 		getErc20Balance(network, token) {
-			return clientFor(network).readContract({
+			return publicClientFor(network).readContract({
 				address: token,
 				abi: ERC20_ABI,
 				functionName: 'balanceOf',
@@ -78,7 +71,7 @@ export function createConnectedWallet(wallet: ConnectedWallet): SafeSenderWallet
 		},
 
 		async getErc20Meta(network, token) {
-			const client = clientFor(network);
+			const client = publicClientFor(network);
 			const [symbol, decimals] = await Promise.all([
 				client.readContract({ address: token, abi: ERC20_ABI, functionName: 'symbol' }) as Promise<string>,
 				client.readContract({ address: token, abi: ERC20_ABI, functionName: 'decimals' }) as Promise<number>

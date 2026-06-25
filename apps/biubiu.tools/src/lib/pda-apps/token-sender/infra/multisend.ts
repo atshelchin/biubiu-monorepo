@@ -25,9 +25,6 @@ const MULTISEND_ABI = [
 /** operation: 0 = CALL（MultiSend 子交易恒用 CALL） */
 const CALL = 0;
 
-/** 顶层 executeUserOp 的 value —— delegatecall 不携带 value，恒为 0 */
-export const BATCH_TOP_VALUE = 0n;
-
 /** 把一笔子交易打包成 Safe MultiSend packed 格式 */
 export function encodeSubTransaction(tx: SubTransaction): Hex {
 	const dataLength = BigInt(hexSize(tx.data));

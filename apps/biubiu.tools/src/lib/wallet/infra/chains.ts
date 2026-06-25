@@ -148,8 +148,3 @@ export function explorerTxUrl(chainId: number): string {
 	const info = BY_ID.get(chainId);
 	return info ? `${info.explorerURL}/tx/` : '';
 }
-
-/** True if the passkey-Safe wallet supports this chainId (it's in the built-in table). */
-export function isSupportedChain(chainId: number): boolean {
-	return BY_ID.has(chainId);
-}

@@ -73,12 +73,3 @@ export interface ApprovalRow {
 	/** Surfaced by the deep log scan rather than the curated list. */
 	fromLogs?: boolean;
 }
-
-/** A revoke that succeeded/failed, used for result reporting. */
-export interface RevokeOutcome {
-	ids: string[];
-	success: boolean;
-	txHash?: string;
-	explorerUrl?: string;
-	error?: string;
-}

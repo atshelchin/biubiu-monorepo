@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "Klaim Admin",
   "updown5m.space.admin.claimTitle": "Jadi Admin",
   "updown5m.space.noStrategies": "Belum ada strategi di space ini",
-
   "btcUpdown.stats.wallet": "Dompet",
   "btcUpdown.stats.portfolio": "Portofolio",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "Sinyal skip (skor={score})",
   "btcUpdown.skip.marketExpired": "Market kedaluwarsa",
   "btcUpdown.skip.windowExpired": "Jendela kedaluwarsa",
-
   "btcUpdown.round.exitReason": "Alasan Exit",
   "btcUpdown.exit.stopLoss": "Stop Loss",
   "btcUpdown.exit.binanceStopLoss": "Stop Loss Binance",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "Hapus filter jam",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "updown5m.back": "Kembali",
   "updown5m.spaceFallback": "Space",
   "updown5m.userFallback": "Pengguna",
@@ -295,7 +292,6 @@
   "updown5m.claim": "Klaim",
   "updown5m.newShort": "+ Baru",
   "updown5m.starting": "memulai...",
-
   "updown5m.detail.col1h": "1J",
   "updown5m.detail.col30d": "30H",
   "updown5m.detail.showSidebar": "Tampilkan sidebar",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "PEMULIHAN",
   "updown5m.detail.perRound": "{value}/ronde",
   "updown5m.detail.netCost": "Biaya bersih:",
-
   "updown5m.member.safeAddress": "Alamat Safe",
   "updown5m.member.tier": "Tier",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "Tidak ada instance aktif di space ini.",
   "updown5m.member.performanceSummary": "Ringkasan Kinerja",
   "updown5m.member.userNotFound": "Pengguna tidak ditemukan",
-
   "updown5m.table.prevPage": "Halaman sebelumnya",
-  "updown5m.table.nextPage": "Halaman berikutnya"
+  "updown5m.table.nextPage": "Halaman berikutnya",
+  "btcUpdown.round.hedgeFilledAt": "Lindung nilai terisi",
+  "btcUpdown.round.hedgeSoldAt": "Lindung nilai terjual"
 }

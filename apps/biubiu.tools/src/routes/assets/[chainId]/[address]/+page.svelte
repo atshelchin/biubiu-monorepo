@@ -68,7 +68,7 @@
 <main class="page">
 	<!-- Search Section -->
 	<section class="search-section" use:fadeInUp={{ delay: 0 }}>
-		<AssetSearch currentChainId={data.chainId} currentAddress={data.address} />
+		<AssetSearch currentChainId={Number(data.chainId)} currentAddress={data.address} />
 	</section>
 
 	{#if data.asset}

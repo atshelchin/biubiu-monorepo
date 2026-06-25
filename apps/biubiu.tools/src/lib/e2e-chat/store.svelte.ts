@@ -232,6 +232,13 @@ export class ChatStore {
 	private onState(state: ConnState): void {
 		this.conn = state;
 		if (state === 'open') this.flushOut();
+		// Relay unreachable: the transport exhausted its initial-connect deadline.
+		// Surface a terminal error (instead of an endless spinner) — but only while
+		// we're still trying to establish the session; an already-connected/ended
+		// session is unaffected (the transport never emits 'failed' once opened).
+		else if (state === 'failed' && (this.phase === 'waiting' || this.phase === 'handshaking')) {
+			this.fail('connectFailed');
+		}
 	}
 
 	private onFrame(frame: ServerFrame): void {
@@ -279,28 +286,52 @@ export class ChatStore {
 			this.fail('tampered');
 			return;
 		}
-		this.peerHandshake = hs;
 
-		this.keys = await deriveTrafficKeys(this.myEph.privateKey, hs.pub, this.roomId);
+		// Capture locals so a slow derive can't read mutated state mid-flight, and
+		// so a rejecting derive (malformed peer key) leaves all session fields null.
+		const { myEph, myHandshake, roomId, role } = this;
 
-		// Role-ordered transcript (creator first) → identical Safety Code on both sides.
-		const mine = {
-			address: this.myHandshake.addr,
-			pub: this.myHandshake.pub,
-			sig: this.myHandshake.sig
-		};
-		const theirs = { address: hs.addr, pub: hs.pub, sig: hs.sig };
-		const [a, b] = this.role === 'a' ? [mine, theirs] : [theirs, mine];
-		this.safety = await computeSafetyCode(buildTranscript(this.roomId, a, b));
+		// `hs` is fully peer/relay-controlled. The creator has no expectedPeerPub,
+		// so a garbage `hs.pub` reaches the WebCrypto import/derive — which rejects.
+		// Without this try/catch the rejection is unhandled AND, if peerHandshake
+		// were already committed, the :274 guard would block every retry → the
+		// creator spins forever (a one-frame DoS). So we derive FIRST, commit the
+		// guard ONLY on success, and drop a bad frame silently (mirrors onRelay)
+		// to stay open for a subsequent valid signal.
+		let keys: TrafficKeys;
+		let safety: SafetyCode;
+		let avatar: string;
+		let verified: boolean;
+		try {
+			keys = await deriveTrafficKeys(myEph.privateKey, hs.pub, roomId);
 
-		const peerRole: Role = this.role === 'a' ? 'b' : 'a';
-		this.peer = {
-			address: hs.addr,
-			kind: hs.kind,
-			verified: hs.addr ? await this.verifyPeer(hs, peerRole) : false,
-			avatar: await computeAvatar(hs.pub)
-		};
+			// Role-ordered transcript (creator first) → identical Safety Code on both sides.
+			const mine = {
+				address: myHandshake.addr,
+				pub: myHandshake.pub,
+				sig: myHandshake.sig
+			};
+			const theirs = { address: hs.addr, pub: hs.pub, sig: hs.sig };
+			const [a, b] = role === 'a' ? [mine, theirs] : [theirs, mine];
+			safety = await computeSafetyCode(buildTranscript(roomId, a, b));
 
+			const peerRole: Role = role === 'a' ? 'b' : 'a';
+			verified = hs.addr ? await this.verifyPeer(hs, peerRole) : false;
+			avatar = await computeAvatar(hs.pub);
+		} catch {
+			// Malformed / off-curve peer key (or garbage base64) — drop this signal
+			// and stay open. peerHandshake is still null, so a valid signal can connect.
+			return;
+		}
+
+		// Stale-state guard: if the session was torn down (or already connected via
+		// another frame) while we were awaiting, discard this result.
+		if (this.peerHandshake || this.role !== role || this.roomId !== roomId) return;
+
+		this.keys = keys;
+		this.safety = safety;
+		this.peer = { address: hs.addr, kind: hs.kind, verified, avatar };
+		this.peerHandshake = hs; // commit the guard only on success
 		this.phase = 'connected';
 		this.flushOut();
 	}

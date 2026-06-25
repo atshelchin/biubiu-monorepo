@@ -106,14 +106,6 @@ export function saveServiceNodeSettings(next: ServiceNodeSettings): void {
 	}
 }
 
-/** Subscribe to settings changes (same-tab). Returns an unsubscribe fn. */
-export function subscribeServiceNodes(listener: () => void): () => void {
-	if (!browser) return () => {};
-	const handler = () => listener();
-	window.addEventListener(CHANGE_EVENT, handler);
-	return () => window.removeEventListener(CHANGE_EVENT, handler);
-}
-
 // ─── Sync getters (render-safe) ───
 
 export function getEthereumDataURL(): string {

@@ -12,8 +12,6 @@
  * slug degrades to "unavailable", never to silently serving the wrong chain.
  */
 
-import { CHAINS } from './chains.js';
-
 export type ProviderId = 'alchemy' | 'drpc' | 'ankr';
 
 /** One stored API key per provider. */
@@ -74,10 +72,4 @@ export function buildProviderRpcUrl(id: ProviderId, chainId: number, key: string
 		case 'ankr':
 			return `https://rpc.ankr.com/${slug}/${key}`;
 	}
-}
-
-/** Chain ids this provider can serve, in canonical CHAINS display order. */
-export function providerChainIds(id: ProviderId): number[] {
-	const slugs = PROVIDER_CHAIN_SLUGS[id] ?? {};
-	return CHAINS.filter((c) => slugs[c.chainId] !== undefined).map((c) => c.chainId);
 }

@@ -634,10 +634,10 @@
 			<!-- EntryPoint or Safe contracts — both use the deployer wallet -->
 			{:else}
 				{@const isEntryPoint = next.key === 'entryPoint'}
-				{@const missingSafe = store.missingContracts.filter(
-					(c) => c.def.deployMethod === 'safe-factory',
+				{@const missingDeployerStep = store.missingContracts.filter(
+					(c) => c.def.deployMethod === 'safe-factory' || c.def.deployMethod === 'arachnid-proxy',
 				)}
-				{@const deployableContracts = isEntryPoint ? [next] : missingSafe}
+				{@const deployableContracts = isEntryPoint ? [next] : missingDeployerStep}
 				{@const totalGas = deployableContracts.reduce((sum, c) => sum + c.def.estimatedGas, 0n)}
 
 				<section class="card action-card" use:fadeInUp={{ delay: 100 }}>
@@ -649,7 +649,7 @@
 						<h3 class="action-title">{t('vcs.safeContracts.title')}</h3>
 						<p class="action-desc">{t('vcs.safeContracts.description')}</p>
 						<ul class="missing-list">
-							{#each missingSafe as cs}
+							{#each deployableContracts as cs}
 								<li class="missing-item">
 									<span class="missing-name">{cs.def.name}</span>
 									<span class="missing-desc">{cs.def.description}</span>
@@ -763,14 +763,14 @@
 							</div>
 							<button
 								class="btn btn-primary"
-								onclick={() => store.deployAllMissing()}
+								onclick={() => store.deployAllMissing(deployableContracts.map((c) => c.key))}
 							>
 								{t('vcs.error.retry')}
 							</button>
 						{:else if store.deployerHasFunds}
 							<button
 								class="btn btn-primary"
-								onclick={() => store.deployAllMissing()}
+								onclick={() => store.deployAllMissing(deployableContracts.map((c) => c.key))}
 							>
 								{isEntryPoint
 									? t('vcs.entrypoint.deploy')

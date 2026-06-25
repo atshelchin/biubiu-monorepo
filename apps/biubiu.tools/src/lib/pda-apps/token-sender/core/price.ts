@@ -7,8 +7,7 @@
  * 注：vela-wallet 的 price-service 还叠加了 DEX 与主网 feed 兜底；此处先用最直接的
  * 单链 Chainlink 读取，后续可按需增强。
  */
-import { createPublicClient, http, fallback } from 'viem';
-import { resolveRpcUrls } from '$lib/wallet/infra/rpc-client.js';
+import { publicClientFor } from './public-client.js';
 import type { TokenSenderNetwork } from '../types.js';
 
 const AGGREGATOR_ABI = [
@@ -33,7 +32,7 @@ export async function fetchNativeUsdPrice(network: TokenSenderNetwork): Promise<
 	if (!feed) return null;
 
 	try {
-		const client = createPublicClient({ transport: fallback(resolveRpcUrls(network.chainId, network.rpcs).map((u) => http(u))) });
+		const client = publicClientFor(network);
 		const [round, dec] = await Promise.all([
 			client.readContract({ address: feed, abi: AGGREGATOR_ABI, functionName: 'latestRoundData' }) as Promise<
 				readonly [bigint, bigint, bigint, bigint, bigint]

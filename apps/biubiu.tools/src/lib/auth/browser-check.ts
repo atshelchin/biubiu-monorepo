@@ -34,7 +34,7 @@ export function detectBrowser(): BrowserInfo {
 	// 先检测特殊的，再检测通用的
 
 	// Brave (has navigator.brave)
-	if ((navigator as Record<string, unknown>).brave) {
+	if ((navigator as unknown as Record<string, unknown>).brave) {
 		return { name: 'Brave', supported: true };
 	}
 

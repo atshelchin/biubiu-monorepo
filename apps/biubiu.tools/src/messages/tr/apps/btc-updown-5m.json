@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "Yöneticiliği al",
   "updown5m.space.admin.claimTitle": "Yönetici ol",
   "updown5m.space.noStrategies": "Bu alanda henüz strateji yok",
-
   "btcUpdown.stats.wallet": "Cüzdan",
   "btcUpdown.stats.portfolio": "Portföy",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "Sinyal atlama (puan={score})",
   "btcUpdown.skip.marketExpired": "Piyasa süresi doldu",
   "btcUpdown.skip.windowExpired": "Pencere süresi doldu",
-
   "btcUpdown.round.exitReason": "Çıkış nedeni",
   "btcUpdown.exit.stopLoss": "Zarar durdur",
   "btcUpdown.exit.binanceStopLoss": "Binance zarar durdur",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "Saat filtresini temizle",
   "btcUpdown.chart.am": "ÖÖ",
   "btcUpdown.chart.pm": "ÖS",
-
   "updown5m.back": "Geri",
   "updown5m.spaceFallback": "Alan",
   "updown5m.userFallback": "Kullanıcı",
@@ -295,7 +292,6 @@
   "updown5m.claim": "Talep et",
   "updown5m.newShort": "+ Yeni",
   "updown5m.starting": "başlatılıyor...",
-
   "updown5m.detail.col1h": "1S",
   "updown5m.detail.col30d": "30G",
   "updown5m.detail.showSidebar": "Kenar çubuğunu göster",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "KURTARMA",
   "updown5m.detail.perRound": "{value}/tur",
   "updown5m.detail.netCost": "Net maliyet:",
-
   "updown5m.member.safeAddress": "Safe adresi",
   "updown5m.member.tier": "Kademe",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "Bu alanda etkin örnek yok.",
   "updown5m.member.performanceSummary": "Performans özeti",
   "updown5m.member.userNotFound": "Kullanıcı bulunamadı",
-
   "updown5m.table.prevPage": "Önceki sayfa",
-  "updown5m.table.nextPage": "Sonraki sayfa"
+  "updown5m.table.nextPage": "Sonraki sayfa",
+  "btcUpdown.round.hedgeFilledAt": "Hedge gerçekleşti",
+  "btcUpdown.round.hedgeSoldAt": "Hedge satıldı"
 }

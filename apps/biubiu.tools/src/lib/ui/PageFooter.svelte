@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 
-	declare const __COMMIT_HASH__: string;
 	const commitHash = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : 'dev';
 	const commitUrl = `https://github.com/atshelchin/biubiu-monorepo/tree/${commitHash}`;
 </script>

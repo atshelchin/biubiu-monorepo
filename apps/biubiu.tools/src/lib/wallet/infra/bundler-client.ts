@@ -11,14 +11,8 @@
 import type { Hex } from 'viem';
 import { CONTRACTS } from '$lib/auth/compute-safe-address.js';
 import { getBundlerServiceURL } from './endpoints.js';
-import { pickBundlerRpcUrl } from './rpc-client.js';
-
-interface RpcResponse<T = unknown> {
-	jsonrpc: '2.0';
-	id: number;
-	result?: T;
-	error?: { code: number; message: string; data?: unknown };
-}
+import { jsonRpcPost } from './json-rpc.js';
+import { bundlerHeaders } from './bundler-headers.js';
 
 /** UserOp dict as produced by build-userop.ts `formatUserOpForRpc` (+ optional feeToken). */
 export type UserOpDict = Record<string, unknown>;
@@ -31,22 +25,14 @@ function bundlerRpcUrl(chainId: number): string {
 
 async function bundlerCall<T>(method: string, params: unknown[], chainId: number): Promise<T> {
 	// Keyless public RPC only — never leak a provider-key URL to the bundler.
-	const chainRpc = await pickBundlerRpcUrl(chainId).catch(() => undefined);
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	if (chainRpc) headers['X-Rpc-Url'] = chainRpc;
-
-	const res = await fetch(bundlerRpcUrl(chainId), {
-		method: 'POST',
+	const headers = await bundlerHeaders(chainId, { 'Content-Type': 'application/json' });
+	return jsonRpcPost<T>(bundlerRpcUrl(chainId), method, params, {
 		headers,
-		body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+		httpError: async (res) => {
+			const text = await res.text().catch(() => '');
+			return new Error(`Bundler HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ''}`);
+		}
 	});
-	if (!res.ok) {
-		const text = await res.text().catch(() => '');
-		throw new Error(`Bundler HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ''}`);
-	}
-	const json = (await res.json()) as RpcResponse<T>;
-	if (json.error) throw new Error(json.error.message);
-	return json.result as T;
 }
 
 export interface GasEstimate {

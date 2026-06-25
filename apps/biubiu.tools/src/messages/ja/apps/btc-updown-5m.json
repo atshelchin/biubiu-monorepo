@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "管理者を取得",
   "updown5m.space.admin.claimTitle": "管理者になる",
   "updown5m.space.noStrategies": "このスペースにはまだ戦略がありません",
-
   "btcUpdown.stats.wallet": "ウォレット",
   "btcUpdown.stats.portfolio": "ポートフォリオ",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "シグナルによるスキップ（スコア={score}）",
   "btcUpdown.skip.marketExpired": "マーケットが終了しました",
   "btcUpdown.skip.windowExpired": "ウィンドウが終了しました",
-
   "btcUpdown.round.exitReason": "エグジット理由",
   "btcUpdown.exit.stopLoss": "ストップロス",
   "btcUpdown.exit.binanceStopLoss": "バイナンス ストップロス",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "時間フィルターをクリア",
   "btcUpdown.chart.am": "午前",
   "btcUpdown.chart.pm": "午後",
-
   "updown5m.back": "戻る",
   "updown5m.spaceFallback": "スペース",
   "updown5m.userFallback": "ユーザー",
@@ -295,7 +292,6 @@
   "updown5m.claim": "受け取る",
   "updown5m.newShort": "+ 新規",
   "updown5m.starting": "開始中…",
-
   "updown5m.detail.col1h": "1H",
   "updown5m.detail.col30d": "30D",
   "updown5m.detail.showSidebar": "サイドバーを表示",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "回収",
   "updown5m.detail.perRound": "{value}/ラウンド",
   "updown5m.detail.netCost": "正味コスト：",
-
   "updown5m.member.safeAddress": "Safe アドレス",
   "updown5m.member.tier": "プラン",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "このスペースに稼働中のインスタンスはありません。",
   "updown5m.member.performanceSummary": "パフォーマンス概要",
   "updown5m.member.userNotFound": "ユーザーが見つかりません",
-
   "updown5m.table.prevPage": "前のページ",
-  "updown5m.table.nextPage": "次のページ"
+  "updown5m.table.nextPage": "次のページ",
+  "btcUpdown.round.hedgeFilledAt": "ヘッジ約定",
+  "btcUpdown.round.hedgeSoldAt": "ヘッジ売却"
 }

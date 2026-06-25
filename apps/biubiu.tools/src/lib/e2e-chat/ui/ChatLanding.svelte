@@ -7,6 +7,7 @@
 	import { walletStore } from '$lib/wallet';
 	import AuthModal from '$lib/auth/AuthModal.svelte';
 	import { parseInvite, type Invite } from '../relay.js';
+	import { shortenAddress } from '../format.js';
 	import type { ChatStore } from '../store.svelte.js';
 	import StatusView from './StatusView.svelte';
 
@@ -18,7 +19,7 @@
 	let showAuth = $state(false);
 
 	const walletAddr = $derived(walletStore.activeWallet?.address ?? '');
-	const shortAddr = $derived(walletAddr ? `${walletAddr.slice(0, 6)}…${walletAddr.slice(-4)}` : '');
+	const shortAddr = $derived(shortenAddress(walletAddr));
 
 	function joinFromPaste() {
 		const raw = linkInput.trim();

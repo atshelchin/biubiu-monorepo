@@ -79,16 +79,42 @@ export function validate(input: Input): ValidatedInput {
     };
 }
 
-function flattenJobResult(jobOutput: NetworkJobResult): BalanceResult[] {
+/**
+ * Split a completed chunk into successful reads and per-address failures.
+ * A `balance === null` entry means that single sub-call FAILED inside an
+ * otherwise-successful multicall (revert / transient RPC error / partial
+ * response). It must be reported as a failure, NOT as a zero balance —
+ * otherwise the user could silently miss funds.
+ */
+function flattenJobResult(jobOutput: NetworkJobResult): {
+    results: BalanceResult[];
+    failures: BalanceFailure[];
+} {
     const { token } = jobOutput;
-    return jobOutput.results.map(({ address, balance }) => ({
-        address,
-        network: jobOutput.network,
-        symbol: token.symbol,
-        tokenAddress: token.kind === 'erc20' ? token.address : undefined,
-        balance: formatUnits(BigInt(balance), token.decimals),
-        balanceRaw: balance,
-    }));
+    const tokenAddress = token.kind === 'erc20' ? token.address : undefined;
+    const results: BalanceResult[] = [];
+    const failures: BalanceFailure[] = [];
+    for (const { address, balance } of jobOutput.results) {
+        if (balance === null) {
+            failures.push({
+                address,
+                network: jobOutput.network,
+                symbol: token.symbol,
+                tokenAddress,
+                error: 'Sub-call failed (reverted or RPC error); balance could not be read',
+            });
+            continue;
+        }
+        results.push({
+            address,
+            network: jobOutput.network,
+            symbol: token.symbol,
+            tokenAddress,
+            balance: formatUnits(BigInt(balance), token.decimals),
+            balanceRaw: balance,
+        });
+    }
+    return { results, failures };
 }
 
 async function* run(
@@ -162,7 +188,8 @@ async function* run(
             for (const job of batch) {
                 if (job.output) {
                     const flattened = flattenJobResult(job.output);
-                    results.push(...flattened);
+                    results.push(...flattened.results);
+                    failures.push(...flattened.failures);
                 }
             }
             if (batch.length < pageSize) break;
@@ -198,12 +225,16 @@ async function* run(
         const output = job.output;
         if (output) {
             const flattened = flattenJobResult(output);
-            results.push(...flattened);
-            completedQueries += flattened.length;
+            results.push(...flattened.results);
+            failures.push(...flattened.failures);
+            const chunkSize = flattened.results.length + flattened.failures.length;
+            completedQueries += chunkSize;
+            const failedNote =
+                flattened.failures.length > 0 ? ` (${flattened.failures.length} failed)` : '';
             ctx.progress(
                 completedQueries,
                 totalQueries,
-                `Queried ${output.network}: ${flattened.length} addresses`
+                `Queried ${output.network}: ${chunkSize} addresses${failedNote}`
             );
         }
     });

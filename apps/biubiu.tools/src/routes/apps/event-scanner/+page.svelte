@@ -97,7 +97,16 @@
 
 	async function handleStart() {
 		startError = '';
-		const built = buildScanInput(page.config.ctx);
+		let built: ReturnType<typeof buildScanInput>;
+		try {
+			// buildScanInput calls viem getAddress(), which THROWS on a mixed-case
+			// address with a bad EIP-55 checksum (the loose UI regex lets it through) —
+			// surface it inline instead of letting it become an uncaught error.
+			built = buildScanInput(page.config.ctx);
+		} catch (e) {
+			startError = e instanceof Error ? e.message : t('es.cfg.fixConfig');
+			return;
+		}
 		if (!built.ok || !built.input) {
 			startError = t('es.cfg.fixConfig');
 			return;
@@ -106,7 +115,7 @@
 			await page.execution.run(built.input);
 		} catch (e) {
 			if (e instanceof ActionBusyError) return;
-			throw e;
+			startError = e instanceof Error ? e.message : String(e);
 		}
 	}
 </script>

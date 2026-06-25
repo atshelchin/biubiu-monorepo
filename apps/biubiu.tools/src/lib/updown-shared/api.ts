@@ -147,7 +147,12 @@ export async function fetchHourly(
 		const res = await opts.fetchFn(`${opts.baseUrl}/stats/hourly${qs}`, { signal: opts.signal });
 		if (res.ok) {
 			const data: HourlyStats[] = await res.json();
-			const offsetHours = new Date().getTimezoneOffset() / -60;
+			// Round the local UTC offset to a whole hour. Half-hour/quarter-hour zones
+			// (UTC+5:30, +5:45, +9:30, …) would otherwise produce FRACTIONAL hour keys
+			// (e.g. 14.5), which never match the integer hour lookups in HourlyChart and
+			// silently drop the entire hourly chart. We accept a ≤1h bucket skew for those
+			// zones rather than emitting un-keyable fractional hours.
+			const offsetHours = Math.round(new Date().getTimezoneOffset() / -60);
 			return data.map((h) => ({
 				...h,
 				hour: (((h.hour + offsetHours) % 24) + 24) % 24

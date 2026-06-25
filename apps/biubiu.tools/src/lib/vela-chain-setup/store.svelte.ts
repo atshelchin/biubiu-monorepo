@@ -576,12 +576,20 @@ class VelaChainSetupStore {
 	deploying = $state(false);
 	deployProgress = $state('');
 
-	async deployAllMissing() {
+	async deployAllMissing(keys?: string[]) {
 		if (!this.deployerWallet || !this.selectedChain) return;
 
-		const deployable = this.missingContracts.filter(
-			(c) => c.def.deployMethod !== 'external',
-		);
+		// Honor the UI-scoped set when keys are passed. The deploy page renders a
+		// live progress list over exactly these contracts, so the loop, the count,
+		// and `activeContractKey` must match it — otherwise we'd silently deploy
+		// contracts the user never saw (and possibly hit a getDeployCalldata throw
+		// for presigned-tx/nicks-method contracts with no DEPLOYMENT_DATA entry).
+		const deployable =
+			keys && keys.length
+				? keys
+						.map((k) => this.contractStatuses.find((s) => s.key === k))
+						.filter((s): s is ContractStatus => !!s && !s.deployed)
+				: this.missingContracts.filter((c) => c.def.deployMethod !== 'external');
 		if (deployable.length === 0) return;
 
 		this.deploying = true;

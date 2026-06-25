@@ -39,7 +39,14 @@ const MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11' as const
 
 export interface AddressBalance {
 	address: string;
-	balance: string;
+	/**
+	 * Raw balance as a decimal string, or `null` when the per-address sub-call
+	 * FAILED (revert / transient RPC error / partial multicall response). `null`
+	 * must NOT be conflated with a real zero balance — a balance-reporting tool
+	 * surfacing a failed read as "0" would silently hide funds. Downstream
+	 * (flattenJobResult) routes null entries to failures, not results.
+	 */
+	balance: string | null;
 }
 
 export interface TokenMetadata {
@@ -54,6 +61,10 @@ export function createMulticallBalanceCall(addresses: string[]): EVMCall<Address
 	return {
 		execute: async (client: PublicClient) => {
 			const results = await client.multicall({
+				// Pass the canonical Multicall3 address explicitly so viem does NOT try to
+				// resolve it from chain.contracts.multicall3 — which throws
+				// ChainDoesNotSupportContract for user-added (custom) networks.
+				multicallAddress: MULTICALL3_ADDRESS,
 				contracts: addresses.map((addr) => ({
 					address: MULTICALL3_ADDRESS,
 					abi: MULTICALL3_BALANCE_ABI,
@@ -64,9 +75,11 @@ export function createMulticallBalanceCall(addresses: string[]): EVMCall<Address
 				batchSize: 0,
 			});
 
+			// A failed sub-call yields balance:null (distinct from a real '0'), so the
+			// UI/CSV can report "failed to read" instead of silently showing no funds.
 			return addresses.map((addr, i) => ({
 				address: addr,
-				balance: results[i].status === 'success' ? (results[i].result as bigint).toString() : '0',
+				balance: results[i].status === 'success' ? (results[i].result as bigint).toString() : null,
 			}));
 		},
 	};
@@ -95,6 +108,8 @@ export function createErc20BalanceCall(
 	return {
 		execute: async (client: PublicClient) => {
 			const results = await client.multicall({
+				// Explicit Multicall3 address — see createMulticallBalanceCall above.
+				multicallAddress: MULTICALL3_ADDRESS,
 				contracts: addresses.map((addr) => ({
 					address: tokenAddress as Address,
 					abi: ERC20_ABI,
@@ -105,9 +120,11 @@ export function createErc20BalanceCall(
 				batchSize: 0,
 			});
 
+			// Failed sub-call → balance:null (see createMulticallBalanceCall) so a
+			// reverting token / partial response is not misreported as a zero balance.
 			return addresses.map((addr, i) => ({
 				address: addr,
-				balance: results[i].status === 'success' ? (results[i].result as bigint).toString() : '0',
+				balance: results[i].status === 'success' ? (results[i].result as bigint).toString() : null,
 			}));
 		},
 	};

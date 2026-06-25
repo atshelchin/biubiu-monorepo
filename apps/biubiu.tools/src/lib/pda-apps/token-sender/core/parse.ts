@@ -92,6 +92,23 @@ export function parseRecipients(params: {
 			return { recipients: [], validCount: 0, duplicateCount, invalid, totalAmount: 0n };
 		}
 		const per = total / BigInt(recipients.length);
+		// If total < recipientCount the even share rounds to 0 — every recipient except
+		// the first (who would absorb the dust) gets amount=0n. That produces zero-value
+		// transfers that still cost gas + the per-batch fee while moving nothing. Reject
+		// instead of silently emitting them. The user must raise the total (or remove
+		// recipients) so each share is >= 1 base unit.
+		if (per === 0n) {
+			return {
+				recipients: [],
+				validCount: 0,
+				duplicateCount,
+				invalid: [
+					...invalid,
+					{ line: 0, text: totalAmount, reason: 'amount-too-small-for-recipient-count' },
+				],
+				totalAmount: 0n,
+			};
+		}
 		const dust = total - per * BigInt(recipients.length);
 		recipients.forEach((r, idx) => {
 			r.amount = idx === 0 ? per + dust : per;

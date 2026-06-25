@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Take Profit",
   "btcUpdown.filter.stopLoss": "Stop Loss",
   "btcUpdown.disclaimer": "Ini hanya simulasi — tidak ada uang sungguhan yang terlibat. Mohon berjudi secara bertanggung jawab. Kami tidak mendorong perjudian.",
-
   "btcUpdown.live.sectionTitle": "Langsung",
   "btcUpdown.live.passkeyRegistered": "Passkey terdaftar",
   "btcUpdown.live.registerPasskey": "Daftarkan passkey",
   "btcUpdown.live.remove": "Hapus",
-
   "btcUpdown.instance.title": "Instance Strategi",
   "btcUpdown.instance.refresh": "Segarkan",
   "btcUpdown.instance.create": "Buat",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Ekspor",
   "btcUpdown.instance.import": "Impor",
   "btcUpdown.instance.statusUnknown": "tidak diketahui",
-
   "btcUpdown.configurator.createTitle": "Buat Instance Strategi",
   "btcUpdown.configurator.editTitle": "Edit Konfigurasi Strategi",
   "btcUpdown.configurator.editConfig": "Edit",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "terpakai",
   "btcUpdown.v70.up": "NAIK",
   "btcUpdown.v70.down": "TURUN",
-
   "btcUpdown.round.exitReason": "Alasan Exit",
   "btcUpdown.exit.stopLoss": "Stop Loss",
   "btcUpdown.exit.binanceStopLoss": "Stop Loss Binance",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Hapus filter jam",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "btcUpdown.live.priceToBeat": "Harga Acuan",
   "btcUpdown.strategy.close": "Tutup",
-
   "btcUpdown.control.errFailedLoad": "Gagal memuat",
   "btcUpdown.control.errFailed": "Gagal",
   "btcUpdown.control.errActionFailed": "Aksi gagal",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Kam",
   "btcUpdown.control.weekday.fr": "Jum",
   "btcUpdown.control.weekday.sa": "Sab",
-
   "btcUpdown.endpoint.title": "Endpoint Terkelola",
   "btcUpdown.endpoint.add": "+ Tambah",
   "btcUpdown.endpoint.urlPlaceholder": "URL endpoint (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Daftarkan passkey",
   "btcUpdown.endpoint.remove": "Hapus endpoint",
   "btcUpdown.endpoint.dismiss": "Tutup",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Mulai",
   "btcUpdown.cfg.startFromTemplate": "Mulai dari template",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Trailing Stop",
   "btcUpdown.cfg.exitCheckpoint": "Checkpoint",
   "btcUpdown.cfg.fallback": "cadangan",
-  "btcUpdown.cfg.nameYourStrategy": "Beri nama strategimu..."
+  "btcUpdown.cfg.nameYourStrategy": "Beri nama strategimu...",
+  "btcUpdown.strategy.notFound": "Tidak ada strategi di endpoint ini"
 }

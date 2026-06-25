@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "Получить права админа",
   "updown5m.space.admin.claimTitle": "Стать администратором",
   "updown5m.space.noStrategies": "В этом пространстве пока нет стратегий",
-
   "btcUpdown.stats.wallet": "Кошелёк",
   "btcUpdown.stats.portfolio": "Портфель",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "Пропуск по сигналу (оценка={score})",
   "btcUpdown.skip.marketExpired": "Рынок истёк",
   "btcUpdown.skip.windowExpired": "Окно истекло",
-
   "btcUpdown.round.exitReason": "Причина выхода",
   "btcUpdown.exit.stopLoss": "Стоп-лосс",
   "btcUpdown.exit.binanceStopLoss": "Стоп-лосс Binance",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "Сбросить фильтр по часам",
   "btcUpdown.chart.am": "до полудня",
   "btcUpdown.chart.pm": "после полудня",
-
   "updown5m.back": "Назад",
   "updown5m.spaceFallback": "Пространство",
   "updown5m.userFallback": "Пользователь",
@@ -295,7 +292,6 @@
   "updown5m.claim": "Получить",
   "updown5m.newShort": "+ Новый",
   "updown5m.starting": "запуск...",
-
   "updown5m.detail.col1h": "1ч",
   "updown5m.detail.col30d": "30д",
   "updown5m.detail.showSidebar": "Показать панель",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "ВОЗВРАТ",
   "updown5m.detail.perRound": "{value}/раунд",
   "updown5m.detail.netCost": "Чистые затраты:",
-
   "updown5m.member.safeAddress": "Адрес Safe",
   "updown5m.member.tier": "Уровень",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "В этом пространстве нет активных инстансов.",
   "updown5m.member.performanceSummary": "Сводка результатов",
   "updown5m.member.userNotFound": "Пользователь не найден",
-
   "updown5m.table.prevPage": "Предыдущая страница",
-  "updown5m.table.nextPage": "Следующая страница"
+  "updown5m.table.nextPage": "Следующая страница",
+  "btcUpdown.round.hedgeFilledAt": "Хедж исполнен",
+  "btcUpdown.round.hedgeSoldAt": "Хедж продан"
 }

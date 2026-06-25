@@ -8,13 +8,24 @@
 	import { Copy, ExternalLink, AlertTriangle, Rocket } from '@lucide/svelte';
 	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { deployStore as store } from '$lib/deploy/deploy-store.svelte.js';
+	import { isValidSalt } from '$lib/deploy/create2.js';
 
 	const EMPTY_SALT = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+	// A salt that isn't exactly 0x + 64 hex chars silently nulls the predicted
+	// address (keccak doesn't throw on bad hex) — surface why instead.
+	const saltInvalid = $derived(!isValidSalt(store.salt));
 
 	const predictedLink = $derived(
 		store.explorerUrl && store.predictedAddress ? `${store.explorerUrl}/address/${store.predictedAddress}` : null
 	);
-	const blockerText = $derived(store.deployBlocker ? t(`deploy.gate.${store.deployBlocker}` as never) : '');
+	const blockerText = $derived(
+		store.deployBlocker === 'salt'
+			? t('deploy.error.invalidSalt')
+			: store.deployBlocker
+				? t(`deploy.gate.${store.deployBlocker}` as never)
+				: ''
+	);
 
 	// Debounce-check whether the predicted address is already occupied on-chain.
 	let checkTimer: ReturnType<typeof setTimeout>;
@@ -56,8 +67,12 @@
 	<div class="advanced">
 		<Disclosure title={t('deploy.review.advanced')} marked={store.salt !== EMPTY_SALT}>
 			<label class="dp-label" for="dp-salt">{t('deploy.create2.salt')}</label>
-			<input id="dp-salt" class="dp-input dp-mono" bind:value={store.salt} oninput={() => store.updatePredictedAddress()} />
-			<p class="dp-help">{t('deploy.help.salt')}</p>
+			<input id="dp-salt" class="dp-input dp-mono" class:bad={saltInvalid} aria-invalid={saltInvalid} bind:value={store.salt} oninput={() => store.updatePredictedAddress()} />
+			{#if saltInvalid}
+				<p class="dp-help err"><AlertTriangle size={12} /> {t('deploy.error.invalidSalt')}</p>
+			{:else}
+				<p class="dp-help">{t('deploy.help.salt')}</p>
+			{/if}
 
 			<div class="dp-label">{t('deploy.gas.title')}</div>
 			<div class="gas">
@@ -139,6 +154,15 @@
 	}
 	.predicted-note.err {
 		color: var(--error);
+	}
+	.dp-help.err {
+		color: var(--error);
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.dp-input.bad {
+		border-color: var(--error);
 	}
 	.advanced {
 		margin: var(--space-4) 0;

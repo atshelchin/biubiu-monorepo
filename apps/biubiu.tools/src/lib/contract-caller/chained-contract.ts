@@ -9,7 +9,7 @@
  */
 import { type Address, type Hex, encodeFunctionData, encodeAbiParameters, concat } from 'viem';
 import { CREATE2_PROXY, predictCreate2Address } from '$lib/deploy/create2.js';
-import { makeClient } from './rpc-client.js';
+import { isDeployed } from './rpc-client.js';
 import { CHAINED_MULTISEND_BYTECODE } from './chained-bytecode.js';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
@@ -44,13 +44,7 @@ export function chainedDeployCalldata(): { to: Address; data: Hex } {
 
 /** Whether the helper is already deployed on the chain behind `rpcUrl`. */
 export async function isChainedDeployed(rpcUrl: string): Promise<boolean> {
-	try {
-		const client = makeClient(rpcUrl);
-		const code = await client.getCode({ address: CHAINED_MULTISEND_ADDRESS });
-		return !!code && code !== '0x';
-	} catch {
-		return false;
-	}
+	return isDeployed(rpcUrl, CHAINED_MULTISEND_ADDRESS);
 }
 
 // ── executeChainDelegated encoding ──

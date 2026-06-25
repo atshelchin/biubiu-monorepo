@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "認領管理員",
   "updown5m.space.admin.claimTitle": "成為管理員",
   "updown5m.space.noStrategies": "此空間還沒有策略",
-
   "btcUpdown.stats.wallet": "錢包",
   "btcUpdown.stats.portfolio": "持倉",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "訊號跳過（評分={score}）",
   "btcUpdown.skip.marketExpired": "市場已過期",
   "btcUpdown.skip.windowExpired": "窗口已過期",
-
   "btcUpdown.round.exitReason": "離場原因",
   "btcUpdown.exit.stopLoss": "止蝕",
   "btcUpdown.exit.binanceStopLoss": "Binance 止蝕",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "清除小時篩選",
   "btcUpdown.chart.am": "上午",
   "btcUpdown.chart.pm": "下午",
-
   "updown5m.back": "返回",
   "updown5m.spaceFallback": "空間",
   "updown5m.userFallback": "用戶",
@@ -295,7 +292,6 @@
   "updown5m.claim": "認領",
   "updown5m.newShort": "+ 新建",
   "updown5m.starting": "啟動中…",
-
   "updown5m.detail.col1h": "1H",
   "updown5m.detail.col30d": "30D",
   "updown5m.detail.showSidebar": "顯示側欄",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "回收",
   "updown5m.detail.perRound": "{value}/回合",
   "updown5m.detail.netCost": "淨成本：",
-
   "updown5m.member.safeAddress": "Safe 地址",
   "updown5m.member.tier": "等級",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "此空間暫無運行中的實例。",
   "updown5m.member.performanceSummary": "表現摘要",
   "updown5m.member.userNotFound": "找不到用戶",
-
   "updown5m.table.prevPage": "上一頁",
-  "updown5m.table.nextPage": "下一頁"
+  "updown5m.table.nextPage": "下一頁",
+  "btcUpdown.round.hedgeFilledAt": "對沖成交",
+  "btcUpdown.round.hedgeSoldAt": "對沖賣出"
 }

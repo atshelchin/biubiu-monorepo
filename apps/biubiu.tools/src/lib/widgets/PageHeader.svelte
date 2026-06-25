@@ -7,7 +7,7 @@
 	import { authStore } from '$lib/auth';
 	import { walletStore } from '$lib/wallet';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
-	import { subscriptionStore } from '$lib/subscription';
+	import { subscriptionStore, memberWaiver } from '$lib/subscription';
 	import logo from '$lib/assets/logo.svg';
 	import { Link2, Diamond } from '@lucide/svelte';
 
@@ -43,6 +43,19 @@
 		const w = walletStore.activeWallet;
 		if (w) subscriptionStore.load(w.address);
 		else subscriptionStore.reset();
+	});
+
+	// Drop the proven member fee-waiver whenever the logged-in account changes or
+	// logs out — otherwise `active` survives logout and silently reactivates on
+	// re-login / switch-back to the same Safe WITHOUT a fresh passkey proof.
+	$effect(() => {
+		const u = authStore.user;
+		if (
+			memberWaiver.active &&
+			u?.safeAddress?.toLowerCase() !== memberWaiver.provenSafe?.toLowerCase()
+		) {
+			memberWaiver.reset();
+		}
 	});
 
 </script>

@@ -59,17 +59,26 @@ class MemberWaiver {
 	 */
 	get isWaiverActive(): boolean {
 		const user = authStore.user;
+		if (!user) return false;
+		const safe = user.safeAddress.toLowerCase();
 		return (
 			this.active &&
-			!!user &&
+			// isPremium 必须是「为当前登录 Safe」加载的，否则可能读到别的地址的会员状态
+			subscriptionStore.loadedFor === safe &&
 			subscriptionStore.isPremium &&
-			this.provenSafe?.toLowerCase() === user.safeAddress.toLowerCase()
+			this.provenSafe?.toLowerCase() === safe
 		);
 	}
 
 	/** 是否“有资格”签名豁免（已登录且链上是会员，但本会话尚未签名）。 */
 	get canProve(): boolean {
-		return !!authStore.user && subscriptionStore.isPremium && !this.isWaiverActive;
+		const user = authStore.user;
+		if (!user) return false;
+		return (
+			subscriptionStore.loadedFor === user.safeAddress.toLowerCase() &&
+			subscriptionStore.isPremium &&
+			!this.isWaiverActive
+		);
 	}
 
 	reset(): void {
@@ -77,6 +86,17 @@ class MemberWaiver {
 		this.provenSafe = null;
 		this.provenAt = 0;
 		this.proving = false;
+	}
+
+	/**
+	 * Drop the proven waiver if the active account no longer matches the one it was
+	 * proven for (logout → null, or switch to another Safe). Prevents the waiver
+	 * from silently reactivating on re-login / switch-back without a fresh passkey proof.
+	 */
+	syncToUser(safeAddress: string | null): void {
+		if (this.active && safeAddress?.toLowerCase() !== this.provenSafe?.toLowerCase()) {
+			this.reset();
+		}
 	}
 }
 
@@ -86,7 +106,12 @@ export const memberWaiver = new MemberWaiver();
 export async function ensureMembershipLoaded(): Promise<void> {
 	const user = authStore.user;
 	if (!user) return;
-	if (subscriptionStore.loaded || subscriptionStore.loading) return;
+	const target = user.safeAddress.toLowerCase();
+	// 跳过条件：① 已为当前 Safe 成功加载；② 正有一个针对当前 Safe 的加载在途（并发去重，
+	// 此时 loadedFor 可能仍为 null）。若 store 是为别的地址加载/在载的，必须重新拉取，
+	// 避免读到错误的会员状态。
+	if (subscriptionStore.loadingFor === target) return;
+	if (subscriptionStore.loadedFor === target && subscriptionStore.loaded) return;
 	await subscriptionStore.load(user.safeAddress as Address);
 }
 
@@ -104,7 +129,14 @@ export async function proveMemberControl(): Promise<ProofResult> {
 	memberWaiver.proving = true;
 	try {
 		await ensureMembershipLoaded();
-		if (!subscriptionStore.isPremium) return { ok: false, reason: 'not-member' };
+		// isPremium 必须是「为当前登录 Safe」加载的结果，否则按非会员处理（fail-closed），
+		// 防止并发加载别的地址时把它的会员状态读进来。
+		if (
+			subscriptionStore.loadedFor !== user.safeAddress.toLowerCase() ||
+			!subscriptionStore.isPremium
+		) {
+			return { ok: false, reason: 'not-member' };
+		}
 
 		const message = `biubiu-member:${user.safeAddress}:${Date.now()}`;
 		const challenge = new TextEncoder().encode(message);

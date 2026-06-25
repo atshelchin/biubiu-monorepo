@@ -71,20 +71,33 @@ export async function gasPrice(rpcs: string[]): Promise<bigint> {
 /**
  * Estimate the native the relay needs: fee + deploys + combined upgrade/sweep gas.
  * Generous (×2 on price) — leftover is recoverable via recoverGas().
+ *
+ * The sweep runs as ONE type-4 tx per chunk of `maxBatchUpgrade` EOAs (see
+ * runSweep). Each chunk carries a 60_000 fixed overhead PLUS a 21_000 intrinsic
+ * (it's a separate transaction), so for N chunks that fixed cost is spent N
+ * times — not once. Computing chunk count and multiplying the per-chunk fixed
+ * gas keeps the estimate covering the whole multi-chunk run instead of just the
+ * first chunk (which previously could leave the relay out of gas mid-sweep).
  */
 export async function estimateFundingWei(opts: {
 	rpcs: string[];
 	eoaCount: number;
 	tokenCount: number;
+	maxBatchUpgrade: number;
 	deployBatchSweeper: boolean;
 	deploySweeper: boolean;
 	feeWei: bigint;
 }): Promise<bigint> {
-	const { rpcs, eoaCount, tokenCount, deployBatchSweeper, deploySweeper, feeWei } = opts;
+	const { rpcs, eoaCount, tokenCount, maxBatchUpgrade, deployBatchSweeper, deploySweeper, feeWei } = opts;
 	const price = await getGasPrice(rpcs);
 	const deploy = (deployBatchSweeper ? 600_000n : 0n) + (deploySweeper ? 300_000n : 0n);
+	const eoas = BigInt(Math.max(0, eoaCount));
+	const batchSize = BigInt(Math.max(1, Math.floor(maxBatchUpgrade) || 1));
+	const chunks = eoas === 0n ? 0n : (eoas + batchSize - 1n) / batchSize; // ceil(eoas / batchSize)
 	const perEoa = 70_000n + 40_000n * BigInt(tokenCount); // auth + sweep, generous
-	const units = 60_000n + deploy + perEoa * BigInt(Math.max(0, eoaCount));
+	// Per chunk: 60_000 fixed overhead + 21_000 tx intrinsic (each chunk is its own tx).
+	const perChunkFixed = 60_000n + 21_000n;
+	const units = deploy + perChunkFixed * chunks + perEoa * eoas;
 	return feeWei + (units * price * 2n);
 }
 
@@ -104,8 +117,12 @@ export function relayFileContent(relay: Relayer, slug: string, ts: number): stri
 		'',
 		'This relay controls the sweep: it upgrades your EOAs and pulls funds to',
 		'your destination. KEEP IT until you have swept and recovered leftover gas.',
-		'Anyone with this key can spend its gas balance (but cannot redirect a sweep',
-		'— the destination is fixed per transaction).',
+		'',
+		'!! SECURITY !! Anyone who holds this key can sweep ANY of your still-',
+		'delegated EOAs to ANY destination of their choosing (the destination is',
+		'chosen per transaction, not fixed) — and can spend its gas balance.',
+		'After you have REVOKED the delegations and recovered the gas, this key is',
+		'harmless: DELETE IT then.',
 		'',
 		`Generated: ${new Date(ts).toISOString()}`,
 	].join('\n');

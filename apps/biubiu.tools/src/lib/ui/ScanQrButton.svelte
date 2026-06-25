@@ -20,7 +20,7 @@
 	let videoRef = $state<HTMLVideoElement | null>(null);
 	let stream = $state<MediaStream | null>(null);
 
-	const supported = typeof globalThis.BarcodeDetector !== 'undefined';
+	const supported = 'BarcodeDetector' in globalThis;
 
 	async function startScan() {
 		error = '';

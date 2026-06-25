@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Chốt lời",
   "btcUpdown.filter.stopLoss": "Cắt lỗ",
   "btcUpdown.disclaimer": "Đây chỉ là mô phỏng — không có tiền thật nào liên quan. Vui lòng cá cược có trách nhiệm. Chúng tôi không khuyến khích cờ bạc.",
-
   "btcUpdown.live.sectionTitle": "Trực tiếp",
   "btcUpdown.live.passkeyRegistered": "Đã đăng ký passkey",
   "btcUpdown.live.registerPasskey": "Đăng ký passkey",
   "btcUpdown.live.remove": "Xóa",
-
   "btcUpdown.instance.title": "Phiên bản chiến lược",
   "btcUpdown.instance.refresh": "Làm mới",
   "btcUpdown.instance.create": "Tạo",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Xuất",
   "btcUpdown.instance.import": "Nhập",
   "btcUpdown.instance.statusUnknown": "không rõ",
-
   "btcUpdown.configurator.createTitle": "Tạo phiên bản chiến lược",
   "btcUpdown.configurator.editTitle": "Sửa cấu hình chiến lược",
   "btcUpdown.configurator.editConfig": "Sửa",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "đã chi",
   "btcUpdown.v70.up": "LÊN",
   "btcUpdown.v70.down": "XUỐNG",
-
   "btcUpdown.round.exitReason": "Lý do thoát",
   "btcUpdown.exit.stopLoss": "Cắt lỗ",
   "btcUpdown.exit.binanceStopLoss": "Cắt lỗ Binance",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Xóa bộ lọc theo giờ",
   "btcUpdown.chart.am": "Sáng",
   "btcUpdown.chart.pm": "Chiều",
-
   "btcUpdown.live.priceToBeat": "Giá cần vượt",
   "btcUpdown.strategy.close": "Đóng",
-
   "btcUpdown.control.errFailedLoad": "Tải thất bại",
   "btcUpdown.control.errFailed": "Thất bại",
   "btcUpdown.control.errActionFailed": "Thao tác thất bại",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "T5",
   "btcUpdown.control.weekday.fr": "T6",
   "btcUpdown.control.weekday.sa": "T7",
-
   "btcUpdown.endpoint.title": "Điểm cuối được quản lý",
   "btcUpdown.endpoint.add": "+ Thêm",
   "btcUpdown.endpoint.urlPlaceholder": "URL điểm cuối (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Đăng ký passkey",
   "btcUpdown.endpoint.remove": "Xóa điểm cuối",
   "btcUpdown.endpoint.dismiss": "Bỏ qua",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Bắt đầu",
   "btcUpdown.cfg.startFromTemplate": "Bắt đầu từ mẫu",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Cắt lỗ theo sát",
   "btcUpdown.cfg.exitCheckpoint": "Điểm kiểm tra",
   "btcUpdown.cfg.fallback": "dự phòng",
-  "btcUpdown.cfg.nameYourStrategy": "Đặt tên cho chiến lược của bạn..."
+  "btcUpdown.cfg.nameYourStrategy": "Đặt tên cho chiến lược của bạn...",
+  "btcUpdown.strategy.notFound": "Không tìm thấy chiến lược tại endpoint này"
 }

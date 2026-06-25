@@ -29,6 +29,7 @@ import { DOMAIN_SEPARATOR_TYPEHASH } from './constants.js';
 import { signSafeOpWithPasskey } from './webauthn-sign.js';
 import { buildContractSignatureWebAuthn } from './build-userop.js';
 import { parseP256PublicKey } from '../compute-safe-address.js';
+import { P256_N } from '../crypto-utils.js';
 
 /** EIP-712 typehash for `SafeMessage(bytes message)`. */
 const SAFE_MSG_TYPEHASH = keccak256(toHex('SafeMessage(bytes message)'));
@@ -160,6 +161,14 @@ async function verifyWebAuthnContractSig(
 	} catch {
 		return false;
 	}
+
+	// Reject malleable high-S signatures to match on-chain RIP-7212
+	// (SafeWebAuthnSharedSigner verifiers=0x100), which only accepts low-S.
+	// WebCrypto verify() would otherwise accept both (r, s) and (r, n-s), so
+	// without this the local "authoritative" verifier diverges from the
+	// precompile the account actually relies on, and two valid signatures per
+	// message would exist (breaks any signature-byte dedup / anti-replay).
+	if (s > P256_N / 2n) return false;
 
 	const challenge = base64urlNoPad(hexToBytes(safeMessageHash));
 	const clientDataJSON = `{"type":"webauthn.get","challenge":"${challenge}",${clientDataFields}}`;

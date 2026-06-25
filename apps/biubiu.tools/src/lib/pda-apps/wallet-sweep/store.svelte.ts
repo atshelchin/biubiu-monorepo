@@ -52,6 +52,7 @@ import {
 	isSweeperDeployed,
 } from './infra/deploy-sweeper.js';
 import { planSweep, runSweep, type SweepPlan, type SweepEvent } from './infra/sweep.js';
+import { feeSessionKey, effectiveFeeWei, feeNowPaid } from './infra/fee-session.js';
 import { runRevoke } from './infra/revoke.js';
 import { quoteSweepFee, type FeeQuote } from './infra/fee.js';
 import { putSweep, listSweeps, deleteSweep } from './history/sweep-history.js';
@@ -117,6 +118,21 @@ export class WalletSweepStore {
 	progress = $state<{ chunk: number; total: number } | null>(null);
 	sweepRecords = $state<SweepBatchRecord[]>([]);
 	private sweptSet = $state<Set<string>>(new Set());
+	/**
+	 * Whether THIS session actually delegated EOAs (ran a sweep). The relay-key
+	 * auto-wipe is gated on this so it can ONLY fire when delegations were created
+	 * this session and then all revoked — never when sweptSet is empty merely
+	 * because a page reload didn't repopulate the in-memory set (which would
+	 * otherwise destroy the only key controlling still-delegated EOAs).
+	 */
+	private didDelegateThisSession = $state(false);
+	/**
+	 * The (network|destination) the service fee was already collected for in this
+	 * session. A re-sweep / manual retry of the SAME operation must NOT re-charge
+	 * the fee; a genuinely new operation (different destination or network, or
+	 * reset()) clears this and charges again.
+	 */
+	private feePaidKey = $state<string | null>(null);
 
 	// revoke / recover
 	revoking = $state(false);
@@ -324,6 +340,7 @@ export class WalletSweepStore {
 		this.relayVerified = false;
 		this.relayBal = 0n;
 		this.verifyError = null;
+		this.didDelegateThisSession = false;
 	}
 	private ensureRelay() {
 		const net = this.network;
@@ -401,6 +418,7 @@ export class WalletSweepStore {
 				rpcs,
 				eoaCount: plan.sweepable.length,
 				tokenCount: this.erc20Addresses.length,
+				maxBatchUpgrade: net.maxBatchUpgrade,
 				deployBatchSweeper: this.needBatchSweeperDeploy,
 				deploySweeper: this.needSweeperDeploy,
 				feeWei: fee.amount,
@@ -481,6 +499,14 @@ export class WalletSweepStore {
 			this.log('No wallets with a balance to sweep', 'warn');
 			return;
 		}
+		// Idempotent fee: charge the service fee only ONCE per (network|destination)
+		// session. A re-sweep / manual retry of the same operation pays 0 so a flaky
+		// run isn't charged once per attempt.
+		const feeKey = feeSessionKey(net.slug, dest);
+		const effectiveFee = effectiveFeeWei(feeWei, this.feePaidKey, feeKey);
+		if (effectiveFee === 0n && feeWei > 0n) {
+			this.log('Service fee already paid this session — re-sweep is fee-free', 'info');
+		}
 		this.runStage = 'sweeping';
 		this.sweepRecords = [];
 		const records = await runSweep({
@@ -491,14 +517,20 @@ export class WalletSweepStore {
 			sweeperAddr: sweeper,
 			dest,
 			erc20s: this.erc20Addresses,
-			feeWei,
+			feeWei: effectiveFee,
 			onEvent: (e: SweepEvent) => this.onSweepEvent(e),
 		});
 		this.sweepRecords = records;
+		// The fee rides on chunk 0; mark it paid only once that chunk confirms, so a
+		// failed chunk-0 retry still charges (and succeeds) next time.
+		if (feeNowPaid(effectiveFee, records)) {
+			this.feePaidKey = feeKey;
+		}
 		const set = new Set(this.sweptSet);
 		for (const k of sweepable) set.add(k.address.toLowerCase());
 		this.sweptSet = set;
-		await this.saveHistory(records, dest, feeWei);
+		if (sweepable.length > 0) this.didDelegateThisSession = true;
+		await this.saveHistory(records, dest, effectiveFee);
 		const ok = records.filter((r) => r.status === 'completed').length;
 		this.log(`Swept ${ok}/${records.length} batches`, ok === records.length ? 'ok' : 'warn');
 		void this.loadHistory();
@@ -576,6 +608,9 @@ export class WalletSweepStore {
 			for (const a of result.succeeded) set.delete(a.toLowerCase());
 			this.sweptSet = set;
 			this.log(`Revoked ${result.succeeded.length}/${keys.length}`, result.failed.length ? 'warn' : 'ok');
+			if (this.sweptSet.size === 0) {
+				this.log('All delegations revoked — recover gas to wipe the relay key', 'info');
+			}
 			void this.refreshRelayerBalance();
 		} catch (e) {
 			this.fail(e, 'Revoke failed');
@@ -595,6 +630,15 @@ export class WalletSweepStore {
 			const tx = await recoverGas(net, rpcs, this.relay, dest);
 			this.log(tx ? `Recovered relay gas → ${dest.slice(0, 8)}… (${tx.slice(0, 10)}…)` : 'No leftover gas to recover', tx ? 'ok' : 'info');
 			await this.refreshRelayerBalance();
+			// Auto-wipe the relay key ONLY when this session delegated EOAs and then
+			// revoked them all (sweptSet emptied via revoke). NEVER wipe when sweptSet is
+			// empty just because a reload didn't repopulate it — the key may still be the
+			// only thing that can revoke/redirect still-delegated EOAs (funds-safety).
+			if (this.didDelegateThisSession && this.sweptSet.size === 0) {
+				clearRelayer(net.slug);
+				this.resetRelay();
+				this.log('Relay key wiped — all delegations revoked, key is no longer needed', 'ok');
+			}
 		} catch (e) {
 			this.fail(e, 'Recover gas failed');
 		} finally {
@@ -623,6 +667,8 @@ export class WalletSweepStore {
 		this.plan = null;
 		this.sweepRecords = [];
 		this.sweptSet = new Set();
+		this.didDelegateThisSession = false;
+		this.feePaidKey = null;
 		this.error = null;
 	}
 }

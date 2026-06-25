@@ -41,6 +41,28 @@ function openDB(): Promise<IDBDatabase> {
 	});
 }
 
+/**
+ * Open the DB and run `fn` against a transaction's object store, wrapping the
+ * shared open + Promise + tx.oncomplete/onerror boilerplate. The work `fn`
+ * issues (put/delete) settles when the transaction completes; the resolved
+ * value is whatever `fn` returns (void for writes).
+ */
+function withStore<T>(
+	store: string,
+	mode: IDBTransactionMode,
+	fn: (objectStore: IDBObjectStore) => T,
+): Promise<T> {
+	return openDB().then(
+		(db) =>
+			new Promise<T>((resolve, reject) => {
+				const tx = db.transaction(store, mode);
+				const result = fn(tx.objectStore(store));
+				tx.oncomplete = () => resolve(result);
+				tx.onerror = () => reject(tx.error);
+			}),
+	);
+}
+
 function getAll<T>(store: string): Promise<T[]> {
 	if (!hasIDB()) return Promise.resolve([]);
 	return openDB().then(
@@ -55,28 +77,16 @@ function getAll<T>(store: string): Promise<T[]> {
 
 function put(store: string, value: unknown): Promise<void> {
 	if (!hasIDB()) return Promise.resolve();
-	return openDB().then(
-		(db) =>
-			new Promise<void>((resolve, reject) => {
-				const tx = db.transaction(store, 'readwrite');
-				tx.objectStore(store).put(value);
-				tx.oncomplete = () => resolve();
-				tx.onerror = () => reject(tx.error);
-			}),
-	);
+	return withStore(store, 'readwrite', (os) => {
+		os.put(value);
+	});
 }
 
 function del(store: string, key: string): Promise<void> {
 	if (!hasIDB()) return Promise.resolve();
-	return openDB().then(
-		(db) =>
-			new Promise<void>((resolve, reject) => {
-				const tx = db.transaction(store, 'readwrite');
-				tx.objectStore(store).delete(key);
-				tx.oncomplete = () => resolve();
-				tx.onerror = () => reject(tx.error);
-			}),
-	);
+	return withStore(store, 'readwrite', (os) => {
+		os.delete(key);
+	});
 }
 
 const tokenId = (chainId: number, address: Address) => `${chainId}:${address.toLowerCase()}`;

@@ -11,6 +11,7 @@
 import { getAddress, type Address } from 'viem';
 import type { SpenderEntry } from '../types.js';
 import { PERMIT2_ADDRESS } from '../infra/abis.js';
+import { dedupeBy } from '../infra/dedupe.js';
 
 function sp(address: string, label: string, kind: SpenderEntry['kind']): SpenderEntry {
 	return { address: getAddress(address), label, kind };
@@ -93,11 +94,5 @@ export const PER_CHAIN_SPENDERS: Record<number, SpenderEntry[]> = {
 export function spendersForChain(chainId: number): SpenderEntry[] {
 	const merged = [...CROSS_CHAIN_SPENDERS, ...(PER_CHAIN_SPENDERS[chainId] ?? [])];
 	// De-dupe by address (CROSS_CHAIN lists Permit2 twice on purpose for clarity).
-	const seen = new Set<string>();
-	return merged.filter((s) => {
-		const k = s.address.toLowerCase();
-		if (seen.has(k)) return false;
-		seen.add(k);
-		return true;
-	});
+	return dedupeBy(merged, (s) => s.address.toLowerCase());
 }

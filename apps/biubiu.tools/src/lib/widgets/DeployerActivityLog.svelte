@@ -6,15 +6,7 @@
 	import { t } from '$lib/i18n';
 	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { deployStore as store } from '$lib/deploy/deploy-store.svelte.js';
-
-	/** Turn URLs in a log line into safe, clickable links. */
-	function linkify(msg: string): string {
-		const escaped = msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		return escaped.replace(
-			/(https?:\/\/[^\s]+)/g,
-			'<a href="$1" target="_blank" rel="noopener" class="log-link">$1</a>'
-		);
-	}
+	import { linkify } from './linkify.js';
 
 	const latest = $derived(store.logs[0]?.message ?? '');
 </script>
@@ -26,7 +18,17 @@
 		</div>
 		<div class="log-area">
 			{#each store.logs as entry (entry.id)}
-				<div class="log-item log-{entry.type}">{@html linkify(entry.message)}</div>
+				<div class="log-item log-{entry.type}">
+					{#each linkify(entry.message) as part, i (i)}
+						{#if part.isLink}
+							<a
+								href={part.chunk}
+								target="_blank"
+								rel="noopener noreferrer nofollow"
+								class="log-link">{part.chunk}</a>
+						{:else}{part.chunk}{/if}
+					{/each}
+				</div>
 			{/each}
 		</div>
 	</Disclosure>

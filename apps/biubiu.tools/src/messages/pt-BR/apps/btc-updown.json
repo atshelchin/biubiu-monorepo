@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Take profit",
   "btcUpdown.filter.stopLoss": "Stop loss",
   "btcUpdown.disclaimer": "Isto é apenas uma simulação — nenhum dinheiro real está envolvido. Aposte com responsabilidade. Não incentivamos jogos de azar.",
-
   "btcUpdown.live.sectionTitle": "Ao vivo",
   "btcUpdown.live.passkeyRegistered": "Passkey registrada",
   "btcUpdown.live.registerPasskey": "Registrar passkey",
   "btcUpdown.live.remove": "Remover",
-
   "btcUpdown.instance.title": "Instâncias de estratégia",
   "btcUpdown.instance.refresh": "Atualizar",
   "btcUpdown.instance.create": "Criar",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Exportar",
   "btcUpdown.instance.import": "Importar",
   "btcUpdown.instance.statusUnknown": "desconhecido",
-
   "btcUpdown.configurator.createTitle": "Criar instância de estratégia",
   "btcUpdown.configurator.editTitle": "Editar configuração da estratégia",
   "btcUpdown.configurator.editConfig": "Editar",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "gasto",
   "btcUpdown.v70.up": "SUBIR",
   "btcUpdown.v70.down": "DESCER",
-
   "btcUpdown.round.exitReason": "Motivo da saída",
   "btcUpdown.exit.stopLoss": "Stop loss",
   "btcUpdown.exit.binanceStopLoss": "Stop loss da Binance",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Limpar filtro de hora",
   "btcUpdown.chart.am": "AM",
   "btcUpdown.chart.pm": "PM",
-
   "btcUpdown.live.priceToBeat": "Preço a superar",
   "btcUpdown.strategy.close": "Fechar",
-
   "btcUpdown.control.errFailedLoad": "Falha ao carregar",
   "btcUpdown.control.errFailed": "Falhou",
   "btcUpdown.control.errActionFailed": "A ação falhou",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Qui",
   "btcUpdown.control.weekday.fr": "Sex",
   "btcUpdown.control.weekday.sa": "Sáb",
-
   "btcUpdown.endpoint.title": "Endpoints gerenciados",
   "btcUpdown.endpoint.add": "+ Adicionar",
   "btcUpdown.endpoint.urlPlaceholder": "URL do endpoint (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Registrar passkey",
   "btcUpdown.endpoint.remove": "Remover endpoint",
   "btcUpdown.endpoint.dismiss": "Dispensar",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Início",
   "btcUpdown.cfg.startFromTemplate": "Começar a partir de um modelo",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Trailing stop",
   "btcUpdown.cfg.exitCheckpoint": "Checkpoint",
   "btcUpdown.cfg.fallback": "fallback",
-  "btcUpdown.cfg.nameYourStrategy": "Dê um nome à sua estratégia..."
+  "btcUpdown.cfg.nameYourStrategy": "Dê um nome à sua estratégia...",
+  "btcUpdown.strategy.notFound": "Nenhuma estratégia encontrada neste endpoint"
 }

@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "止盈",
   "btcUpdown.filter.stopLoss": "止损",
   "btcUpdown.disclaimer": "这仅是模拟——不涉及真实资金。请理性参与，我们不鼓励赌博。",
-
   "btcUpdown.live.sectionTitle": "实时",
   "btcUpdown.live.passkeyRegistered": "passkey 已注册",
   "btcUpdown.live.registerPasskey": "注册 passkey",
   "btcUpdown.live.remove": "移除",
-
   "btcUpdown.instance.title": "策略实例",
   "btcUpdown.instance.refresh": "刷新",
   "btcUpdown.instance.create": "创建",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "导出",
   "btcUpdown.instance.import": "导入",
   "btcUpdown.instance.statusUnknown": "未知",
-
   "btcUpdown.configurator.createTitle": "创建策略实例",
   "btcUpdown.configurator.editTitle": "编辑策略配置",
   "btcUpdown.configurator.editConfig": "编辑",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "已花费",
   "btcUpdown.v70.up": "涨",
   "btcUpdown.v70.down": "跌",
-
   "btcUpdown.round.exitReason": "离场原因",
   "btcUpdown.exit.stopLoss": "止损",
   "btcUpdown.exit.binanceStopLoss": "币安止损",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "清除小时筛选",
   "btcUpdown.chart.am": "上午",
   "btcUpdown.chart.pm": "下午",
-
   "btcUpdown.live.priceToBeat": "目标价",
   "btcUpdown.strategy.close": "关闭",
-
   "btcUpdown.control.errFailedLoad": "加载失败",
   "btcUpdown.control.errFailed": "失败",
   "btcUpdown.control.errActionFailed": "操作失败",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "四",
   "btcUpdown.control.weekday.fr": "五",
   "btcUpdown.control.weekday.sa": "六",
-
   "btcUpdown.endpoint.title": "托管端点",
   "btcUpdown.endpoint.add": "+ 添加",
   "btcUpdown.endpoint.urlPlaceholder": "端点 URL（https://...）",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "注册 passkey",
   "btcUpdown.endpoint.remove": "移除端点",
   "btcUpdown.endpoint.dismiss": "关闭",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "开始",
   "btcUpdown.cfg.startFromTemplate": "从模板开始",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "追踪止损",
   "btcUpdown.cfg.exitCheckpoint": "检查点",
   "btcUpdown.cfg.fallback": "兜底",
-  "btcUpdown.cfg.nameYourStrategy": "为你的策略命名…"
+  "btcUpdown.cfg.nameYourStrategy": "为你的策略命名…",
+  "btcUpdown.strategy.notFound": "此端点未找到策略"
 }

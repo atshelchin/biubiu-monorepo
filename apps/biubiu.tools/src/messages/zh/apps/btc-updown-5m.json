@@ -165,7 +165,6 @@
   "updown5m.space.admin.claimTab": "认领管理员",
   "updown5m.space.admin.claimTitle": "成为管理员",
   "updown5m.space.noStrategies": "此空间还没有策略",
-
   "btcUpdown.stats.wallet": "钱包",
   "btcUpdown.stats.portfolio": "持仓",
   "btcUpdown.stats.pmStats": "Polymarket",
@@ -247,7 +246,6 @@
   "btcUpdown.skip.signalSkip": "信号跳过（评分={score}）",
   "btcUpdown.skip.marketExpired": "市场已过期",
   "btcUpdown.skip.windowExpired": "窗口已过期",
-
   "btcUpdown.round.exitReason": "离场原因",
   "btcUpdown.exit.stopLoss": "止损",
   "btcUpdown.exit.binanceStopLoss": "币安止损",
@@ -280,7 +278,6 @@
   "btcUpdown.stats.clearHourFilter": "清除小时筛选",
   "btcUpdown.chart.am": "上午",
   "btcUpdown.chart.pm": "下午",
-
   "updown5m.back": "返回",
   "updown5m.spaceFallback": "空间",
   "updown5m.userFallback": "用户",
@@ -295,7 +292,6 @@
   "updown5m.claim": "认领",
   "updown5m.newShort": "+ 新建",
   "updown5m.starting": "启动中…",
-
   "updown5m.detail.col1h": "1h",
   "updown5m.detail.col30d": "30d",
   "updown5m.detail.showSidebar": "显示侧栏",
@@ -321,7 +317,6 @@
   "updown5m.detail.recovery": "回补",
   "updown5m.detail.perRound": "{value}/回合",
   "updown5m.detail.netCost": "净成本：",
-
   "updown5m.member.safeAddress": "Safe 地址",
   "updown5m.member.tier": "等级",
   "updown5m.member.tierPro": "Pro",
@@ -330,7 +325,8 @@
   "updown5m.member.noActiveInstances": "此空间暂无运行中的实例。",
   "updown5m.member.performanceSummary": "业绩汇总",
   "updown5m.member.userNotFound": "未找到用户",
-
   "updown5m.table.prevPage": "上一页",
-  "updown5m.table.nextPage": "下一页"
+  "updown5m.table.nextPage": "下一页",
+  "btcUpdown.round.hedgeFilledAt": "对冲成交",
+  "btcUpdown.round.hedgeSoldAt": "对冲卖出"
 }

@@ -37,7 +37,8 @@ export interface NetworkJob {
 export interface NetworkJobResult {
     network: string;
     token: TokenSpec;
-    results: { address: string; balance: string }[];
+    /** `balance` is `null` for a per-address sub-call that FAILED (vs a real '0'). */
+    results: { address: string; balance: string | null }[];
 }
 
 export interface BalanceResult {

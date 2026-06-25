@@ -7,6 +7,7 @@
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import MessageBubble from './MessageBubble.svelte';
+	import { shortenAddress } from '../format.js';
 	import type { ChatStore } from '../store.svelte.js';
 
 	let { store }: { store: ChatStore } = $props();
@@ -19,11 +20,7 @@
 	/** True while the list is scrolled to (near) the bottom. */
 	let pinned = $state(true);
 
-	const peerShort = $derived(shorten(store.peer?.address ?? ''));
-
-	function shorten(addr: string): string {
-		return addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
-	}
+	const peerShort = $derived(shortenAddress(store.peer?.address ?? ''));
 
 	const degraded = $derived(store.conn !== 'open' || !store.peerOnline);
 

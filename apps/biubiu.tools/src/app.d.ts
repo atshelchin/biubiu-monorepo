@@ -14,6 +14,15 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	/** Injected by vite `define` (vite.config.ts) — the short git commit hash. */
+	const __COMMIT_HASH__: string;
+
+	/** Experimental Barcode Detection API (not yet in TS DOM lib). */
+	class BarcodeDetector {
+		constructor(options?: { formats?: string[] });
+		detect(source: CanvasImageSource | Blob): Promise<Array<{ rawValue: string }>>;
+	}
 }
 
 export {};

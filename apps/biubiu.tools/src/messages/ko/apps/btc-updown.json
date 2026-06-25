@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "익절",
   "btcUpdown.filter.stopLoss": "손절",
   "btcUpdown.disclaimer": "이것은 시뮬레이션일 뿐이며 실제 자금은 사용되지 않습니다. 책임감 있게 참여해 주세요. 저희는 도박을 권장하지 않습니다.",
-
   "btcUpdown.live.sectionTitle": "실시간",
   "btcUpdown.live.passkeyRegistered": "passkey 등록됨",
   "btcUpdown.live.registerPasskey": "passkey 등록",
   "btcUpdown.live.remove": "제거",
-
   "btcUpdown.instance.title": "전략 인스턴스",
   "btcUpdown.instance.refresh": "새로고침",
   "btcUpdown.instance.create": "만들기",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "내보내기",
   "btcUpdown.instance.import": "가져오기",
   "btcUpdown.instance.statusUnknown": "알 수 없음",
-
   "btcUpdown.configurator.createTitle": "전략 인스턴스 만들기",
   "btcUpdown.configurator.editTitle": "전략 설정 편집",
   "btcUpdown.configurator.editConfig": "편집",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "사용함",
   "btcUpdown.v70.up": "UP",
   "btcUpdown.v70.down": "DOWN",
-
   "btcUpdown.round.exitReason": "청산 사유",
   "btcUpdown.exit.stopLoss": "손절",
   "btcUpdown.exit.binanceStopLoss": "바이낸스 손절",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "시간 필터 지우기",
   "btcUpdown.chart.am": "오전",
   "btcUpdown.chart.pm": "오후",
-
   "btcUpdown.live.priceToBeat": "기준 가격",
   "btcUpdown.strategy.close": "닫기",
-
   "btcUpdown.control.errFailedLoad": "불러오지 못했습니다",
   "btcUpdown.control.errFailed": "실패",
   "btcUpdown.control.errActionFailed": "작업에 실패했습니다",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "목",
   "btcUpdown.control.weekday.fr": "금",
   "btcUpdown.control.weekday.sa": "토",
-
   "btcUpdown.endpoint.title": "관리 엔드포인트",
   "btcUpdown.endpoint.add": "+ 추가",
   "btcUpdown.endpoint.urlPlaceholder": "엔드포인트 URL (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "passkey 등록",
   "btcUpdown.endpoint.remove": "엔드포인트 제거",
   "btcUpdown.endpoint.dismiss": "닫기",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "시작",
   "btcUpdown.cfg.startFromTemplate": "템플릿으로 시작",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "트레일링 스탑",
   "btcUpdown.cfg.exitCheckpoint": "체크포인트",
   "btcUpdown.cfg.fallback": "대체",
-  "btcUpdown.cfg.nameYourStrategy": "전략 이름을 입력하세요…"
+  "btcUpdown.cfg.nameYourStrategy": "전략 이름을 입력하세요…",
+  "btcUpdown.strategy.notFound": "이 엔드포인트에서 전략을 찾을 수 없습니다"
 }

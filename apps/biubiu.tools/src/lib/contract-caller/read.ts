@@ -4,7 +4,7 @@
 import { type Address, type Hex } from 'viem';
 import type { ParsedMethod } from './types.js';
 import { encodeCall, decodeResult } from './encode.js';
-import { makeClient, isRetryableRpcError } from './rpc-client.js';
+import { makeClient, isRetryableRpcError, dedupRpcs } from './rpc-client.js';
 
 export interface ReadExecResult {
 	ok: boolean;
@@ -53,7 +53,7 @@ export async function executeReadWithFailover(
 	method: ParsedMethod,
 	args: readonly unknown[]
 ): Promise<ReadExecResult> {
-	const urls = [...new Set(rpcUrls.filter(Boolean))];
+	const urls = dedupRpcs(rpcUrls);
 	if (urls.length === 0) return { ok: false, error: 'No reachable RPC endpoint.' };
 	let last: ReadExecResult = { ok: false, error: 'No reachable RPC endpoint.' };
 	for (const url of urls) {

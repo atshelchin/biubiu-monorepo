@@ -50,8 +50,47 @@ const IS_VALID_SIGNATURE_ABI = [
 
 const RECEIPT_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2_000;
+/** Per-poll request budget. A single request hanging longer than this is treated as a
+ *  transient poll miss so the 180s wall-clock guard can still fire (see findings P2). */
+const POLL_REQUEST_TIMEOUT_MS = POLL_INTERVAL_MS * 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Sentinel thrown when a single poll request exceeds its budget (not a real error). */
+class PollTimeout extends Error {
+	constructor() {
+		super('poll request timed out');
+		this.name = 'PollTimeout';
+	}
+}
+
+/**
+ * Race a single `provider.request` against a bounded timeout. EIP-1193 has no native
+ * cancellation, so we cannot truly abort a hung wallet/relay request — but we MUST stop
+ * *waiting* on it, otherwise one stuck await would bypass the outer wall-clock guard
+ * forever and the send promise would never settle. On timeout we throw PollTimeout so
+ * the caller continues polling until the wall-clock budget runs out.
+ *
+ * CLAUDE.md Promise.race discipline: clearTimeout in BOTH branches; suppress the loser's
+ * eventual rejection so it never becomes an unhandled rejection.
+ */
+async function requestWithTimeout<T>(
+	provider: Eip1193Provider,
+	args: Parameters<Eip1193Provider['request']>[0],
+	timeoutMs: number
+): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new PollTimeout()), timeoutMs);
+	});
+	const reqPromise = provider.request(args) as Promise<T>;
+	reqPromise.catch(() => {}); // suppress unhandled rejection of the loser
+	try {
+		return await Promise.race([reqPromise, timeoutPromise]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
 
 interface EvmReceipt {
 	status?: string | number;
@@ -182,10 +221,17 @@ export abstract class Eip1193Wallet implements ConnectedWallet {
 	private async waitForCallsStatus(batchId: string): Promise<{ txHash: Hex; success: boolean }> {
 		const start = Date.now();
 		while (Date.now() - start < RECEIPT_TIMEOUT_MS) {
-			const status = (await this.provider.request({
-				method: 'wallet_getCallsStatus',
-				params: [batchId]
-			})) as { receipts?: EvmReceipt[] } | null;
+			let status: { receipts?: EvmReceipt[] } | null;
+			try {
+				status = await requestWithTimeout<{ receipts?: EvmReceipt[] } | null>(
+					this.provider,
+					{ method: 'wallet_getCallsStatus', params: [batchId] },
+					POLL_REQUEST_TIMEOUT_MS
+				);
+			} catch (err) {
+				if (err instanceof PollTimeout) continue; // hung request → re-check wall clock, retry
+				throw err;
+			}
 			const receipts = status?.receipts;
 			if (receipts && receipts.length > 0) {
 				const hash = receipts[receipts.length - 1].transactionHash;
@@ -200,10 +246,17 @@ export abstract class Eip1193Wallet implements ConnectedWallet {
 	private async waitForReceipt(txHash: Hex): Promise<boolean> {
 		const start = Date.now();
 		while (Date.now() - start < RECEIPT_TIMEOUT_MS) {
-			const receipt = (await this.provider.request({
-				method: 'eth_getTransactionReceipt',
-				params: [txHash]
-			})) as EvmReceipt | null;
+			let receipt: EvmReceipt | null;
+			try {
+				receipt = await requestWithTimeout<EvmReceipt | null>(
+					this.provider,
+					{ method: 'eth_getTransactionReceipt', params: [txHash] },
+					POLL_REQUEST_TIMEOUT_MS
+				);
+			} catch (err) {
+				if (err instanceof PollTimeout) continue; // hung request → re-check wall clock, retry
+				throw err;
+			}
 			if (receipt) return receiptOk(receipt.status);
 			await sleep(POLL_INTERVAL_MS);
 		}

@@ -4,15 +4,12 @@
 -->
 <script lang="ts">
 	import type { ChatMessage } from '../store.svelte.js';
+	import { linkify } from '../linkify.js';
 
 	let { message }: { message: ChatMessage } = $props();
 
-	const URL_RE = /(https?:\/\/[^\s]+)/g;
-
 	// Split into text + link parts for safe linkification (no @html).
-	const parts = $derived(
-		message.text.split(URL_RE).map((chunk) => ({ chunk, isLink: URL_RE.test(chunk) }))
-	);
+	const parts = $derived(linkify(message.text));
 
 	const time = $derived(
 		new Date(message.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -22,7 +19,7 @@
 <div class="row" class:mine={message.dir === 'out'}>
 	<div class="bubble" class:mine={message.dir === 'out'}>
 		<span class="text">
-			{#each parts as part (part.chunk)}
+			{#each parts as part, i (i)}
 				{#if part.isLink}
 					<a href={part.chunk} target="_blank" rel="noopener noreferrer nofollow">{part.chunk}</a>
 				{:else}{part.chunk}{/if}

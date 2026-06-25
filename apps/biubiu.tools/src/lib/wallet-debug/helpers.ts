@@ -6,6 +6,7 @@ import { CHAINS } from '$lib/wallet/infra/chains.js';
 import { loadChainInfo } from '$lib/contract-caller/networks.js';
 import { getInjectedProvider } from '$lib/chains/wallet.js';
 import type { ConnectedWallet } from '$lib/wallet';
+import { canAddChainToWallet } from './gating.js';
 
 /** A curated, biubiu-writable network for the quick-pick chips. */
 export interface CuratedChain {
@@ -104,10 +105,25 @@ export type AddChainOutcome =
 	| { status: 'no-wallet' }
 	| { status: 'failed'; error: string };
 
-/** The connected external wallet's provider, else the browser-injected wallet. */
+/**
+ * The EIP-1193 provider to target for an "add chain" action.
+ *
+ * Resolution order:
+ *   1. The connected external wallet's own provider (inject / walletpair).
+ *   2. Only when NO wallet is connected: the browser-injected wallet.
+ *
+ * biubiu (a chainless passkey Safe) returns `null` — it has no provider, and we
+ * must NOT silently fall back to an unrelated injected extension (e.g. MetaMask)
+ * that has nothing to do with the connected biubiu account.
+ */
 export function resolveAddProvider(wallet: ConnectedWallet | null): Eip1193Like | null {
-	if (wallet && 'provider' in wallet) {
-		return (wallet as unknown as { provider: Eip1193Like }).provider;
+	if (wallet) {
+		if (canAddChainToWallet(wallet) && 'provider' in wallet) {
+			return (wallet as unknown as { provider: Eip1193Like }).provider;
+		}
+		// A wallet is connected but cannot have chains added (biubiu) — do not
+		// drive a random injected extension on its behalf.
+		return null;
 	}
 	return getInjectedProvider() as Eip1193Like | null;
 }

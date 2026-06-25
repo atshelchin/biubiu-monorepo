@@ -181,12 +181,10 @@
   "btcUpdown.filter.takeProfit": "Тейк-профит",
   "btcUpdown.filter.stopLoss": "Стоп-лосс",
   "btcUpdown.disclaimer": "Это всего лишь симуляция — реальные деньги не задействованы. Играйте ответственно. Мы не поощряем азартные игры.",
-
   "btcUpdown.live.sectionTitle": "Live",
   "btcUpdown.live.passkeyRegistered": "passkey зарегистрирован",
   "btcUpdown.live.registerPasskey": "Зарегистрировать passkey",
   "btcUpdown.live.remove": "Удалить",
-
   "btcUpdown.instance.title": "Инстансы стратегий",
   "btcUpdown.instance.refresh": "Обновить",
   "btcUpdown.instance.create": "Создать",
@@ -208,7 +206,6 @@
   "btcUpdown.instance.export": "Экспорт",
   "btcUpdown.instance.import": "Импорт",
   "btcUpdown.instance.statusUnknown": "неизвестно",
-
   "btcUpdown.configurator.createTitle": "Создать инстанс стратегии",
   "btcUpdown.configurator.editTitle": "Изменить конфигурацию стратегии",
   "btcUpdown.configurator.editConfig": "Изменить",
@@ -266,7 +263,6 @@
   "btcUpdown.v70.spent": "потрачено",
   "btcUpdown.v70.up": "UP",
   "btcUpdown.v70.down": "DOWN",
-
   "btcUpdown.round.exitReason": "Причина выхода",
   "btcUpdown.exit.stopLoss": "Стоп-лосс",
   "btcUpdown.exit.binanceStopLoss": "Стоп-лосс Binance",
@@ -299,10 +295,8 @@
   "btcUpdown.stats.clearHourFilter": "Сбросить фильтр по часам",
   "btcUpdown.chart.am": "до полудня",
   "btcUpdown.chart.pm": "после полудня",
-
   "btcUpdown.live.priceToBeat": "Цена для победы",
   "btcUpdown.strategy.close": "Закрыть",
-
   "btcUpdown.control.errFailedLoad": "Не удалось загрузить",
   "btcUpdown.control.errFailed": "Ошибка",
   "btcUpdown.control.errActionFailed": "Действие не удалось",
@@ -314,7 +308,6 @@
   "btcUpdown.control.weekday.th": "Чт",
   "btcUpdown.control.weekday.fr": "Пт",
   "btcUpdown.control.weekday.sa": "Сб",
-
   "btcUpdown.endpoint.title": "Управляемые эндпоинты",
   "btcUpdown.endpoint.add": "+ Добавить",
   "btcUpdown.endpoint.urlPlaceholder": "URL эндпоинта (https://...)",
@@ -332,7 +325,6 @@
   "btcUpdown.endpoint.registerPasskey": "Зарегистрировать passkey",
   "btcUpdown.endpoint.remove": "Удалить эндпоинт",
   "btcUpdown.endpoint.dismiss": "Закрыть",
-
   "btcUpdown.cfg.json": "JSON",
   "btcUpdown.cfg.stepStart": "Начало",
   "btcUpdown.cfg.startFromTemplate": "Начать с шаблона",
@@ -443,5 +435,6 @@
   "btcUpdown.cfg.exitTrailingStop": "Трейлинг-стоп",
   "btcUpdown.cfg.exitCheckpoint": "Контрольная точка",
   "btcUpdown.cfg.fallback": "запасной",
-  "btcUpdown.cfg.nameYourStrategy": "Назовите стратегию..."
+  "btcUpdown.cfg.nameYourStrategy": "Назовите стратегию...",
+  "btcUpdown.strategy.notFound": "Стратегии не найдены на этом эндпоинте"
 }

@@ -15,6 +15,7 @@
 	} from '../auth/engine-client.js';
 	import ConfiguratorDrawer from '../configurator/ConfiguratorDrawer.svelte';
 	import type { StrategyConfigV2 } from '../configurator/types.js';
+	import { mergeOverridesForSave, configFromOverrides } from '../instance-config.js';
 	interface Props {
 		endpoint: ManagedEndpoint;
 		t: TranslateFn;
@@ -106,24 +107,10 @@
 		actionLoading = 'create';
 		error = '';
 		try {
-			// Map full config to InstanceOverrides
-			const overrides: Record<string, unknown> = {
-				entryAmount: config.entry.amount,
-				priceMin: 0.01,
-				priceMax: config.entry.maxBuyPrice,
-				hedgingEnabled: config.hedge.enabled,
-				hedgeLimitPrice: config.hedge.limitPrice,
-				hedgeShares: config.hedge.shares,
-				hedgeSellThreshold: config.hedge.sellThreshold,
-			};
-			if (config.entry.method === 'swing_limit' && config.entry.swingTargetPrice != null) {
-				overrides.volatileSwingBuyPrice = config.entry.swingTargetPrice;
-			}
-			// Find take_profit and stop_loss in exit rules
-			for (const rule of config.exit) {
-				if (rule.type === 'take_profit') overrides.volatileSwingTakeProfitPct = rule.pct;
-				if (rule.type === 'stop_loss') overrides.volatileSwingStopLossPrice = rule.price;
-			}
+			// Map full config to InstanceOverrides. When editing, merge onto the
+			// instance's existing overrides so unrelated persisted keys survive
+			// while disabled rules (TP/SL/swing) are removed rather than kept stale.
+			const overrides = mergeOverridesForSave(editingInstance?.overrides, config);
 
 			if (editingInstance) {
 				// Update existing
@@ -387,12 +374,7 @@
 		open={showConfigurator}
 		onClose={() => { showConfigurator = false; editingInstance = null; }}
 		onSave={handleConfiguratorSave}
-		initialConfig={editingInstance ? {
-			entry: { amount: editingInstance.overrides.entryAmount ?? 50, maxBuyPrice: (editingInstance.overrides.priceMax as number) ?? 0.65, windows: [{ window: 1 as const, start: 220, end: 190 }], method: 'market' as const },
-			direction: { method: 'clob_follow' as const },
-			exit: [{ type: 'settlement' as const }],
-			hedge: { enabled: (editingInstance.overrides.hedgingEnabled as boolean) ?? false, limitPrice: (editingInstance.overrides.hedgeLimitPrice as number) ?? 0.10, shares: (editingInstance.overrides.hedgeShares as number) ?? 50, sellThreshold: (editingInstance.overrides.hedgeSellThreshold as number) ?? 35 }
-		} : null}
+		initialConfig={editingInstance ? configFromOverrides(editingInstance.overrides) : null}
 		initialLabel={editingInstance?.label ?? ''}
 		{t}
 	/>

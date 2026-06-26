@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — あなただけのメモを、ずっと",
+  "capsule.meta.description": "読めるのはあなただけのメモを書き、オンチェーンに永遠に封じます。所有者も管理者もいないので、ほかの誰にも開けず、消すこともできません。あなたの鍵、あなたの言葉、あなただけのもの。",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "鍵はあなたのパスキーから生まれます。Apple デバイスは iOS 26.5 / macOS 26.5.1 以降に保ってください。古いバージョンでは iPhone と Mac で異なる鍵が作られ、メモが開けなくなることがあります。",
+  "capsule.tagline": "一度封じれば、あなただけのもの、ずっと。",
+  "capsule.permanence": "がっちり封印 — 編集も削除もできず、読めるのはあなただけです。",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "アカウント",
+  "capsule.settings.aria": "設定",
+
+  "capsule.chain.on": "書き込む先",
+  "capsule.chain.testnet": "（テストネット）",
+
+  "capsule.write.placeholder": "ここに書いて。もう一度読めるのは、あなただけ。",
+
+  "capsule.meta.network": "{network} 上",
+  "capsule.meta.bytes": "{count} バイト",
+  "capsule.meta.oneADay": "12時間ごとに1通",
+
+  "capsule.seal.button": "封じる",
+  "capsule.seal.sealing": "封じています…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "過去のメモ",
+  "capsule.view.write": "書く",
+  "capsule.archive.loading": "読み込み中…",
+  "capsule.archive.refresh": "更新",
+  "capsule.archive.fetch": "メモを表示",
+  "capsule.archive.more": "古いものを表示（あと {count} 通）",
+  "capsule.archive.empty": "このチェーンには、まだ封じたものがありません。\n最初の一通が待っています。",
+
+  "capsule.letter.failed": "このメモは復号できませんでした",
+
+  "capsule.toast.viewTx": "トランザクションを表示",
+  "capsule.toast.close": "閉じる",
+
+  "capsule.status.preparingEnc": "鍵を準備しています…",
+  "capsule.status.unlocking": "パスキーで承認してください…",
+  "capsule.status.preparing": "準備しています…",
+  "capsule.status.encrypting": "暗号化しています…",
+  "capsule.status.sealing": "封じています…（{step}）",
+  "capsule.status.signing": "封じるにはパスキーで承認してください",
+  "capsule.status.submitting": "ネットワークに送信中…",
+  "capsule.status.confirming": "オンチェーンで確認中…（数秒）",
+  "capsule.status.sealed": "封じました。これはずっとあなたのものです。",
+
+  "capsule.error.signIn": "まずサインインしてください。",
+  "capsule.error.noWebAuthn": "このブラウザではパスキーを作成できません。Safari、Chrome、Edge をお試しください。",
+  "capsule.error.noPrf": "このデバイスでは鍵を取り出せません。OS を最新に更新するか、別のデバイスをお試しください。",
+  "capsule.error.writeFirst": "まず何か書いてください。",
+  "capsule.error.tooLong": "このメモは少し長すぎます。短くしてもう一度お試しください。",
+  "capsule.error.sealFailed": "メモを封じられませんでした。もう一度お試しください。",
+  "capsule.error.lowBalance": "手数料を支払うのに {symbol} が足りません。{address} に少し追加してから、もう一度お試しください。",
+  "capsule.error.loadFailed": "メモを読み込めませんでした。もう一度お試しください。",
+  "capsule.error.loadMoreFailed": "これ以上読み込めませんでした。もう一度お試しください。",
+  "capsule.error.cooldown": "1つのチェーンにつき12時間ごとに1通です。{when} にまた書けます。",
+  "capsule.error.txReverted": "うまくいきませんでした。少し時間をおいて、もう一度お試しください。",
+  "capsule.error.bundlerGas": "ガス代行の残高がいま不足しています。{address} に約 {amount} {symbol} を追加してから、もう一度お試しください。",
+
+  "capsule.gate.title": "チェーンを選ぶ",
+  "capsule.gate.subtitle": "メモを置く場所を選びましょう。いつでも切り替えられます。",
+  "capsule.chain.switch": "切り替え",
+
+  "capsule.sort.newest": "新しい順",
+  "capsule.sort.oldest": "古い順",
+  "capsule.archive.count": "{count} 通",
+
+  "capsule.onboard.identityTitle": "あなたのアイデンティティを作る",
+  "capsule.onboard.identityProse": "あなただけのアイデンティティ — このデバイス上のパスキーです。パスワードも、シードフレーズもいりません。",
+  "capsule.onboard.step1": "ステップ 1 / 2 · アイデンティティ",
+  "capsule.onboard.createNew": "パスキーを作成",
+  "capsule.onboard.opening": "開いています…",
+  "capsule.onboard.haveOne": "すでに持っています",
+  "capsule.onboard.nameTitle": "名前を選ぶ",
+  "capsule.onboard.nameProse": "公開され、あなたのパスキーに結びつきます。後から変更はできません。",
+  "capsule.onboard.namePlaceholder": "例：satoshi",
+  "capsule.onboard.retrying": "再試行しています…",
+  "capsule.onboard.retrySync": "同期をやり直す",
+  "capsule.onboard.creating": "作成しています…",
+  "capsule.onboard.createBtn": "作成",
+  "capsule.onboard.back": "戻る",
+  "capsule.onboard.keyTitle": "暗号化を解除する",
+  "capsule.onboard.keyProse": "鍵はあなたのパスキーから生まれます — <strong>ほかに覚えることはなく</strong>、このデバイスから出ることもありません。あなたのメモを開けられるのは、この鍵だけです。",
+  "capsule.onboard.step2": "ステップ 2 / 2 · 暗号化",
+  "capsule.onboard.enter": "書き始める",
+  "capsule.onboard.errOpen": "開けませんでした。もう一度お試しください。",
+  "capsule.onboard.errSyncFailed": "鍵は作成されましたが、同期に失敗しました。もう一度お試しください。",
+  "capsule.onboard.errCreateFailed": "作成できませんでした。もう一度お試しください。",
+  "capsule.onboard.errRetryFailed": "再試行に失敗しました。時間をおいてお試しください。"
+}

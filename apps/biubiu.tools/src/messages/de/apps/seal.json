@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — eine private Notiz, für immer aufbewahrt",
+  "capsule.meta.description": "Schreibe eine Notiz, die nur du lesen kannst, für immer on-chain versiegelt. Kein Eigentümer, kein Admin — niemand sonst kann sie öffnen oder entfernen. Dein Schlüssel, deine Worte, ganz allein deine.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Dein Schlüssel stammt aus deinem Passkey. Halte Apple-Geräte auf iOS 26.5 / macOS 26.5.1 oder neuer — ältere Versionen können auf iPhone und Mac unterschiedliche Schlüssel ableiten und eine Notiz nicht öffnen.",
+  "capsule.tagline": "Einmal versiegelt. Ganz allein deine, für immer.",
+  "capsule.permanence": "Für immer versiegelt — sie kann nie geändert, gelöscht oder von jemand anderem als dir gelesen werden.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Konto",
+  "capsule.settings.aria": "Einstellungen",
+
+  "capsule.chain.on": "Schreiben auf",
+  "capsule.chain.testnet": " (Testnetz)",
+
+  "capsule.write.placeholder": "Schreib es hier. Nur du wirst es je wieder lesen.",
+
+  "capsule.meta.network": "Auf {network}",
+  "capsule.meta.bytes": "{count} Bytes",
+  "capsule.meta.oneADay": "eine Notiz alle 12 Std",
+
+  "capsule.seal.button": "Versiegeln",
+  "capsule.seal.sealing": "Wird versiegelt …",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Frühere Notizen",
+  "capsule.view.write": "Schreiben",
+  "capsule.archive.loading": "Wird geladen …",
+  "capsule.archive.refresh": "Aktualisieren",
+  "capsule.archive.fetch": "Meine Notizen anzeigen",
+  "capsule.archive.more": "Ältere anzeigen ({count} weitere)",
+  "capsule.archive.empty": "Noch nichts auf dieser Chain versiegelt.\nDeine erste Notiz wartet.",
+
+  "capsule.letter.failed": "Diese Notiz konnte nicht entschlüsselt werden",
+
+  "capsule.toast.viewTx": "Transaktion ansehen",
+  "capsule.toast.close": "Schließen",
+
+  "capsule.status.preparingEnc": "Dein Schlüssel wird eingerichtet …",
+  "capsule.status.unlocking": "Bestätige mit deinem Passkey …",
+  "capsule.status.preparing": "Wird vorbereitet …",
+  "capsule.status.encrypting": "Wird verschlüsselt …",
+  "capsule.status.sealing": "Wird versiegelt … ({step})",
+  "capsule.status.signing": "Bestätige mit deinem Passkey, um zu versiegeln",
+  "capsule.status.submitting": "Wird ans Netzwerk gesendet…",
+  "capsule.status.confirming": "Wird on-chain bestätigt… (ein paar Sekunden)",
+  "capsule.status.sealed": "Versiegelt. Für immer deine.",
+
+  "capsule.error.signIn": "Bitte melde dich zuerst an.",
+  "capsule.error.noWebAuthn": "Dieser Browser kann keinen Passkey erstellen. Versuche es mit Safari, Chrome oder Edge.",
+  "capsule.error.noPrf": "Dieses Gerät kann deinen Schlüssel nicht entsperren. Aktualisiere auf die neueste OS-Version oder versuche es mit einem anderen Gerät.",
+  "capsule.error.writeFirst": "Schreib zuerst etwas.",
+  "capsule.error.tooLong": "Diese Notiz ist etwas zu lang — kürze sie und versuche es erneut.",
+  "capsule.error.sealFailed": "Deine Notiz konnte nicht versiegelt werden. Bitte versuche es erneut.",
+  "capsule.error.lowBalance": "Nicht genug {symbol}, um die Gebühr zu decken. Lade etwas auf {address} und versuche es erneut.",
+  "capsule.error.loadFailed": "Deine Notizen konnten nicht geladen werden. Bitte versuche es erneut.",
+  "capsule.error.loadMoreFailed": "Es konnten keine weiteren geladen werden. Bitte versuche es erneut.",
+  "capsule.error.cooldown": "Eine Notiz pro Chain alle 12 Stunden. Du kannst {when} wieder schreiben.",
+  "capsule.error.txReverted": "Das hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+  "capsule.error.bundlerGas": "Der Gas-Relayer hat gerade keine Mittel mehr. Zahle etwa {amount} {symbol} an {address} ein und versuche es dann erneut.",
+
+  "capsule.gate.title": "Wähle eine Chain",
+  "capsule.gate.subtitle": "Wähle, wo deine Notizen leben. Du kannst jederzeit wechseln.",
+  "capsule.chain.switch": "wechseln",
+
+  "capsule.sort.newest": "Neueste",
+  "capsule.sort.oldest": "Älteste",
+  "capsule.archive.count": "{count} Notizen",
+
+  "capsule.onboard.identityTitle": "Erstelle deine Identität",
+  "capsule.onboard.identityProse": "Eine Identität, die ganz allein dir gehört — ein Passkey auf diesem Gerät. Kein Passwort, keine Seed-Phrase.",
+  "capsule.onboard.step1": "Schritt 1 von 2 · Identität",
+  "capsule.onboard.createNew": "Einen Passkey erstellen",
+  "capsule.onboard.opening": "Wird geöffnet …",
+  "capsule.onboard.haveOne": "Ich habe bereits einen",
+  "capsule.onboard.nameTitle": "Wähle einen Namen",
+  "capsule.onboard.nameProse": "Öffentlich und an deinen Passkey gebunden. Er kann später nicht geändert werden.",
+  "capsule.onboard.namePlaceholder": "z. B. satoshi",
+  "capsule.onboard.retrying": "Erneuter Versuch …",
+  "capsule.onboard.retrySync": "Synchronisierung erneut versuchen",
+  "capsule.onboard.creating": "Wird erstellt …",
+  "capsule.onboard.createBtn": "Erstellen",
+  "capsule.onboard.back": "Zurück",
+  "capsule.onboard.keyTitle": "Entsperre deine Verschlüsselung",
+  "capsule.onboard.keyProse": "Dein Schlüssel stammt aus deinem Passkey — <strong>nichts Zusätzliches zu merken</strong>, und er verlässt nie dieses Gerät. Nur er kann deine Notizen öffnen.",
+  "capsule.onboard.step2": "Schritt 2 von 2 · Verschlüsselung",
+  "capsule.onboard.enter": "Mit dem Schreiben beginnen",
+  "capsule.onboard.errOpen": "Öffnen fehlgeschlagen — bitte versuche es erneut.",
+  "capsule.onboard.errSyncFailed": "Dein Schlüssel wurde erstellt, doch die Synchronisierung schlug fehl. Bitte versuche es erneut.",
+  "capsule.onboard.errCreateFailed": "Erstellung fehlgeschlagen — bitte versuche es erneut.",
+  "capsule.onboard.errRetryFailed": "Erneuter Versuch fehlgeschlagen — bitte versuche es später erneut."
+}

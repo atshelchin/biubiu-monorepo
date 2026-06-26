@@ -87,13 +87,6 @@ vi.mock('./crypto/envelope.js', () => ({
 	decryptContent: vi.fn(async () => 'plaintext')
 }));
 
-vi.mock('./crypto/timelock.js', () => ({
-	QUICKNET_BEACON_SCHEME: '0x00',
-	roundForTime: () => 1,
-	timelockOpen: vi.fn(async () => new Uint8Array([1])),
-	timelockSeal: vi.fn(async () => new Uint8Array([9]))
-}));
-
 vi.mock('$lib/wallet/infra/bundler-account.js', () => ({
 	fetchBundlerAccountInfo: vi.fn(async () => null)
 }));
@@ -109,7 +102,6 @@ function resetStore() {
 	capsuleStore.status = 'idle';
 	capsuleStore.message = '';
 	capsuleStore.text = '';
-	capsuleStore.locked = false;
 	capsuleStore.networkSlug = 'base-mainnet';
 	capsuleStore.lastTxHash = null;
 	capsuleStore.funding = null;

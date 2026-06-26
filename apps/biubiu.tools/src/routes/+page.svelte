@@ -273,7 +273,7 @@
 				</div>
 			</a>
 
-			<a href={localizeHref('/apps/capsule')} class="tool-card glass-card">
+			<a href={localizeHref('/apps/seal')} class="tool-card glass-card">
 				<div class="tool-content">
 					<h3 class="tool-name">{t('featured.capsule.name')}</h3>
 					<p class="tool-description">{t('featured.capsule.description')}</p>

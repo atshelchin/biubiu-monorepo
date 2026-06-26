@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — yalnızca senin özel notun, sonsuza dek saklanır",
+  "capsule.meta.description": "Yalnızca senin okuyabileceğin bir not yaz, zincire sonsuza dek mühürle. Sahibi yok, yöneticisi yok — başka hiç kimse onu açamaz ya da kaldıramaz. Senin anahtarın, senin sözlerin, yalnızca sana ait.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Anahtarın passkey'inden gelir. Apple cihazlarını iOS 26.5 / macOS 26.5.1 veya üzerinde tut — eski sürümler iPhone ile Mac'te farklı anahtar üretip notu açamayabilir.",
+  "capsule.tagline": "Bir kez mühürle. Yalnızca senin, sonsuza dek.",
+  "capsule.permanence": "Sonsuza dek mühürlendi — düzenlenemez, silinemez ve senden başkası okuyamaz.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Hesap",
+  "capsule.settings.aria": "Ayarlar",
+
+  "capsule.chain.on": "Şurada yazıyorsun",
+  "capsule.chain.testnet": " (test ağı)",
+
+  "capsule.write.placeholder": "Buraya yaz. Bunu yeniden okuyabilecek tek kişi sensin.",
+
+  "capsule.meta.network": "{network} üzerinde",
+  "capsule.meta.bytes": "{count} bayt",
+  "capsule.meta.oneADay": "12 saatte bir not",
+
+  "capsule.seal.button": "Mühürle",
+  "capsule.seal.sealing": "Mühürleniyor…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Geçmiş notlar",
+  "capsule.view.write": "Yaz",
+  "capsule.archive.loading": "Yükleniyor…",
+  "capsule.archive.refresh": "Yenile",
+  "capsule.archive.fetch": "Notlarımı göster",
+  "capsule.archive.more": "Daha eskileri göster ({count} tane daha)",
+  "capsule.archive.empty": "Bu zincirde henüz mühürlenmiş bir şey yok.\nİlk notun seni bekliyor.",
+
+  "capsule.letter.failed": "Bu notun şifresi çözülemedi",
+
+  "capsule.toast.viewTx": "İşlemi görüntüle",
+  "capsule.toast.close": "Kapat",
+
+  "capsule.status.preparingEnc": "Anahtarın hazırlanıyor…",
+  "capsule.status.unlocking": "Passkey'inle onayla…",
+  "capsule.status.preparing": "Hazırlanıyor…",
+  "capsule.status.encrypting": "Şifreleniyor…",
+  "capsule.status.sealing": "Mühürleniyor… ({step})",
+  "capsule.status.signing": "Mühürlemek için passkey'inle onayla",
+  "capsule.status.submitting": "Ağa gönderiliyor…",
+  "capsule.status.confirming": "Zincirde onaylanıyor… (birkaç saniye)",
+  "capsule.status.sealed": "Mühürlendi. Sonsuza dek senin.",
+
+  "capsule.error.signIn": "Lütfen önce oturum aç.",
+  "capsule.error.noWebAuthn": "Bu tarayıcı passkey oluşturamıyor. Safari, Chrome ya da Edge dene.",
+  "capsule.error.noPrf": "Bu cihaz anahtarını açamıyor. En son sürüme güncelle ya da başka bir cihaz dene.",
+  "capsule.error.writeFirst": "Önce bir şeyler yaz.",
+  "capsule.error.tooLong": "Bu not biraz fazla uzun — kısaltıp tekrar dene.",
+  "capsule.error.sealFailed": "Notun mühürlenemedi. Lütfen tekrar dene.",
+  "capsule.error.lowBalance": "Ücreti karşılamaya yetecek {symbol} yok. {address} adresine biraz ekleyip tekrar dene.",
+  "capsule.error.loadFailed": "Notların yüklenemedi. Lütfen tekrar dene.",
+  "capsule.error.loadMoreFailed": "Daha fazlası yüklenemedi. Lütfen tekrar dene.",
+  "capsule.error.cooldown": "Her zincirde 12 saatte bir not. {when} yeniden yazabilirsin.",
+  "capsule.error.txReverted": "Bu işlem gerçekleşmedi. Lütfen birazdan tekrar dene.",
+  "capsule.error.bundlerGas": "Gas aktarıcının bakiyesi şu an bitti. {address} adresine yaklaşık {amount} {symbol} ekleyip tekrar dene.",
+
+  "capsule.gate.title": "Bir zincir seç",
+  "capsule.gate.subtitle": "Notlarının yaşayacağı yeri seç. İstediğin zaman değiştirebilirsin.",
+  "capsule.chain.switch": "değiştir",
+
+  "capsule.sort.newest": "En yeni",
+  "capsule.sort.oldest": "En eski",
+  "capsule.archive.count": "{count} not",
+
+  "capsule.onboard.identityTitle": "Kimliğini oluştur",
+  "capsule.onboard.identityProse": "Yalnızca sana ait bir kimlik — bu cihazdaki bir passkey. Parola yok, kurtarma cümlesi yok.",
+  "capsule.onboard.step1": "2 adımdan 1.'si · Kimlik",
+  "capsule.onboard.createNew": "Bir passkey oluştur",
+  "capsule.onboard.opening": "Açılıyor…",
+  "capsule.onboard.haveOne": "Zaten bir tane var",
+  "capsule.onboard.nameTitle": "Bir ad seç",
+  "capsule.onboard.nameProse": "Herkese açıktır ve passkey'ine bağlıdır. Sonradan değiştirilemez.",
+  "capsule.onboard.namePlaceholder": "örn. satoshi",
+  "capsule.onboard.retrying": "Yeniden deneniyor…",
+  "capsule.onboard.retrySync": "Eşitlemeyi yeniden dene",
+  "capsule.onboard.creating": "Oluşturuluyor…",
+  "capsule.onboard.createBtn": "Oluştur",
+  "capsule.onboard.back": "Geri",
+  "capsule.onboard.keyTitle": "Şifrelemeni aç",
+  "capsule.onboard.keyProse": "Anahtarın passkey'inden gelir — <strong>akılda tutacak başka bir şey yok</strong> ve bu cihazdan asla ayrılmaz. Notlarını yalnızca o açabilir.",
+  "capsule.onboard.step2": "2 adımdan 2.'si · Şifreleme",
+  "capsule.onboard.enter": "Yazmaya başla",
+  "capsule.onboard.errOpen": "Açılamadı — lütfen tekrar dene.",
+  "capsule.onboard.errSyncFailed": "Anahtarın oluşturuldu ama eşitleme başarısız oldu. Lütfen tekrar dene.",
+  "capsule.onboard.errCreateFailed": "Oluşturulamadı — lütfen tekrar dene.",
+  "capsule.onboard.errRetryFailed": "Yeniden deneme başarısız oldu — lütfen daha sonra tekrar dene."
+}

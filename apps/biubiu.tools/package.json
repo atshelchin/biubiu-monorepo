@@ -38,7 +38,6 @@
 		"@shelchin/taskhub": "workspace:*",
 		"@shelchin/vendor-pool": "workspace:*",
 		"satori": "^0.19.1",
-		"tlock-js": "^0.9.0",
 		"uqr": "^0.1.2",
 		"viem": "^2.46.0",
 		"walletpair-sdk": "^1.1.0"

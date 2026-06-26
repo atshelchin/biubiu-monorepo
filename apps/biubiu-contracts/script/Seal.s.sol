@@ -2,21 +2,21 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Forever} from "../src/tools/Forever.sol";
+import {Seal} from "../src/tools/Seal.sol";
 
 /**
- * @notice Deterministic CREATE2 deployment of the Forever protocol.
+ * @notice Deterministic CREATE2 deployment of the Seal protocol.
  *
- * The Forever contract has NO constructor arguments, so its creation bytecode is identical on
+ * The Seal contract has NO constructor arguments, so its creation bytecode is identical on
  * every chain. Deployed through the canonical deterministic-deployment proxy with a fixed salt,
  * the resulting address is byte-identical on every chain — a single recognizable protocol
  * address that any client can target.
  *
  * Usage:
- *   forge script script/Forever.s.sol --sig "printAddress()"            # compute canonical address (no chain)
- *   forge script script/Forever.s.sol --rpc-url base --broadcast        # deploy to a chain
+ *   forge script script/Seal.s.sol --sig "printAddress()"            # compute canonical address (no chain)
+ *   forge script script/Seal.s.sol --rpc-url base --broadcast        # deploy to a chain
  */
-contract ForeverScript is Script {
+contract SealScript is Script {
     /// @notice CREATE2 deterministic deployment proxy (same address on all chains).
     address constant CREATE2_PROXY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
@@ -27,23 +27,22 @@ contract ForeverScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        bytes memory bytecode = type(Forever).creationCode;
-        Forever forever = Forever(payable(_deployViaCreate2(bytecode, SALT)));
+        bytes memory bytecode = type(Seal).creationCode;
+        Seal app = Seal(payable(_deployViaCreate2(bytecode, SALT)));
 
-        console.log("Forever deployed at:", address(forever));
-        console.log("  fee (wei):", forever.fee());
-        console.log("  maxPayload:", forever.maxPayload());
-        console.log("  treasury:", forever.treasury());
-        console.log("  OWNER:", forever.OWNER());
+        console.log("Seal deployed at:", address(app));
+        console.log("  fee (wei):", app.fee());
+        console.log("  maxPayload:", app.maxPayload());
+        console.log("  treasury:", app.treasury());
 
         vm.stopBroadcast();
     }
 
     /// @notice Print the canonical deterministic address (pure computation; no broadcast/chain).
     function printAddress() external pure {
-        bytes memory bytecode = type(Forever).creationCode;
+        bytes memory bytecode = type(Seal).creationCode;
         address predicted = _computeCreate2Address(bytecode, SALT);
-        console.log("Forever canonical address:", predicted);
+        console.log("Seal canonical address:", predicted);
         console.log("Salt:", uint256(SALT));
         console.log("Creation bytecode hash:", uint256(keccak256(bytecode)));
         console.log("(Identical on every EVM chain - no constructor args.)");

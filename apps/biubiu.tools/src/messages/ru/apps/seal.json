@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — приватная заметка навсегда",
+  "capsule.meta.description": "Напишите заметку, которую можете прочесть только вы, запечатанную в блокчейне навсегда. Ни владельца, ни администратора — никто другой не откроет её и не удалит. Ваш ключ, ваши слова, только ваши.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Ваш ключ создаётся из вашего passkey. Держите устройства Apple на iOS 26.5 / macOS 26.5.1 или новее — на старых версиях ключ на iPhone и Mac может отличаться, и заметка не откроется.",
+  "capsule.tagline": "Запечатайте один раз. Только ваше, навсегда.",
+  "capsule.permanence": "Запечатано окончательно — её нельзя изменить, удалить, и прочесть её можете только вы.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Аккаунт",
+  "capsule.settings.aria": "Настройки",
+
+  "capsule.chain.on": "Пишем в",
+  "capsule.chain.testnet": " (тестовая сеть)",
+
+  "capsule.write.placeholder": "Пишите здесь. Прочесть это снова сможете только вы.",
+
+  "capsule.meta.network": "В сети {network}",
+  "capsule.meta.bytes": "{count} байт",
+  "capsule.meta.oneADay": "одна заметка каждые 12 ч",
+
+  "capsule.seal.button": "Запечатать",
+  "capsule.seal.sealing": "Запечатываем…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Прошлые заметки",
+  "capsule.view.write": "Написать",
+  "capsule.archive.loading": "Загружаем…",
+  "capsule.archive.refresh": "Обновить",
+  "capsule.archive.fetch": "Показать мои заметки",
+  "capsule.archive.more": "Показать более ранние (ещё {count})",
+  "capsule.archive.empty": "В этой сети пока ничего не запечатано.\nВаша первая заметка ждёт.",
+
+  "capsule.letter.failed": "Эту заметку не удалось расшифровать",
+
+  "capsule.toast.viewTx": "Посмотреть транзакцию",
+  "capsule.toast.close": "Закрыть",
+
+  "capsule.status.preparingEnc": "Настраиваем ваш ключ…",
+  "capsule.status.unlocking": "Подтвердите с помощью passkey…",
+  "capsule.status.preparing": "Готовим…",
+  "capsule.status.encrypting": "Шифруем…",
+  "capsule.status.sealing": "Запечатываем… ({step})",
+  "capsule.status.signing": "Подтвердите с помощью passkey, чтобы запечатать",
+  "capsule.status.submitting": "Отправка в сеть…",
+  "capsule.status.confirming": "Подтверждение в сети… (несколько секунд)",
+  "capsule.status.sealed": "Запечатано. Это ваше навсегда.",
+
+  "capsule.error.signIn": "Сначала войдите в аккаунт.",
+  "capsule.error.noWebAuthn": "Этот браузер не может создать passkey. Попробуйте Safari, Chrome или Edge.",
+  "capsule.error.noPrf": "Это устройство не может разблокировать ваш ключ. Обновите ОС до последней версии или попробуйте другое устройство.",
+  "capsule.error.writeFirst": "Сначала что-нибудь напишите.",
+  "capsule.error.tooLong": "Заметка чуть длиннее допустимого — сократите её и попробуйте снова.",
+  "capsule.error.sealFailed": "Не удалось запечатать заметку. Попробуйте ещё раз.",
+  "capsule.error.lowBalance": "Недостаточно {symbol} для оплаты комиссии. Пополните немного на {address} и попробуйте снова.",
+  "capsule.error.loadFailed": "Не удалось загрузить заметки. Попробуйте ещё раз.",
+  "capsule.error.loadMoreFailed": "Не удалось загрузить ещё. Попробуйте ещё раз.",
+  "capsule.error.cooldown": "Одна заметка на сеть каждые 12 часов. Снова написать можно будет {when}.",
+  "capsule.error.txReverted": "Не получилось. Попробуйте ещё раз через мгновение.",
+  "capsule.error.bundlerGas": "Сейчас у сервиса оплаты комиссии закончились средства. Пополните {address} примерно на {amount} {symbol} и попробуйте снова.",
+
+  "capsule.gate.title": "Выберите сеть",
+  "capsule.gate.subtitle": "Выберите, где будут жить ваши заметки. Сменить можно в любой момент.",
+  "capsule.chain.switch": "сменить",
+
+  "capsule.sort.newest": "Сначала новые",
+  "capsule.sort.oldest": "Сначала старые",
+  "capsule.archive.count": "{count} заметок",
+
+  "capsule.onboard.identityTitle": "Создайте свою личность",
+  "capsule.onboard.identityProse": "Личность, которая принадлежит только вам — passkey на этом устройстве. Ни пароля, ни seed-фразы.",
+  "capsule.onboard.step1": "Шаг 1 из 2 · Личность",
+  "capsule.onboard.createNew": "Создать passkey",
+  "capsule.onboard.opening": "Открываем…",
+  "capsule.onboard.haveOne": "У меня уже есть",
+  "capsule.onboard.nameTitle": "Выберите имя",
+  "capsule.onboard.nameProse": "Публичное и привязано к вашему passkey. Изменить его позже нельзя.",
+  "capsule.onboard.namePlaceholder": "например, satoshi",
+  "capsule.onboard.retrying": "Повторяем…",
+  "capsule.onboard.retrySync": "Повторить синхронизацию",
+  "capsule.onboard.creating": "Создаём…",
+  "capsule.onboard.createBtn": "Создать",
+  "capsule.onboard.back": "Назад",
+  "capsule.onboard.keyTitle": "Разблокируйте шифрование",
+  "capsule.onboard.keyProse": "Ваш ключ создаётся из вашего passkey — <strong>ничего лишнего запоминать не нужно</strong>, и он никогда не покидает это устройство. Только он способен открыть ваши заметки.",
+  "capsule.onboard.step2": "Шаг 2 из 2 · Шифрование",
+  "capsule.onboard.enter": "Начать писать",
+  "capsule.onboard.errOpen": "Не удалось открыть — попробуйте ещё раз.",
+  "capsule.onboard.errSyncFailed": "Ваш ключ создан, но синхронизация не удалась. Попробуйте ещё раз.",
+  "capsule.onboard.errCreateFailed": "Не удалось создать — попробуйте ещё раз.",
+  "capsule.onboard.errRetryFailed": "Повтор не удался — попробуйте позже."
+}

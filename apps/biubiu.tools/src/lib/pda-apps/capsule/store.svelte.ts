@@ -1,5 +1,5 @@
 /**
- * Capsule client store — encrypted letters sealed on-chain, optionally time-locked.
+ * Capsule client store — encrypted notes sealed permanently on-chain, readable only by the author.
  *
  * The content key is derived DETERMINISTICALLY from the wallet passkey's PRF (one passkey is both
  * identity and encryption root). The same passkey yields the same key on every browser/device, so
@@ -13,7 +13,6 @@ import { t, formatRelativeTime } from '$lib/i18n';
 import { authStore } from '$lib/auth/auth-store.svelte.js';
 import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
 import { FOREVER_ADDRESS } from './contract/address.js';
-import { MODE_CAPSULE, MODE_PRIVATE } from './contract/abi.js';
 import { encodeSeal } from './contract/encode.js';
 import { cooldownRemaining, entryCount, fetchEntriesPage, type ForeverEntry } from './contract/reader.js';
 import { rpcCall } from './contract/rpc.js';
@@ -21,23 +20,13 @@ import { WRITE_NETWORKS, networkBySlug } from './networks.js';
 import { fetchBundlerAccountInfo, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
 import { evaluatePrf, isWebAuthnAvailable, type EncryptionCredential } from './crypto/prf.js';
 import { deriveContentKey, decryptContent, encryptContent } from './crypto/envelope.js';
-import {
-	QUICKNET_BEACON_SCHEME,
-	roundForTime,
-	timelockOpen,
-	timelockSeal
-} from './crypto/timelock.js';
 
 /** A note as shown in the timeline (decrypted client-side). */
 export interface TimelineEntry {
-	/** Unique per author (24h cooldown) — used as the list key. */
+	/** Unique per author (12h cooldown) — used as the list key. */
 	createdAt: number;
-	mode: number;
-	unlockAt: number;
 	/** Decrypted text (present for readable notes). */
 	text?: string;
-	/** A capsule still time-locked (cannot be read until unlockAt). */
-	locked?: boolean;
 	/** Decryption failed (wrong key / corrupt). */
 	failed?: boolean;
 }
@@ -49,19 +38,13 @@ export interface TimelineEntry {
 const LS_CRED = 'forever.enc.cred';
 const LS_CHAIN = 'forever.chain'; // remember the chosen chain
 const LS_ENTERED = 'forever.entered'; // remember the gate was passed (skip it on reload)
+const LS_DRAFT = 'forever.draft'; // unsaved note text — survives a failed seal, reload, or crash
 
 /** Per-write fee charged + displayed (0.001 native). Must be >= the contract's on-chain floor. */
 export const FEE_WEI = 1_000_000_000_000_000n;
 /** Contract-enforced max ciphertext bytes; reserve headroom for version + iv + GCM tag. */
 const MAX_PAYLOAD = 4096;
 const TEXT_BYTE_LIMIT = MAX_PAYLOAD - 29; // 1 version + 12 iv + 16 tag
-/**
- * Capsule text cap. A time-lock AGE-armors the inner AES blob: base64 (×4/3) of the whole blob
- * plus ~570B of BLS recipient stanza + headers. Measured against live drand quicknet, ~2585 text
- * bytes is the largest that lands ≤ MAX_PAYLOAD on-chain — so the soft limit must be much tighter
- * than the private one (a flat reserve under-counts because the overhead scales with length).
- */
-const CAPSULE_TEXT_LIMIT = 2500;
 const PAGE = 20; // timeline page size
 
 type Status = 'idle' | 'setup' | 'unlocking' | 'sealing' | 'done' | 'error';
@@ -77,14 +60,19 @@ class CapsuleStore {
 	chainEntered = $state(false);
 	/** Past-view sort: 'desc' = newest first, 'asc' = oldest first. */
 	sortDir = $state<'desc' | 'asc'>('desc');
-	text = $state('');
-	/**
-	 * One writing surface, one optional decision: lock or not.
-	 * `false` → private (readable anytime by you); `true` → capsule (time-locked until unlockDate).
-	 */
-	locked = $state(false);
-	/** datetime-local string for capsule unlock (local time). */
-	unlockDate = $state('');
+
+	/** The note being written. Backed by localStorage so a failed seal — or a reload / accidental
+	 *  tab close / crash — never makes the user retype. Cleared only after a confirmed seal. */
+	private _text = $state('');
+	get text(): string {
+		return this._text;
+	}
+	set text(v: string) {
+		this._text = v;
+		if (!browser) return;
+		if (v) localStorage.setItem(LS_DRAFT, v);
+		else localStorage.removeItem(LS_DRAFT);
+	}
 
 	status = $state<Status>('idle');
 	message = $state('');
@@ -110,6 +98,9 @@ class CapsuleStore {
 				this.networkSlug = savedChain;
 				this.chainEntered = localStorage.getItem(LS_ENTERED) === '1';
 			}
+			// Restore an unsaved draft (assign the backing field directly — no need to re-persist).
+			const draft = localStorage.getItem(LS_DRAFT);
+			if (draft) this._text = draft;
 		} catch {
 			/* ignore corrupt local state */
 		}
@@ -125,23 +116,11 @@ class CapsuleStore {
 	get network() {
 		return networkBySlug(this.networkSlug);
 	}
-	/** Derived note type — kept for the contract/encryption paths that distinguish the two. */
-	get mode(): 'private' | 'capsule' {
-		return this.locked ? 'capsule' : 'private';
-	}
 	get byteLength(): number {
 		return new TextEncoder().encode(this.text).length;
 	}
 	get overLimit(): boolean {
-		// Capsule (tlock) armor inflates the payload well beyond a flat reserve — see CAPSULE_TEXT_LIMIT.
-		const limit = this.locked ? CAPSULE_TEXT_LIMIT : TEXT_BYTE_LIMIT;
-		return this.byteLength > limit;
-	}
-	/** Capsule unlock time as unix seconds (0 if unset/invalid). */
-	get unlockUnix(): number {
-		if (!this.unlockDate) return 0;
-		const ms = new Date(this.unlockDate).getTime();
-		return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+		return this.byteLength > TEXT_BYTE_LIMIT;
 	}
 	get explorerTxUrl(): string | null {
 		return this.lastTxHash && this.network ? this.network.explorerUrl + this.lastTxHash : null;
@@ -296,62 +275,33 @@ class CapsuleStore {
 		this.status = 'sealing'; // go busy before any await (disables buttons)
 		this.message = t('capsule.status.preparing');
 
-		// One letter per chain, per day — check up front so we never prompt a passkey only to revert.
-		try {
-			const left = await cooldownRemaining(this.networkSlug, user.safeAddress as Address);
-			if (left > 0) {
-				return this.fail(t('capsule.error.cooldown', { when: formatRelativeTime(Date.now() + left * 1000) }));
-			}
-		} catch {
-			/* best-effort: contract absent → 0; on RPC error fall through to the real attempt */
+		// Preflight both reads IN PARALLEL and fail fast BEFORE prompting a passkey:
+		//  - cooldown: one note per chain per 12h.
+		//  - balance: only the *provably* unspendable case (below FEE_WEI, which the Safe always
+		//    pays as msg.value); a gas sponsor can cover everything else, so we don't add a gas
+		//    reserve here and defer richer AA21 / gas-account errors to the bundler.
+		const author = user.safeAddress as Address;
+		const [cooldownLeft, shortfall] = await Promise.all([
+			cooldownRemaining(this.networkSlug, author).catch(() => 0),
+			this.feeShortfall(user.safeAddress)
+		]);
+		if (cooldownLeft > 0) {
+			return this.fail(t('capsule.error.cooldown', { when: formatRelativeTime(Date.now() + cooldownLeft * 1000) }));
 		}
-
-		// unlock() now restores the prior status ('sealing') on success, so the busy guard holds
-		// across the sub-step — no fragile re-assert needed.
-		if (!this.rawDek && !(await this.unlock())) return false;
-
-		// Balance preflight (best-effort early-out). The Safe must pay the protocol FEE_WEI *plus*
-		// 4337 gas — UNLESS a bundler gas-account / sponsor covers the gas, in which case it needs
-		// only FEE_WEI. So there is no single "fee + gas" threshold we can compare against without
-		// either (a) false-OK'ing a self-paying Safe that holds exactly the fee, or (b) false-reject
-		// the sponsored Safe that legitimately holds exactly the fee. We therefore only short-circuit
-		// the *provably* unspendable case — balance below the fee floor, where no sponsor can help
-		// because the fee itself is paid by the Safe as msg.value. Everything else defers to the
-		// bundler's precise AA21 / gas-account errors (friendlyError / openFunding handle both).
-		const shortfall = await this.feeShortfall(user.safeAddress);
 		if (shortfall > 0n) return this.fail(this.friendlyError('AA21'));
+
+		// Now derive the key (one passkey touch). unlock() restores 'sealing' on success.
+		if (!this.rawDek && !(await this.unlock())) return false;
 
 		this.message = t('capsule.status.encrypting');
 		try {
-			// AES-GCM(DEK, text) — the inner layer. Always present.
-			const aesBlob = await encryptContent(this.rawDek!, text);
-
-			let payload = aesBlob;
-			let mode = MODE_PRIVATE;
-			let unlockAt = 0n;
-			let drandRound = 0n;
-			let beaconScheme: `0x${string}` | undefined;
-
-			if (this.locked) {
-				const unlockSec = this.unlockUnix;
-				if (!unlockSec || unlockSec <= Math.floor(Date.now() / 1000) + 60) {
-					return this.fail(t('capsule.error.pickFuture'));
-				}
-				const round = roundForTime(unlockSec);
-				this.message = t('capsule.status.timelocking');
-				// tlock OUTSIDE, AES INSIDE — locked until the drand round is published.
-				payload = await timelockSeal(aesBlob, round);
-				mode = MODE_CAPSULE;
-				unlockAt = BigInt(unlockSec);
-				drandRound = BigInt(round);
-				beaconScheme = QUICKNET_BEACON_SCHEME;
-			}
-
+			// AES-GCM(DEK, text) — the only layer. Opened solely by the author's passkey-derived key.
+			const payload = await encryptContent(this.rawDek!, text);
 			if (payload.length > MAX_PAYLOAD) {
-				return this.fail(t('capsule.error.tooLongOne'));
+				return this.fail(t('capsule.error.tooLong'));
 			}
 
-			const data = encodeSeal({ mode, unlockAt, drandRound, beaconScheme, payload });
+			const data = encodeSeal(payload);
 			const res = await sendContractCall({
 				safeAddress: user.safeAddress as Address,
 				publicKeyHex: user.publicKey,
@@ -361,9 +311,17 @@ class CapsuleStore {
 				value: FEE_WEI,
 				data,
 				network: this.networkSlug,
-				onStatus: (s) =>
-					(this.message =
-						s === 'signing' ? t('capsule.status.signing') : t('capsule.status.sealing', { step: s }))
+				// Map low-level 4337 stages to clean, honest, reassuring copy (never leak raw stage names).
+				onStatus: (s) => {
+					this.message =
+						s === 'signing'
+							? t('capsule.status.signing')
+							: s === 'submitting'
+								? t('capsule.status.submitting')
+								: s === 'waiting'
+									? t('capsule.status.confirming')
+									: t('capsule.status.preparing'); // checking / building / estimating
+				}
 			});
 			if (!res.success) {
 				const raw = res.error ?? t('capsule.error.sealFailed');
@@ -385,30 +343,14 @@ class CapsuleStore {
 		}
 	}
 
-	/** Decrypt a page of raw entries into timeline rows (private + unlocked capsules). */
+	/** Decrypt a page of raw entries into timeline rows. */
 	private async toTimeline(raw: ForeverEntry[]): Promise<TimelineEntry[]> {
-		const now = Math.floor(Date.now() / 1000);
 		const out: TimelineEntry[] = [];
 		for (const e of raw) {
-			const base = { createdAt: e.createdAt, mode: e.mode, unlockAt: e.unlockAt };
-			if (e.mode === MODE_CAPSULE) {
-				if (e.unlockAt > now) {
-					out.push({ ...base, locked: true });
-					continue;
-				}
-				try {
-					// Unlocked: open the tlock layer, then decrypt the inner AES with the DEK.
-					const aesBlob = await timelockOpen(e.payload);
-					out.push({ ...base, text: await decryptContent(this.rawDek!, aesBlob) });
-				} catch {
-					out.push({ ...base, locked: true }); // beacon not yet retrievable
-				}
-				continue;
-			}
 			try {
-				out.push({ ...base, text: await decryptContent(this.rawDek!, e.payload) });
+				out.push({ createdAt: e.createdAt, text: await decryptContent(this.rawDek!, e.payload) });
 			} catch {
-				out.push({ ...base, failed: true });
+				out.push({ createdAt: e.createdAt, failed: true });
 			}
 		}
 		return out;
@@ -423,8 +365,12 @@ class CapsuleStore {
 		this.loadingEntries = true;
 		try {
 			const author = user.safeAddress as Address;
-			this.entriesTotal = await entryCount(this.networkSlug, author);
-			const raw = await fetchEntriesPage(this.networkSlug, author, 0, PAGE, this.sortDir === 'desc');
+			// Count + first page are independent reads — fetch them in parallel (one round-trip, not two).
+			const [total, raw] = await Promise.all([
+				entryCount(this.networkSlug, author),
+				fetchEntriesPage(this.networkSlug, author, 0, PAGE, this.sortDir === 'desc')
+			]);
+			this.entriesTotal = total;
 			this.entries = await this.toTimeline(raw);
 		} catch (e) {
 			this.message = t('capsule.error.loadFailed', { error: (e as Error).message });
@@ -440,10 +386,13 @@ class CapsuleStore {
 		this.loadingEntries = true;
 		try {
 			const author = user.safeAddress as Address;
-			const raw = await fetchEntriesPage(this.networkSlug, author, this.entries.length, PAGE, this.sortDir === 'desc');
+			// Next page + refreshed total are independent — fetch in parallel.
+			const [raw, total] = await Promise.all([
+				fetchEntriesPage(this.networkSlug, author, this.entries.length, PAGE, this.sortDir === 'desc'),
+				entryCount(this.networkSlug, author)
+			]);
 			this.entries = [...this.entries, ...(await this.toTimeline(raw))];
-			// Refresh the total so the "read older (N more)" count stays accurate.
-			this.entriesTotal = await entryCount(this.networkSlug, author);
+			this.entriesTotal = total;
 		} catch (e) {
 			this.message = t('capsule.error.loadMoreFailed', { error: (e as Error).message });
 		} finally {

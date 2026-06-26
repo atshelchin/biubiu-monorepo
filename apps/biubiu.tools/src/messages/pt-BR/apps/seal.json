@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — uma nota privada, guardada para sempre",
+  "capsule.meta.description": "Escreva uma nota que só você pode ler, selada on-chain para sempre. Sem dono, sem admin — ninguém mais pode abri-la ou removê-la. Sua chave, suas palavras, só suas.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Sua chave vem da sua passkey. Mantenha os dispositivos Apple no iOS 26.5 / macOS 26.5.1 ou mais recente — versões antigas podem gerar uma chave diferente no iPhone e no Mac e não abrir uma nota.",
+  "capsule.tagline": "Sele uma vez. Só sua, para sempre.",
+  "capsule.permanence": "Selada de vez — nunca pode ser editada, apagada nem lida por ninguém além de você.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Conta",
+  "capsule.settings.aria": "Configurações",
+
+  "capsule.chain.on": "Escrevendo na",
+  "capsule.chain.testnet": " (testnet)",
+
+  "capsule.write.placeholder": "Escreva aqui. Só você poderá ler de novo.",
+
+  "capsule.meta.network": "Na {network}",
+  "capsule.meta.bytes": "{count} bytes",
+  "capsule.meta.oneADay": "uma nota a cada 12h",
+
+  "capsule.seal.button": "Selar",
+  "capsule.seal.sealing": "Selando…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Notas anteriores",
+  "capsule.view.write": "Escrever",
+  "capsule.archive.loading": "Carregando…",
+  "capsule.archive.refresh": "Atualizar",
+  "capsule.archive.fetch": "Mostrar minhas notas",
+  "capsule.archive.more": "Mostrar mais antigas ({count} a mais)",
+  "capsule.archive.empty": "Nada selado nesta chain ainda.\nSua primeira nota está esperando.",
+
+  "capsule.letter.failed": "Não foi possível descriptografar esta nota",
+
+  "capsule.toast.viewTx": "Ver transação",
+  "capsule.toast.close": "Fechar",
+
+  "capsule.status.preparingEnc": "Preparando sua chave…",
+  "capsule.status.unlocking": "Confirme com sua passkey…",
+  "capsule.status.preparing": "Preparando…",
+  "capsule.status.encrypting": "Criptografando…",
+  "capsule.status.sealing": "Selando… ({step})",
+  "capsule.status.signing": "Confirme com sua passkey para selar",
+  "capsule.status.submitting": "Enviando para a rede…",
+  "capsule.status.confirming": "Confirmando on-chain… (alguns segundos)",
+  "capsule.status.sealed": "Selada. É sua para sempre.",
+
+  "capsule.error.signIn": "Faça login primeiro.",
+  "capsule.error.noWebAuthn": "Este navegador não consegue criar uma passkey. Tente o Safari, o Chrome ou o Edge.",
+  "capsule.error.noPrf": "Este dispositivo não consegue desbloquear sua chave. Atualize para a versão mais recente do sistema ou tente outro dispositivo.",
+  "capsule.error.writeFirst": "Escreva algo primeiro.",
+  "capsule.error.tooLong": "Esta nota está um pouco longa demais — encurte e tente de novo.",
+  "capsule.error.sealFailed": "Não foi possível selar sua nota. Tente de novo.",
+  "capsule.error.lowBalance": "Não há {symbol} suficiente para cobrir a taxa. Adicione um pouco em {address} e tente de novo.",
+  "capsule.error.loadFailed": "Não foi possível carregar suas notas. Tente de novo.",
+  "capsule.error.loadMoreFailed": "Não foi possível carregar mais. Tente de novo.",
+  "capsule.error.cooldown": "Uma nota por chain a cada 12 horas. Você pode escrever de novo {when}.",
+  "capsule.error.txReverted": "Não deu certo. Tente de novo em instantes.",
+  "capsule.error.bundlerGas": "O relayer de gas está sem saldo agora. Adicione cerca de {amount} {symbol} em {address} e tente de novo.",
+
+  "capsule.gate.title": "Escolha uma chain",
+  "capsule.gate.subtitle": "Escolha onde suas notas vão viver. Você pode trocar a qualquer momento.",
+  "capsule.chain.switch": "trocar",
+
+  "capsule.sort.newest": "Mais recentes",
+  "capsule.sort.oldest": "Mais antigas",
+  "capsule.archive.count": "{count} notas",
+
+  "capsule.onboard.identityTitle": "Crie sua identidade",
+  "capsule.onboard.identityProse": "Uma identidade que é só sua — uma passkey neste dispositivo. Sem senha, sem frase-semente.",
+  "capsule.onboard.step1": "Passo 1 de 2 · Identidade",
+  "capsule.onboard.createNew": "Criar uma passkey",
+  "capsule.onboard.opening": "Abrindo…",
+  "capsule.onboard.haveOne": "Já tenho uma",
+  "capsule.onboard.nameTitle": "Escolha um nome",
+  "capsule.onboard.nameProse": "Público e vinculado à sua passkey. Não pode ser alterado depois.",
+  "capsule.onboard.namePlaceholder": "ex.: satoshi",
+  "capsule.onboard.retrying": "Tentando de novo…",
+  "capsule.onboard.retrySync": "Tentar sincronizar de novo",
+  "capsule.onboard.creating": "Criando…",
+  "capsule.onboard.createBtn": "Criar",
+  "capsule.onboard.back": "Voltar",
+  "capsule.onboard.keyTitle": "Desbloqueie sua criptografia",
+  "capsule.onboard.keyProse": "Sua chave vem da sua passkey — <strong>nada a mais para lembrar</strong>, e ela nunca sai deste dispositivo. Só ela pode abrir suas notas.",
+  "capsule.onboard.step2": "Passo 2 de 2 · Criptografia",
+  "capsule.onboard.enter": "Começar a escrever",
+  "capsule.onboard.errOpen": "Não foi possível abrir — tente de novo.",
+  "capsule.onboard.errSyncFailed": "Sua chave foi criada, mas a sincronização falhou. Tente de novo.",
+  "capsule.onboard.errCreateFailed": "Não foi possível criar — tente de novo.",
+  "capsule.onboard.errRetryFailed": "A nova tentativa falhou — tente de novo mais tarde."
+}

@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "封存 —— 一則私密筆記，永久留存",
+  "capsule.meta.description": "寫一則只有你能讀的筆記，永久封存上鏈。沒有擁有者，沒有管理員 —— 沒有其他人能打開它，也無法把它下架。你的鑰匙、你的文字，只屬於你。",
+
+  "capsule.brand": "封存",
+  "capsule.onboard.compat": "你的鑰匙來自你的 passkey。Apple 裝置請保持 iOS 26.5 / macOS 26.5.1 或以上 —— 較舊版本在 iPhone 與 Mac 上可能算出不同的鑰匙，導致打不開筆記。",
+  "capsule.tagline": "一次封存，永不褪色，只屬於你。",
+  "capsule.permanence": "永久封存 —— 無法編輯、無法刪除，也只有你能讀。",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "帳戶",
+  "capsule.settings.aria": "設定",
+
+  "capsule.chain.on": "封存於",
+  "capsule.chain.testnet": "（測試網）",
+
+  "capsule.write.placeholder": "寫低此刻。日後只有你能再次讀到它。",
+
+  "capsule.meta.network": "於 {network} 上",
+  "capsule.meta.bytes": "{count} 位元組",
+  "capsule.meta.oneADay": "每 12 小時一則筆記",
+
+  "capsule.seal.button": "封存",
+  "capsule.seal.sealing": "封存中…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "往昔筆記",
+  "capsule.view.write": "書寫",
+  "capsule.archive.loading": "讀取中…",
+  "capsule.archive.refresh": "重新整理",
+  "capsule.archive.fetch": "顯示我的筆記",
+  "capsule.archive.more": "顯示更早的（還有 {count} 則）",
+  "capsule.archive.empty": "這條鏈上還未有任何封存。\n你的第一則筆記，正在等你寫下。",
+
+  "capsule.letter.failed": "無法解密這則筆記",
+
+  "capsule.toast.viewTx": "查看交易",
+  "capsule.toast.close": "關閉",
+
+  "capsule.status.preparingEnc": "正在準備你的鑰匙…",
+  "capsule.status.unlocking": "用你的 passkey 確認…",
+  "capsule.status.preparing": "準備中…",
+  "capsule.status.encrypting": "加密中…",
+  "capsule.status.sealing": "封存中…（{step}）",
+  "capsule.status.signing": "用你的 passkey 確認，即可完成封存",
+  "capsule.status.submitting": "正在傳送至網絡…",
+  "capsule.status.confirming": "正在鏈上確認…（幾秒）",
+  "capsule.status.sealed": "已封存。它永遠屬於你。",
+
+  "capsule.error.signIn": "請先登入。",
+  "capsule.error.noWebAuthn": "此瀏覽器無法建立 passkey。請改用 Safari、Chrome 或 Edge。",
+  "capsule.error.noPrf": "此裝置無法解鎖你的鑰匙。請更新至最新系統，或改用其他裝置。",
+  "capsule.error.writeFirst": "先寫點甚麼吧。",
+  "capsule.error.tooLong": "這則筆記有點太長了 —— 精簡一下再試。",
+  "capsule.error.sealFailed": "未能封存你的筆記。請再試一次。",
+  "capsule.error.lowBalance": "{symbol} 不足以支付費用。請給 {address} 充值一點，再試一次。",
+  "capsule.error.loadFailed": "無法載入你的筆記。請再試一次。",
+  "capsule.error.loadMoreFailed": "無法載入更多。請再試一次。",
+  "capsule.error.cooldown": "每條鏈每 12 小時只能寫一則筆記。你可以在 {when} 再寫。",
+  "capsule.error.txReverted": "未能完成。請稍候片刻再試。",
+  "capsule.error.bundlerGas": "Gas 中轉帳戶目前餘額不足。請向 {address} 充值約 {amount} {symbol}，再試一次。",
+
+  "capsule.gate.title": "選擇一條鏈",
+  "capsule.gate.subtitle": "挑選你的筆記要存放在哪裡。你隨時可以切換。",
+  "capsule.chain.switch": "切換",
+
+  "capsule.sort.newest": "最新在前",
+  "capsule.sort.oldest": "最舊在前",
+  "capsule.archive.count": "{count} 則筆記",
+
+  "capsule.onboard.identityTitle": "建立身分",
+  "capsule.onboard.identityProse": "一個只屬於你的身分 —— 一把存在這部裝置上的 passkey。沒有密碼，也沒有助記詞。",
+  "capsule.onboard.step1": "第 1 步，共 2 步 · 身分",
+  "capsule.onboard.createNew": "建立 passkey",
+  "capsule.onboard.opening": "開啟中…",
+  "capsule.onboard.haveOne": "我已經有一個了",
+  "capsule.onboard.nameTitle": "改個名字",
+  "capsule.onboard.nameProse": "這個名字是公開的，並與你的 passkey 綁定。一經建立，便無法更改。",
+  "capsule.onboard.namePlaceholder": "例如 satoshi",
+  "capsule.onboard.retrying": "重試中…",
+  "capsule.onboard.retrySync": "重新同步",
+  "capsule.onboard.creating": "建立中…",
+  "capsule.onboard.createBtn": "建立",
+  "capsule.onboard.back": "返回",
+  "capsule.onboard.keyTitle": "解鎖你的加密",
+  "capsule.onboard.keyProse": "你的鑰匙來自你的 passkey —— <strong>毋須額外記住任何東西</strong>，而且它永不離開這部裝置。只有它能打開你的筆記。",
+  "capsule.onboard.step2": "第 2 步，共 2 步 · 加密",
+  "capsule.onboard.enter": "開始書寫",
+  "capsule.onboard.errOpen": "無法開啟 —— 請再試一次。",
+  "capsule.onboard.errSyncFailed": "你的鑰匙已建立，但同步失敗。請再試一次。",
+  "capsule.onboard.errCreateFailed": "建立失敗 —— 請再試一次。",
+  "capsule.onboard.errRetryFailed": "重試失敗 —— 請稍後再試。"
+}

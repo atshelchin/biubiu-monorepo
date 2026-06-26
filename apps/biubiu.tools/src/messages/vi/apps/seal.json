@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — một ghi chú riêng tư, giữ mãi mãi",
+  "capsule.meta.description": "Viết một ghi chú chỉ mình bạn đọc được, niêm phong vĩnh viễn trên chuỗi. Không chủ sở hữu, không quản trị viên — không ai khác có thể mở hay gỡ nó xuống. Khóa của bạn, lời của bạn, chỉ riêng bạn.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Khóa của bạn bắt nguồn từ passkey. Hãy giữ các thiết bị Apple ở iOS 26.5 / macOS 26.5.1 trở lên — phiên bản cũ hơn có thể tạo ra khóa khác nhau trên iPhone và Mac và không mở được ghi chú.",
+  "capsule.tagline": "Niêm phong một lần. Chỉ riêng bạn, mãi mãi.",
+  "capsule.permanence": "Niêm phong vĩnh viễn — không bao giờ có thể sửa, xóa, hay bị bất kỳ ai ngoài bạn đọc được.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Tài khoản",
+  "capsule.settings.aria": "Cài đặt",
+
+  "capsule.chain.on": "Viết trên",
+  "capsule.chain.testnet": " (testnet)",
+
+  "capsule.write.placeholder": "Hãy viết ở đây. Chỉ mình bạn mới đọc lại được nó.",
+
+  "capsule.meta.network": "Trên {network}",
+  "capsule.meta.bytes": "{count} byte",
+  "capsule.meta.oneADay": "mỗi 12 giờ một ghi chú",
+
+  "capsule.seal.button": "Niêm phong",
+  "capsule.seal.sealing": "Đang niêm phong…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Ghi chú trước đây",
+  "capsule.view.write": "Viết",
+  "capsule.archive.loading": "Đang tải…",
+  "capsule.archive.refresh": "Làm mới",
+  "capsule.archive.fetch": "Hiện ghi chú của tôi",
+  "capsule.archive.more": "Hiện ghi chú cũ hơn (còn {count})",
+  "capsule.archive.empty": "Chưa có gì được niêm phong trên chuỗi này.\nGhi chú đầu tiên của bạn đang chờ.",
+
+  "capsule.letter.failed": "Không thể giải mã ghi chú này",
+
+  "capsule.toast.viewTx": "Xem giao dịch",
+  "capsule.toast.close": "Đóng",
+
+  "capsule.status.preparingEnc": "Đang thiết lập khóa của bạn…",
+  "capsule.status.unlocking": "Xác nhận bằng passkey của bạn…",
+  "capsule.status.preparing": "Đang chuẩn bị…",
+  "capsule.status.encrypting": "Đang mã hóa…",
+  "capsule.status.sealing": "Đang niêm phong… ({step})",
+  "capsule.status.signing": "Xác nhận bằng passkey để niêm phong",
+  "capsule.status.submitting": "Đang gửi lên mạng…",
+  "capsule.status.confirming": "Đang xác nhận on-chain… (vài giây)",
+  "capsule.status.sealed": "Đã niêm phong. Nó là của bạn mãi mãi.",
+
+  "capsule.error.signIn": "Vui lòng đăng nhập trước.",
+  "capsule.error.noWebAuthn": "Trình duyệt này không thể tạo passkey. Hãy thử Safari, Chrome hoặc Edge.",
+  "capsule.error.noPrf": "Thiết bị này không thể mở khóa của bạn. Hãy cập nhật lên hệ điều hành mới nhất, hoặc thử thiết bị khác.",
+  "capsule.error.writeFirst": "Hãy viết gì đó trước đã.",
+  "capsule.error.tooLong": "Ghi chú này hơi dài một chút — hãy rút gọn rồi thử lại.",
+  "capsule.error.sealFailed": "Không thể niêm phong ghi chú của bạn. Vui lòng thử lại.",
+  "capsule.error.lowBalance": "Không đủ {symbol} để trả phí. Hãy nạp thêm một chút vào {address} rồi thử lại.",
+  "capsule.error.loadFailed": "Không thể tải ghi chú của bạn. Vui lòng thử lại.",
+  "capsule.error.loadMoreFailed": "Không thể tải thêm. Vui lòng thử lại.",
+  "capsule.error.cooldown": "Mỗi chuỗi một ghi chú trong 12 giờ. Bạn có thể viết tiếp {when}.",
+  "capsule.error.txReverted": "Giao dịch chưa thành công. Vui lòng thử lại sau giây lát.",
+  "capsule.error.bundlerGas": "Bộ chuyển tiếp gas hiện đã hết tiền. Hãy nạp khoảng {amount} {symbol} vào {address} rồi thử lại.",
+
+  "capsule.gate.title": "Chọn một chuỗi",
+  "capsule.gate.subtitle": "Chọn nơi ghi chú của bạn lưu lại. Bạn có thể đổi bất cứ lúc nào.",
+  "capsule.chain.switch": "đổi",
+
+  "capsule.sort.newest": "Mới nhất",
+  "capsule.sort.oldest": "Cũ nhất",
+  "capsule.archive.count": "{count} ghi chú",
+
+  "capsule.onboard.identityTitle": "Tạo danh tính của bạn",
+  "capsule.onboard.identityProse": "Một danh tính chỉ thuộc về riêng bạn — một passkey trên thiết bị này. Không mật khẩu, không cụm từ khôi phục.",
+  "capsule.onboard.step1": "Bước 1 trên 2 · Danh tính",
+  "capsule.onboard.createNew": "Tạo một passkey",
+  "capsule.onboard.opening": "Đang mở…",
+  "capsule.onboard.haveOne": "Tôi đã có sẵn",
+  "capsule.onboard.nameTitle": "Chọn một cái tên",
+  "capsule.onboard.nameProse": "Công khai và gắn liền với passkey của bạn. Không thể thay đổi về sau.",
+  "capsule.onboard.namePlaceholder": "ví dụ: satoshi",
+  "capsule.onboard.retrying": "Đang thử lại…",
+  "capsule.onboard.retrySync": "Thử đồng bộ lại",
+  "capsule.onboard.creating": "Đang tạo…",
+  "capsule.onboard.createBtn": "Tạo",
+  "capsule.onboard.back": "Quay lại",
+  "capsule.onboard.keyTitle": "Mở khóa lớp mã hóa của bạn",
+  "capsule.onboard.keyProse": "Khóa của bạn bắt nguồn từ passkey — <strong>không cần nhớ thêm điều gì</strong>, và nó không bao giờ rời khỏi thiết bị này. Chỉ nó mới mở được các ghi chú của bạn.",
+  "capsule.onboard.step2": "Bước 2 trên 2 · Mã hóa",
+  "capsule.onboard.enter": "Bắt đầu viết",
+  "capsule.onboard.errOpen": "Không thể mở — vui lòng thử lại.",
+  "capsule.onboard.errSyncFailed": "Khóa của bạn đã được tạo, nhưng đồng bộ thất bại. Vui lòng thử lại.",
+  "capsule.onboard.errCreateFailed": "Không thể tạo — vui lòng thử lại.",
+  "capsule.onboard.errRetryFailed": "Thử lại thất bại — vui lòng thử lại sau."
+}

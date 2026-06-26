@@ -1,0 +1,93 @@
+{
+  "capsule.meta.title": "Seal — catatan pribadi, tersimpan selamanya",
+  "capsule.meta.description": "Tulis catatan yang hanya bisa kaubaca, disegel di on-chain selamanya. Tanpa pemilik, tanpa admin — tak seorang pun bisa membukanya atau menurunkannya. Kuncimu, kata-katamu, milikmu seorang.",
+
+  "capsule.brand": "Seal",
+  "capsule.onboard.compat": "Kuncimu berasal dari passkey-mu. Jaga perangkat Apple di iOS 26.5 / macOS 26.5.1 atau lebih baru — versi lama bisa menghasilkan kunci berbeda di iPhone dan Mac sehingga catatan gagal dibuka.",
+  "capsule.tagline": "Segel sekali. Milikmu seorang, selamanya.",
+  "capsule.permanence": "Disegel untuk selamanya — tak pernah bisa diubah, dihapus, atau dibaca oleh siapa pun selain kamu.",
+
+  "capsule.home": "biubiu.tools",
+  "capsule.account.aria": "Akun",
+  "capsule.settings.aria": "Pengaturan",
+
+  "capsule.chain.on": "Menulis di",
+  "capsule.chain.testnet": " (testnet)",
+
+  "capsule.write.placeholder": "Tulis di sini. Hanya kau yang akan membacanya lagi.",
+
+  "capsule.meta.network": "Di {network}",
+  "capsule.meta.bytes": "{count} byte",
+  "capsule.meta.oneADay": "satu catatan setiap 12 jam",
+
+  "capsule.seal.button": "Segel",
+  "capsule.seal.sealing": "Menyegel…",
+  "capsule.seal.fee": "{fee}",
+
+  "capsule.archive.title": "Catatan lampau",
+  "capsule.view.write": "Tulis",
+  "capsule.archive.loading": "Memuat…",
+  "capsule.archive.refresh": "Muat ulang",
+  "capsule.archive.fetch": "Tampilkan catatanku",
+  "capsule.archive.more": "Tampilkan yang lebih lama ({count} lagi)",
+  "capsule.archive.empty": "Belum ada yang disegel di chain ini.\nCatatan pertamamu menanti.",
+
+  "capsule.letter.failed": "Catatan ini tak bisa didekripsi",
+
+  "capsule.toast.viewTx": "Lihat transaksi",
+  "capsule.toast.close": "Tutup",
+
+  "capsule.status.preparingEnc": "Menyiapkan kuncimu…",
+  "capsule.status.unlocking": "Konfirmasi dengan passkey-mu…",
+  "capsule.status.preparing": "Menyiapkan…",
+  "capsule.status.encrypting": "Mengenkripsi…",
+  "capsule.status.sealing": "Menyegel… ({step})",
+  "capsule.status.signing": "Konfirmasi dengan passkey-mu untuk menyegel",
+  "capsule.status.submitting": "Mengirim ke jaringan…",
+  "capsule.status.confirming": "Mengonfirmasi on-chain… (beberapa detik)",
+  "capsule.status.sealed": "Tersegel. Milikmu selamanya.",
+
+  "capsule.error.signIn": "Silakan masuk terlebih dahulu.",
+  "capsule.error.noWebAuthn": "Browser ini tak bisa membuat passkey. Coba Safari, Chrome, atau Edge.",
+  "capsule.error.noPrf": "Perangkat ini tak bisa membuka kuncimu. Perbarui ke OS terbaru, atau coba perangkat lain.",
+  "capsule.error.writeFirst": "Tulis sesuatu dulu.",
+  "capsule.error.tooLong": "Catatan ini sedikit terlalu panjang — pangkas lalu coba lagi.",
+  "capsule.error.sealFailed": "Tak bisa menyegel catatanmu. Silakan coba lagi.",
+  "capsule.error.lowBalance": "{symbol} tak cukup untuk menutup biaya. Tambahkan sedikit ke {address} lalu coba lagi.",
+  "capsule.error.loadFailed": "Tak bisa memuat catatanmu. Silakan coba lagi.",
+  "capsule.error.loadMoreFailed": "Tak bisa memuat lebih banyak. Silakan coba lagi.",
+  "capsule.error.cooldown": "Satu catatan per chain setiap 12 jam. Kau bisa menulis lagi {when}.",
+  "capsule.error.txReverted": "Itu tak berhasil. Silakan coba lagi sebentar lagi.",
+  "capsule.error.bundlerGas": "Penyampai gas sedang kehabisan dana. Tambahkan sekitar {amount} {symbol} ke {address}, lalu coba lagi.",
+
+  "capsule.gate.title": "Pilih sebuah chain",
+  "capsule.gate.subtitle": "Pilih tempat catatan-catatanmu tinggal. Kau bisa berpindah kapan saja.",
+  "capsule.chain.switch": "ganti",
+
+  "capsule.sort.newest": "Terbaru",
+  "capsule.sort.oldest": "Terlama",
+  "capsule.archive.count": "{count} catatan",
+
+  "capsule.onboard.identityTitle": "Buat identitasmu",
+  "capsule.onboard.identityProse": "Identitas yang hanya milikmu seorang — sebuah passkey di perangkat ini. Tanpa kata sandi, tanpa frasa benih.",
+  "capsule.onboard.step1": "Langkah 1 dari 2 · Identitas",
+  "capsule.onboard.createNew": "Buat passkey",
+  "capsule.onboard.opening": "Membuka…",
+  "capsule.onboard.haveOne": "Aku sudah punya",
+  "capsule.onboard.nameTitle": "Pilih nama",
+  "capsule.onboard.nameProse": "Publik dan terikat pada passkey-mu. Tak bisa diubah nanti.",
+  "capsule.onboard.namePlaceholder": "mis. satoshi",
+  "capsule.onboard.retrying": "Mencoba lagi…",
+  "capsule.onboard.retrySync": "Coba sinkron lagi",
+  "capsule.onboard.creating": "Membuat…",
+  "capsule.onboard.createBtn": "Buat",
+  "capsule.onboard.back": "Kembali",
+  "capsule.onboard.keyTitle": "Buka kunci enkripsimu",
+  "capsule.onboard.keyProse": "Kuncimu berasal dari passkey-mu — <strong>tak ada lagi yang perlu diingat</strong>, dan kunci itu tak pernah meninggalkan perangkat ini. Hanya kunci itu yang bisa membuka catatan-catatanmu.",
+  "capsule.onboard.step2": "Langkah 2 dari 2 · Enkripsi",
+  "capsule.onboard.enter": "Mulai menulis",
+  "capsule.onboard.errOpen": "Tak bisa membuka — silakan coba lagi.",
+  "capsule.onboard.errSyncFailed": "Kuncimu berhasil dibuat, tetapi sinkronisasi gagal. Silakan coba lagi.",
+  "capsule.onboard.errCreateFailed": "Tak bisa membuat — silakan coba lagi.",
+  "capsule.onboard.errRetryFailed": "Percobaan ulang gagal — silakan coba lagi nanti."
+}

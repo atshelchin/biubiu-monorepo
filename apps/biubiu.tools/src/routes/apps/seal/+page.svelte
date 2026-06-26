@@ -1,6 +1,5 @@
 <script lang="ts">
 	import CapsuleOnboard from '$lib/pda-apps/capsule/CapsuleOnboard.svelte';
-	import CapsuleDatePicker from '$lib/pda-apps/capsule/CapsuleDatePicker.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
 	import BundlerFundingModal from '$lib/auth/BundlerFundingModal.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
@@ -52,43 +51,8 @@
 
 	const feeText = $derived(`${formatUnits(FEE_WEI, 18)} ${store.network?.nativeSymbol ?? ''}`);
 
-	// One writing surface; the placeholder and seal label only shift once you opt into a time-lock.
-	const placeholder = $derived(
-		store.locked ? t('capsule.write.placeholderLocked') : t('capsule.write.placeholder')
-	);
-	const sealLabel = $derived(
-		store.locked ? t('capsule.seal.buttonLocked') : t('capsule.seal.button')
-	);
-
-	// Live tick for capsule countdowns (only while locked notes are shown).
-	let now = $state(Math.floor(Date.now() / 1000));
-	$effect(() => {
-		if (!store.entries.some((e) => e.locked)) return;
-		const id = setInterval(() => (now = Math.floor(Date.now() / 1000)), 1000);
-		return () => clearInterval(id);
-	});
-
-	// When a capsule's unlock time passes while you're watching, re-fetch so it opens itself —
-	// no manual refresh. Throttled (the drand beacon may lag a few seconds past the unlock time).
-	let lastAutoReload = 0;
-	$effect(() => {
-		const matured = store.entries.some((e) => e.locked && e.unlockAt <= now);
-		if (matured && !store.loadingEntries && now - lastAutoReload >= 15) {
-			lastAutoReload = now;
-			store.loadEntries();
-		}
-	});
-
-	function countdown(unlockAt: number): string {
-		const s = Math.max(0, unlockAt - now);
-		const d = Math.floor(s / 86400);
-		const h = Math.floor((s % 86400) / 3600);
-		const m = Math.floor((s % 3600) / 60);
-		const sec = s % 60;
-		const pad = (n: number) => String(n).padStart(2, '0');
-		if (d > 0) return t('capsule.countdown.days', { days: d, hours: h });
-		return t('capsule.countdown.hms', { time: `${pad(h)}:${pad(m)}:${pad(sec)}` });
-	}
+	const placeholder = $derived(t('capsule.write.placeholder'));
+	const sealLabel = $derived(t('capsule.seal.button'));
 
 	const longDate = (sec: number) => formatDate(new Date(sec * 1000), { dateStyle: 'long' });
 </script>
@@ -182,24 +146,6 @@
 					aria-label="your letter"
 				></textarea>
 
-				<!-- Optional time-lock — the only decision, made right before sealing. -->
-				<div class="lock-bar">
-					<label class="lock-switch">
-						<input type="checkbox" bind:checked={store.locked} disabled={busy} />
-						<span class="track" aria-hidden="true"></span>
-						<span>{t('capsule.lock.toggle')}</span>
-					</label>
-					{#if store.locked}
-						<label class="lock-detail">
-							<span>{t('capsule.lock.until')}</span>
-							<CapsuleDatePicker bind:value={store.unlockDate} disabled={busy} placeholder={t('capsule.picker.pick')} />
-						</label>
-					{/if}
-				</div>
-				{#if store.locked}
-					<p class="lock-hint">{t('capsule.lock.hint')}</p>
-				{/if}
-
 				<p class="permanence">{t('capsule.permanence')}</p>
 
 					<footer class="sheet-foot">
@@ -259,22 +205,9 @@
 				{#if store.entries.length}
 					<ul class="letters">
 						{#each store.entries as e (e.createdAt)}
-							<li class="letter" class:sealed={e.locked}>
+							<li class="letter">
 								<div class="when">{longDate(e.createdAt)}</div>
-								{#if e.locked}
-									<div class="sealed-body">
-										<span class="wax" aria-hidden="true"><Lock size={16} /></span>
-										<div>
-											<div class="sealed-title">{t('capsule.letter.lockedTitle')}</div>
-											<div class="sealed-meta">
-												{t('capsule.letter.lockedMeta', {
-													date: longDate(e.unlockAt),
-													countdown: countdown(e.unlockAt)
-												})}
-											</div>
-										</div>
-									</div>
-								{:else if e.failed}
+								{#if e.failed}
 									<div class="bad"><AlertTriangle size={14} /> {t('capsule.letter.failed')}</div>
 								{:else}
 									<p class="text">{e.text}</p>
@@ -289,7 +222,18 @@
 								: t('capsule.archive.more', { count: store.entriesTotal - store.entries.length })}
 						</button>
 					{/if}
-				{:else if !store.loadingEntries}
+				{:else if store.loadingEntries}
+						<!-- Skeleton placeholders while the first page loads (no bare spinner). -->
+						<ul class="letters" aria-hidden="true">
+							{#each [0, 1, 2] as i (i)}
+								<li class="letter sk">
+									<div class="sk-line sk-when"></div>
+									<div class="sk-line"></div>
+									<div class="sk-line short"></div>
+								</li>
+							{/each}
+						</ul>
+					{:else}
 					<p class="empty">{t('capsule.archive.empty')}</p>
 				{/if}
 			</section>
@@ -619,88 +563,6 @@
 		opacity: 0.7;
 	}
 
-	/* ── Optional time-lock control ── */
-	.lock-bar {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-3) var(--space-5);
-		margin-top: var(--space-4);
-	}
-	.lock-switch {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		cursor: pointer;
-		font-size: var(--text-sm);
-		color: var(--ink-soft);
-		user-select: none;
-	}
-	.lock-switch input {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		opacity: 0;
-		pointer-events: none;
-	}
-	.lock-switch .track {
-		position: relative;
-		flex: none;
-		width: 34px;
-		height: 20px;
-		border-radius: var(--radius-full);
-		background: color-mix(in srgb, var(--ink-soft) 26%, transparent);
-		border: 1px solid var(--edge);
-		transition: background 0.2s ease, border-color 0.2s ease;
-	}
-	.lock-switch .track::after {
-		content: '';
-		position: absolute;
-		top: 1px;
-		left: 1px;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		background: #fff;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-		transition: transform 0.2s ease;
-	}
-	.lock-switch input:checked + .track {
-		background: var(--seal);
-		border-color: var(--seal);
-	}
-	.lock-switch input:checked + .track::after {
-		transform: translateX(14px);
-	}
-	.lock-switch input:focus-visible + .track {
-		outline: 2px solid var(--seal);
-		outline-offset: 2px;
-	}
-	.lock-switch:has(input:checked) {
-		color: var(--ink);
-	}
-	.lock-detail {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-size: var(--text-sm);
-		color: var(--ink);
-	}
-	.lock-detail input {
-		font-family: var(--serif);
-		background: transparent;
-		border: none;
-		border-bottom: 1px dashed var(--seal);
-		color: var(--ink);
-		padding: 2px 4px;
-	}
-	.lock-hint {
-		margin-top: var(--space-2);
-		font-size: var(--text-sm);
-		font-style: italic;
-		color: var(--ink-soft);
-	}
-
 	.permanence {
 		margin: var(--space-5) 0 0;
 		font-size: var(--text-xs);
@@ -870,39 +732,6 @@
 		word-break: break-word;
 		margin: 0;
 	}
-	.letter.sealed {
-		background: var(--seal-soft);
-		border: 1px solid color-mix(in srgb, var(--seal) 26%, transparent);
-		border-radius: var(--radius-lg);
-		padding: var(--space-4) var(--space-5);
-	}
-	.letter.sealed .when {
-		color: var(--ink-soft);
-	}
-	.sealed-body {
-		display: flex;
-		gap: var(--space-3);
-		align-items: center;
-	}
-	.wax {
-		flex: none;
-		width: 34px;
-		height: 34px;
-		display: grid;
-		place-items: center;
-		border-radius: var(--radius-full);
-		color: var(--seal);
-		background: color-mix(in srgb, var(--seal) 18%, transparent);
-	}
-	.sealed-title {
-		font-size: var(--text-md);
-		color: var(--ink);
-	}
-	.sealed-meta {
-		font-size: var(--text-sm);
-		color: var(--ink-soft);
-		font-variant-numeric: tabular-nums;
-	}
 	.bad {
 		display: flex;
 		align-items: center;
@@ -920,6 +749,25 @@
 		line-height: var(--leading-relaxed);
 		white-space: pre-line;
 		padding: var(--space-10) 0;
+	}
+
+	/* ── Skeleton (loading placeholders — static, no shimmer per design rules) ── */
+	.letter.sk {
+		pointer-events: none;
+	}
+	.sk-line {
+		height: 0.9em;
+		margin: var(--space-2) 0;
+		border-radius: var(--radius-sm);
+		background: color-mix(in srgb, var(--ink-soft) 14%, transparent);
+	}
+	.sk-when {
+		width: 30%;
+		height: 0.7em;
+		background: color-mix(in srgb, var(--seal) 16%, transparent);
+	}
+	.sk-line.short {
+		width: 55%;
 	}
 
 	/* ── Toast ── */
@@ -987,9 +835,7 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.seal-btn,
-		.icon-pill,
-		.lock-switch .track,
-		.lock-switch .track::after {
+		.icon-pill {
 			transition: none;
 		}
 	}

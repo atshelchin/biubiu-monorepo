@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Отправка в сеть…",
   "capsule.status.confirming": "Подтверждение в сети… ~{sec} с",
   "capsule.status.almostThere": "Почти готово…",
+  "capsule.status.retrying": "Сеть загружена — повтор по текущей цене газа…",
   "capsule.status.sealed": "Запечатано. Это ваше навсегда.",
 
   "capsule.error.signIn": "Сначала войдите в аккаунт.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Не удалось загрузить ещё. Попробуйте ещё раз.",
   "capsule.error.cooldown": "Одна заметка на сеть каждые 12 часов. Снова написать можно будет {when}.",
   "capsule.error.txReverted": "Не получилось. Попробуйте ещё раз через мгновение.",
+  "capsule.error.timedOut": "Сеть сейчас перегружена. Ваша заметка сохранена — повторите попытку через мгновение.",
   "capsule.error.bundlerGas": "Сейчас у сервиса оплаты комиссии закончились средства. Пополните {address} примерно на {amount} {symbol} и попробуйте снова.",
 
   "capsule.gate.title": "Выберите сеть",

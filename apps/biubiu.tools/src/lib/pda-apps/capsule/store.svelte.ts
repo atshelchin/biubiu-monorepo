@@ -22,6 +22,7 @@ import type { QueuedCall } from '$lib/contract-caller/types.js';
 import type { Call } from '$lib/wallet/types.js';
 import { WRITE_NETWORKS, networkBySlug } from './networks.js';
 import { fetchBundlerAccountInfo, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
+import { getGasPrices } from '$lib/wallet/infra/account-state.js';
 import { evaluatePrf, isWebAuthnAvailable, type EncryptionCredential } from './crypto/prf.js';
 import { deriveContentKey, decryptContent, encryptContent } from './crypto/envelope.js';
 
@@ -376,40 +377,87 @@ class CapsuleStore {
 
 			// First user on this chain → one tx that CREATE2-deploys Seal AND seals the note.
 			const tx = this.buildSealTx(encodeSeal(payload), deployed);
-			const res = await sendContractCall({
-				safeAddress: user.safeAddress as Address,
-				publicKeyHex: user.publicKey,
-				credentialId: user.credentialId,
-				rpId: user.rpId,
-				to: tx.to,
-				value: tx.value,
-				data: tx.data,
-				operation: tx.operation,
-				calls: tx.calls,
-				// First-user batch also CREATE2-deploys the contract — give callGasLimit real headroom so
-				// the deploy can't OOG when the bundler estimate under-reports it (≈600k deploy + seal).
-				// It's a floor: sendContractCall uses max(estimate, override).
-				gasOverrides: deployed ? undefined : { callGasLimit: 1_500_000n },
-				network: this.networkSlug,
-				// Map low-level 4337 stages to clean, honest copy; the on-chain wait drives an ETA countdown.
-				onStatus: (s) => {
-					if (s === 'waiting') {
-						this.startCountdown(deployed ? 20 : 45); // first-user deploy takes longer
-						return;
+			// Initial attempt + ONE auto re-quote/re-sign if the signed op gets stranded by a gas spike
+			// (~40s timeout instead of the default 120s). Resubmitting reuses the same nonce → a clean
+			// replacement at the current gas price, never a duplicate (the EntryPoint consumes the nonce
+			// once). The note is also kept in localStorage throughout, so nothing is ever lost.
+			const chainId = this.network?.chainId ?? 0;
+			// Retry on either a stuck-op timeout OR a "Replacement UserOp must increase fees by 10%"
+			// rejection (a leftover op with the same nonce from a previous attempt) — the bumped retry
+			// clears both.
+			const RETRYABLE_RE = /timed out|timeout|confirmation timed|replacement|increase fees/i;
+			let res!: Awaited<ReturnType<typeof sendContractCall>>;
+			let prevFees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } | null = null;
+			for (let attempt = 1; attempt <= 2; attempt++) {
+				// Gas overrides per attempt. Keep the callGasLimit floor for the first-user deploy. On a
+				// RETRY, the fee must beat the stranded op by ≥10% or the bundler rejects it ("Replacement
+				// UserOp must increase fees by at least 10%"): bump ≥30% over the previous op AND never
+				// below the current quote (so a real gas spike is covered too).
+				const overrides: { callGasLimit?: bigint; maxFeePerGas?: bigint; maxPriorityFeePerGas?: bigint } =
+					deployed ? {} : { callGasLimit: 1_500_000n };
+				const cur = await getGasPrices(chainId).catch(() => null);
+				if (cur) {
+					let maxFeePerGas = cur.maxFeePerGas;
+					let maxPriorityFeePerGas = cur.maxPriorityFeePerGas;
+					if (prevFees) {
+						const bumpedMax = (prevFees.maxFeePerGas * 130n) / 100n;
+						const bumpedPrio = (prevFees.maxPriorityFeePerGas * 130n) / 100n;
+						if (bumpedMax > maxFeePerGas) maxFeePerGas = bumpedMax;
+						if (bumpedPrio > maxPriorityFeePerGas) maxPriorityFeePerGas = bumpedPrio;
 					}
-					this.stopCountdown();
-					if (s === 'signing') this.message = t('capsule.status.signing');
-					else if (s === 'submitting') this.message = t('capsule.status.submitting');
-					else if (s !== 'confirmed' && s !== 'failed') this.message = t('capsule.status.preparing');
+					overrides.maxFeePerGas = maxFeePerGas;
+					overrides.maxPriorityFeePerGas = maxPriorityFeePerGas;
+					prevFees = { maxFeePerGas, maxPriorityFeePerGas };
 				}
-			});
-			if (!res.success) {
+				res = await sendContractCall({
+					safeAddress: user.safeAddress as Address,
+					publicKeyHex: user.publicKey,
+					credentialId: user.credentialId,
+					rpId: user.rpId,
+					to: tx.to,
+					value: tx.value,
+					data: tx.data,
+					operation: tx.operation,
+					calls: tx.calls,
+					gasOverrides: overrides,
+					confirmTimeoutMs: 40_000, // fail fast on a stuck op, then re-quote + re-sign
+					network: this.networkSlug,
+					// Clean staged copy; the on-chain wait drives an ETA countdown (kept under the timeout).
+					onStatus: (s) => {
+						if (s === 'waiting') {
+							this.startCountdown(deployed ? 20 : 30);
+							return;
+						}
+						this.stopCountdown();
+						if (s === 'signing') this.message = t('capsule.status.signing');
+						else if (s === 'submitting') this.message = t('capsule.status.submitting');
+						else if (s !== 'confirmed' && s !== 'failed') this.message = t('capsule.status.preparing');
+					}
+				});
+				if (res.success) break;
 				const raw = res.error ?? t('capsule.error.sealFailed');
-				// Empty bundler gas account → offer sponsorship or self-funding instead of a dead-end error.
+				// Stranded by a gas spike → re-quote at the current price and sign again (one more tap).
+				if (attempt < 2 && RETRYABLE_RE.test(raw)) {
+					this.stopCountdown();
+					// Rare race: the first op may land just after the timeout. If the cooldown is now
+					// active, the note IS sealed — finish as success rather than double-seal.
+					const left = await cooldownRemaining(this.networkSlug, author).catch(() => 0);
+					if (left > 0) {
+						this.sealDeployed = true;
+						this.text = '';
+						this.status = 'done';
+						this.message = t('capsule.status.sealed');
+						void this.loadEntries();
+						return true;
+					}
+					this.message = t('capsule.status.retrying');
+					continue;
+				}
+				// Empty bundler gas account → offer sponsorship or self-funding instead of a dead end.
 				if (/bundler gas account|insufficient native balance on dedicated/i.test(raw)) {
 					return this.openFunding(raw);
 				}
-				return this.fail(this.friendlyError(raw));
+				return this.fail(RETRYABLE_RE.test(raw) ? t('capsule.error.timedOut') : this.friendlyError(raw));
 			}
 
 			this.stopCountdown();

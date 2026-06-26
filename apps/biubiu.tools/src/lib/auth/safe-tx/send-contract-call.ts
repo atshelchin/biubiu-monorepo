@@ -92,6 +92,8 @@ export interface ContractCallParams {
 	onStatus: (status: SendStatus) => void;
 	/** 自定义 gas 参数，未设置时自动估算 */
 	gasOverrides?: GasOverrides;
+	/** 等待上链确认的最长毫秒数（默认 120000）。到点返回超时，调用方可用当前 gas 重发（同 nonce → 替换）。 */
+	confirmTimeoutMs?: number;
 }
 
 interface SendCtx {
@@ -188,7 +190,7 @@ async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 
 	onStatus('submitting');
 	const userOpHash = await sendUserOperation(formatUserOpForRpc(finalUserOp), chainId);
-	return waitReceipt(userOpHash, chainId, onStatus);
+	return waitReceipt(userOpHash, chainId, onStatus, params.confirmTimeoutMs);
 }
 
 /** Tempo（稳定币付 gas）路径：maxFee=0 + 把报销 transfer 追加进 MultiSend。 */
@@ -252,7 +254,7 @@ async function sendTempo(ctx: SendCtx, params: ContractCallParams): Promise<Send
 	onStatus('submitting');
 	const dict: UserOpDict = { ...formatUserOpForRpc(finalUserOp), feeToken };
 	const userOpHash = await sendUserOperation(dict, chainId);
-	return waitReceipt(userOpHash, chainId, onStatus);
+	return waitReceipt(userOpHash, chainId, onStatus, params.confirmTimeoutMs);
 }
 
 // ─── helpers ───
@@ -315,11 +317,12 @@ async function signOp(
 async function waitReceipt(
 	userOpHash: Hex,
 	chainId: number,
-	onStatus: (status: SendStatus) => void
+	onStatus: (status: SendStatus) => void,
+	timeoutMs = 120_000
 ): Promise<SendResult> {
 	onStatus('waiting');
 	const startTime = Date.now();
-	while (Date.now() - startTime < 120_000) {
+	while (Date.now() - startTime < timeoutMs) {
 		const receipt = await getUserOperationReceipt(userOpHash, chainId);
 		if (receipt) {
 			if (receipt.success) {

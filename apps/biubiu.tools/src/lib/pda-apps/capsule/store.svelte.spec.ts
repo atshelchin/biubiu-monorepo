@@ -91,6 +91,10 @@ vi.mock('$lib/wallet/infra/bundler-account.js', () => ({
 	fetchBundlerAccountInfo: vi.fn(async () => null)
 }));
 
+vi.mock('$lib/wallet/infra/account-state.js', () => ({
+	getGasPrices: vi.fn(async () => ({ maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n }))
+}));
+
 import { capsuleStore, FEE_WEI } from './store.svelte.js';
 
 const flush = () => new Promise<void>((r) => setTimeout(r, 0));

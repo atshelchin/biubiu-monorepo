@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Wird ans Netzwerk gesendet…",
   "capsule.status.confirming": "Wird on-chain bestätigt… ~{sec}s",
   "capsule.status.almostThere": "Fast geschafft…",
+  "capsule.status.retrying": "Netzwerk ausgelastet — neuer Versuch zum aktuellen Gaspreis…",
   "capsule.status.sealed": "Versiegelt. Für immer deine.",
 
   "capsule.error.signIn": "Bitte melde dich zuerst an.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Es konnten keine weiteren geladen werden. Bitte versuche es erneut.",
   "capsule.error.cooldown": "Eine Notiz pro Chain alle 12 Stunden. Du kannst {when} wieder schreiben.",
   "capsule.error.txReverted": "Das hat nicht geklappt. Bitte versuche es gleich noch einmal.",
+  "capsule.error.timedOut": "Das Netzwerk ist gerade überlastet. Deine Notiz ist sicher — bitte versuche es gleich erneut.",
   "capsule.error.bundlerGas": "Der Gas-Relayer hat gerade keine Mittel mehr. Zahle etwa {amount} {symbol} an {address} ein und versuche es dann erneut.",
 
   "capsule.gate.title": "Wähle eine Chain",

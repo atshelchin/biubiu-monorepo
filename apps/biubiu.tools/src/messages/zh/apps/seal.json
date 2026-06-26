@@ -50,6 +50,7 @@
   "capsule.status.submitting": "正在发送到网络…",
   "capsule.status.confirming": "正在链上确认…约 {sec} 秒",
   "capsule.status.almostThere": "即将完成…",
+  "capsule.status.retrying": "网络繁忙 —— 正用当前 gas 价格重试…",
   "capsule.status.sealed": "已封存，永远属于你。",
 
   "capsule.error.signIn": "请先登录。",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "无法加载更多，请再试一次。",
   "capsule.error.cooldown": "每条链每 12 小时只能写一则。你可以在 {when} 再次书写。",
   "capsule.error.txReverted": "这次没能完成，请稍后再试。",
+  "capsule.error.timedOut": "网络当前拥堵。你的笔记已安全保存 —— 请稍后再试。",
   "capsule.error.bundlerGas": "Gas 代付服务暂时没有余额了。请向 {address} 充约 {amount} {symbol}，然后再试。",
 
   "capsule.gate.title": "选择一条链",

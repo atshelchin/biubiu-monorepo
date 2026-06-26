@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Đang gửi lên mạng…",
   "capsule.status.confirming": "Đang xác nhận on-chain… ~{sec}s",
   "capsule.status.almostThere": "Sắp xong…",
+  "capsule.status.retrying": "Mạng bận — đang thử lại với giá gas hiện tại…",
   "capsule.status.sealed": "Đã niêm phong. Nó là của bạn mãi mãi.",
 
   "capsule.error.signIn": "Vui lòng đăng nhập trước.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Không thể tải thêm. Vui lòng thử lại.",
   "capsule.error.cooldown": "Mỗi chuỗi một ghi chú trong 12 giờ. Bạn có thể viết tiếp {when}.",
   "capsule.error.txReverted": "Giao dịch chưa thành công. Vui lòng thử lại sau giây lát.",
+  "capsule.error.timedOut": "Mạng đang tắc nghẽn. Ghi chú của bạn vẫn an toàn — vui lòng thử lại sau giây lát.",
   "capsule.error.bundlerGas": "Bộ chuyển tiếp gas hiện đã hết tiền. Hãy nạp khoảng {amount} {symbol} vào {address} rồi thử lại.",
 
   "capsule.gate.title": "Chọn một chuỗi",

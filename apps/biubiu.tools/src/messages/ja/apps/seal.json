@@ -50,6 +50,7 @@
   "capsule.status.submitting": "ネットワークに送信中…",
   "capsule.status.confirming": "オンチェーンで確認中…約{sec}秒",
   "capsule.status.almostThere": "もうすぐ完了します…",
+  "capsule.status.retrying": "ネットワーク混雑中 — 現在のガス価格で再試行します…",
   "capsule.status.sealed": "封じました。これはずっとあなたのものです。",
 
   "capsule.error.signIn": "まずサインインしてください。",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "これ以上読み込めませんでした。もう一度お試しください。",
   "capsule.error.cooldown": "1つのチェーンにつき12時間ごとに1通です。{when} にまた書けます。",
   "capsule.error.txReverted": "うまくいきませんでした。少し時間をおいて、もう一度お試しください。",
+  "capsule.error.timedOut": "現在ネットワークが混雑しています。ノートは保存済みです — 少し待って再度お試しください。",
   "capsule.error.bundlerGas": "ガス代行の残高がいま不足しています。{address} に約 {amount} {symbol} を追加してから、もう一度お試しください。",
 
   "capsule.gate.title": "チェーンを選ぶ",

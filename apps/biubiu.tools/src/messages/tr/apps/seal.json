@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Ağa gönderiliyor…",
   "capsule.status.confirming": "Zincirde onaylanıyor… ~{sec} sn",
   "capsule.status.almostThere": "Neredeyse bitti…",
+  "capsule.status.retrying": "Ağ yoğun — güncel gaz fiyatıyla yeniden deneniyor…",
   "capsule.status.sealed": "Mühürlendi. Sonsuza dek senin.",
 
   "capsule.error.signIn": "Lütfen önce oturum aç.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Daha fazlası yüklenemedi. Lütfen tekrar dene.",
   "capsule.error.cooldown": "Her zincirde 12 saatte bir not. {when} yeniden yazabilirsin.",
   "capsule.error.txReverted": "Bu işlem gerçekleşmedi. Lütfen birazdan tekrar dene.",
+  "capsule.error.timedOut": "Ağ şu anda yoğun. Notun güvende — birazdan tekrar dene.",
   "capsule.error.bundlerGas": "Gas aktarıcının bakiyesi şu an bitti. {address} adresine yaklaşık {amount} {symbol} ekleyip tekrar dene.",
 
   "capsule.gate.title": "Bir zincir seç",

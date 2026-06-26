@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Invio alla rete…",
   "capsule.status.confirming": "Conferma on-chain… ~{sec}s",
   "capsule.status.almostThere": "Ci siamo quasi…",
+  "capsule.status.retrying": "Rete occupata — riprovo al prezzo del gas attuale…",
   "capsule.status.sealed": "Sigillata. È tua per sempre.",
 
   "capsule.error.signIn": "Accedi prima.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Impossibile caricarne altre. Riprova.",
   "capsule.error.cooldown": "Una nota per catena ogni 12 ore. Potrai scrivere di nuovo {when}.",
   "capsule.error.txReverted": "Non è andata a buon fine. Riprova tra un momento.",
+  "capsule.error.timedOut": "La rete è congestionata. La tua nota è al sicuro — riprova tra un momento.",
   "capsule.error.bundlerGas": "Il servizio che copre il gas è senza fondi al momento. Aggiungi circa {amount} {symbol} su {address}, poi riprova.",
 
   "capsule.gate.title": "Scegli una catena",

@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Envoi au réseau…",
   "capsule.status.confirming": "Confirmation on-chain… ~{sec}s",
   "capsule.status.almostThere": "Presque terminé…",
+  "capsule.status.retrying": "Réseau saturé — nouvelle tentative au prix du gaz actuel…",
   "capsule.status.sealed": "Scellée. Elle est à vous pour toujours.",
 
   "capsule.error.signIn": "Veuillez d'abord vous connecter.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Impossible de charger davantage. Veuillez réessayer.",
   "capsule.error.cooldown": "Une note par chaîne toutes les 12 heures. Vous pourrez écrire à nouveau {when}.",
   "capsule.error.txReverted": "Ça n'a pas abouti. Veuillez réessayer dans un instant.",
+  "capsule.error.timedOut": "Le réseau est saturé. Votre note est en sécurité — réessayez dans un instant.",
   "capsule.error.bundlerGas": "Le service qui paie les frais est à court de fonds pour le moment. Ajoutez environ {amount} {symbol} sur {address}, puis réessayez.",
 
   "capsule.gate.title": "Choisissez une chaîne",

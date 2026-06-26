@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Sending to the network…",
   "capsule.status.confirming": "Confirming on-chain… ~{sec}s",
   "capsule.status.almostThere": "Almost there…",
+  "capsule.status.retrying": "Network busy — retrying at the current gas price…",
   "capsule.status.sealed": "Sealed. It's yours forever.",
 
   "capsule.error.signIn": "Please sign in first.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Couldn't load more. Please try again.",
   "capsule.error.cooldown": "One note per chain every 12 hours. You can write again {when}.",
   "capsule.error.txReverted": "That didn't go through. Please try again in a moment.",
+  "capsule.error.timedOut": "The network is congested right now. Your note is safe — please try again in a moment.",
   "capsule.error.bundlerGas": "The gas relayer is out of funds right now. Add about {amount} {symbol} to {address}, then try again.",
 
   "capsule.gate.title": "Choose a chain",

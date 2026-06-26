@@ -50,6 +50,7 @@
   "capsule.status.submitting": "正在傳送至網絡…",
   "capsule.status.confirming": "正在鏈上確認…約 {sec} 秒",
   "capsule.status.almostThere": "即將完成…",
+  "capsule.status.retrying": "網絡繁忙 —— 正用當前 gas 價格重試…",
   "capsule.status.sealed": "已封存。它永遠屬於你。",
 
   "capsule.error.signIn": "請先登入。",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "無法載入更多。請再試一次。",
   "capsule.error.cooldown": "每條鏈每 12 小時只能寫一則筆記。你可以在 {when} 再寫。",
   "capsule.error.txReverted": "未能完成。請稍候片刻再試。",
+  "capsule.error.timedOut": "網絡目前擠塞。你的筆記已安全保存 —— 請稍後再試。",
   "capsule.error.bundlerGas": "Gas 中轉帳戶目前餘額不足。請向 {address} 充值約 {amount} {symbol}，再試一次。",
 
   "capsule.gate.title": "選擇一條鏈",

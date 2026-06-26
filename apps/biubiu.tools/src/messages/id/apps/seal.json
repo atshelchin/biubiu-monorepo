@@ -50,6 +50,7 @@
   "capsule.status.submitting": "Mengirim ke jaringan…",
   "capsule.status.confirming": "Mengonfirmasi on-chain… ~{sec}d",
   "capsule.status.almostThere": "Hampir selesai…",
+  "capsule.status.retrying": "Jaringan sibuk — mencoba lagi dengan harga gas saat ini…",
   "capsule.status.sealed": "Tersegel. Milikmu selamanya.",
 
   "capsule.error.signIn": "Silakan masuk terlebih dahulu.",
@@ -63,6 +64,7 @@
   "capsule.error.loadMoreFailed": "Tak bisa memuat lebih banyak. Silakan coba lagi.",
   "capsule.error.cooldown": "Satu catatan per chain setiap 12 jam. Kau bisa menulis lagi {when}.",
   "capsule.error.txReverted": "Itu tak berhasil. Silakan coba lagi sebentar lagi.",
+  "capsule.error.timedOut": "Jaringan sedang padat. Catatanmu aman — coba lagi sebentar lagi.",
   "capsule.error.bundlerGas": "Penyampai gas sedang kehabisan dana. Tambahkan sekitar {amount} {symbol} ke {address}, lalu coba lagi.",
 
   "capsule.gate.title": "Pilih sebuah chain",

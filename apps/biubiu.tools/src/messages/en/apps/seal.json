@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Sealing… ({step})",
   "capsule.status.signing": "Confirm with your passkey to seal",
   "capsule.status.submitting": "Sending to the network…",
-  "capsule.status.confirming": "Confirming on-chain… (a few seconds)",
+  "capsule.status.confirming": "Confirming on-chain… ~{sec}s",
+  "capsule.status.almostThere": "Almost there…",
   "capsule.status.sealed": "Sealed. It's yours forever.",
 
   "capsule.error.signIn": "Please sign in first.",

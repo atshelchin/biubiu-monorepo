@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Menyegel… ({step})",
   "capsule.status.signing": "Konfirmasi dengan passkey-mu untuk menyegel",
   "capsule.status.submitting": "Mengirim ke jaringan…",
-  "capsule.status.confirming": "Mengonfirmasi on-chain… (beberapa detik)",
+  "capsule.status.confirming": "Mengonfirmasi on-chain… ~{sec}d",
+  "capsule.status.almostThere": "Hampir selesai…",
   "capsule.status.sealed": "Tersegel. Milikmu selamanya.",
 
   "capsule.error.signIn": "Silakan masuk terlebih dahulu.",

@@ -48,7 +48,8 @@
   "capsule.status.sealing": "封存中…（{step}）",
   "capsule.status.signing": "用你的 passkey 確認，即可完成封存",
   "capsule.status.submitting": "正在傳送至網絡…",
-  "capsule.status.confirming": "正在鏈上確認…（幾秒）",
+  "capsule.status.confirming": "正在鏈上確認…約 {sec} 秒",
+  "capsule.status.almostThere": "即將完成…",
   "capsule.status.sealed": "已封存。它永遠屬於你。",
 
   "capsule.error.signIn": "請先登入。",

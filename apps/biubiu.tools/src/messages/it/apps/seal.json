@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Sigillatura… ({step})",
   "capsule.status.signing": "Conferma con la tua passkey per sigillare",
   "capsule.status.submitting": "Invio alla rete…",
-  "capsule.status.confirming": "Conferma on-chain… (pochi secondi)",
+  "capsule.status.confirming": "Conferma on-chain… ~{sec}s",
+  "capsule.status.almostThere": "Ci siamo quasi…",
   "capsule.status.sealed": "Sigillata. È tua per sempre.",
 
   "capsule.error.signIn": "Accedi prima.",

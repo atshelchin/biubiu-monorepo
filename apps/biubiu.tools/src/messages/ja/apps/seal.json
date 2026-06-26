@@ -48,7 +48,8 @@
   "capsule.status.sealing": "封じています…（{step}）",
   "capsule.status.signing": "封じるにはパスキーで承認してください",
   "capsule.status.submitting": "ネットワークに送信中…",
-  "capsule.status.confirming": "オンチェーンで確認中…（数秒）",
+  "capsule.status.confirming": "オンチェーンで確認中…約{sec}秒",
+  "capsule.status.almostThere": "もうすぐ完了します…",
   "capsule.status.sealed": "封じました。これはずっとあなたのものです。",
 
   "capsule.error.signIn": "まずサインインしてください。",

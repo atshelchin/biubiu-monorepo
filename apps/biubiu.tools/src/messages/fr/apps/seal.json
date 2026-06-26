@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Scellage… ({step})",
   "capsule.status.signing": "Confirmez avec votre passkey pour sceller",
   "capsule.status.submitting": "Envoi au réseau…",
-  "capsule.status.confirming": "Confirmation on-chain… (quelques secondes)",
+  "capsule.status.confirming": "Confirmation on-chain… ~{sec}s",
+  "capsule.status.almostThere": "Presque terminé…",
   "capsule.status.sealed": "Scellée. Elle est à vous pour toujours.",
 
   "capsule.error.signIn": "Veuillez d'abord vous connecter.",

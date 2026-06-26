@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Mühürleniyor… ({step})",
   "capsule.status.signing": "Mühürlemek için passkey'inle onayla",
   "capsule.status.submitting": "Ağa gönderiliyor…",
-  "capsule.status.confirming": "Zincirde onaylanıyor… (birkaç saniye)",
+  "capsule.status.confirming": "Zincirde onaylanıyor… ~{sec} sn",
+  "capsule.status.almostThere": "Neredeyse bitti…",
   "capsule.status.sealed": "Mühürlendi. Sonsuza dek senin.",
 
   "capsule.error.signIn": "Lütfen önce oturum aç.",

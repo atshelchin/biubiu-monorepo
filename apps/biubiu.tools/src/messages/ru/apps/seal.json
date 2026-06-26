@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Запечатываем… ({step})",
   "capsule.status.signing": "Подтвердите с помощью passkey, чтобы запечатать",
   "capsule.status.submitting": "Отправка в сеть…",
-  "capsule.status.confirming": "Подтверждение в сети… (несколько секунд)",
+  "capsule.status.confirming": "Подтверждение в сети… ~{sec} с",
+  "capsule.status.almostThere": "Почти готово…",
   "capsule.status.sealed": "Запечатано. Это ваше навсегда.",
 
   "capsule.error.signIn": "Сначала войдите в аккаунт.",

@@ -145,9 +145,33 @@ class CapsuleStore {
 	}
 
 	private fail(msg: string): false {
+		this.stopCountdown();
 		this.status = 'error';
 		this.message = msg;
 		return false;
+	}
+
+	/** Countdown interval shown during the on-chain wait (cleared on success/error). */
+	private sealTimer: ReturnType<typeof setInterval> | null = null;
+	/** Per-second ETA countdown; switches to "almost there" if it overruns the estimate. */
+	private startCountdown(seconds: number): void {
+		this.stopCountdown();
+		let remaining = seconds;
+		const tick = () => {
+			this.message =
+				remaining > 0
+					? t('capsule.status.confirming', { sec: remaining })
+					: t('capsule.status.almostThere');
+			remaining--;
+		};
+		tick();
+		this.sealTimer = setInterval(tick, 1000);
+	}
+	private stopCountdown(): void {
+		if (this.sealTimer !== null) {
+			clearInterval(this.sealTimer);
+			this.sealTimer = null;
+		}
 	}
 
 	/** Map low-level bundler/RPC errors to a clear, friendly message (never raw hex selectors). */
@@ -362,17 +386,21 @@ class CapsuleStore {
 				data: tx.data,
 				operation: tx.operation,
 				calls: tx.calls,
+				// First-user batch also CREATE2-deploys the contract — give callGasLimit real headroom so
+				// the deploy can't OOG when the bundler estimate under-reports it (≈600k deploy + seal).
+				// It's a floor: sendContractCall uses max(estimate, override).
+				gasOverrides: deployed ? undefined : { callGasLimit: 1_500_000n },
 				network: this.networkSlug,
-				// Map low-level 4337 stages to clean, honest, reassuring copy (never leak raw stage names).
+				// Map low-level 4337 stages to clean, honest copy; the on-chain wait drives an ETA countdown.
 				onStatus: (s) => {
-					this.message =
-						s === 'signing'
-							? t('capsule.status.signing')
-							: s === 'submitting'
-								? t('capsule.status.submitting')
-								: s === 'waiting'
-									? t('capsule.status.confirming')
-									: t('capsule.status.preparing'); // checking / building / estimating
+					if (s === 'waiting') {
+						this.startCountdown(deployed ? 20 : 45); // first-user deploy takes longer
+						return;
+					}
+					this.stopCountdown();
+					if (s === 'signing') this.message = t('capsule.status.signing');
+					else if (s === 'submitting') this.message = t('capsule.status.submitting');
+					else if (s !== 'confirmed' && s !== 'failed') this.message = t('capsule.status.preparing');
 				}
 			});
 			if (!res.success) {
@@ -384,6 +412,7 @@ class CapsuleStore {
 				return this.fail(this.friendlyError(raw));
 			}
 
+			this.stopCountdown();
 			this.lastTxHash = res.txHash ?? null;
 			this.sealDeployed = true; // a successful seal means Seal is now live on this chain
 			this.text = '';

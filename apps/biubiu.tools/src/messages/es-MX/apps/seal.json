@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Sellando… ({step})",
   "capsule.status.signing": "Confirma con tu passkey para sellar",
   "capsule.status.submitting": "Enviando a la red…",
-  "capsule.status.confirming": "Confirmando on-chain… (unos segundos)",
+  "capsule.status.confirming": "Confirmando on-chain… ~{sec}s",
+  "capsule.status.almostThere": "Ya casi…",
   "capsule.status.sealed": "Sellada. Es tuya para siempre.",
 
   "capsule.error.signIn": "Inicia sesión primero.",

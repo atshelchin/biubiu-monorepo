@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Wird versiegelt … ({step})",
   "capsule.status.signing": "Bestätige mit deinem Passkey, um zu versiegeln",
   "capsule.status.submitting": "Wird ans Netzwerk gesendet…",
-  "capsule.status.confirming": "Wird on-chain bestätigt… (ein paar Sekunden)",
+  "capsule.status.confirming": "Wird on-chain bestätigt… ~{sec}s",
+  "capsule.status.almostThere": "Fast geschafft…",
   "capsule.status.sealed": "Versiegelt. Für immer deine.",
 
   "capsule.error.signIn": "Bitte melde dich zuerst an.",

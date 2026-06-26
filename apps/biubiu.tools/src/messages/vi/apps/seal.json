@@ -48,7 +48,8 @@
   "capsule.status.sealing": "Đang niêm phong… ({step})",
   "capsule.status.signing": "Xác nhận bằng passkey để niêm phong",
   "capsule.status.submitting": "Đang gửi lên mạng…",
-  "capsule.status.confirming": "Đang xác nhận on-chain… (vài giây)",
+  "capsule.status.confirming": "Đang xác nhận on-chain… ~{sec}s",
+  "capsule.status.almostThere": "Sắp xong…",
   "capsule.status.sealed": "Đã niêm phong. Nó là của bạn mãi mãi.",
 
   "capsule.error.signIn": "Vui lòng đăng nhập trước.",

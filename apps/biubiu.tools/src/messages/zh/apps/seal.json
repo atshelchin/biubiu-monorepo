@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "你的密钥来自你的通行密钥。苹果设备请保持 iOS 26.5 / macOS 26.5.1 及以上 —— 旧版本可能在 iPhone 和 Mac 上算出不同的密钥，导致笔记打不开。",
   "capsule.tagline": "一次封存，永不褪色，只属于你。",
   "capsule.permanence": "永久封存 —— 无法修改、无法删除，除你之外无人能读。",
+  "capsule.firstHere": "你是这条链上的第一个人。你的第一条笔记会顺带在这条链上启用「封存」——仅此一次。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "账户",

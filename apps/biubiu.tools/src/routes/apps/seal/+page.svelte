@@ -148,6 +148,10 @@
 
 				<p class="permanence">{t('capsule.permanence')}</p>
 
+					{#if store.sealDeployed === false}
+						<p class="first-here">{t('capsule.firstHere')}</p>
+					{/if}
+
 					<footer class="sheet-foot">
 					<div class="meta">
 						<span>{t('capsule.meta.network', { network: store.network?.name ?? '' })}</span>
@@ -571,6 +575,20 @@
 		line-height: var(--leading-relaxed);
 		text-align: center;
 		color: color-mix(in srgb, var(--seal) 80%, var(--ink-soft));
+	}
+
+	/* One-time "you're the first on this chain" note — calm, seal-tinted, not alarming. */
+	.first-here {
+		margin: var(--space-3) auto 0;
+		max-width: 46ch;
+		font-size: var(--text-xs);
+		line-height: var(--leading-normal);
+		text-align: center;
+		color: var(--ink-soft);
+		background: var(--seal-soft);
+		border: 1px solid color-mix(in srgb, var(--seal) 20%, transparent);
+		border-radius: var(--radius-md);
+		padding: var(--space-2) var(--space-3);
 	}
 
 	.sheet-foot {

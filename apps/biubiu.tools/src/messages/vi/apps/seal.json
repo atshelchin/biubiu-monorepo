@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "Khóa của bạn bắt nguồn từ passkey. Hãy giữ các thiết bị Apple ở iOS 26.5 / macOS 26.5.1 trở lên — phiên bản cũ hơn có thể tạo ra khóa khác nhau trên iPhone và Mac và không mở được ghi chú.",
   "capsule.tagline": "Niêm phong một lần. Chỉ riêng bạn, mãi mãi.",
   "capsule.permanence": "Niêm phong vĩnh viễn — không bao giờ có thể sửa, xóa, hay bị bất kỳ ai ngoài bạn đọc được.",
+  "capsule.firstHere": "Bạn là người đầu tiên ở đây. Ghi chú đầu tiên cũng kích hoạt Seal trên chain này — chỉ một lần.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Tài khoản",

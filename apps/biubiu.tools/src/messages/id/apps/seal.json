@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "Kuncimu berasal dari passkey-mu. Jaga perangkat Apple di iOS 26.5 / macOS 26.5.1 atau lebih baru — versi lama bisa menghasilkan kunci berbeda di iPhone dan Mac sehingga catatan gagal dibuka.",
   "capsule.tagline": "Segel sekali. Milikmu seorang, selamanya.",
   "capsule.permanence": "Disegel untuk selamanya — tak pernah bisa diubah, dihapus, atau dibaca oleh siapa pun selain kamu.",
+  "capsule.firstHere": "Kamu yang pertama di sini. Catatan pertamamu sekaligus mengaktifkan Seal di chain ini — sekali saja.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Akun",

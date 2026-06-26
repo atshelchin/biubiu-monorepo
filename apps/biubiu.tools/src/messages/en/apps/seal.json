@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "Your key comes from your passkey. Keep Apple devices on iOS 26.5 / macOS 26.5.1 or later — older versions can derive a different key on iPhone vs Mac and fail to open a note.",
   "capsule.tagline": "Seal it once. Yours alone, forever.",
   "capsule.permanence": "Sealed for good — it can never be edited, deleted, or read by anyone but you.",
+  "capsule.firstHere": "You're the first here. Your first note also activates Seal on this chain — a one-time setup.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",

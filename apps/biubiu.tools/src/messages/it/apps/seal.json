@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "La tua chiave deriva dalla tua passkey. Tieni i dispositivi Apple su iOS 26.5 / macOS 26.5.1 o successivo: le versioni più vecchie possono generare una chiave diversa su iPhone e Mac e non aprire una nota.",
   "capsule.tagline": "Sigillala una volta. Solo tua, per sempre.",
   "capsule.permanence": "Sigillata per sempre — non potrà mai essere modificata, cancellata o letta da nessuno tranne te.",
+  "capsule.firstHere": "Sei il primo qui. La tua prima nota attiva anche Seal su questa chain — configurazione una tantum.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",

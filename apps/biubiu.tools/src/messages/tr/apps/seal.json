@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "Anahtarın passkey'inden gelir. Apple cihazlarını iOS 26.5 / macOS 26.5.1 veya üzerinde tut — eski sürümler iPhone ile Mac'te farklı anahtar üretip notu açamayabilir.",
   "capsule.tagline": "Bir kez mühürle. Yalnızca senin, sonsuza dek.",
   "capsule.permanence": "Sonsuza dek mühürlendi — düzenlenemez, silinemez ve senden başkası okuyamaz.",
+  "capsule.firstHere": "Bu zincirde ilk sensin. İlk notun Seal’i bu zincirde de etkinleştirir — tek seferlik.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Hesap",

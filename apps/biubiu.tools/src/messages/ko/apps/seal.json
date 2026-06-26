@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "당신의 키는 passkey에서 만들어집니다. Apple 기기는 iOS 26.5 / macOS 26.5.1 이상으로 유지하세요. 이전 버전에서는 iPhone과 Mac에서 서로 다른 키가 만들어져 노트를 열지 못할 수 있습니다.",
   "capsule.tagline": "한번 봉인하면, 영원히 당신만의 것.",
   "capsule.permanence": "완전히 봉인됩니다 — 수정도, 삭제도 불가능하며, 당신 외에는 아무도 읽을 수 없습니다.",
+  "capsule.firstHere": "이 체인의 첫 사용자예요. 첫 노트가 이 체인에 Seal도 함께 활성화합니다 — 한 번만.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "계정",

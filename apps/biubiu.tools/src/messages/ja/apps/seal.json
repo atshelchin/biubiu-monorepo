@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "鍵はあなたのパスキーから生まれます。Apple デバイスは iOS 26.5 / macOS 26.5.1 以降に保ってください。古いバージョンでは iPhone と Mac で異なる鍵が作られ、メモが開けなくなることがあります。",
   "capsule.tagline": "一度封じれば、あなただけのもの、ずっと。",
   "capsule.permanence": "がっちり封印 — 編集も削除もできず、読めるのはあなただけです。",
+  "capsule.firstHere": "このチェーンの最初の利用者です。最初のノートで Seal もこのチェーンに公開されます（初回のみ）。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "アカウント",

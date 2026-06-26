@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "你的金鑰來自你的 passkey。Apple 裝置請保持 iOS 26.5 / macOS 26.5.1 或更新版本——舊版可能在 iPhone 與 Mac 上算出不同的金鑰，導致筆記打不開。",
   "capsule.tagline": "一次封存，永不褪色，只屬於你。",
   "capsule.permanence": "一封永存——除了你，沒有人能編輯、刪除或讀取。",
+  "capsule.firstHere": "你是這條鏈上的第一個人。你的第一則筆記會順帶在這條鏈啟用「封存」——僅此一次。",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "帳戶",

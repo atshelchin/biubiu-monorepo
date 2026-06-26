@@ -6,6 +6,7 @@
   "capsule.onboard.compat": "Dein Schlüssel stammt aus deinem Passkey. Halte Apple-Geräte auf iOS 26.5 / macOS 26.5.1 oder neuer — ältere Versionen können auf iPhone und Mac unterschiedliche Schlüssel ableiten und eine Notiz nicht öffnen.",
   "capsule.tagline": "Einmal versiegelt. Ganz allein deine, für immer.",
   "capsule.permanence": "Für immer versiegelt — sie kann nie geändert, gelöscht oder von jemand anderem als dir gelesen werden.",
+  "capsule.firstHere": "Du bist der/die Erste hier. Deine erste Notiz richtet Seal auf dieser Chain ein — einmalig.",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Konto",

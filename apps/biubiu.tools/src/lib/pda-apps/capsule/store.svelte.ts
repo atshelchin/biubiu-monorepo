@@ -8,14 +8,18 @@
  * Nothing on-chain is required to start: the Safe deploys lazily on the first seal.
  */
 import { browser } from '$app/environment';
-import { formatUnits, type Address } from 'viem';
+import { formatUnits, type Address, type Hex } from 'viem';
 import { t, formatRelativeTime } from '$lib/i18n';
 import { authStore } from '$lib/auth/auth-store.svelte.js';
 import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
 import { FOREVER_ADDRESS } from './contract/address.js';
 import { encodeSeal } from './contract/encode.js';
+import { buildDeployCall, isSealDeployed } from './contract/deploy.js';
 import { cooldownRemaining, entryCount, fetchEntriesPage, type ForeverEntry } from './contract/reader.js';
 import { rpcCall } from './contract/rpc.js';
+import { encodeMultiSendCall, MULTISEND_ADDRESS } from '$lib/contract-caller/batch.js';
+import type { QueuedCall } from '$lib/contract-caller/types.js';
+import type { Call } from '$lib/wallet/types.js';
 import { WRITE_NETWORKS, networkBySlug } from './networks.js';
 import { fetchBundlerAccountInfo, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
 import { evaluatePrf, isWebAuthnAvailable, type EncryptionCredential } from './crypto/prf.js';
@@ -82,6 +86,10 @@ class CapsuleStore {
 	entriesTotal = $state(0);
 	loadingEntries = $state(false);
 
+	/** Is the Seal protocol live on the current chain? null = unknown. When false, this browser's
+	 *  next note also CREATE2-deploys it (one-time, transparent). Drives the "first here" hint. */
+	sealDeployed = $state<boolean | null>(null);
+
 	/** When set, the seal hit an empty bundler gas account → show the funding modal
 	 *  (BundlerFundingModal handles sponsorship + self-fund; we just retry on success). */
 	funding = $state<GasAccountFunding | null>(null);
@@ -104,6 +112,8 @@ class CapsuleStore {
 		} catch {
 			/* ignore corrupt local state */
 		}
+		// If a chain was restored from a prior session, check its deploy status for the hint.
+		if (this.chainEntered) void this.refreshDeployed();
 	}
 
 	/** Whether this browser has already confirmed which passkey roots the encryption. */
@@ -263,7 +273,36 @@ class CapsuleStore {
 		}
 	}
 
-	/** Encrypt the current text and seal it on-chain (private mode), charging the fee. */
+	/**
+	 * Build the on-chain transaction for a seal. If Seal is already live on this chain it's a single
+	 * call; otherwise the FIRST user's note is a MultiSend batch that CREATE2-deploys Seal (→ the same
+	 * canonical address on every chain) and then seals — one tx, one passkey tap. `author` is the Safe
+	 * either way, so notes belong to the same address whether or not the deploy rode along.
+	 */
+	private buildSealTx(
+		sealData: Hex,
+		deployed: boolean
+	): { to: Address; value: bigint; data: Hex; operation: number; calls: Call[] | undefined } {
+		const sealCall: Call = { to: FOREVER_ADDRESS, value: FEE_WEI, data: sealData };
+		if (deployed) {
+			return { to: sealCall.to, value: sealCall.value, data: sealCall.data, operation: 0, calls: undefined };
+		}
+		const deployCall = buildDeployCall();
+		const queued: QueuedCall[] = [
+			{ id: '0', label: 'deploy', signature: '', to: deployCall.to, value: deployCall.value, data: deployCall.data },
+			{ id: '1', label: 'seal', signature: '', to: sealCall.to, value: sealCall.value, data: sealCall.data }
+		];
+		// Safe delegatecalls MultiSend (operation=1); each sub-call carries its own value (fee on seal).
+		return {
+			to: MULTISEND_ADDRESS,
+			value: 0n,
+			data: encodeMultiSendCall(queued),
+			operation: 1,
+			calls: [deployCall, sealCall]
+		};
+	}
+
+	/** Encrypt the current note and seal it on-chain, charging the fee. */
 	async seal(): Promise<boolean> {
 		if (this.busy) return false; // re-entry guard
 		const user = authStore.user;
@@ -281,14 +320,24 @@ class CapsuleStore {
 		//    pays as msg.value); a gas sponsor can cover everything else, so we don't add a gas
 		//    reserve here and defer richer AA21 / gas-account errors to the bundler.
 		const author = user.safeAddress as Address;
-		const [cooldownLeft, shortfall] = await Promise.all([
-			cooldownRemaining(this.networkSlug, author).catch(() => 0),
-			this.feeShortfall(user.safeAddress)
-		]);
-		if (cooldownLeft > 0) {
-			return this.fail(t('capsule.error.cooldown', { when: formatRelativeTime(Date.now() + cooldownLeft * 1000) }));
+		// Three independent reads in parallel; the deploy check is authoritative (a wrong guess would
+		// either silently no-op the seal or revert the CREATE2), so on RPC failure we abort cleanly.
+		let deployed: boolean;
+		try {
+			const [cooldownLeft, shortfall, dep] = await Promise.all([
+				cooldownRemaining(this.networkSlug, author).catch(() => 0),
+				this.feeShortfall(user.safeAddress),
+				isSealDeployed(this.networkSlug)
+			]);
+			if (cooldownLeft > 0) {
+				return this.fail(t('capsule.error.cooldown', { when: formatRelativeTime(Date.now() + cooldownLeft * 1000) }));
+			}
+			if (shortfall > 0n) return this.fail(this.friendlyError('AA21'));
+			deployed = dep;
+		} catch {
+			return this.fail(t('capsule.error.txReverted'));
 		}
-		if (shortfall > 0n) return this.fail(this.friendlyError('AA21'));
+		this.sealDeployed = deployed; // keep the "first here" hint in sync
 
 		// Now derive the key (one passkey touch). unlock() restores 'sealing' on success.
 		if (!this.rawDek && !(await this.unlock())) return false;
@@ -301,15 +350,18 @@ class CapsuleStore {
 				return this.fail(t('capsule.error.tooLong'));
 			}
 
-			const data = encodeSeal(payload);
+			// First user on this chain → one tx that CREATE2-deploys Seal AND seals the note.
+			const tx = this.buildSealTx(encodeSeal(payload), deployed);
 			const res = await sendContractCall({
 				safeAddress: user.safeAddress as Address,
 				publicKeyHex: user.publicKey,
 				credentialId: user.credentialId,
 				rpId: user.rpId,
-				to: FOREVER_ADDRESS,
-				value: FEE_WEI,
-				data,
+				to: tx.to,
+				value: tx.value,
+				data: tx.data,
+				operation: tx.operation,
+				calls: tx.calls,
 				network: this.networkSlug,
 				// Map low-level 4337 stages to clean, honest, reassuring copy (never leak raw stage names).
 				onStatus: (s) => {
@@ -333,6 +385,7 @@ class CapsuleStore {
 			}
 
 			this.lastTxHash = res.txHash ?? null;
+			this.sealDeployed = true; // a successful seal means Seal is now live on this chain
 			this.text = '';
 			this.status = 'done';
 			this.message = t('capsule.status.sealed');
@@ -408,6 +461,11 @@ class CapsuleStore {
 		await this.loadEntries();
 	}
 
+	/** Best-effort refresh of whether Seal is live on the current chain (drives the "first here" hint). */
+	async refreshDeployed(): Promise<void> {
+		this.sealDeployed = await isSealDeployed(this.networkSlug).catch(() => null);
+	}
+
 	/** Enter a chain (the region gate). The content key is chain-independent, so only the
 	 *  per-chain timeline is reset when the chain changes. */
 	enterChain(slug: string): void {
@@ -415,8 +473,10 @@ class CapsuleStore {
 			this.networkSlug = slug;
 			this.entries = [];
 			this.entriesTotal = 0;
+			this.sealDeployed = null;
 		}
 		this.chainEntered = true;
+		void this.refreshDeployed();
 		if (browser) {
 			localStorage.setItem(LS_CHAIN, slug);
 			localStorage.setItem(LS_ENTERED, '1');

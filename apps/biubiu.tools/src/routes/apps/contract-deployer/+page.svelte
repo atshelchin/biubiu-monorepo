@@ -39,7 +39,12 @@
 	const showContract = $derived(store.serverStatus === 'connected');
 	const showNetwork = $derived(showContract && store.selectedContract !== null);
 	const showDeploy = $derived(showNetwork && store.networkReady);
-	const showVerify = $derived(store.history.length > 0);
+	// Reveal Verify once there's anything worth verifying: a local deployment, OR
+	// a contract already deployed at the predicted address (e.g. someone else
+	// CREATE2-deployed it first). Without the latter, an already-deployed contract
+	// would have no verification path at all — the deploy button is disabled and
+	// the card stays hidden. The store pre-fills verifyAddress in that case.
+	const showVerify = $derived(store.history.length > 0 || store.addressAlreadyDeployed);
 
 	// Revealed cards animate in on reveal (NOT scroll-gated like fadeInUp, which
 	// would leave a below-the-fold card invisible until scrolled to).

@@ -131,7 +131,7 @@
   "deploy.gate.network": "Select a target chain first",
   "deploy.gate.rpc": "Set an RPC endpoint first",
   "deploy.gate.notReady": "This chain isn't ready yet — check the network status",
-  "deploy.gate.deployed": "A contract already exists at this address",
+  "deploy.gate.deployed": "A contract already exists at this address — verify its source below",
   "deploy.chain.ready": "Ready",
   "deploy.ready.create2": "CREATE2 deployment proxy",
   "deploy.ready.safe": "Safe wallet contracts",

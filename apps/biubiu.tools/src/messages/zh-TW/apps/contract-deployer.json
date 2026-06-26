@@ -131,7 +131,7 @@
   "deploy.gate.network": "請先選擇目標鏈",
   "deploy.gate.rpc": "請先設定 RPC 節點",
   "deploy.gate.notReady": "此鏈尚未就緒——請查看網路狀態",
-  "deploy.gate.deployed": "此位址上已存在合約",
+  "deploy.gate.deployed": "此位址上已存在合約——可在下方驗證其原始碼",
   "deploy.chain.ready": "就緒",
   "deploy.ready.create2": "CREATE2 部署代理",
   "deploy.ready.safe": "Safe 錢包合約",

@@ -85,24 +85,24 @@
 			<h2>{t('capsule.onboard.identityTitle')}</h2>
 			<p class="prose">{t('capsule.onboard.identityProse')}</p>
 			<span class="steps">{t('capsule.onboard.step1')}</span>
-			<button class="seal-btn" onclick={() => { idView = 'create'; idError = null; }} disabled={busyId}>
+			<button type="button" class="seal-btn" onclick={() => { idView = 'create'; idError = null; }} disabled={busyId}>
 				{t('capsule.onboard.createNew')}
 			</button>
-			<button class="quiet" onclick={login} disabled={busyId}>
+			<button type="button" class="quiet" onclick={login} disabled={busyId}>
 				{busyId ? t('capsule.onboard.opening') : t('capsule.onboard.haveOne')}
 			</button>
 		{:else}
 			<h2>{t('capsule.onboard.nameTitle')}</h2>
 			<p class="prose">{t('capsule.onboard.nameProse')}</p>
-			<input class="field" bind:value={name} maxlength="40" placeholder={t('capsule.onboard.namePlaceholder')} disabled={busyId} />
+			<input class="field" bind:value={name} maxlength="40" placeholder={t('capsule.onboard.namePlaceholder')} aria-label={t('capsule.onboard.nameTitle')} disabled={busyId} />
 			{#if needsRetry}
-				<button class="seal-btn" onclick={retry} disabled={busyId}>{busyId ? t('capsule.onboard.retrying') : t('capsule.onboard.retrySync')}</button>
+				<button type="button" class="seal-btn" onclick={retry} disabled={busyId}>{busyId ? t('capsule.onboard.retrying') : t('capsule.onboard.retrySync')}</button>
 			{:else}
-				<button class="seal-btn" onclick={create} disabled={busyId || !name.trim()}>
+				<button type="button" class="seal-btn" onclick={create} disabled={busyId || !name.trim()}>
 					{busyId ? t('capsule.onboard.creating') : t('capsule.onboard.createBtn')}
 				</button>
 			{/if}
-			<button class="quiet" onclick={() => { idView = 'choose'; idError = null; needsRetry = false; }} disabled={busyId}>
+			<button type="button" class="quiet" onclick={() => { idView = 'choose'; idError = null; needsRetry = false; }} disabled={busyId}>
 				{t('capsule.onboard.back')}
 			</button>
 		{/if}
@@ -116,7 +116,7 @@
 		<p class="prose">{@html t('capsule.onboard.keyProse')}</p>
 		<p class="compat-note">{t('capsule.onboard.compat')}</p>
 		{#if !store.hasKey}<span class="steps">{t('capsule.onboard.step2')}</span>{/if}
-		<button class="seal-btn" onclick={() => store.setupKey()} disabled={keyBusy}>
+		<button type="button" class="seal-btn" onclick={() => store.setupKey()} disabled={keyBusy}>
 			{keyBusy ? t('capsule.status.preparing') : t('capsule.onboard.enter')}
 		</button>
 		{#if store.status === 'error' && store.message}<p class="err">{store.message}</p>{/if}
@@ -250,6 +250,11 @@
 		color: var(--error, #c0492f);
 		margin: 0;
 	}
+	:where(.seal-btn, .quiet, .field):focus-visible {
+		outline: 2px solid var(--seal);
+		outline-offset: 2px;
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.seal-btn {
 			transition: none;

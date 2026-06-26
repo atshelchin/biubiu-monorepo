@@ -64,7 +64,7 @@
 		<a class="home" href={localizeHref('/')}>← {t('capsule.home')}</a>
 		<div class="topbar-actions">
 			<button
-				class="icon-pill"
+				type="button" class="icon-pill"
 				onclick={() => (showSettings = true)}
 				aria-label={t('capsule.settings.aria')}
 				title={t('capsule.settings.aria')}
@@ -72,7 +72,7 @@
 				<Settings size={16} />
 			</button>
 			{#if authStore.isLoggedIn}
-				<button class="account" onclick={() => (showProfile = true)} aria-label={t('capsule.account.aria')}>
+				<button type="button" class="account" onclick={() => (showProfile = true)} aria-label={t('capsule.account.aria')}>
 					<span class="avatar">{(authStore.user?.name ?? '·').charAt(0).toUpperCase()}</span>
 					<span class="acct-name">{authStore.user?.name}</span>
 				</button>
@@ -94,7 +94,7 @@
 			<div class="chain-bar">
 				<span>{t('capsule.chain.on')}</span>
 				<strong class="chain-current">{chainLabel}</strong>
-				<button class="chain-switch" onclick={() => store.exitChain()} disabled={busy}>
+				<button type="button" class="chain-switch" onclick={() => store.exitChain()} disabled={busy}>
 					{t('capsule.chain.switch')}
 				</button>
 			</div>
@@ -108,7 +108,7 @@
 			<p class="gate-sub">{t('capsule.gate.subtitle')}</p>
 			<div class="gate-grid">
 				{#each store.networks as n (n.slug)}
-					<button class="gate-chain" class:testnet={n.isTestnet} onclick={() => store.enterChain(n.slug)}>
+					<button type="button" class="gate-chain" class:testnet={n.isTestnet} onclick={() => store.enterChain(n.slug)}>
 						<span class="gate-name">{n.name}</span>
 						{#if n.isTestnet}<span class="gate-tag">{t('capsule.chain.testnet')}</span>{/if}
 					</button>
@@ -118,17 +118,18 @@
 	{:else}
 
 	<CapsuleOnboard>
-			<!-- One focus at a time: write the present, or look back. Never both. -->
-			<div class="view-switch" role="tablist" aria-label="view">
+			<!-- One focus at a time: write the present, or look back. Never both. A two-state view
+			     toggle is honestly a pair of toggle buttons, not an ARIA tablist (no panels/arrow-nav). -->
+			<div class="view-switch" role="group" aria-label={t('capsule.a11y.views')}>
 				<button
-					role="tab"
-					aria-selected={view === 'write'}
+					type="button"
+					aria-pressed={view === 'write'}
 					class:on={view === 'write'}
 					onclick={() => (view = 'write')}>{t('capsule.view.write')}</button
 				>
 				<button
-					role="tab"
-					aria-selected={view === 'past'}
+					type="button"
+					aria-pressed={view === 'past'}
 					class:on={view === 'past'}
 					onclick={enterPast}>{t('capsule.archive.title')}</button
 				>
@@ -143,7 +144,7 @@
 					rows="6"
 					{placeholder}
 					disabled={busy}
-					aria-label="your letter"
+					aria-label={t('capsule.a11y.note')}
 				></textarea>
 
 				<p class="permanence">{t('capsule.permanence')}</p>
@@ -163,6 +164,7 @@
 
 					<div class="commit">
 						<button
+							type="button"
 							class="seal-btn"
 							onclick={() => store.seal()}
 							disabled={busy || !store.text.trim() || store.overLimit}
@@ -183,20 +185,24 @@
 					</span>
 					<div class="archive-actions">
 						{#if store.entries.length}
-							<div class="sort-toggle" role="group" aria-label="sort">
+							<div class="sort-toggle" role="group" aria-label={t('capsule.a11y.sort')}>
 								<button
+									type="button"
+									aria-pressed={store.sortDir === 'desc'}
 									class:on={store.sortDir === 'desc'}
 									onclick={() => store.setSort('desc')}
 									disabled={store.loadingEntries}>{t('capsule.sort.newest')}</button
 								>
 								<button
+									type="button"
+									aria-pressed={store.sortDir === 'asc'}
 									class:on={store.sortDir === 'asc'}
 									onclick={() => store.setSort('asc')}
 									disabled={store.loadingEntries}>{t('capsule.sort.oldest')}</button
 								>
 							</div>
 						{/if}
-						<button class="quiet sm" onclick={() => store.loadEntries()} disabled={store.loadingEntries}>
+						<button type="button" class="quiet sm" onclick={() => store.loadEntries()} disabled={store.loadingEntries}>
 							{store.loadingEntries
 								? t('capsule.archive.loading')
 								: store.entries.length
@@ -220,7 +226,7 @@
 						{/each}
 					</ul>
 					{#if store.hasMore}
-						<button class="quiet sm more" onclick={() => store.loadMore()} disabled={store.loadingEntries}>
+						<button type="button" class="quiet sm more" onclick={() => store.loadMore()} disabled={store.loadingEntries}>
 							{store.loadingEntries
 								? t('capsule.archive.loading')
 								: t('capsule.archive.more', { count: store.entriesTotal - store.entries.length })}
@@ -246,13 +252,19 @@
 	{/if}
 
 	{#if store.message}
-		<div class="toast" class:err={store.status === 'error'} class:ok={store.status === 'done'} role="status">
+		<div
+			class="toast"
+			class:err={store.status === 'error'}
+			class:ok={store.status === 'done'}
+			role={store.status === 'error' ? 'alert' : 'status'}
+			aria-live={store.status === 'error' ? 'assertive' : 'polite'}
+		>
 			<span>{store.message}</span>
 			{#if store.explorerTxUrl}
 				<a href={store.explorerTxUrl} target="_blank" rel="noreferrer">{t('capsule.toast.viewTx')} <ExternalLink size={12} /></a>
 			{/if}
 			{#if store.status === 'error' || store.status === 'done'}
-				<button class="x" onclick={() => store.clearStatus()}>{t('capsule.toast.close')}</button>
+				<button type="button" class="x" onclick={() => store.clearStatus()}>{t('capsule.toast.close')}</button>
 			{/if}
 		</div>
 	{/if}
@@ -300,6 +312,13 @@
 		margin: 0 auto;
 		padding: var(--space-16) var(--space-5) var(--space-24);
 		font-family: var(--serif);
+	}
+
+	/* Keyboard focus — a visible ring on every control (custom-styled buttons drop the default). */
+	.forever :where(a, button, textarea):focus-visible {
+		outline: 2px solid var(--seal);
+		outline-offset: 2px;
+		border-radius: var(--radius-sm);
 	}
 
 	/* ── Topbar (quiet, on-theme) ── */
@@ -414,6 +433,9 @@
 		font-size: var(--text-lg);
 		color: var(--ink);
 		line-height: var(--leading-relaxed);
+		max-width: 34ch;
+		margin: 0 auto;
+		text-wrap: balance;
 	}
 
 	/* ── Leaf cards (paper) ── */
@@ -839,6 +861,24 @@
 	}
 
 	@media (max-width: 560px) {
+		.forever {
+			padding-top: var(--space-10);
+		}
+		.masthead {
+			margin-bottom: var(--space-8);
+		}
+		.masthead h1 {
+			font-size: var(--text-3xl);
+		}
+		.lead {
+			font-size: var(--text-md);
+		}
+		.gate {
+			padding: var(--space-8) var(--space-5) var(--space-6);
+		}
+		.acct-name {
+			max-width: 96px;
+		}
 		.sheet-foot {
 			flex-direction: column;
 			align-items: stretch;

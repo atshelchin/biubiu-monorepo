@@ -7,6 +7,9 @@
   "capsule.tagline": "一度封じれば、あなただけのもの、ずっと。",
   "capsule.permanence": "がっちり封印 — 編集も削除もできず、読めるのはあなただけです。",
   "capsule.firstHere": "このチェーンの最初の利用者です。最初のノートで Seal もこのチェーンに公開されます（初回のみ）。",
+  "capsule.a11y.note": "あなたのノート",
+  "capsule.a11y.views": "書く / 読む",
+  "capsule.a11y.sort": "並び替え",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "アカウント",

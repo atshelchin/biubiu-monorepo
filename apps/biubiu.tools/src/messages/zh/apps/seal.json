@@ -7,6 +7,9 @@
   "capsule.tagline": "一次封存，永不褪色，只属于你。",
   "capsule.permanence": "永久封存 —— 无法修改、无法删除，除你之外无人能读。",
   "capsule.firstHere": "你是这条链上的第一个人。你的第一条笔记会顺带在这条链上启用「封存」——仅此一次。",
+  "capsule.a11y.note": "你的笔记",
+  "capsule.a11y.views": "写或读",
+  "capsule.a11y.sort": "排序",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "账户",

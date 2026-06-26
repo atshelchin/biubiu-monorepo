@@ -7,6 +7,9 @@
   "capsule.tagline": "Seal it once. Yours alone, forever.",
   "capsule.permanence": "Sealed for good — it can never be edited, deleted, or read by anyone but you.",
   "capsule.firstHere": "You're the first here. Your first note also activates Seal on this chain — a one-time setup.",
+  "capsule.a11y.note": "Your note",
+  "capsule.a11y.views": "Write or read",
+  "capsule.a11y.sort": "Sort order",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Account",

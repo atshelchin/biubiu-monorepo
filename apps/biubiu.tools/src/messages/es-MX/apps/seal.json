@@ -7,6 +7,9 @@
   "capsule.tagline": "Séllala una vez. Solo tuya, para siempre.",
   "capsule.permanence": "Sellada para siempre — nadie más que tú puede editarla, borrarla ni leerla.",
   "capsule.firstHere": "Eres el primero aquí. Tu primera nota también activa Seal en esta cadena — configuración única.",
+  "capsule.a11y.note": "Tu nota",
+  "capsule.a11y.views": "Escribir o leer",
+  "capsule.a11y.sort": "Orden",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Cuenta",

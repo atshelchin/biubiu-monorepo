@@ -7,6 +7,9 @@
   "capsule.tagline": "Einmal versiegelt. Ganz allein deine, für immer.",
   "capsule.permanence": "Für immer versiegelt — sie kann nie geändert, gelöscht oder von jemand anderem als dir gelesen werden.",
   "capsule.firstHere": "Du bist der/die Erste hier. Deine erste Notiz richtet Seal auf dieser Chain ein — einmalig.",
+  "capsule.a11y.note": "Deine Notiz",
+  "capsule.a11y.views": "Schreiben oder lesen",
+  "capsule.a11y.sort": "Sortierung",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Konto",

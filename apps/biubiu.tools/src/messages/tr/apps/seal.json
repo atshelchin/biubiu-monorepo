@@ -7,6 +7,9 @@
   "capsule.tagline": "Bir kez mühürle. Yalnızca senin, sonsuza dek.",
   "capsule.permanence": "Sonsuza dek mühürlendi — düzenlenemez, silinemez ve senden başkası okuyamaz.",
   "capsule.firstHere": "Bu zincirde ilk sensin. İlk notun Seal’i bu zincirde de etkinleştirir — tek seferlik.",
+  "capsule.a11y.note": "Notun",
+  "capsule.a11y.views": "Yaz veya oku",
+  "capsule.a11y.sort": "Sıralama",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Hesap",

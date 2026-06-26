@@ -7,6 +7,9 @@
   "capsule.tagline": "Segel sekali. Milikmu seorang, selamanya.",
   "capsule.permanence": "Disegel untuk selamanya — tak pernah bisa diubah, dihapus, atau dibaca oleh siapa pun selain kamu.",
   "capsule.firstHere": "Kamu yang pertama di sini. Catatan pertamamu sekaligus mengaktifkan Seal di chain ini — sekali saja.",
+  "capsule.a11y.note": "Catatanmu",
+  "capsule.a11y.views": "Tulis atau baca",
+  "capsule.a11y.sort": "Urutan",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Akun",

@@ -7,6 +7,9 @@
   "capsule.tagline": "Niêm phong một lần. Chỉ riêng bạn, mãi mãi.",
   "capsule.permanence": "Niêm phong vĩnh viễn — không bao giờ có thể sửa, xóa, hay bị bất kỳ ai ngoài bạn đọc được.",
   "capsule.firstHere": "Bạn là người đầu tiên ở đây. Ghi chú đầu tiên cũng kích hoạt Seal trên chain này — chỉ một lần.",
+  "capsule.a11y.note": "Ghi chú của bạn",
+  "capsule.a11y.views": "Viết hoặc đọc",
+  "capsule.a11y.sort": "Sắp xếp",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Tài khoản",

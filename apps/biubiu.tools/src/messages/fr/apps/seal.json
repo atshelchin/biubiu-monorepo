@@ -7,6 +7,9 @@
   "capsule.tagline": "Scellez-la une fois. À vous seul, pour toujours.",
   "capsule.permanence": "Scellée définitivement — impossible de la modifier, de la supprimer ou de la lire pour quiconque sauf vous.",
   "capsule.firstHere": "Vous êtes le premier ici. Votre première note active aussi Seal sur cette chaîne — une seule fois.",
+  "capsule.a11y.note": "Votre note",
+  "capsule.a11y.views": "Écrire ou lire",
+  "capsule.a11y.sort": "Tri",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "Compte",

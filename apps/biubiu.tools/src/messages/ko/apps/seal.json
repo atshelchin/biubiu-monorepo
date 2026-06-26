@@ -7,6 +7,9 @@
   "capsule.tagline": "한번 봉인하면, 영원히 당신만의 것.",
   "capsule.permanence": "완전히 봉인됩니다 — 수정도, 삭제도 불가능하며, 당신 외에는 아무도 읽을 수 없습니다.",
   "capsule.firstHere": "이 체인의 첫 사용자예요. 첫 노트가 이 체인에 Seal도 함께 활성화합니다 — 한 번만.",
+  "capsule.a11y.note": "내 노트",
+  "capsule.a11y.views": "쓰기 / 읽기",
+  "capsule.a11y.sort": "정렬",
 
   "capsule.home": "biubiu.tools",
   "capsule.account.aria": "계정",

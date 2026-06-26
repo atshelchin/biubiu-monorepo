@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Implantar contrato",
   "deploy.action.deploying": "Implantando…",
   "deploy.action.copied": "Copiado para a área de transferência",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Configurações de gas",
   "deploy.gas.limit": "Limite de gas",
   "deploy.gas.maxFee": "Taxa máxima ({unit})",

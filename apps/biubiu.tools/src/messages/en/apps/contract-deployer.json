@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Deploy Contract",
   "deploy.action.deploying": "Deploying...",
   "deploy.action.copied": "Copied to clipboard",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Gas Settings",
   "deploy.gas.limit": "Gas Limit",
   "deploy.gas.maxFee": "Max Fee ({unit})",

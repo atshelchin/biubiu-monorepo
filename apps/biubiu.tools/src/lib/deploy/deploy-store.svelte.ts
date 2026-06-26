@@ -153,6 +153,17 @@ class DeployStore {
 	deploying = $state(false);
 	deployStatus = $state<SendStatus | ''>('');
 
+	/**
+	 * Monotonic token claimed by each `deploy()` call. `cancelDeploy()` (and any
+	 * fresh deploy) bumps it, so an abandoned attempt can no longer mutate the UI:
+	 * its onPhase callbacks, success/error logging, history write, and the
+	 * `finally` reset are all gated on still owning the current token. We CANNOT
+	 * truly abort `wallet.sendCalls` (the primitive takes no AbortSignal, and once
+	 * submitted the tx is on-chain) — this guard makes the in-flight promise inert
+	 * instead. NOT $state: internal guard, never rendered.
+	 */
+	private _deployToken = 0;
+
 	// Verify state
 	verifyAddress = $state('');
 	verifier = $state<'etherscan' | 'blockscout'>('etherscan');
@@ -717,6 +728,7 @@ class DeployStore {
 		const calldata = (this.salt + initCode.slice(2)) as Hex;
 
 		this.deploying = true;
+		const token = ++this._deployToken; // claim this attempt; cancel/redeploy bumps it
 		this.log(`Deploying ${contract.name} to ${network.name} (${network.chainId})...`);
 		this.log(`Predicted address: ${predicted}`);
 
@@ -725,6 +737,7 @@ class DeployStore {
 				chainId: network.chainId,
 				gasOverrides: this.gasOverrides,
 				onPhase: (status: SendStatus) => {
+					if (token !== this._deployToken) return; // abandoned attempt — ignore late phases
 					this.deployStatus = status;
 					const statusMessages: Record<SendStatus, string> = {
 						checking: 'Checking wallet status...',
@@ -739,6 +752,11 @@ class DeployStore {
 					this.log(statusMessages[status] || status, status === 'failed' ? 'error' : 'info');
 				}
 			});
+
+			// User cancelled (or started over) while this was in flight: drop the
+			// result silently. The tx may still land on-chain — a later deploy/check
+			// will detect it as already-deployed and route to Verify.
+			if (token !== this._deployToken) return;
 
 			if (result.success) {
 				this.log(`Deployed at ${predicted}`, 'ok');
@@ -773,11 +791,33 @@ class DeployStore {
 				this.log(`Deploy failed: ${result.error}`, 'error');
 			}
 		} catch (e) {
+			if (token !== this._deployToken) return; // cancelled — its rejection is expected, stay quiet
 			this.log('Deploy error: ' + (e instanceof Error ? e.message : String(e)), 'error');
 		} finally {
-			this.deploying = false;
-			this.deployStatus = '';
+			// Only the still-current attempt owns the busy flags; a cancelled attempt
+			// already cleared them and a newer attempt must keep its own.
+			if (token === this._deployToken) {
+				this.deploying = false;
+				this.deployStatus = '';
+			}
 		}
+	}
+
+	/**
+	 * Abandon the in-flight deploy and return to the ready state so the user can
+	 * start over instead of waiting indefinitely. Bumping `_deployToken` makes the
+	 * still-running `sendCalls` promise inert (its phases/result/error/finally are
+	 * all gated on the token). We can't recall a submitted transaction; if it does
+	 * land, the follow-up address check flips the UI to "already deployed" → Verify.
+	 */
+	cancelDeploy(): void {
+		if (!this.deploying) return;
+		this._deployToken++; // orphan the current attempt
+		this.deploying = false;
+		this.deployStatus = '';
+		this.log('Deployment cancelled. Any already-submitted transaction may still confirm on-chain.', 'warn');
+		// Self-heal: if the orphaned tx already deployed the contract, surface Verify.
+		void this.checkAddressDeployed();
 	}
 
 	// ─── Verify ───

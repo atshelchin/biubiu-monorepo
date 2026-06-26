@@ -5,7 +5,7 @@
 	 * button is disabled. Single-screen flow.
 	 */
 	import { t } from '$lib/i18n';
-	import { Copy, ExternalLink, AlertTriangle, Rocket } from '@lucide/svelte';
+	import { Copy, ExternalLink, AlertTriangle, Rocket, X } from '@lucide/svelte';
 	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { deployStore as store } from '$lib/deploy/deploy-store.svelte.js';
 	import { isValidSalt } from '$lib/deploy/create2.js';
@@ -35,6 +35,17 @@
 		clearTimeout(checkTimer);
 		if (_addr && _rpc) checkTimer = setTimeout(() => store.checkAddressDeployed(), 500);
 		return () => clearTimeout(checkTimer);
+	});
+
+	// A deploy can stall on the wallet/bundler (passkey, confirmation). After 30s,
+	// offer an escape hatch so the user can stop waiting and start over.
+	let showCancel = $state(false);
+	let cancelTimer: ReturnType<typeof setTimeout>;
+	$effect(() => {
+		clearTimeout(cancelTimer);
+		showCancel = false;
+		if (store.deploying) cancelTimer = setTimeout(() => (showCancel = true), 30_000);
+		return () => clearTimeout(cancelTimer);
 	});
 
 	function copy(text: string) {
@@ -104,6 +115,15 @@
 		<p class="status">{t(`deploy.status.${store.deployStatus}` as never)}</p>
 	{:else if blockerText}
 		<p class="status muted">{blockerText}</p>
+	{/if}
+
+	{#if store.deploying && showCancel}
+		<div class="cancel-wrap">
+			<p class="cancel-hint">{t('deploy.action.cancelHint')}</p>
+			<button class="dp-btn dp-btn-ghost dp-btn-block cancel" onclick={() => store.cancelDeploy()}>
+				<X size={15} /> {t('deploy.action.cancel')}
+			</button>
+		</div>
 	{/if}
 </section>
 
@@ -192,6 +212,18 @@
 	}
 	.status.muted {
 		color: var(--fg-subtle);
+	}
+	.cancel-wrap {
+		margin-top: var(--space-3);
+		text-align: center;
+	}
+	.cancel-hint {
+		font-size: var(--text-xs);
+		color: var(--fg-subtle);
+		margin: 0 0 var(--space-2);
+	}
+	.cancel {
+		color: var(--error);
 	}
 	@media (max-width: 480px) {
 		.gas {

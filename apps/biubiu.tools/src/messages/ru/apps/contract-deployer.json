@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Развернуть контракт",
   "deploy.action.deploying": "Развёртывание…",
   "deploy.action.copied": "Скопировано в буфер обмена",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Настройки gas",
   "deploy.gas.limit": "Лимит gas",
   "deploy.gas.maxFee": "Макс. комиссия ({unit})",

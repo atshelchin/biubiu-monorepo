@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Vertrag bereitstellen",
   "deploy.action.deploying": "Wird bereitgestellt…",
   "deploy.action.copied": "In die Zwischenablage kopiert",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "gas-Einstellungen",
   "deploy.gas.limit": "gas-Limit",
   "deploy.gas.maxFee": "Max. Gebühr ({unit})",

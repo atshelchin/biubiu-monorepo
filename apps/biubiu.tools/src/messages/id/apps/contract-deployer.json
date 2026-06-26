@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Deploy Kontrak",
   "deploy.action.deploying": "Men-deploy…",
   "deploy.action.copied": "Tersalin ke clipboard",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Pengaturan Gas",
   "deploy.gas.limit": "Limit Gas",
   "deploy.gas.maxFee": "Fee Maks ({unit})",

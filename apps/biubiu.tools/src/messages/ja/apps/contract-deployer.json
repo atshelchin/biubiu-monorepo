@@ -46,6 +46,8 @@
   "deploy.action.deploy": "コントラクトをデプロイ",
   "deploy.action.deploying": "デプロイ中…",
   "deploy.action.copied": "クリップボードにコピーしました",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "gas 設定",
   "deploy.gas.limit": "gas リミット",
   "deploy.gas.maxFee": "最大手数料（{unit}）",

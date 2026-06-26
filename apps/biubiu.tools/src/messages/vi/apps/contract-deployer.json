@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Triển khai hợp đồng",
   "deploy.action.deploying": "Đang triển khai…",
   "deploy.action.copied": "Đã sao chép vào bộ nhớ tạm",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Cài đặt gas",
   "deploy.gas.limit": "Giới hạn gas",
   "deploy.gas.maxFee": "Phí tối đa ({unit})",

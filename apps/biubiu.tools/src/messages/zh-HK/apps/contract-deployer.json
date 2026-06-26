@@ -46,6 +46,8 @@
   "deploy.action.deploy": "部署合約",
   "deploy.action.deploying": "部署中…",
   "deploy.action.copied": "已複製到剪貼簿",
+  "deploy.action.cancel": "取消",
+  "deploy.action.cancelHint": "等太久了？停止等待，重新部署。",
   "deploy.gas.title": "Gas 設定",
   "deploy.gas.limit": "Gas Limit",
   "deploy.gas.maxFee": "最高費用（{unit}）",

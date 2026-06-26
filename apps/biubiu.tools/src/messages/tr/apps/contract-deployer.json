@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Sözleşmeyi dağıt",
   "deploy.action.deploying": "Dağıtılıyor…",
   "deploy.action.copied": "Panoya kopyalandı",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Gas ayarları",
   "deploy.gas.limit": "Gas limiti",
   "deploy.gas.maxFee": "Maks. ücret ({unit})",

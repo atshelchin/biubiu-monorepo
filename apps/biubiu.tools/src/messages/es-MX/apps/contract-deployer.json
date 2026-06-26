@@ -46,6 +46,8 @@
   "deploy.action.deploy": "Desplegar contrato",
   "deploy.action.deploying": "Desplegando…",
   "deploy.action.copied": "Copiado al portapapeles",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Ajustes de gas",
   "deploy.gas.limit": "Límite de gas",
   "deploy.gas.maxFee": "Comisión máx. ({unit})",

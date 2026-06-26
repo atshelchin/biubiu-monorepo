@@ -46,6 +46,8 @@
   "deploy.action.deploy": "컨트랙트 배포",
   "deploy.action.deploying": "배포하는 중…",
   "deploy.action.copied": "클립보드에 복사되었습니다",
+  "deploy.action.cancel": "Cancel",
+  "deploy.action.cancelHint": "Taking too long? Stop waiting and start over.",
   "deploy.gas.title": "Gas 설정",
   "deploy.gas.limit": "Gas Limit",
   "deploy.gas.maxFee": "최대 수수료 ({unit})",

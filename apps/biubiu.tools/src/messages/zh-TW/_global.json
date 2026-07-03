@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair（掃碼）",
   "auth.connect.walletpairHint": "用相容 WalletPair 的錢包掃描此 QR Code，然後核對兩端螢幕上的驗證碼是否一致。",
   "auth.connect.fingerprint": "驗證碼",
+  "auth.connect.copyLink": "複製連結",
+  "auth.connect.copied": "已複製",
   "auth.connect.comingSoon": "即將推出",
   "auth.connect.connecting": "連線中…",
   "auth.connect.back": "返回",

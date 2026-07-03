@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair (QR tara)",
   "auth.connect.walletpairHint": "Bu QR kodunu WalletPair uyumlu cüzdanınızla tarayın, ardından kodun her iki ekranda eşleştiğini doğrulayın.",
   "auth.connect.fingerprint": "Doğrulama kodu",
+  "auth.connect.copyLink": "Bağlantıyı kopyala",
+  "auth.connect.copied": "Kopyalandı",
   "auth.connect.comingSoon": "Yakında",
   "auth.connect.connecting": "Bağlanıyor…",
   "auth.connect.back": "Geri",

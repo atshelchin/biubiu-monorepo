@@ -8,7 +8,7 @@
 	import { walletStore } from '$lib/wallet';
 	import type { Eip6963ProviderDetail } from '$lib/wallet';
 	import { renderSVG } from 'uqr';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { ArrowLeft, Check, Copy } from '@lucide/svelte';
 
 	interface Props {
 		open: boolean;
@@ -48,9 +48,27 @@
 	let walletpairFingerprint = $state('');
 	let walletpairStarting = $state(false);
 	let walletpairCancel: (() => void) | null = null;
+	let walletpairCopied = $state(false);
+	let walletpairCopyTimer: ReturnType<typeof setTimeout> | null = null;
 	const walletpairQr = $derived(
 		walletpairUri ? renderSVG(walletpairUri, { border: 1 }) : ''
 	);
+
+	async function copyWalletpairLink() {
+		if (!walletpairUri) return;
+		try {
+			await navigator.clipboard.writeText(walletpairUri);
+		} catch {
+			// clipboard 不可用（非安全上下文/权限拒绝）：退化为选中提示不出现
+			return;
+		}
+		walletpairCopied = true;
+		if (walletpairCopyTimer) clearTimeout(walletpairCopyTimer);
+		walletpairCopyTimer = setTimeout(() => {
+			walletpairCopied = false;
+			walletpairCopyTimer = null;
+		}, 2000);
+	}
 
 	async function handleWalletPair() {
 		mode = 'walletpair';
@@ -87,6 +105,7 @@
 		walletpairCancel?.();
 		walletpairCancel = null;
 		walletpairUri = null;
+		walletpairCopied = false;
 		mode = 'connect';
 	}
 
@@ -134,6 +153,11 @@
 		walletpairUri = null;
 		walletpairFingerprint = '';
 		walletpairStarting = false;
+		walletpairCopied = false;
+		if (walletpairCopyTimer) {
+			clearTimeout(walletpairCopyTimer);
+			walletpairCopyTimer = null;
+		}
 		authStore.clearError();
 	}
 
@@ -299,6 +323,13 @@
 					<span class="fingerprint-label">{t('auth.connect.fingerprint')}</span>
 					<span class="fingerprint-code">{walletpairFingerprint}</span>
 				</div>
+				<button class="copy-link-btn" class:copied={walletpairCopied} onclick={copyWalletpairLink}>
+					{#if walletpairCopied}
+						<Check size={14} /> {t('auth.connect.copied')}
+					{:else}
+						<Copy size={14} /> {t('auth.connect.copyLink')}
+					{/if}
+				</button>
 			{/if}
 
 			{#if connectError}
@@ -680,6 +711,37 @@
 		color: var(--fg-subtle);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	.copy-link-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		align-self: center;
+		padding: var(--space-2) var(--space-4);
+		background: var(--bg-raised);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-full);
+		color: var(--fg-muted);
+		font-size: var(--text-xs);
+		font-weight: var(--weight-medium);
+		cursor: pointer;
+		transition:
+			color var(--motion-fast) var(--easing),
+			border-color var(--motion-fast) var(--easing),
+			background var(--motion-fast) var(--easing);
+	}
+
+	.copy-link-btn:hover {
+		background: var(--bg-elevated);
+		border-color: var(--border-strong);
+		color: var(--fg-base);
+	}
+
+	.copy-link-btn.copied {
+		color: var(--success);
+		border-color: var(--success);
 	}
 
 	.fingerprint-code {

@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair（QR をスキャン）",
   "auth.connect.walletpairHint": "WalletPair 対応ウォレットでこの QR コードをスキャンし、両方の画面でコードが一致することを確認してください。",
   "auth.connect.fingerprint": "確認コード",
+  "auth.connect.copyLink": "リンクをコピー",
+  "auth.connect.copied": "コピーしました",
   "auth.connect.comingSoon": "近日公開",
   "auth.connect.connecting": "接続中…",
   "auth.connect.back": "戻る",

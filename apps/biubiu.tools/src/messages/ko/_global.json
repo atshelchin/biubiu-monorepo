@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair (QR 스캔)",
   "auth.connect.walletpairHint": "WalletPair 호환 지갑으로 이 QR 코드를 스캔한 뒤, 양쪽 화면의 코드가 일치하는지 확인하세요.",
   "auth.connect.fingerprint": "확인 코드",
+  "auth.connect.copyLink": "링크 복사",
+  "auth.connect.copied": "복사됨",
   "auth.connect.comingSoon": "출시 예정",
   "auth.connect.connecting": "연결하는 중…",
   "auth.connect.back": "뒤로",

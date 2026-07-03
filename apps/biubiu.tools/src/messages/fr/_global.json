@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair (scanner le QR)",
   "auth.connect.walletpairHint": "Scannez ce QR code avec votre wallet compatible WalletPair, puis vérifiez que le code correspond sur les deux écrans.",
   "auth.connect.fingerprint": "Code de vérification",
+  "auth.connect.copyLink": "Copier le lien",
+  "auth.connect.copied": "Copié",
   "auth.connect.comingSoon": "Bientôt disponible",
   "auth.connect.connecting": "Connexion…",
   "auth.connect.back": "Retour",

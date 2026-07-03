@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair（扫码）",
   "auth.connect.walletpairHint": "用兼容 WalletPair 的钱包扫描此二维码，然后核对两端屏幕上的验证码是否一致。",
   "auth.connect.fingerprint": "验证码",
+  "auth.connect.copyLink": "复制链接",
+  "auth.connect.copied": "已复制",
   "auth.connect.comingSoon": "即将推出",
   "auth.connect.connecting": "连接中…",
   "auth.connect.back": "返回",

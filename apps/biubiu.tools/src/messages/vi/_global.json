@@ -166,6 +166,8 @@
   "auth.connect.walletpair": "WalletPair (quét QR)",
   "auth.connect.walletpairHint": "Quét mã QR này bằng ví tương thích WalletPair của bạn, sau đó kiểm tra mã khớp nhau trên cả hai màn hình.",
   "auth.connect.fingerprint": "Mã xác minh",
+  "auth.connect.copyLink": "Sao chép liên kết",
+  "auth.connect.copied": "Đã sao chép",
   "auth.connect.comingSoon": "Sắp ra mắt",
   "auth.connect.connecting": "Đang kết nối…",
   "auth.connect.back": "Quay lại",

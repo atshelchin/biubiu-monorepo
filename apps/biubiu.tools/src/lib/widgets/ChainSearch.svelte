@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { t, localizeHref } from '$lib/i18n';
 	import { goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { Search } from '@lucide/svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		loadAllChains,
+		searchChains,
 		getChainLogoUrl,
 		DEFAULT_CHAIN_LOGO,
 		type ChainListItem
@@ -12,9 +14,11 @@
 
 	interface Props {
 		currentChainId?: number;
+		initialQuery?: string;
+		autoFocus?: boolean;
 	}
 
-	let { currentChainId }: Props = $props();
+	let { currentChainId, initialQuery = '', autoFocus = false }: Props = $props();
 
 	let searchQuery = $state('');
 	let results = $state<ChainListItem[]>([]);
@@ -23,10 +27,22 @@
 	let allChains = $state<ChainListItem[]>([]);
 	let selectedIndex = $state(-1);
 	let inputRef = $state<HTMLInputElement | null>(null);
+	let appliedInitialQuery = '';
 	const logoErrors = new SvelteSet<number>();
 
-	const isApple =
-		typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+	const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+	// A non-numeric /chains/:query route opens this picker as an active search.
+	// Track the applied value so normal typing is not overwritten by reactivity.
+	$effect(() => {
+		if (!initialQuery || initialQuery === appliedInitialQuery) return;
+		appliedInitialQuery = initialQuery;
+		searchQuery = initialQuery;
+		isOpen = true;
+		if (autoFocus) {
+			tick().then(() => inputRef?.focus());
+		}
+	});
 
 	$effect(() => {
 		isLoading = true;
@@ -47,30 +63,8 @@
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
-	function searchChains(query: string): ChainListItem[] {
-		const q = query.trim().toLowerCase();
-		if (!q) return [];
-
-		return allChains
-			.filter(
-				(chain) =>
-					chain.name.toLowerCase().includes(q) ||
-					chain.shortName.toLowerCase().includes(q) ||
-					chain.nativeCurrencySymbol.toLowerCase().includes(q) ||
-					chain.chainId.toString() === query.trim()
-			)
-			.sort((a, b) => {
-				const aExact = a.chainId.toString() === query.trim() || a.shortName.toLowerCase() === q;
-				const bExact = b.chainId.toString() === query.trim() || b.shortName.toLowerCase() === q;
-				if (aExact && !bExact) return -1;
-				if (!aExact && bExact) return 1;
-				return a.name.localeCompare(b.name);
-			})
-			.slice(0, 8);
-	}
-
 	$effect(() => {
-		results = searchChains(searchQuery);
+		results = searchChains(allChains, searchQuery);
 		selectedIndex = -1;
 	});
 

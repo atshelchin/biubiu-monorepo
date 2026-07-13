@@ -3,7 +3,8 @@ export {
 	ETHEREUM_DATA_BASE_URL,
 	getChainLogoUrl,
 	DEFAULT_CHAIN_LOGO,
-	loadAllChains
+	loadAllChains,
+	searchChains
 } from './api';
 export {
 	getPublicRpcEndpoints,

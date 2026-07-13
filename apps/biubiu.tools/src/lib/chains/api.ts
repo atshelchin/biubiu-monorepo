@@ -46,3 +46,39 @@ export function loadAllChains(fetchFn: typeof fetch = fetch): Promise<ChainListI
 
 	return chainsCache;
 }
+
+/** Search and rank chains consistently on both the server and in the picker. */
+export function searchChains(
+	chains: ChainListItem[],
+	query: string,
+	limit = 8
+): ChainListItem[] {
+	const q = query.trim().toLowerCase();
+	if (!q) return [];
+
+	const normalizedQuery = q.replace(/[\s_-]+/g, '');
+	const normalize = (value: string) => value.toLowerCase().replace(/[\s_-]+/g, '');
+	const isExact = (chain: ChainListItem) =>
+		chain.chainId.toString() === q ||
+		chain.shortName.toLowerCase() === q ||
+		normalize(chain.name) === normalizedQuery ||
+		normalize(chain.shortName) === normalizedQuery;
+
+	return chains
+		.filter(
+			(chain) =>
+				chain.name.toLowerCase().includes(q) ||
+				chain.shortName.toLowerCase().includes(q) ||
+				normalize(chain.name).includes(normalizedQuery) ||
+				normalize(chain.shortName).includes(normalizedQuery) ||
+				chain.nativeCurrencySymbol.toLowerCase().includes(q) ||
+				chain.chainId.toString() === q
+		)
+		.sort((a, b) => {
+			const aExact = isExact(a);
+			const bExact = isExact(b);
+			if (aExact !== bExact) return aExact ? -1 : 1;
+			return a.name.localeCompare(b.name);
+		})
+		.slice(0, limit);
+}

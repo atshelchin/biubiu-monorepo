@@ -23,6 +23,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import {
 		DEFAULT_CHAIN_LOGO,
+		getChainLogoUrl,
 		getPublicRpcEndpoints,
 		isTestableRpc,
 		latencyTier,
@@ -35,6 +36,20 @@
 	let { data }: { data: PageData } = $props();
 
 	const SITE_URL = 'https://biubiu.tools';
+	const POPULAR_CHAINS = [
+		{ chainId: 1, name: 'Ethereum', shortName: 'ETH' },
+		{ chainId: 56, name: 'BNB Chain', shortName: 'BNB' },
+		{ chainId: 137, name: 'Polygon', shortName: 'POL' },
+		{ chainId: 42161, name: 'Arbitrum', shortName: 'ARB' },
+		{ chainId: 10, name: 'Optimism', shortName: 'OP' },
+		{ chainId: 8453, name: 'Base', shortName: 'BASE' },
+		{ chainId: 43114, name: 'Avalanche', shortName: 'AVAX' },
+		{ chainId: 100, name: 'Gnosis', shortName: 'GNO' },
+		{ chainId: 130, name: 'Unichain', shortName: 'UNI' },
+		{ chainId: 4217, name: 'Tempo', shortName: 'TEMPO' },
+		{ chainId: 143, name: 'Monad', shortName: 'MON' },
+		{ chainId: 480, name: 'World Chain', shortName: 'WLD' }
+	] as const;
 
 	let copiedIndex = $state<number | null>(null);
 	let logoError = $state(false);
@@ -510,8 +525,31 @@
 				</div>
 			</section>
 		{/if}
+	{:else if data.error === 'search'}
+		<!-- A non-numeric route parameter is treated as an active chain search. -->
+		<section class="search-section route-search" use:fadeInUp={{ delay: 0 }}>
+			<ChainSearch initialQuery={data.searchQuery} autoFocus />
+			<nav class="popular-grid" aria-label="Popular networks">
+				{#each POPULAR_CHAINS as chain (chain.chainId)}
+					<a href={localizeHref(`/chains/${chain.chainId}`)} class="popular-chain-card">
+						<img
+							src={getChainLogoUrl(chain.chainId)}
+							alt=""
+							class="popular-chain-logo"
+							loading="lazy"
+							onerror={(event) =>
+								((event.currentTarget as HTMLImageElement).src = DEFAULT_CHAIN_LOGO)}
+						/>
+						<span class="popular-chain-info">
+							<strong>{chain.name}</strong>
+							<small>{chain.shortName} · #{chain.chainId}</small>
+						</span>
+					</a>
+				{/each}
+			</nav>
+		</section>
 	{:else}
-		<!-- Not Found State -->
+		<!-- A numeric chain ID that does not exist is still a genuine not-found state. -->
 		<section class="not-found" use:fadeInUp={{ delay: 0 }}>
 			<div class="not-found-content">
 				<h1 class="not-found-title">{t('chains.notFound')}</h1>
@@ -549,6 +587,88 @@
 		margin-bottom: var(--space-8);
 		display: flex;
 		justify-content: center;
+	}
+
+	.route-search {
+		margin-top: var(--space-12);
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.popular-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-3);
+		width: 100%;
+		margin-top: 96px;
+	}
+
+	.popular-chain-card {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		min-width: 0;
+		padding: var(--space-4);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border-base);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+		color: var(--fg-base);
+		text-decoration: none;
+		transition:
+			border-color var(--motion-fast) var(--easing),
+			box-shadow var(--motion-fast) var(--easing),
+			transform var(--motion-fast) var(--easing);
+	}
+
+	.popular-chain-card:hover {
+		border-color: var(--accent);
+		box-shadow: var(--shadow-md);
+		transform: translateY(-2px);
+	}
+
+	.popular-chain-logo {
+		width: 36px;
+		height: 36px;
+		flex: 0 0 36px;
+		border-radius: var(--radius-md);
+		object-fit: contain;
+	}
+
+	.popular-chain-info {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.popular-chain-info strong,
+	.popular-chain-info small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.popular-chain-info strong {
+		font-size: var(--text-sm);
+		font-weight: var(--weight-semibold);
+	}
+
+	.popular-chain-info small {
+		color: var(--fg-subtle);
+		font-size: var(--text-xs);
+	}
+
+	@media (max-width: 720px) {
+		.popular-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 420px) {
+		.popular-grid {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	/* Chain Header */

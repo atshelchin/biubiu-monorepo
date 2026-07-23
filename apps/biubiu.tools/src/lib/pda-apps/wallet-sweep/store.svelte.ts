@@ -40,6 +40,7 @@ import {
 	clearRelayer,
 	relayerBalance,
 	estimateFundingWei,
+	estimateRefuelFundingWei,
 	downloadRelayerKey,
 	verifyRelayFile,
 	recoverGas,
@@ -52,6 +53,8 @@ import {
 	isSweeperDeployed,
 } from './infra/deploy-sweeper.js';
 import { planSweep, runSweep, type SweepPlan, type SweepEvent } from './infra/sweep.js';
+import { runRefuelSweep } from './infra/refuel-sweep.js';
+import { isRefuelMethod } from './infra/sweep-executor.js';
 import { feeSessionKey, effectiveFeeWei, feeNowPaid } from './infra/fee-session.js';
 import { runRevoke } from './infra/revoke.js';
 import { quoteSweepFee, type FeeQuote } from './infra/fee.js';
@@ -116,8 +119,12 @@ export class WalletSweepStore {
 	// run
 	runStage = $state<RunStage>('idle');
 	progress = $state<{ chunk: number; total: number } | null>(null);
+	/** Per-EOA drain progress (refuel path only) — null on the 7702 path. */
+	eoaProgress = $state<{ done: number; total: number } | null>(null);
 	sweepRecords = $state<SweepBatchRecord[]>([]);
 	private sweptSet = $state<Set<string>>(new Set());
+	/** Addresses whose fresh post-drain balance was ~0 this run (refuel path). */
+	private refuelDrained = new Set<string>();
 	/**
 	 * Whether THIS session actually delegated EOAs (ran a sweep). The relay-key
 	 * auto-wipe is gated on this so it can ONLY fire when delegations were created
@@ -150,6 +157,15 @@ export class WalletSweepStore {
 	get network(): SweepNetwork | null {
 		if (!this.networkSlug) return null;
 		return getNetwork(this.networkSlug) ?? this.customNetworks.find((n) => n.slug === this.networkSlug) ?? null;
+	}
+	/**
+	 * True when the selected network uses the universal refuel + self-send path
+	 * (non-7702) instead of the fast type-4 relay-delegate path. Drives UI: no
+	 * on-chain contracts, no delegations to revoke, a two-step (theft-window)
+	 * warning, and per-EOA progress.
+	 */
+	get isRefuelPath(): boolean {
+		return this.network ? isRefuelMethod(this.network) : false;
 	}
 
 	// ─── membership / fee waiver ───
@@ -401,28 +417,47 @@ export class WalletSweepStore {
 			const sweeper = this.sweeperAddress!;
 			const addresses = this.keys.map((k) => k.address);
 
-			const [balances, plan, fee, batchDeployed, sweeperDeployed] = await Promise.all([
+			// Decide the executor FIRST so the funding estimator matches the path that
+			// will actually run (the refuel path fronts capital the 7702 estimate omits,
+			// and needs no contract deploys).
+			const refuel = isRefuelMethod(net);
+			const [balances, plan, fee] = await Promise.all([
 				fetchBalances(net, rpcs, addresses, this.erc20Addresses),
 				planSweep(rpcs, this.keys, sweeper),
 				quoteSweepFee(net, { isMember: this.feeWaived }),
-				isBatchSweeperDeployed(rpcs),
-				isSweeperDeployed(rpcs, this.relay!.address),
 			]);
 			this.balances = balances;
 			this.plan = plan;
 			this.fee = fee;
-			this.needBatchSweeperDeploy = !batchDeployed;
-			this.needSweeperDeploy = !sweeperDeployed;
 
-			this.fundNeeded = await estimateFundingWei({
-				rpcs,
-				eoaCount: plan.sweepable.length,
-				tokenCount: this.erc20Addresses.length,
-				maxBatchUpgrade: net.maxBatchUpgrade,
-				deployBatchSweeper: this.needBatchSweeperDeploy,
-				deploySweeper: this.needSweeperDeploy,
-				feeWei: fee.amount,
-			});
+			if (refuel) {
+				// Universal path: no on-chain Sweeper/BatchSweeper to deploy.
+				this.needBatchSweeperDeploy = false;
+				this.needSweeperDeploy = false;
+				this.fundNeeded = await estimateRefuelFundingWei({
+					network: net,
+					rpcs,
+					eoaCount: plan.sweepable.length,
+					tokenCount: this.erc20Addresses.length,
+					feeWei: fee.amount,
+				});
+			} else {
+				const [batchDeployed, sweeperDeployed] = await Promise.all([
+					isBatchSweeperDeployed(rpcs),
+					isSweeperDeployed(rpcs, this.relay!.address),
+				]);
+				this.needBatchSweeperDeploy = !batchDeployed;
+				this.needSweeperDeploy = !sweeperDeployed;
+				this.fundNeeded = await estimateFundingWei({
+					rpcs,
+					eoaCount: plan.sweepable.length,
+					tokenCount: this.erc20Addresses.length,
+					maxBatchUpgrade: net.maxBatchUpgrade,
+					deployBatchSweeper: this.needBatchSweeperDeploy,
+					deploySweeper: this.needSweeperDeploy,
+					feeWei: fee.amount,
+				});
+			}
 
 			if (plan.contracts.length) this.log(`${plan.contracts.length} address(es) are contracts — skipped`, 'warn');
 			this.log(`Preflight: ${plan.sweepable.length} sweepable wallets`, 'ok');
@@ -501,33 +536,62 @@ export class WalletSweepStore {
 		}
 		// Idempotent fee: charge the service fee only ONCE per (network|destination)
 		// session. A re-sweep / manual retry of the same operation pays 0 so a flaky
-		// run isn't charged once per attempt.
+		// run isn't charged once per attempt. A persisted marker also survives a reload
+		// so refreshing the page mid-op doesn't re-charge.
 		const feeKey = feeSessionKey(net.slug, dest);
+		if (this.feePaidKey !== feeKey && loadFeePaidMarker(feeKey)) this.feePaidKey = feeKey;
 		const effectiveFee = effectiveFeeWei(feeWei, this.feePaidKey, feeKey);
 		if (effectiveFee === 0n && feeWei > 0n) {
 			this.log('Service fee already paid this session — re-sweep is fee-free', 'info');
 		}
 		this.runStage = 'sweeping';
 		this.sweepRecords = [];
-		const records = await runSweep({
-			network: net,
-			rpcs,
-			relay: this.relay!,
-			keys: sweepable,
-			sweeperAddr: sweeper,
-			dest,
-			erc20s: this.erc20Addresses,
-			feeWei: effectiveFee,
-			onEvent: (e: SweepEvent) => this.onSweepEvent(e),
-		});
+		this.refuelDrained = new Set();
+		this.eoaProgress = null;
+
+		const refuel = isRefuelMethod(net);
+		const records = refuel
+			? await runRefuelSweep({
+					network: net,
+					rpcs,
+					relay: this.relay!,
+					keys: sweepable,
+					balances: this.balances,
+					dest,
+					erc20s: this.erc20Addresses,
+					feeWei: effectiveFee,
+					feeAlreadyPaid: effectiveFee <= 0n,
+					onFeePaid: (tx) => saveFeePaidMarker(feeKey, tx),
+					onEvent: (e: SweepEvent) => this.onSweepEvent(e),
+				})
+			: await runSweep({
+					network: net,
+					rpcs,
+					relay: this.relay!,
+					keys: sweepable,
+					sweeperAddr: sweeper,
+					dest,
+					erc20s: this.erc20Addresses,
+					feeWei: effectiveFee,
+					onEvent: (e: SweepEvent) => this.onSweepEvent(e),
+				});
 		this.sweepRecords = records;
-		// The fee rides on chunk 0; mark it paid only once that chunk confirms, so a
-		// failed chunk-0 retry still charges (and succeeds) next time.
+		// The fee is collected on index-0 (7702: rides on chunk 0; refuel: a dedicated
+		// fee tx). Mark paid only once that confirms, and persist so a reload doesn't
+		// re-charge; a failed fee still charges (and succeeds) next attempt.
 		if (feeNowPaid(effectiveFee, records)) {
 			this.feePaidKey = feeKey;
+			saveFeePaidMarker(feeKey);
 		}
 		const set = new Set(this.sweptSet);
-		for (const k of sweepable) set.add(k.address.toLowerCase());
+		if (refuel) {
+			// Only mark wallets whose FRESH post-drain balance was ~0 — never from mere
+			// input-list membership, or a refueled-but-not-drained EOA would read as
+			// "done" and the user might discard a still-funded key.
+			for (const a of this.refuelDrained) set.add(a);
+		} else {
+			for (const k of sweepable) set.add(k.address.toLowerCase());
+		}
 		this.sweptSet = set;
 		if (sweepable.length > 0) this.didDelegateThisSession = true;
 		await this.saveHistory(records, dest, effectiveFee);
@@ -541,10 +605,17 @@ export class WalletSweepStore {
 		if (e.phase === 'broadcast' && e.txHash) {
 			this.progress = { chunk: e.chunkIndex + 1, total: e.chunkTotal };
 			this.log(`Batch ${e.chunkIndex + 1}/${e.chunkTotal} broadcast: ${e.txHash.slice(0, 10)}…`);
+		} else if (e.phase === 'refuel') {
+			// Universal path: relay is funding this batch's EOAs before they self-send.
+			this.progress = { chunk: e.chunkIndex + 1, total: e.chunkTotal };
+			this.log(`Refueling batch ${e.chunkIndex + 1}/${e.chunkTotal} (${e.count ?? 0} wallets)`);
+		} else if (e.phase === 'drain') {
+			if (e.drainedAddress) this.refuelDrained.add(e.drainedAddress.toLowerCase());
+			if (e.eoaIndex && e.eoaTotal) this.eoaProgress = { done: e.eoaIndex, total: e.eoaTotal };
 		} else if (e.phase === 'chunk-done') {
 			this.log(`Batch ${e.chunkIndex + 1}/${e.chunkTotal} confirmed`, 'ok');
 		} else if (e.phase === 'error') {
-			this.log(`Batch ${e.chunkIndex + 1} error: ${e.message}`, 'error');
+			this.log(e.message ?? `Batch ${e.chunkIndex + 1} error`, 'error');
 		}
 	}
 
@@ -630,11 +701,13 @@ export class WalletSweepStore {
 			const tx = await recoverGas(net, rpcs, this.relay, dest);
 			this.log(tx ? `Recovered relay gas → ${dest.slice(0, 8)}… (${tx.slice(0, 10)}…)` : 'No leftover gas to recover', tx ? 'ok' : 'info');
 			await this.refreshRelayerBalance();
-			// Auto-wipe the relay key ONLY when this session delegated EOAs and then
-			// revoked them all (sweptSet emptied via revoke). NEVER wipe when sweptSet is
-			// empty just because a reload didn't repopulate it — the key may still be the
-			// only thing that can revoke/redirect still-delegated EOAs (funds-safety).
-			if (this.didDelegateThisSession && this.sweptSet.size === 0) {
+			// Auto-wipe the relay key ONLY on the 7702 path, and only when this session
+			// delegated EOAs and then revoked them all (sweptSet emptied via revoke).
+			// NEVER wipe when sweptSet is empty just because a reload didn't repopulate it
+			// (the key may still control still-delegated EOAs). On the refuel path there
+			// are no delegations and sweptSet holds *drained* addresses, so this gate
+			// never applies — the user clears the relay manually once done.
+			if (!this.isRefuelPath && this.didDelegateThisSession && this.sweptSet.size === 0) {
 				clearRelayer(net.slug);
 				this.resetRelay();
 				this.log('Relay key wiped — all delegations revoked, key is no longer needed', 'ok');
@@ -667,9 +740,35 @@ export class WalletSweepStore {
 		this.plan = null;
 		this.sweepRecords = [];
 		this.sweptSet = new Set();
+		this.refuelDrained = new Set();
+		this.eoaProgress = null;
 		this.didDelegateThisSession = false;
 		this.feePaidKey = null;
 		this.error = null;
+	}
+}
+
+// ─── service-fee marker persistence (survives reload → no double-charge) ───
+const FEE_PAID_KEY = 'wallet-sweep-fee-paid';
+function loadFeePaidMarker(feeKey: string): boolean {
+	try {
+		if (typeof localStorage === 'undefined') return false;
+		const raw = localStorage.getItem(FEE_PAID_KEY);
+		const all = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+		return !!all[feeKey];
+	} catch {
+		return false;
+	}
+}
+function saveFeePaidMarker(feeKey: string, txHash = '1'): void {
+	try {
+		if (typeof localStorage === 'undefined') return;
+		const raw = localStorage.getItem(FEE_PAID_KEY);
+		const all = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+		all[feeKey] = txHash;
+		localStorage.setItem(FEE_PAID_KEY, JSON.stringify(all));
+	} catch {
+		// non-critical
 	}
 }
 

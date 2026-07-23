@@ -16,6 +16,12 @@
 	let showAddToken = $state(false);
 	let showAddNetwork = $state(false);
 
+	// Which sweep path a network uses — drives the grid badge so users see up front
+	// that a custom / non-Pectra chain will use the universal (slower) fallback.
+	function supports7702(slug: string): boolean {
+		return store.networks.find((n) => n.slug === slug)?.supports7702 ?? false;
+	}
+
 	const networkReady = $derived(!!store.network && !!store.readiness[store.networkSlug ?? '']?.ready);
 	const keysReady = $derived(store.parseStats.valid > 0);
 	const destTouched = $derived(store.destination.trim().length > 0);
@@ -40,7 +46,11 @@
 
 {#snippet badges(net: NetworkGridItem)}
 	{@const r = store.readiness[net.slug]}
-	<span class="ws-badge">{t('ws.network.badge7702')}</span>
+	{#if supports7702(net.slug)}
+		<span class="ws-badge">{t('ws.network.badge7702')}</span>
+	{:else}
+		<span class="ws-badge ws-badge-muted" title={t('ws.network.badgeUniversalHint')}>{t('ws.network.badgeUniversal')}</span>
+	{/if}
 	{#if !r}
 		<span class="ws-badge ws-badge-muted">{t('ws.network.checking')}</span>
 	{:else if r.ready}

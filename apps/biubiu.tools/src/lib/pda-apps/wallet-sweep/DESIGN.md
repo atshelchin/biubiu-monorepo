@@ -1,8 +1,20 @@
-# Wallet Sweep — Design (v2, relay-centric)
+# Wallet Sweep — Design (v2 relay-centric + v3 universal fallback)
 
 Drain native coin + selected ERC20s out of many EOAs into one destination. **No
 passkey, no login, no Safe.** A throwaway **relay EOA** (which the user funds and
-downloads) does all the on-chain work, via **EIP-7702**.
+downloads) does all the on-chain work.
+
+**Two execution paths, chosen per network (`infra/sweep-executor.ts`):**
+
+- **EIP-7702 (`supports7702: true`, curated Pectra chains)** — the fast path below:
+  one type-4 tx per chunk upgrades & sweeps ~50 EOAs; source EOAs need zero native.
+- **Universal refuel (`supports7702: false`, ANY other EVM chain — the default for
+  all custom-added chains)** — `infra/refuel-sweep.ts`. Because the app already
+  holds every source EOA's **private key**, on a chain that can't delegate we drain
+  each EOA the boring way: the relay sends it just-enough gas, then that EOA
+  self-sends its ERC20s (`transfer(dest, bal)`) and finally its native to `dest`.
+  Contract-free, legacy/1559-aware, idempotent (every action = "move current
+  balance to dest", so a re-run finishes an interrupted one). See §"Universal path".
 
 ## Flow
 
@@ -62,6 +74,42 @@ to `FEE_COLLECTOR`. Included in the relay funding estimate.
   recover-gas / funding estimate), `tx-utils` (chunk / mapLimit / waitForReceipt).
 - `store.svelte.ts` — 3-step wizard (config → run → done), relay lifecycle.
 - route `+page.svelte` + `components/{KeysEditor,AddTokenModal}` + `$lib/ui/{Stepper,QrCanvas}` + `$lib/widgets/AddNetworkModal`.
+
+## Universal path (non-7702) — `infra/refuel-sweep.ts`
+
+Per EOA, strictly ordered: **refuel** (relay → EOA, shortfall only) → **tokens**
+(EOA self-sends each ERC20, sequential on its own nonce) → **native last** (EOA
+sweeps `balance − exact reserve` to dest, the single reclaim point so any
+over-refuel flows back out). EOAs are processed in windows of `REFUEL_BATCH` (=20):
+refuel the batch serial on ONE monotonic relay nonce, barrier on receipts +
+balance, then drain the batch in parallel (`DRAIN_CONCURRENCY`) — sequential within
+each EOA. This bounds the stranding blast radius to one batch.
+
+Correctness invariants (all in `infra/gas.ts`, unit-tested in `gas.spec.ts`):
+
+- **Anti-brick**: every EOA/relay tx **pins** its fee fields (`quoteFees`), so a
+  base-fee spike between refuel and self-send can't make a tx overrun its budget —
+  it just waits. `refuelValue()` funds `REFUEL_HEADROOM (=2)×` the worst-case cost.
+- **Zero-dust reclaim**: `nativeReclaim = balF − nativeReserve(cap)`; on legacy the
+  pinned `gasPrice == cap`, so `reclaim + reserve == balF` exactly. `nativeReserveWei`
+  (per-network) absorbs an OP-stack L1 data fee.
+- **Legacy vs 1559**: `detectFeeMode()` reads the latest block's `baseFeePerGas`
+  (present → 1559, absent → legacy). `quoteFees()` builds the matching fields for
+  EVERY send incl. `recoverGas` (previously hardcoded 1559 → dead on pre-London).
+- **Nonce**: relay refuel/fee are serial on one seeded counter; each EOA seeds its
+  nonce once and advances **only on a successful broadcast** (no gaps).
+- **Fee**: a standalone relay→`FEE_COLLECTOR` tx charged after the FIRST real drain
+  and awaited; if it fails the run stops (not silently skippable). Recorded at
+  `index 0, count 0` so `fee-session.ts` is reused verbatim. A localStorage marker
+  (`store`) survives reload → no double-charge.
+- **Safe key discard**: `sweptSet` on this path is populated only from a FRESH
+  post-drain `~0` balance (`drainedAddress` event), never from input membership.
+
+Funding estimate: `estimateRefuelFundingWei` (relayer.ts) — the relay must FRONT the
+refuel amounts (they flow back to dest on the sweep), so it's larger than the 7702
+gas-only estimate. No contract deploys, no revoke (the Done view hides revoke on this
+path). Deferred (design §9): a Disperse refuel batcher (v1.1) and a permit/Permit2
+Collector (v2); v1 is the contract-free floor.
 
 ## Regenerate artifacts after a contract change
 

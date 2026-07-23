@@ -19,9 +19,25 @@ function getGitCommitHash(): string {
 	}
 }
 
+// LOCAL E2E ONLY (uncommitted): point walletpair-sdk at a SELF-CONTAINED local
+// bundle (@noble/canonicalize inlined via esbuild) so the reconnect-hardening
+// changes are exercised without publishing — and without dragging the SDK's
+// pinned @noble 1.9.7 into biubiu, which uses @noble 2.x for its own crypto.
+// Rebuild the bundle with:
+//   cd walletpair-sdk && npx esbuild dist/index.js   --bundle --format=esm --platform=browser --outfile=/tmp/wp-sdk-bundle/index.js
+//                     && npx esbuild dist/evm/index.js --bundle --format=esm --platform=browser --outfile=/tmp/wp-sdk-bundle/evm.js
+// Longest paths first (vite uses the first matching alias). Only active under WP_LOCAL_SDK.
+const walletpairSdkAlias = [
+	{ find: 'walletpair-sdk/evm', replacement: '/tmp/wp-sdk-bundle/evm.js' },
+	{ find: 'walletpair-sdk', replacement: '/tmp/wp-sdk-bundle/index.js' },
+];
+
 export default defineConfig({
 	define: {
 		__COMMIT_HASH__: JSON.stringify(getGitCommitHash())
+	},
+	resolve: {
+		alias: process.env.WP_LOCAL_SDK ? walletpairSdkAlias : [],
 	},
 	server: {
 		// Allow all hosts (for Cloudflare Tunnel, ngrok, etc.)

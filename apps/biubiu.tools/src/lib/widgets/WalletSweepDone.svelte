@@ -21,7 +21,8 @@
 	<h2 class="ws-card-title"><span class="ws-title-icon ok"><CheckCircle2 size={18} /></span>{t('ws.done.title')}</h2>
 	<p class="ws-card-sub">{t('ws.done.subtitle')}</p>
 	<div class="batches">
-		{#each store.sweepRecords as r (r.index)}
+		<!-- Skip the internal fee-marker record (index 0, count 0) the refuel path emits. -->
+		{#each store.sweepRecords.filter((r) => !(r.index === 0 && r.count === 0)) as r (r.index)}
 			<div class="batch" class:failed={r.status === 'failed'}>
 				<span class="batch-id">#{r.index + 1}</span>
 				<span class="batch-count">{t('ws.done.batchCount', { count: r.count })}</span>
@@ -37,17 +38,21 @@
 	</div>
 </section>
 
-<section class="ws-card">
-	<h2 class="ws-card-title"><span class="ws-title-icon"><ShieldOff size={18} /></span>{t('ws.revoke.title')}</h2>
-	<p class="ws-card-sub">{t('ws.revoke.subtitle')}</p>
-	<button
-		class="ws-btn ws-btn-danger"
-		disabled={store.revoking || store.sweptAddresses.length === 0}
-		onclick={() => (confirmRevoke = true)}
-	>
-		{store.revoking ? t('ws.revoke.revoking') : `${t('ws.revoke.all')} (${store.sweptAddresses.length})`}
-	</button>
-</section>
+<!-- Revoke is a 7702-only concept (clears the EOA→Sweeper delegation). The universal
+	refuel path never delegates, so there is nothing to revoke there. -->
+{#if !store.isRefuelPath}
+	<section class="ws-card">
+		<h2 class="ws-card-title"><span class="ws-title-icon"><ShieldOff size={18} /></span>{t('ws.revoke.title')}</h2>
+		<p class="ws-card-sub">{t('ws.revoke.subtitle')}</p>
+		<button
+			class="ws-btn ws-btn-danger"
+			disabled={store.revoking || store.sweptAddresses.length === 0}
+			onclick={() => (confirmRevoke = true)}
+		>
+			{store.revoking ? t('ws.revoke.revoking') : `${t('ws.revoke.all')} (${store.sweptAddresses.length})`}
+		</button>
+	</section>
+{/if}
 
 <ConfirmModal
 	open={confirmRevoke}

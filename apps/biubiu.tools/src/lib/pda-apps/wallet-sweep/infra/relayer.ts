@@ -12,6 +12,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import { getBalance, getGasPrice } from './rpc.js';
 import { makeWalletClient } from './viem-chain.js';
 import { waitForReceipt } from './tx-utils.js';
+import { detectFeeMode, quoteFees, refuelValue, G_NATIVE, G_REFUEL } from './gas.js';
 import type { SweepNetwork } from '../types.js';
 
 const STORAGE_KEY = 'wallet-sweep-relayer';
@@ -101,6 +102,35 @@ export async function estimateFundingWei(opts: {
 	return feeWei + (units * price * 2n);
 }
 
+/**
+ * Funding estimate for the UNIVERSAL (refuel) path. Unlike the 7702 estimate (gas
+ * only), the relay here must FRONT the native it sends INTO each EOA — even though
+ * that native flows back out to `dest` on the sweep. So the relay's balance must
+ * cover: the fee, the per-EOA refuel amounts (worst case: EOA starts empty), and
+ * the relay's own refuel/fee tx gas. The over-fund is later recovered via
+ * recoverGas() → dest, so this errs generous on purpose (the refuel already
+ * carries a REFUEL_HEADROOM cushion, plus 1.2× here for gas-price drift).
+ */
+export async function estimateRefuelFundingWei(opts: {
+	network: SweepNetwork;
+	rpcs: string[];
+	eoaCount: number;
+	tokenCount: number;
+	feeWei: bigint;
+}): Promise<bigint> {
+	const { network, rpcs, eoaCount, tokenCount, feeWei } = opts;
+	const mode = await detectFeeMode(network, rpcs);
+	const { cap } = await quoteFees(rpcs, mode);
+	const n = BigInt(Math.max(0, eoaCount));
+	// Worst-case refuel per EOA (assumes it starts with no native) — SAME helper the
+	// executor uses, so the estimate and the actual refuel can never drift.
+	const refuelPerEoa = refuelValue(tokenCount, 0n, cap, G_NATIVE);
+	// Relay-side intrinsics: one refuel tx per EOA + one fee tx.
+	const relayGas = (n + 1n) * G_REFUEL * cap;
+	const total = feeWei + refuelPerEoa * n + relayGas;
+	return (total * 12n) / 10n;
+}
+
 export function formatNative(wei: bigint): string {
 	return formatEther(wei);
 }
@@ -168,9 +198,14 @@ export async function recoverGas(
 	relay: Relayer,
 	dest: Address,
 ): Promise<Hex | null> {
-	const [bal, price] = await Promise.all([getBalance(rpcs, relay.address), getGasPrice(rpcs)]);
-	const gas = 21_000n;
-	const cost = gas * price * 12n / 10n; // 1.2x buffer on the send itself
+	// Build fee fields by the chain's mode — the previous hardcoded 1559 fields were
+	// rejected by pre-London chains (exactly the ones the refuel fallback serves),
+	// stranding the relay's over-funded refuel capital. `cap` == the submitted price
+	// (exact on legacy → zero dust; a hair over on 1559 → negligible dust).
+	const mode = await detectFeeMode(network, rpcs);
+	const [bal, q] = await Promise.all([getBalance(rpcs, relay.address), quoteFees(rpcs, mode)]);
+	const gas = G_NATIVE;
+	const cost = gas * q.cap;
 	if (bal <= cost) return null;
 	const account = privateKeyToAccount(relay.privateKey);
 	const wallet = makeWalletClient(network, rpcs, account);
@@ -178,8 +213,7 @@ export async function recoverGas(
 		to: dest,
 		value: bal - cost,
 		gas,
-		maxFeePerGas: price * 12n / 10n,
-		maxPriorityFeePerGas: price / 10n,
+		...q.fields,
 	});
 	await waitForReceipt(network, rpcs, txHash);
 	return txHash;

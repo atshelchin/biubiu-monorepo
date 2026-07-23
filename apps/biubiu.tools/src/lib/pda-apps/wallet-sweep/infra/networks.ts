@@ -1,6 +1,9 @@
 /**
- * Wallet Sweep (v2) networks — any EIP-7702 chain works (no passkey/Safe/P256
- * requirement). Curated list of known 7702 chains + user-added custom networks.
+ * Wallet Sweep networks — ANY EVM chain works. Curated chains that support
+ * EIP-7702 (Pectra) take the fast one-tx-per-chunk relay-delegate path; every
+ * other chain — including all user-added custom chains — takes the universal,
+ * contract-free refuel + self-send fallback. Custom chains therefore default to
+ * `supports7702:false` (the path that always works, of unknown-capability chains).
  * The definitive 7702 check is the broadcast itself; the live probe only checks
  * reachability.
  */
@@ -157,6 +160,11 @@ export function makeCustomNetwork(cfg: {
 		rpcs: cfg.rpcs.filter((r) => /^https?:\/\//.test(r)),
 		explorerTxUrl: cfg.explorerTxUrl ?? '',
 		explorerAddressUrl: base ? `${base}address/` : '',
+		// Unknown 7702 capability → the universal fallback, which works on every EVM
+		// chain. (Enabling 7702 on a non-Pectra chain would waste deploy gas and fail
+		// the type-4 broadcast; the refuel path just works.)
+		supports7702: false,
+		feeMode: 'auto',
 		isCustom: true,
 	});
 }

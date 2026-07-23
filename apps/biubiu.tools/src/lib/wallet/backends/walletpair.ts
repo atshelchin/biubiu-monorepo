@@ -20,8 +20,10 @@ import type { WalletKind, AccountType } from '../types.js';
 import { classifyAccount } from '../gate.js';
 import { Eip1193Wallet } from './eip1193-base.js';
 
-/** 公共 relay（可被 startWalletPair 参数覆盖）。 */
-export const DEFAULT_WALLETPAIR_RELAY = 'wss://relay.walletpair.org/v1';
+/** 公共 relay（可被 startWalletPair 参数覆盖）。
+ * 支持用 VITE_WALLETPAIR_RELAY 覆盖以指向本地 relay（e2e 联调用）。 */
+export const DEFAULT_WALLETPAIR_RELAY =
+	import.meta.env.VITE_WALLETPAIR_RELAY || 'wss://relay.walletpair.org/v1';
 
 const DAPP_META = {
 	name: 'BiuBiu Tools',

@@ -30,13 +30,32 @@ export interface SweepNetwork {
 	maxBatchUpgrade: number;
 	/** Max sweep() sub-calls per BatchSweeper batch (one type-4 tx). */
 	maxBatchSweep: number;
-	/** Curated: chain is post-Pectra / supports EIP-7702. */
+	/**
+	 * Curated: chain is post-Pectra / supports EIP-7702. When true the fast
+	 * one-tx-per-chunk relay-delegate path (`runSweep`) is used; when false the
+	 * universal, contract-free refuel + self-send fallback (`runRefuelSweep`) drains
+	 * each EOA with its own key on ANY EVM chain. Custom chains default to false.
+	 */
 	supports7702: boolean;
+	/**
+	 * Fee-market mode for building tx fee fields. 'auto' detects per session from
+	 * the latest block's baseFeePerGas (present → eip1559, absent → legacy). Many
+	 * non-7702 chains are pre-London and MUST use legacy `gasPrice`.
+	 */
+	feeMode?: FeeMode;
+	/**
+	 * Extra native (wei) held back on the final native-reclaim leg to cover costs
+	 * not captured by `gas·gasPrice` — chiefly an OP-stack L1 data fee. Default 0.
+	 */
+	nativeReserveWei?: bigint;
 	/** Chainlink native/USD feed for the $5-equiv fee (omit → fallback). */
 	chainlinkNativeUsdFeed?: Address;
 	isTestnet?: boolean;
 	isCustom?: boolean;
 }
+
+/** Fee-market mode: how a tx's fee fields are built (legacy gasPrice vs 1559 caps). */
+export type FeeMode = 'legacy' | 'eip1559' | 'auto';
 
 /** Result of probing a network's live readiness. */
 export interface NetworkReadiness {
@@ -76,6 +95,47 @@ export type Phase = 'config' | 'run' | 'done';
 
 /** Sub-state shown inside the merged "Run" step. */
 export type RunStage = 'idle' | 'deploying' | 'sweeping';
+
+/**
+ * Progress phases emitted by BOTH executors so the UI stays executor-agnostic.
+ * 7702 path: sign → broadcast → confirm → chunk-done. Refuel path adds
+ * 'refuel' (relay funding a batch) and 'drain' (an EOA self-sending its funds).
+ */
+export type SweepPhase =
+	| 'sign'
+	| 'broadcast'
+	| 'confirm'
+	| 'refuel'
+	| 'drain'
+	| 'chunk-done'
+	| 'error';
+
+/** Which leg of a single EOA's refuel drain a 'drain' event refers to. */
+export type SweepLeg = 'refuel' | 'token' | 'native';
+
+/**
+ * One progress event. `chunkIndex/chunkTotal` drive the existing batch progress
+ * bar for both paths (refuel batches map onto chunks). The per-EOA fields are
+ * optional so the 7702 executor can simply omit them.
+ */
+export interface SweepEvent {
+	phase: SweepPhase;
+	chunkIndex: number;
+	chunkTotal: number;
+	txHash?: Hex;
+	count?: number;
+	message?: string;
+	/** Per-EOA (refuel path): which wallet, its 1-based position, and the leg. */
+	eoaAddress?: Address;
+	eoaIndex?: number;
+	eoaTotal?: number;
+	leg?: SweepLeg;
+	/** Address confirmed drained (fresh post-drain balance ~0) — feeds sweptSet. */
+	drainedAddress?: Address;
+}
+
+/** In-memory per-EOA drain state for the refuel path (progress + safe sweptSet). */
+export type RefuelLeg = 'queued' | 'refueled' | 'tokensDone' | 'nativeDone' | 'verifiedEmpty' | 'abandoned';
 
 /** One executed sweep batch (one MultiSend / one fingerprint). */
 export interface SweepBatchRecord {

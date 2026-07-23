@@ -4,7 +4,7 @@
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import { fmtAmount, shortAddr } from '$lib/pda-apps/wallet-sweep/format';
 	import type { WalletSweepStore } from '$lib/pda-apps/wallet-sweep/store.svelte';
-	import { Download, Upload, Check, RefreshCw, Fingerprint, Copy, ArrowLeft, LoaderCircle } from '@lucide/svelte';
+	import { Download, Upload, Check, RefreshCw, Fingerprint, Copy, ArrowLeft, LoaderCircle, TriangleAlert } from '@lucide/svelte';
 
 	interface Props {
 		store: WalletSweepStore;
@@ -67,6 +67,13 @@
 			</div>
 		</details>
 	</section>
+
+	{#if store.isRefuelPath}
+		<div class="ws-note-card ws-note-warn">
+			<span class="ws-note-icon"><TriangleAlert size={18} /></span>
+			<div><strong>{t('ws.refuel.noteTitle')}</strong>{t('ws.refuel.noteBody')}</div>
+		</div>
+	{/if}
 
 	<!-- Relay: download → verify → fund -->
 	<section class="ws-card">
@@ -141,6 +148,9 @@
 			</div>
 			{#if store.progress}
 				<p class="progress-text">{t('ws.run.batch', { done: store.progress.chunk, total: store.progress.total })}</p>
+			{/if}
+			{#if store.eoaProgress}
+				<p class="progress-text">{t('ws.run.eoaProgress', { done: store.eoaProgress.done, total: store.eoaProgress.total })}</p>
 			{/if}
 			<div class="spinner"></div>
 		</section>

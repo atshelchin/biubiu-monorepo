@@ -109,5 +109,10 @@
 	"ws.alert.dismiss": "關閉",
 	"ws.history.delete": "刪除",
 	"ws.keys.import": "匯入",
-	"ws.keys.clear": "清除"
+	"ws.keys.clear": "清除",
+	"ws.network.badgeUniversal": "通用",
+	"ws.network.badgeUniversalHint": "此鏈不支援 EIP-7702，改用通用加油模式（任何 EVM 鏈皆可用，但較慢：交易較多）。",
+	"ws.run.eoaProgress": "已歸集 {done}/{total} 個錢包",
+	"ws.refuel.noteTitle": "此鏈使用通用（兩步）歸集",
+	"ws.refuel.noteBody": "此鏈不支援 EIP-7702，因此中繼會先給每個錢包打入少量 gas，再由該錢包自行把資產轉出。歸集完成前請保持私鑰清單已載入、不要關閉此分頁。若其中某個私鑰也被他人掌握，對方可能在兩步之間的短暫空檔搶走資產。"
 }

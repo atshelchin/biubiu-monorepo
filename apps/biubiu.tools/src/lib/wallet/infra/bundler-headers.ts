@@ -1,12 +1,11 @@
 /**
  * Shared `X-Rpc-Url` header assembly for the vela bundler.
  *
- * Every bundler request (RPC POST in bundler-client.ts, account/sponsor REST in
- * bundler-account.ts) attaches a keyless public RPC URL via `X-Rpc-Url` so the
- * bundler can reach the chain. The selection rule is identical in all three call
- * sites: resolve `pickBundlerRpcUrl(chainId)` (swallowing failures to `undefined`)
- * and set the header only when a URL is available. The base headers differ per
- * request, so the caller supplies them and we merge the resolved URL in.
+ * Every bundler request (RPC POST in bundler-client.ts) attaches a keyless public
+ * RPC URL via `X-Rpc-Url` so the bundler can reach the chain. The selection rule:
+ * resolve `pickBundlerRpcUrl(chainId)` (swallowing failures to `undefined`) and set
+ * the header only when a URL is available. The base headers differ per request, so
+ * the caller supplies them and we merge the resolved URL in.
  */
 
 import { pickBundlerRpcUrl } from './rpc-client.js';

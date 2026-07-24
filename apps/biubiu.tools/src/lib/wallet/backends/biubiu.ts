@@ -104,7 +104,9 @@ export class BiubiuWallet implements ConnectedWallet {
 				calls,
 				network,
 				onStatus,
-				gasOverrides: opts.gasOverrides
+				gasOverrides: opts.gasOverrides,
+				gasFeeToken: opts.gasFeeToken,
+				quotedFee: opts.quotedFee
 			});
 		}
 
@@ -134,7 +136,9 @@ export class BiubiuWallet implements ConnectedWallet {
 			data: call.data,
 			operation: 1,
 			network,
-			onStatus: opts.onPhase ?? (() => {})
+			onStatus: opts.onPhase ?? (() => {}),
+			gasFeeToken: opts.gasFeeToken,
+			quotedFee: opts.quotedFee
 		});
 	}
 

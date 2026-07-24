@@ -9,6 +9,7 @@ import { saveDeployment, getDeployments, markVerified, clearDeployments } from '
 import { type GasOverrides } from '$lib/auth/safe-tx/send-contract-call.js';
 import type { SendStatus } from '$lib/auth/safe-tx/send-token.js';
 import { walletStore } from '$lib/wallet';
+import type { Call } from '$lib/wallet/types.js';
 import { checkNetworkSupport, type NetworkCheckResult } from './network-check.js';
 import type {
 	ContractArtifact,
@@ -113,6 +114,8 @@ class DeployStore {
 	searchResults = $state<ChainSearchResult[]>(COMMON_CHAINS);
 	searching = $state(false);
 	selectedChain = $state<ChainInfo | null>(null);
+	/** In-band 结算：部署用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken = $state<Address | null>(null);
 	loadingChain = $state(false);
 	chainError = $state('');
 
@@ -185,6 +188,20 @@ class DeployStore {
 	get selectedContract(): ContractArtifact | null {
 		if (this.selectedContractIndex < 0) return null;
 		return this.contracts[this.selectedContractIndex] ?? null;
+	}
+
+	/** The single CREATE2 deploy call — drives the in-band fee estimate. Empty when not ready. */
+	get deployCalls(): Call[] {
+		const contract = this.selectedContract;
+		if (!contract) return [];
+		const ctor = contract.abi.find((a) => a.type === 'constructor');
+		const initCode = buildInitCode(
+			contract.bytecode,
+			ctor?.inputs ?? [],
+			this.constructorArgs.map((a) => a.value)
+		);
+		if (!initCode) return [];
+		return [{ to: CREATE2_PROXY as Address, value: 0n, data: (this.salt + initCode.slice(2)) as Hex }];
 	}
 
 	/** The active RPC URL (alias kept for the predicted-address deployed check). */
@@ -423,6 +440,7 @@ class DeployStore {
 		this.rpcError = '';
 		this.predictedAddress = null;
 		this.addressAlreadyDeployed = false;
+		this.gasFeeToken = null; // 切链后所选稳定币可能不存在于新链 → 回退原生
 		this.maxFeePerGasGwei = '';
 		this.maxPriorityFeePerGasGwei = '';
 		this.gasPriceUnit = 'gwei';
@@ -736,6 +754,7 @@ class DeployStore {
 			const result = await wallet.sendCalls([{ to: CREATE2_PROXY as Address, value: 0n, data: calldata }], {
 				chainId: network.chainId,
 				gasOverrides: this.gasOverrides,
+				gasFeeToken: this.gasFeeToken,
 				onPhase: (status: SendStatus) => {
 					if (token !== this._deployToken) return; // abandoned attempt — ignore late phases
 					this.deployStatus = status;

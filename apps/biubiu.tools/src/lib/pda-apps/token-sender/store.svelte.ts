@@ -73,6 +73,8 @@ class TokenSenderStore {
 	// ── Step 3：费用 + 预检 ──
 	fee = $state<FeeQuote | null>(null);
 	feeLoading = $state(false);
+	/** In-band 结算：整批用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken = $state<Address | null>(null);
 	pre = $state<PreflightResult | null>(null);
 	preLoading = $state(false);
 	reviewError = $state<string | null>(null);
@@ -164,6 +166,8 @@ class TokenSenderStore {
 		this.tokenMeta = null;
 		this.tokenMetaError = null;
 		this.parsed = null;
+		// 切链后所选稳定币可能不存在于新链 → 回退原生
+		this.gasFeeToken = null;
 	}
 
 	setTokenType(t: TokenType): void {
@@ -287,6 +291,7 @@ class TokenSenderStore {
 			batchSize: this.batchSize,
 			fee: this.fee,
 			interBatchDelayMs: 2500,
+			gasFeeToken: this.gasFeeToken,
 			signal: this.abortController!.signal,
 			onProgress: (p) => {
 				this.progress = {

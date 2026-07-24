@@ -79,6 +79,8 @@ class ContractCallerStore {
 	selectedChain = $state<ChainInfo | null>(null);
 	loadingChain = $state(false);
 	chainError = $state('');
+	/** In-band 结算：用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken = $state<Address | null>(null);
 
 	// ── RPC ──
 	rpcUrl = $state('');
@@ -239,6 +241,7 @@ class ContractCallerStore {
 		// Demo deploy status is per-chain — reset it for the new chain.
 		this.demoDeployed = {};
 		this.chainHelperDeployed = null;
+		this.gasFeeToken = null; // 切链后所选稳定币可能不存在于新链 → 回退原生
 		try {
 			const chain = await loadChainInfo(chainId);
 			this.selectedChain = chain;
@@ -535,6 +538,7 @@ class ContractCallerStore {
 			],
 			{
 				chainId: this.selectedChain.chainId,
+				gasFeeToken: this.gasFeeToken,
 				explorerTxBaseUrl: this.explorerBaseUrl ? `${this.explorerBaseUrl}/tx/` : undefined,
 				onPhase: (s) => {
 					const cur = this.writeState[sig];
@@ -628,6 +632,7 @@ class ContractCallerStore {
 		this.batchState = { status: 'sending', phase: 'checking' };
 		const res = await wallet.sendCalls(calls, {
 			chainId: this.selectedChain.chainId,
+			gasFeeToken: this.gasFeeToken,
 			explorerTxBaseUrl: this.explorerBaseUrl ? `${this.explorerBaseUrl}/tx/` : undefined,
 			onPhase: (s) => {
 				if (this.batchState.status === 'sending')
@@ -751,6 +756,7 @@ class ContractCallerStore {
 		this.chainState = { status: 'sending', phase: 'checking' };
 		const res = await wallet.sendCalls([{ to, value: 0n, data }], {
 			chainId: this.selectedChain.chainId,
+			gasFeeToken: this.gasFeeToken,
 			onPhase: (s) => {
 				if (this.chainState.status === 'sending')
 					this.chainState = { ...this.chainState, phase: s };
@@ -854,6 +860,7 @@ class ContractCallerStore {
 			{ to: CHAINED_MULTISEND_ADDRESS, value: 0n, data },
 			{
 				chainId: this.selectedChain.chainId,
+				gasFeeToken: this.gasFeeToken,
 				onPhase: (s) => {
 					if (this.chainState.status === 'sending')
 						this.chainState = { ...this.chainState, phase: s };
@@ -922,6 +929,7 @@ class ContractCallerStore {
 		this.demoState[scenarioId] = { status: 'sending', phase: 'checking' };
 		const res = await wallet.sendCalls(calls, {
 			chainId: this.selectedChain.chainId,
+			gasFeeToken: this.gasFeeToken,
 			explorerTxBaseUrl: this.explorerBaseUrl ? `${this.explorerBaseUrl}/tx/` : undefined,
 			onPhase: (s) => {
 				const cur = this.demoState[scenarioId];

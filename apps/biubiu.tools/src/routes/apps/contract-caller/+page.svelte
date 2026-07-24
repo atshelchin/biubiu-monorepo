@@ -11,6 +11,12 @@
 	import ContractCallerChain from '$lib/widgets/ContractCallerChain.svelte';
 	import ContractCallerDemos from '$lib/widgets/ContractCallerDemos.svelte';
 	import { contractCallerStore as store } from '$lib/contract-caller/caller-store.svelte.js';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
+	import { walletStore } from '$lib/wallet';
+	import type { Call } from '$lib/wallet/types.js';
+
+	// 已排队的批量调用作为代表性 calls，供 in-band 选币器估算 gas 报销（每次执行时各自现算）。
+	const ccFeeCalls = $derived<Call[]>(store.batch.map((c) => ({ to: c.to, value: c.value, data: c.data })));
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -63,6 +69,16 @@
 	<div class="layout">
 		<div class="main-col" use:fadeInUp={{ delay: 50 }}>
 			<ContractCallerConfig />
+
+			{#if store.hasChain}
+				<InBandFeeRow
+					walletKind={walletStore.kind ?? ''}
+					chainId={store.selectedChain?.chainId ?? 0}
+					calls={ccFeeCalls}
+					active={store.hasChain}
+					bind:gasFeeToken={store.gasFeeToken}
+				/>
+			{/if}
 
 			{#if store.hasChain && store.methods.length > 0}
 				<ContractCallerMethods />

@@ -6,7 +6,7 @@
  * in-memory cache is hydrated lazily on first access so the sync getters work
  * during render. On the server the getters return defaults (no localStorage).
  *
- * Consumers: wallet/infra/{rpc-client,bundler-client,bundler-account,fiat-fx}.ts
+ * Consumers: wallet/infra/{rpc-client,bundler-client,fiat-fx}.ts
  * and auth/passkey-auth.ts read the getters instead of hard-coding URLs, so the
  * Settings UI can override any of them.
  */
@@ -46,7 +46,7 @@ export interface ServiceNodeSettings {
 export const DEFAULT_SERVICE_ENDPOINTS: ServiceEndpoints = {
 	ethereumDataURL: 'https://ethereum-data.awesometools.dev',
 	passkeyIndexURL: 'https://webauthnp256-publickey-index.biubiu.tools',
-	bundlerServiceURL: 'https://vela-bundler.getvela.app',
+	bundlerServiceURL: 'https://vela-relay.getvela.app',
 	fiatRatesURL: 'https://api.frankfurter.dev/v2/rates?base=USD'
 };
 

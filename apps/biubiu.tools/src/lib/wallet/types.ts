@@ -16,6 +16,7 @@
  */
 import type { Address, Hex } from 'viem';
 import type { SendStatus, SendResult } from '$lib/auth/safe-tx/send-token.js';
+import type { QuotedInBandFee } from '$lib/auth/safe-tx/send-contract-call.js';
 
 /** 钱包连接方式。biubiu 为推荐首选。 */
 export type WalletKind = 'biubiu' | 'inject' | 'walletpair';
@@ -83,6 +84,13 @@ export interface SendCallsOptions {
 		maxFeePerGas?: bigint;
 		maxPriorityFeePerGas?: bigint;
 	};
+	/**
+	 * In-band 结算：用哪个资产付 gas。null/未设 = 原生币；否则为白名单稳定币地址（用户所选）。
+	 * 仅 biubiu passkey Safe 使用（透传给 sendContractCall）；外部钱包自付 gas，忽略此项。
+	 */
+	gasFeeToken?: Address | null;
+	/** In-band：confirm UI 已展示并确认的报销报价，逐字节签署（单笔发送用；批量循环发送忽略）。 */
+	quotedFee?: QuotedInBandFee;
 }
 
 /**

@@ -49,6 +49,8 @@ class RevokeStore {
 	revokePhase = $state<SendStatus | null>(null);
 	revokeError = $state<string | null>(null);
 	lastResult = $state<SendResult | null>(null);
+	/** In-band 结算：整批用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken = $state<Address | null>(null);
 	/** Row ids currently being revoked (for per-row spinners). */
 	pendingIds = $state<string[]>([]);
 	/** Auto-revert timer for the success banner. */
@@ -131,6 +133,7 @@ class RevokeStore {
 		this.scanError = null;
 		this.selectedIds = [];
 		this.lastResult = null;
+		this.gasFeeToken = null; // 切链后所选稳定币可能不存在于新链 → 回退原生
 		this.lastScanKey = ''; // force a fresh auto-scan on the new chain
 	}
 
@@ -196,6 +199,7 @@ class RevokeStore {
 				network: this.network,
 				rows,
 				onPhase: (p) => (this.revokePhase = p),
+				gasFeeToken: this.gasFeeToken,
 			});
 			this.lastResult = res;
 			if (res.success) {

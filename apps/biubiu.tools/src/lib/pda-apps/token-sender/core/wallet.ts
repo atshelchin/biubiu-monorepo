@@ -26,6 +26,8 @@ export interface SafeSenderWallet {
 		network: TokenSenderNetwork;
 		calls: SubTransaction[];
 		onStatus?: (s: SendStatus) => void;
+		/** In-band 结算：用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+		gasFeeToken?: Address | null;
 	}): Promise<SendMultiSendResult>;
 	getNativeBalance(network: TokenSenderNetwork): Promise<bigint>;
 	getErc20Balance(network: TokenSenderNetwork, token: Address): Promise<bigint>;
@@ -42,11 +44,12 @@ export function createConnectedWallet(wallet: ConnectedWallet): SafeSenderWallet
 	return {
 		account,
 
-		async sendBatch({ network, calls, onStatus }) {
+		async sendBatch({ network, calls, onStatus, gasFeeToken }) {
 			const res = await wallet.sendCalls(calls, {
 				chainId: network.chainId,
 				onPhase: onStatus,
-				explorerTxBaseUrl: network.explorerTxUrl
+				explorerTxBaseUrl: network.explorerTxUrl,
+				gasFeeToken
 			});
 			if (!res.success || !res.txHash) {
 				throw new Error(res.error ?? 'Batch transaction failed');

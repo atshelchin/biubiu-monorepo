@@ -5,7 +5,7 @@
  * (`wallet.sendCalls`): biubiu → Safe MultiSend (one passkey fingerprint);
  * inject/walletpair → EIP-5792 wallet_sendCalls. A single row → a single tx.
  */
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, type Address } from 'viem';
 import { walletStore } from '$lib/wallet';
 import type { Call, SendResult, SendStatus } from '$lib/wallet';
 import { ERC20_ABI, NFT_ABI, PERMIT2_ABI, PERMIT2_ADDRESS } from '../infra/abis.js';
@@ -45,10 +45,12 @@ export interface RevokeRunInput {
 	network: RevokeNetwork;
 	rows: ApprovalRow[];
 	onPhase?: (phase: SendStatus) => void;
+	/** In-band 结算：用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken?: Address | null;
 }
 
 /** Revoke the given approvals in one atomic batch. */
-export async function runRevoke({ network, rows, onPhase }: RevokeRunInput): Promise<SendResult> {
+export async function runRevoke({ network, rows, onPhase, gasFeeToken }: RevokeRunInput): Promise<SendResult> {
 	const wallet = walletStore.activeWallet;
 	if (!wallet) return { success: false, error: 'no-wallet' };
 	if (rows.length === 0) return { success: false, error: 'empty' };
@@ -58,5 +60,6 @@ export async function runRevoke({ network, rows, onPhase }: RevokeRunInput): Pro
 		chainId: network.chainId,
 		onPhase,
 		explorerTxBaseUrl: `${network.explorerUrl}/tx/`,
+		gasFeeToken,
 	});
 }

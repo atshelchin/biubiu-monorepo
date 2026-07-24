@@ -16,8 +16,28 @@
 	import type { TokenMetaError } from '$lib/pda-apps/token-sender/store.svelte.js';
 	import NetworkGrid from '$lib/widgets/NetworkGrid.svelte';
 	import MemberFeeWaiver from '$lib/subscription/MemberFeeWaiver.svelte';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
+	import { encodeFunctionData, erc20Abi, type Address, type Hex } from 'viem';
+	import type { Call } from '$lib/wallet/types.js';
 	import { Lock, Key, Shield, BookOpen, ChevronDown, TriangleAlert, X, Info } from '@lucide/svelte';
 	import RecipientsEditor from './RecipientsEditor.svelte';
+
+	// 代表性子调用：给 in-band 选币器估算每批 gas 报销（实际每批发送时各自现算）。
+	const feeEstimateCalls = $derived.by<Call[]>(() => {
+		const u = authStore.user;
+		if (!u) return [];
+		const self = u.safeAddress as Address;
+		if (s.tokenType === 'native') return [{ to: self, value: 1n, data: '0x' as Hex }];
+		const token = s.tokenAddress.trim();
+		if (!/^0x[0-9a-fA-F]{40}$/.test(token)) return [];
+		return [
+			{
+				to: token as Address,
+				value: 0n,
+				data: encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [self, 1n] })
+			}
+		];
+	});
 
 	let showDeposit = $state(false);
 	let showAddNetwork = $state(false);
@@ -433,6 +453,14 @@
 						{/if}
 					{/if}
 				</div>
+
+				<InBandFeeRow
+					walletKind={walletStore.kind ?? ''}
+					chainId={s.network.chainId}
+					calls={feeEstimateCalls}
+					active={s.step === 3 && s.sendSupported}
+					bind:gasFeeToken={s.gasFeeToken}
+				/>
 
 				<MemberFeeWaiver proving={s.waiveProving} onProve={() => s.waiveFeeWithPasskey()} />
 

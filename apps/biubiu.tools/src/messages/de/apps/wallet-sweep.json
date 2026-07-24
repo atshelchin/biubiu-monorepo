@@ -109,5 +109,10 @@
 	"ws.alert.dismiss": "Schließen",
 	"ws.history.delete": "Löschen",
 	"ws.keys.import": "Importieren",
-	"ws.keys.clear": "Leeren"
+	"ws.keys.clear": "Leeren",
+	"ws.network.badgeUniversal": "Universal",
+	"ws.network.badgeUniversalHint": "No EIP-7702 on this chain — uses the universal refuel path (works on any EVM chain, but slower: more transactions).",
+	"ws.run.eoaProgress": "{done} of {total} wallets drained",
+	"ws.refuel.noteTitle": "This chain uses the universal (two-step) sweep",
+	"ws.refuel.noteBody": "It has no EIP-7702, so the relay funds each wallet with a little gas, then that wallet sends its own funds out. Keep your key list loaded until every wallet is drained — don't close this tab. If any of these keys is also known to someone else, they could grab the funds in the brief window between the two steps."
 }

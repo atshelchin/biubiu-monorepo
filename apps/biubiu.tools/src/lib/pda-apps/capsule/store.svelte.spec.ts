@@ -87,10 +87,6 @@ vi.mock('./crypto/envelope.js', () => ({
 	decryptContent: vi.fn(async () => 'plaintext')
 }));
 
-vi.mock('$lib/wallet/infra/bundler-account.js', () => ({
-	fetchBundlerAccountInfo: vi.fn(async () => null)
-}));
-
 vi.mock('$lib/wallet/infra/account-state.js', () => ({
 	getGasPrices: vi.fn(async () => ({ maxFeePerGas: 1_000_000_000n, maxPriorityFeePerGas: 1_000_000_000n }))
 }));
@@ -108,7 +104,6 @@ function resetStore() {
 	capsuleStore.text = '';
 	capsuleStore.networkSlug = 'base-mainnet';
 	capsuleStore.lastTxHash = null;
-	capsuleStore.funding = null;
 }
 
 beforeEach(() => {

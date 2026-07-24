@@ -17,6 +17,7 @@
 	import Panel from './Panel.svelte';
 	import Btn from './Btn.svelte';
 	import CodeBlock from './CodeBlock.svelte';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
 	import { Layers, Plus, Trash2, ChevronDown, Send, Gauge } from '@lucide/svelte';
 
 	interface Draft {
@@ -50,6 +51,15 @@
 	let sending = $state(false);
 	let phase = $state<SendStatus | null>(null);
 	let result = $state<SendResult | null>(null);
+	let gasFeeToken = $state<Address | null>(null);
+	// 代表性 calls 供 in-band 选币器估费（build() 校验失败时留空，选币器自会不渲染）。
+	const feeCalls = $derived.by<Call[]>(() => {
+		try {
+			return build();
+		} catch {
+			return [];
+		}
+	});
 	let err = $state<string | null>(null);
 
 	function addEmpty() {
@@ -170,7 +180,8 @@
 				chainId: debug.selectedChainId,
 				onPhase: (p) => (phase = p),
 				explorerTxBaseUrl: explorerTxUrl(debug.selectedChainId) || undefined,
-				gasOverrides: gasOverrides()
+				gasOverrides: gasOverrides(),
+				gasFeeToken
 			});
 			result = res;
 			debug.push('sendCalls', res.success, {
@@ -241,6 +252,14 @@
 			<input class="wd-input" name="wd-max-fee" bind:value={maxFeeGwei} placeholder={t('wd.tx.maxFeeGwei')} autocomplete="off" />
 		</div>
 	{/if}
+
+	<InBandFeeRow
+		walletKind={wallet?.kind ?? ''}
+		chainId={debug.selectedChainId}
+		calls={feeCalls}
+		active={!!wallet && feeCalls.length > 0}
+		bind:gasFeeToken
+	/>
 
 	<div class="footer">
 		{#if showMultiSendPreview}

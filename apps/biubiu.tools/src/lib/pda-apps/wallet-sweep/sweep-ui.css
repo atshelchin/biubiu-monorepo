@@ -105,6 +105,14 @@
 	font-size: var(--text-sm);
 	margin-bottom: 2px;
 }
+/* Warning variant — the universal (refuel) path's two-step theft-window notice. */
+.ws-note-card.ws-note-warn {
+	background: var(--warning-muted);
+	border-color: var(--warning);
+}
+.ws-note-card.ws-note-warn .ws-note-icon {
+	color: var(--warning);
+}
 
 /* ── Inputs ── */
 .ws-input {

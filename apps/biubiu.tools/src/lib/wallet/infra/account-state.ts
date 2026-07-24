@@ -68,14 +68,3 @@ export async function getChainGasPriceAtto(chainId: number): Promise<bigint> {
 	const gp = await rpcCall<Hex>('eth_gasPrice', [], chainId).catch(() => '0x0' as Hex);
 	return BigInt(gp);
 }
-
-/**
- * Rough native-wei cost of a Safe UserOp on this chain — the threshold the bundler
- * gas account must cover (vela funding preflight). Conservative gas-unit estimate:
- * an undeployed Safe carries the deploy initCode (~1.2M), a deployed one ~400k.
- */
-export async function estimateUserOpCostWei(chainId: number, deployed: boolean): Promise<bigint> {
-	const { maxFeePerGas } = await getGasPrices(chainId);
-	const units = deployed ? 400_000n : 1_200_000n;
-	return maxFeePerGas * units;
-}

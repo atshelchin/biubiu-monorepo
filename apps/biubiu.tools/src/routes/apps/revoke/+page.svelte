@@ -16,6 +16,11 @@
 	import { revoke as s } from '$lib/pda-apps/revoke/store.svelte.js';
 	import type { TokenStandard } from '$lib/pda-apps/revoke/types.js';
 	import ApprovalTable from '$lib/pda-apps/revoke/components/ApprovalTable.svelte';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
+	import { buildRevokeCall } from '$lib/pda-apps/revoke/core/revoke.js';
+
+	// 所选行的 revoke 调用——供 in-band 选币器估算整批 gas 报销。
+	const revokeFeeCalls = $derived(s.selectedRows.map(buildRevokeCall));
 	import { searchChains } from '$lib/contract-caller/networks.js';
 	import type { ChainSearchResult } from '$lib/contract-caller/types.js';
 	import { getChainLogoUrl, DEFAULT_CHAIN_LOGO } from '$lib/chains';
@@ -349,6 +354,13 @@
 			{:else if s.visibleRows.length > 0}
 				<!-- Batch action bar -->
 				{#if s.selectedRows.length > 0}
+					<InBandFeeRow
+						walletKind={walletStore.kind ?? ''}
+						chainId={s.network.chainId}
+						calls={revokeFeeCalls}
+						active={s.selectedRows.length > 0 && !s.revoking}
+						bind:gasFeeToken={s.gasFeeToken}
+					/>
 					<div class="batch-bar">
 						<span class="batch-count">{t('revoke.batch.selected', { count: s.selectedRows.length })}</span>
 						<button class="btn ghost sm" onclick={() => s.clearSelection()} disabled={s.revoking}>{t('revoke.batch.clear')}</button>

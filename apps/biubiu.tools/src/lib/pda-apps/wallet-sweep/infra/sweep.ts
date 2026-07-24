@@ -18,7 +18,7 @@ import { signEoaAuthorization, getDelegation } from './authorizations.js';
 import { predictBatchSweeperAddress } from './sweeper-address.js';
 import { BATCHSWEEPER_ABI } from './batchsweeper-artifact.js';
 import { FEE_COLLECTOR } from './fee.js';
-import type { SweepNetwork, EoaKey, SweepBatchRecord } from '../types.js';
+import type { SweepNetwork, EoaKey, SweepBatchRecord, SweepPhase, SweepEvent } from '../types.js';
 import type { Relayer } from './relayer.js';
 
 const RPC_CONCURRENCY = 12;
@@ -58,15 +58,9 @@ export async function planSweep(
 	return plan;
 }
 
-export type SweepPhase = 'sign' | 'broadcast' | 'confirm' | 'chunk-done' | 'error';
-export interface SweepEvent {
-	phase: SweepPhase;
-	chunkIndex: number;
-	chunkTotal: number;
-	txHash?: Hex;
-	count?: number;
-	message?: string;
-}
+// SweepPhase / SweepEvent now live in ../types.js (shared with the refuel executor);
+// re-exported here so existing importers (store, widgets) keep their import path.
+export type { SweepPhase, SweepEvent };
 
 export async function runSweep(opts: {
 	network: SweepNetwork;
@@ -127,7 +121,11 @@ export async function runSweep(opts: {
 			relayerNonce += 1;
 			emit('broadcast', { txHash });
 
-			await waitForReceipt(network, rpcs, txHash);
+			const receipt = await waitForReceipt(network, rpcs, txHash);
+			// A reverted type-4 tx still returns a receipt; without this check a
+			// silent revert would be recorded as 'completed' (EOAs left delegated,
+			// funds unmoved) — and a 7702-capability canary could never trust it.
+			if (receipt.status !== 'success') throw new Error(`chunk ${i} reverted on-chain (tx ${txHash})`);
 			records.push({
 				index: i,
 				count: group.length,

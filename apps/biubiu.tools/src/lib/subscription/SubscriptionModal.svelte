@@ -25,8 +25,10 @@
 		PREMIUM_CONTRACT_ADDRESS,
 		CREATE2_PROXY
 	} from './subscription-contract.js';
-	import { sendContractCall } from '$lib/auth/safe-tx/send-contract-call.js';
+	import { sendContractCall, type InBandFeeQuote } from '$lib/auth/safe-tx/send-contract-call.js';
 	import type { SendStatus, SendResult } from '$lib/auth/safe-tx/send-token.js';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
+	import type { Call } from '$lib/wallet/types.js';
 	import { isAddress, formatEther, type Address } from 'viem';
 
 	interface Props {
@@ -60,6 +62,10 @@
 	let result = $state<SendResult | null>(null);
 	let error = $state<string | null>(null);
 
+	// In-band gas: which asset pays the network fee (null = native ETH) + displayed quote.
+	let gasFeeToken = $state<Address | null>(null);
+	let quotedFee = $state<InBandFeeQuote | null>(null);
+
 	const user = $derived(authStore.user);
 	const isValidTransferTo = $derived(transferTo.length === 42 && isAddress(transferTo));
 	const canSubscribe = $derived(!status && !priceLoading && contractDeployed && (selectedTier === 0 ? monthlyPriceWei > 0n : yearlyPriceWei > 0n));
@@ -68,6 +74,16 @@
 	const selectedPriceWei = $derived(selectedTier === 0 ? monthlyPriceWei : yearlyPriceWei);
 	const selectedPriceEth = $derived(selectedPriceWei > 0n ? formatEther(selectedPriceWei) : '—');
 	const ethPrice = $derived(ethUsdPrice > 0n ? Number(ethUsdPrice) / 1e8 : 0);
+
+	/** The subscribe/renew call — drives the in-band gas fee estimate. */
+	const subscribeFeeCalls = $derived.by<Call[]>(() => {
+		if (selectedPriceWei <= 0n) return [];
+		const isRenew = mode === 'renew' && subscriptionStore.activeTokenId > 0n;
+		const data = isRenew
+			? buildRenewCallData(subscriptionStore.activeTokenId, selectedTier)
+			: buildSubscribeCallData(selectedTier);
+		return [{ to: PREMIUM_CONTRACT_ADDRESS, value: addPriceBuffer(selectedPriceWei), data }];
+	});
 
 	// ─── Effects ───
 
@@ -150,6 +166,7 @@
 			value: 0n,
 			data: deployData,
 			network: 'arb-mainnet',
+			gasFeeToken,
 			onStatus: (s) => { status = s; }
 		});
 
@@ -190,6 +207,8 @@
 			value,
 			data,
 			network: 'arb-mainnet',
+			gasFeeToken,
+			quotedFee: quotedFee ?? undefined,
 			onStatus: (s) => { status = s; }
 		});
 
@@ -222,6 +241,7 @@
 			value: 0n,
 			data,
 			network: 'arb-mainnet',
+			gasFeeToken,
 			onStatus: (s) => { status = s; }
 		});
 
@@ -416,6 +436,15 @@
 			{#if error}
 				<span class="error-text">{error}</span>
 			{/if}
+
+			<InBandFeeRow
+				walletKind="biubiu"
+				chainId={42161}
+				calls={subscribeFeeCalls}
+				active={!status && !!contractDeployed && selectedPriceWei > 0n}
+				bind:gasFeeToken
+				bind:quotedFee
+			/>
 
 			<button class="submit-btn" disabled={!canSubscribe} onclick={handleSubscribe}>
 				{mode === 'renew' ? t('sub.renew') : t('sub.subscribe')}

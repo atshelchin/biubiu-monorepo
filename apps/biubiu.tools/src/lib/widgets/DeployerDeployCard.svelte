@@ -9,6 +9,8 @@
 	import Disclosure from '$lib/ui/Disclosure.svelte';
 	import { deployStore as store } from '$lib/deploy/deploy-store.svelte.js';
 	import { isValidSalt } from '$lib/deploy/create2.js';
+	import { walletStore } from '$lib/wallet';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
 
 	const EMPTY_SALT = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
@@ -102,6 +104,14 @@
 			</div>
 		</Disclosure>
 	</div>
+
+	<InBandFeeRow
+		walletKind={walletStore.kind ?? ''}
+		chainId={store.selectedChain?.chainId ?? 0}
+		calls={store.deployCalls}
+		active={store.canDeploy}
+		bind:gasFeeToken={store.gasFeeToken}
+	/>
 
 	<button class="dp-btn dp-btn-primary dp-btn-block dp-btn-lg deploy" disabled={!store.canDeploy} onclick={() => store.deploy()}>
 		{#if store.deploying}

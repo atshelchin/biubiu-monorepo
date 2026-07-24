@@ -21,7 +21,6 @@ import { encodeMultiSendCall, MULTISEND_ADDRESS } from '$lib/contract-caller/bat
 import type { QueuedCall } from '$lib/contract-caller/types.js';
 import type { Call } from '$lib/wallet/types.js';
 import { WRITE_NETWORKS, networkBySlug } from './networks.js';
-import { fetchBundlerAccountInfo, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
 import { getGasPrices } from '$lib/wallet/infra/account-state.js';
 import { evaluatePrf, isWebAuthnAvailable, type EncryptionCredential } from './crypto/prf.js';
 import { deriveContentKey, decryptContent, encryptContent } from './crypto/envelope.js';
@@ -61,6 +60,8 @@ class CapsuleStore {
 	unlocked = $state(false);
 
 	networkSlug = $state('base-mainnet');
+	/** In-band 结算：封存用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
+	gasFeeToken = $state<Address | null>(null);
 	/** Region-gate: you pick a chain before entering; it's fixed until you explicitly exit. */
 	chainEntered = $state(false);
 	/** Past-view sort: 'desc' = newest first, 'asc' = oldest first. */
@@ -91,9 +92,6 @@ class CapsuleStore {
 	 *  next note also CREATE2-deploys it (one-time, transparent). Drives the "first here" hint. */
 	sealDeployed = $state<boolean | null>(null);
 
-	/** When set, the seal hit an empty bundler gas account → show the funding modal
-	 *  (BundlerFundingModal handles sponsorship + self-fund; we just retry on success). */
-	funding = $state<GasAccountFunding | null>(null);
 
 	constructor() {
 		if (!browser) return;
@@ -126,6 +124,11 @@ class CapsuleStore {
 	}
 	get network() {
 		return networkBySlug(this.networkSlug);
+	}
+	/** Representative seal call(s) for the in-band gas fee estimate; the real seal self-quotes at send. */
+	get feeEstimateCalls(): Call[] {
+		const tx = this.buildSealTx(encodeSeal(new Uint8Array(200)), this.sealDeployed === true);
+		return tx.calls ?? [{ to: tx.to, value: tx.value, data: tx.data }];
 	}
 	get byteLength(): number {
 		return new TextEncoder().encode(this.text).length;
@@ -420,6 +423,7 @@ class CapsuleStore {
 					operation: tx.operation,
 					calls: tx.calls,
 					gasOverrides: overrides,
+					gasFeeToken: this.gasFeeToken,
 					confirmTimeoutMs: 40_000, // fail fast on a stuck op, then re-quote + re-sign
 					network: this.networkSlug,
 					// Clean staged copy; the on-chain wait drives an ETA countdown (kept under the timeout).
@@ -452,10 +456,6 @@ class CapsuleStore {
 					}
 					this.message = t('capsule.status.retrying');
 					continue;
-				}
-				// Empty bundler gas account → offer sponsorship or self-funding instead of a dead end.
-				if (/bundler gas account|insufficient native balance on dedicated/i.test(raw)) {
-					return this.openFunding(raw);
 				}
 				return this.fail(RETRYABLE_RE.test(raw) ? t('capsule.error.timedOut') : this.friendlyError(raw));
 			}
@@ -551,6 +551,7 @@ class CapsuleStore {
 			this.entries = [];
 			this.entriesTotal = 0;
 			this.sealDeployed = null;
+			this.gasFeeToken = null; // 切链后所选稳定币可能不存在于新链 → 回退原生
 		}
 		this.chainEntered = true;
 		void this.refreshDeployed();
@@ -564,51 +565,6 @@ class CapsuleStore {
 	exitChain(): void {
 		this.chainEntered = false;
 		if (browser) localStorage.setItem(LS_ENTERED, '0');
-	}
-
-	/** Surface the gas-account funding modal — parse the relayer error for amount + address. */
-	private async openFunding(rawError: string): Promise<false> {
-		const user = authStore.user;
-		const net = this.network;
-		const rm = rawError.match(/required:\s*(\d+)/i);
-		const required = rm ? BigInt(rm[1]) : 0n;
-		let depositAddress = '';
-		let currentWei = 0n;
-		const dm = rawError.match(/Deposit to:\s*(0x[a-fA-F0-9]{40})/i);
-		if (dm) depositAddress = dm[1];
-		const sm = rawError.match(/Spendable:\s*(\d+)/i);
-		if (sm) currentWei = BigInt(sm[1]);
-		// Prefer fresh on-chain info (more accurate address + balance) when reachable.
-		if (user && net) {
-			const info = await fetchBundlerAccountInfo(net.chainId, user.safeAddress).catch(() => null);
-			if (info?.depositAddress) {
-				depositAddress = info.depositAddress;
-				currentWei = info.spendableBalance;
-			}
-		}
-		this.funding = {
-			chainId: net?.chainId ?? 0,
-			safeAddress: user?.safeAddress ?? '',
-			depositAddress,
-			nativeSym: net?.nativeSymbol ?? '',
-			requiredWei: required,
-			currentWei
-		};
-		this.status = 'idle';
-		this.message = '';
-		return false;
-	}
-
-	/** Retry the seal after the gas account has been funded (sponsored or self-funded). */
-	async retrySeal(): Promise<void> {
-		this.funding = null;
-		this.status = 'idle';
-		await this.seal();
-	}
-
-	/** Dismiss the funding modal without sealing. */
-	dismissFunding(): void {
-		this.funding = null;
 	}
 
 	clearStatus(): void {

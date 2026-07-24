@@ -104,6 +104,8 @@ export interface RunSendDeps {
 	completedBatchIndices?: Set<number>;
 	/** 批次之间的喘息间隔（ms）：避免签名弹窗连珠炮。0 = 连续 */
 	interBatchDelayMs?: number;
+	/** In-band 结算：整批用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。每批各自现算报销额。 */
+	gasFeeToken?: Address | null;
 }
 
 export interface RunSendResult {
@@ -169,6 +171,7 @@ export async function runSend(deps: RunSendDeps): Promise<RunSendResult> {
 				calls: subs,
 				onStatus: (status) =>
 					deps.onProgress?.({ batchIndex: i, totalBatches: batches.length, status }),
+				gasFeeToken: deps.gasFeeToken,
 			});
 			const out: BatchOutput = {
 				batchIndex: i,

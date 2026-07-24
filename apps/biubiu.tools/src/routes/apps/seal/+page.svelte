@@ -1,12 +1,12 @@
 <script lang="ts">
 	import CapsuleOnboard from '$lib/pda-apps/capsule/CapsuleOnboard.svelte';
 	import ProfileModal from '$lib/auth/ProfileModal.svelte';
-	import BundlerFundingModal from '$lib/auth/BundlerFundingModal.svelte';
 	import SubscriptionModal from '$lib/subscription/SubscriptionModal.svelte';
 	import SettingsPanel from '$lib/widgets/SettingsPanel.svelte';
 	import ResponsiveModal from '$lib/ui/ResponsiveModal.svelte';
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { capsuleStore, FEE_WEI } from '$lib/pda-apps/capsule/store.svelte.js';
+	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
 	import { t, locale, formatDate, localizeHref } from '$lib/i18n';
 	import { getBaseSEO } from '$lib/seo';
 	import SEO from '@shelchin/seo-sveltekit/SEO.svelte';
@@ -162,6 +162,14 @@
 						<span>{t('capsule.meta.oneADay')}</span>
 					</div>
 
+					<InBandFeeRow
+						walletKind="biubiu"
+						chainId={store.network?.chainId ?? 0}
+						calls={store.feeEstimateCalls}
+						active={!!store.text.trim() && !store.overLimit && store.status !== 'sealing'}
+						bind:gasFeeToken={store.gasFeeToken}
+					/>
+
 					<div class="commit">
 						<button
 							type="button"
@@ -289,13 +297,6 @@
 		</div>
 	</ResponsiveModal>
 
-	<!-- Empty bundler gas account → offer free sponsorship or self-funding (with QR). -->
-	<BundlerFundingModal
-		open={!!store.funding}
-		funding={store.funding}
-		onFunded={() => store.retrySeal()}
-		onClose={() => store.dismissFunding()}
-	/>
 </div>
 
 <style>

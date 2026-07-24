@@ -79,6 +79,41 @@ export async function getGasPrice(rpcs: string[]): Promise<bigint> {
 	return BigInt((await rpcCall(rpcs, 'eth_gasPrice', [])) as string);
 }
 
+/**
+ * Latest block's baseFeePerGas, or null if the chain has no fee market (pre-London
+ * / legacy). Presence of the field is the definitive EIP-1559 capability signal.
+ */
+export async function getLatestBlockBaseFee(rpcs: string[]): Promise<bigint | null> {
+	const block = (await rpcCall(rpcs, 'eth_getBlockByNumber', ['latest', false])) as
+		| { baseFeePerGas?: string }
+		| null;
+	const raw = block?.baseFeePerGas;
+	return raw != null ? BigInt(raw) : null;
+}
+
+/**
+ * Suggested priority fee (tip) for an EIP-1559 tx. Prefers eth_maxPriorityFeePerGas;
+ * falls back to the 50th-percentile reward from eth_feeHistory; then a small floor.
+ * Never throws — a bad tip must not abort a sweep.
+ */
+export async function getMaxPriorityFee(rpcs: string[]): Promise<bigint> {
+	try {
+		return BigInt((await rpcCall(rpcs, 'eth_maxPriorityFeePerGas', [])) as string);
+	} catch {
+		// method unsupported on some nodes → derive from fee history
+	}
+	try {
+		const hist = (await rpcCall(rpcs, 'eth_feeHistory', ['0x1', 'latest', [50]])) as {
+			reward?: string[][];
+		};
+		const r = hist?.reward?.[0]?.[0];
+		if (r != null) return BigInt(r);
+	} catch {
+		// fall through to floor
+	}
+	return 1_500_000_000n; // 1.5 gwei fallback tip
+}
+
 /** First RPC that answers eth_chainId with the expected id (for the readiness probe). */
 export async function pickWorkingRpc(rpcs: string[], chainId: number): Promise<string | null> {
 	for (const url of rpcs) {

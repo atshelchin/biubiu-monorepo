@@ -25,6 +25,7 @@
 		"@lucide/svelte": "^0.511.0",
 		"@mcp-b/global": "^2.0.9",
 		"@ngraveio/bc-ur": "^1.1.13",
+		"@noble/ciphers": "^2.0.0",
 		"@noble/hashes": "^2.0.1",
 		"@resvg/resvg-wasm": "^2.6.2",
 		"@scure/bip39": "^2.0.0",
@@ -39,8 +40,7 @@
 		"@shelchin/vendor-pool": "workspace:*",
 		"satori": "^0.19.1",
 		"uqr": "^0.1.2",
-		"viem": "^2.46.0",
-		"walletpair-sdk": "^1.1.0"
+		"viem": "^2.46.0"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.1",

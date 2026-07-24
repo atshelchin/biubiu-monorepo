@@ -5,11 +5,11 @@
 	import { authStore } from './auth-store.svelte.js';
 	import { sendToken, type SendStatus, type SendResult } from './safe-tx/send-token.js';
 	import { formatBalance, tokenValueUsd, type TokenBalance } from './wallet.js';
-	import { isAddress } from 'viem';
+	import { isAddress, parseUnits, encodeFunctionData, erc20Abi, type Address, type Hex } from 'viem';
 	import { chainInfoBySlug, isTempoChain } from '$lib/wallet/infra/chains.js';
-	import { isDeployed, estimateUserOpCostWei } from '$lib/wallet/infra/account-state.js';
-	import { checkGasAccountFunding, type GasAccountFunding } from '$lib/wallet/infra/bundler-account.js';
-	import BundlerFundingModal from './BundlerFundingModal.svelte';
+	import type { Call } from '$lib/wallet/types.js';
+	import type { InBandFeeQuote } from './safe-tx/send-contract-call.js';
+	import FeeAssetSelector from './FeeAssetSelector.svelte';
 
 	interface Props {
 		open: boolean;
@@ -29,10 +29,10 @@
 	let status = $state<SendStatus | null>(null);
 	let result = $state<SendResult | null>(null);
 	let error = $state<string | null>(null);
-	// Bundler gas-account funding (vela model): if the per-Safe gas account is short,
-	// prompt sponsor / self-fund before signing.
-	let fundingNeeded = $state<GasAccountFunding | null>(null);
-	let showFunding = $state(false);
+	// In-band gas: which asset pays the network fee (null = native) + the displayed fee quote,
+	// signed verbatim by the send path. Both come from FeeAssetSelector.
+	let gasFeeToken = $state<Address | null>(null);
+	let quotedFee = $state<InBandFeeQuote | null>(null);
 
 	const user = $derived(authStore.user);
 	const selectedToken = $derived(balances[selectedIndex] ?? null);
@@ -43,6 +43,19 @@
 		return num > 0 && num <= parseFloat(selectedToken.balance);
 	});
 	const canSubmit = $derived(isValidRecipient && isValidAmount() && !status && selectedToken);
+
+	const sendChainId = $derived(selectedToken ? (chainInfoBySlug(selectedToken.network)?.chainId ?? 0) : 0);
+	const isTempoSend = $derived(!!sendChainId && isTempoChain(sendChainId));
+	/** The send's user call(s) — drives the fee estimate. Empty until the form is valid. */
+	const sendCalls = $derived.by<Call[]>(() => {
+		if (!selectedToken || !isValidRecipient || !isValidAmount()) return [];
+		const amountWei = parseUnits(String(amount), selectedToken.decimals);
+		if (!selectedToken.tokenAddress) {
+			return [{ to: recipient as Address, value: amountWei, data: '0x' as Hex }];
+		}
+		const data = encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [recipient as Address, amountWei] });
+		return [{ to: selectedToken.tokenAddress as Address, value: 0n, data }];
+	});
 
 	/** 输入金额对应的法币预估值 */
 	const amountFiat = $derived.by(() => {
@@ -61,6 +74,8 @@
 		status = null;
 		result = null;
 		error = null;
+		gasFeeToken = null;
+		quotedFee = null;
 		onClose();
 	}
 
@@ -68,6 +83,8 @@
 		selectedIndex = index;
 		amount = '';
 		error = null;
+		gasFeeToken = null;
+		quotedFee = null;
 		step = 'form';
 	}
 
@@ -94,30 +111,8 @@
 		error = null;
 		result = null;
 
-		// Gas 由 bundler 的 per-Safe gas account 支付（vela 模型）。发送前预检：
-		// gas account 不足则弹「充值 / 免费激活」。Tempo 从 Safe 的 pathUSD 在批次内
-		// 报销，不走 gas account 预检。
-		const chain = chainInfoBySlug(selectedToken.network);
-		if (chain && !isTempoChain(chain.chainId)) {
-			try {
-				const deployed = await isDeployed(user.safeAddress, chain.chainId);
-				const requiredWei = await estimateUserOpCostWei(chain.chainId, deployed);
-				const funding = await checkGasAccountFunding(chain.chainId, user.safeAddress, requiredWei);
-				if (funding) {
-					fundingNeeded = funding;
-					showFunding = true;
-					return;
-				}
-			} catch {
-				// 无法判定（bundler 不可达等）→ 放行，由 bundler 在提交时拒绝。
-			}
-		}
-
-		await proceedSend();
-	}
-
-	async function proceedSend() {
-		if (!user || !selectedToken) return;
+		// In-band 结算：gas 由 UserOp 内 MultiSend 向 relay 结算地址的报销腿支付（见 send-contract-call
+		// 的 sendInBand），无需 per-Safe gas 账户预检。Safe 余额不足时由 relay 在提交时拒绝并回传原因。
 		const sendResult = await sendToken({
 			safeAddress: user.safeAddress as `0x${string}`,
 			publicKeyHex: user.publicKey,
@@ -128,6 +123,8 @@
 			network: selectedToken.network,
 			tokenAddress: selectedToken.tokenAddress ?? null,
 			decimals: selectedToken.decimals,
+			gasFeeToken,
+			quotedFee: quotedFee ?? undefined,
 			onStatus: (s) => { status = s; }
 		});
 
@@ -240,6 +237,19 @@
 					{/if}
 				</div>
 
+				{#if selectedToken && !isTempoSend}
+					<FeeAssetSelector
+						chainId={sendChainId}
+						safeAddress={user?.safeAddress ?? ''}
+						publicKeyHex={user?.publicKey ?? ''}
+						network={selectedToken.network}
+						calls={sendCalls}
+						active={step === 'form' && isValidRecipient && isValidAmount()}
+						bind:gasFeeToken
+						bind:quotedFee
+					/>
+				{/if}
+
 				{#if error}
 					<p class="send-error">{error}</p>
 				{/if}
@@ -296,13 +306,6 @@
 		{/if}
 	</div>
 </ResponsiveModal>
-
-<BundlerFundingModal
-	open={showFunding}
-	funding={fundingNeeded}
-	onFunded={() => { showFunding = false; proceedSend(); }}
-	onClose={() => { showFunding = false; }}
-/>
 
 <style>
 	.send-content.forever-theme {

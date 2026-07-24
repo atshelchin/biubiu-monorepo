@@ -8,7 +8,7 @@
  * `feeToken.transfer(bundlerEOA, reimbursement)` 追加进 MultiSend 批次，提交时带
  * `feeToken` 字段。详见 wallet/infra/tempo.ts。
  */
-import { type Address, type Hex, numberToHex, encodeFunctionData, erc20Abi } from 'viem';
+import { type Address, type Hex, numberToHex } from 'viem';
 import {
 	buildCallData,
 	buildInitCode,
@@ -31,9 +31,14 @@ import {
 	estimateUserOperationGas,
 	sendUserOperation,
 	getUserOperationReceipt,
+	getInBandGasQuotes,
 	type UserOpDict
 } from '$lib/wallet/infra/bundler-client.js';
-import { fetchBundlerAccountInfo } from '$lib/wallet/infra/bundler-account.js';
+import {
+	calculateInBandFeeAmount,
+	buildInBandFeeLeg,
+	findInBandGasQuote
+} from '$lib/wallet/infra/inband.js';
 import {
 	TEMPO_DEFAULT_FEE_TOKEN,
 	TEMPO_FEE_TOKEN_DECIMALS,
@@ -66,6 +71,15 @@ export interface GasOverrides {
 	maxPriorityFeePerGas?: bigint;
 }
 
+/**
+ * In-band 结算下 confirm UI 展示并让用户确认的报销报价：金额（fee 资产自身单位）+ 收款地址。
+ * 传入后 sendInBand 逐字节签这个报价（签什么执行什么），不再重新现算。
+ */
+export interface QuotedInBandFee {
+	amount: bigint;
+	recipient: Address;
+}
+
 export interface ContractCallParams {
 	safeAddress: Address;
 	publicKeyHex: string;
@@ -92,6 +106,13 @@ export interface ContractCallParams {
 	onStatus: (status: SendStatus) => void;
 	/** 自定义 gas 参数，未设置时自动估算 */
 	gasOverrides?: GasOverrides;
+	/**
+	 * In-band 结算：用哪个资产付 gas。null/未设 = 原生币；否则为白名单稳定币地址（用户所选）。
+	 * Tempo 忽略此项（固定 pathUSD）。
+	 */
+	gasFeeToken?: Address | null;
+	/** In-band：confirm UI 已展示并确认的报销报价，逐字节签署（可选；无则提交时现算）。 */
+	quotedFee?: QuotedInBandFee;
 	/** 等待上链确认的最长毫秒数（默认 120000）。到点返回超时，调用方可用当前 gas 重发（同 nonce → 替换）。 */
 	confirmTimeoutMs?: number;
 }
@@ -125,59 +146,100 @@ export async function sendContractCall(params: ContractCallParams): Promise<Send
 			safeAddress, publicKeyHex, credentialId, rpId, chainId, deployed, nonce, initCode, onStatus
 		};
 
-		return isTempoChain(chainId) ? await sendTempo(ctx, params) : await sendNative(ctx, params);
+		return isTempoChain(chainId) ? await sendTempo(ctx, params) : await sendInBand(ctx, params);
 	} catch (err) {
 		onStatus('failed');
 		return { success: false, error: err instanceof Error ? err.message : String(err) };
 	}
 }
 
-/** 标准 ERC-4337（原生币付 gas）路径——逻辑与改造前一致，仅换直连传输。 */
-async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<SendResult> {
+/**
+ * 通用 in-band 结算路径（Tempo 之外的所有链）。vela relay 现在要求每条链都 in-band：
+ *   - UserOp 用 maxFeePerGas = maxPriorityFeePerGas = 0 签署（EntryPoint 原生 prefund/refund 变 no-op），
+ *   - 把「向 relay 结算地址报销」的 transfer 追加进 UserOp 的 MultiSend——原生 value 腿，或用户所选
+ *     稳定币的 `transfer` 腿。结算地址与可付资产由 vela_getInBandGasQuote 给出；金额按
+ *     gas × 网络价 × 3 定价（见 inband.ts，native 价上取整/fee 币下取整，永不少收，稳过 relay 的
+ *     reimbursed ≥ required 复核）。非-Tempo 不带 feeToken 字段（外层是普通原生 EIP-1559 交易）。
+ */
+async function sendInBand(ctx: SendCtx, params: ContractCallParams): Promise<SendResult> {
 	const { safeAddress, credentialId, rpId, chainId, deployed, nonce, initCode, onStatus } = ctx;
-	const { to, value, data, operation, gasOverrides } = params;
+	const gasFeeToken = (params.gasFeeToken ?? null) as Address | null; // null = 原生币付 gas
 
 	onStatus('building');
-	const callData = buildCallData(to, value, data, operation ?? 0);
-	const gasPrices = await getGasPrices(chainId);
+	// 用户子调用：批量透传 calls，否则用单条 to/value/data 合成。
+	const userCalls: Call[] = params.calls ?? [{ to: params.to, value: params.value, data: params.data }];
 
-	const initialGas: GasParams = {
-		// Undeployed: start the estimate's dummy op with the deploy floor so a bundler that honours
-		// the provided limit during simulation doesn't OOG the deploy and fail the estimate itself.
+	// 1) 取 relay 的 in-band 报价：结算收款地址 + 可付资产（含所选稳定币）的余额/USD 价。
+	const quotes = await getInBandGasQuotes(safeAddress, chainId);
+	const quote = quotes ? findInBandGasQuote(quotes, gasFeeToken) : null;
+	const nativeQuote = quotes ? findInBandGasQuote(quotes, null) : null;
+	if (!quote || !nativeQuote) {
+		onStatus('failed');
+		return {
+			success: false,
+			error: gasFeeToken
+				? 'The gas relayer cannot accept the selected fee token right now. Please pick a different gas asset.'
+				: 'The gas relayer is unavailable right now. Please try again.'
+		};
+	}
+
+	const buildBatch = (amount: bigint, recipient: Address): Hex =>
+		inBandBatchCallData([...userCalls, buildInBandFeeLeg(gasFeeToken, recipient, amount)]);
+
+	// 2) maxFee=0 的 UserOp + gas 地板，用占位报销腿估算（自转账，收款人先填 Safe 自己：value/金额
+	//    不影响 gas，relay 估算会把 sender 原生余额覆盖成 100 ETH，所选稳定币必是 Safe 持有的 → 占位不 revert）。
+	const gas: GasParams = {
 		verificationGasLimit: deployed ? 300000n : NATIVE_VERIFICATION_GAS_UNDEPLOYED,
-		callGasLimit: 3000000n, // 合约部署可能需要很多 gas，给足初始值让 bundler 正确估算
+		callGasLimit: 3000000n, // 合约调用可能很重，给足初始值让 bundler 正确估算
 		preVerificationGas: 60000n,
-		...gasPrices
+		maxFeePerGas: 0n,
+		maxPriorityFeePerGas: 0n
 	};
 
 	onStatus('estimating');
-	const dummyUserOp = packOp(safeAddress, nonce, initCode, callData, initialGas, buildDummySignature());
-	const estimates = await estimateUserOperationGas(formatUserOpForRpc(dummyUserOp), chainId);
+	const dummyOp = packOp(safeAddress, nonce, initCode, buildBatch(1n, safeAddress), gas, buildDummySignature());
+	const hasContractCall = userCalls.some((c) => c.data && c.data !== '0x');
+	try {
+		const est = await estimateUserOperationGas(formatUserOpForRpc(dummyOp), chainId);
+		// 未部署：钉死 2M（估算低报会 AA13 OOG，×1.5 又可能超 cap）；已部署：估算 ×1.5 兜底地板。
+		gas.verificationGasLimit = deployed
+			? bigintMax((BigInt(est.verificationGasLimit) * 15n) / 10n, 300000n)
+			: NATIVE_VERIFICATION_GAS_UNDEPLOYED;
+		const userCallGas = params.gasOverrides?.callGasLimit ?? 0n;
+		gas.callGasLimit = bigintMax((BigInt(est.callGasLimit) * 15n) / 10n, bigintMax(userCallGas, 200000n));
+		gas.preVerificationGas = BigInt(est.preVerificationGas) + 5000n;
+	} catch (err) {
+		// 含真实合约调用而估算失败：不提交注定 OOG 的 op。纯转账批次保留地板值。
+		void err;
+		if (hasContractCall) {
+			onStatus('failed');
+			return { success: false, error: 'Could not estimate gas for this transaction. The network may be busy — please try again.' };
+		}
+		gas.callGasLimit = 200000n;
+	}
 
-	const estimatedCallGasLimit = (BigInt(estimates.callGasLimit) * 15n) / 10n; // 1.5x buffer
-	const estimatedVerificationGasLimit = (BigInt(estimates.verificationGasLimit) * 15n) / 10n;
+	// 3) 报销金额 + 收款地址：优先用 confirm UI 已展示并确认的报价（签什么执行什么）；否则现算。
+	let feeAmount: bigint;
+	let feeRecipient: Address;
+	const quotedFee = params.quotedFee;
+	if (quotedFee && quotedFee.amount > 0n && /^0x[0-9a-fA-F]{40}$/.test(quotedFee.recipient)) {
+		feeAmount = quotedFee.amount;
+		feeRecipient = quotedFee.recipient;
+	} else {
+		const gasPriceWei = await inBandGasPrice(chainId);
+		const totalGas = gas.verificationGasLimit + gas.callGasLimit + gas.preVerificationGas;
+		const amount = calculateInBandFeeAmount(totalGas, gasPriceWei, quote, nativeQuote);
+		if (amount === null) {
+			onStatus('failed');
+			return { success: false, error: 'Could not calculate the gas fee. Please try again.' };
+		}
+		feeAmount = amount;
+		feeRecipient = quote.recipient;
+	}
 
-	// First-deploy: PIN verificationGasLimit to the bundler cap (= enough for the ~2M deploy, and the
-	// max the bundler accepts). We deliberately do NOT use the estimate here: it under-reports the
-	// undeployed deploy (→ AA13 OOG), and estimate×1.5 could also exceed the cap (→ "exceeds max").
-	// Deployed ops use the pure estimate (no initCode, cheap verification, well under the cap).
-	const finalVerificationGasLimit = deployed
-		? estimatedVerificationGasLimit
-		: NATIVE_VERIFICATION_GAS_UNDEPLOYED;
-
-	// Gas limit: use the LARGER of bundler estimate vs user override (never go below estimate)
-	const userCallGas = gasOverrides?.callGasLimit ?? 0n;
-	const finalCallGasLimit = userCallGas > estimatedCallGasLimit ? userCallGas : estimatedCallGasLimit;
-
-	const refinedGas: GasParams = {
-		verificationGasLimit: finalVerificationGasLimit,
-		callGasLimit: finalCallGasLimit,
-		preVerificationGas: BigInt(estimates.preVerificationGas) + 5000n,
-		maxFeePerGas: gasOverrides?.maxFeePerGas ?? gasPrices.maxFeePerGas,
-		maxPriorityFeePerGas: gasOverrides?.maxPriorityFeePerGas ?? gasPrices.maxPriorityFeePerGas
-	};
-
-	const safeOpHash = calculateSafeOpHash(safeAddress, callData, nonce, initCode, refinedGas, BigInt(chainId));
+	// 4) 回填真实报销腿 → 算 hash、签名、打包、提交（非-Tempo 不带 feeToken）。
+	const finalCallData = buildBatch(feeAmount, feeRecipient);
+	const safeOpHash = calculateSafeOpHash(safeAddress, finalCallData, nonce, initCode, gas, BigInt(chainId));
 
 	onStatus('signing');
 	const signature = await signOp(safeOpHash, credentialId, rpId);
@@ -186,11 +248,93 @@ async function sendNative(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 		return { success: false, error: signature.error };
 	}
 
-	const finalUserOp = packOp(safeAddress, nonce, initCode, callData, refinedGas, signature.value);
+	const finalUserOp = packOp(safeAddress, nonce, initCode, finalCallData, gas, signature.value);
 
 	onStatus('submitting');
 	const userOpHash = await sendUserOperation(formatUserOpForRpc(finalUserOp), chainId);
 	return waitReceipt(userOpHash, chainId, onStatus, params.confirmTimeoutMs);
+}
+
+/** 报销定价用的网络 gas 价（原始链价，非含 bundler markup 的 tier 价）；0 时回退。 */
+async function inBandGasPrice(chainId: number): Promise<bigint> {
+	const raw = await getChainGasPriceAtto(chainId);
+	if (raw > 0n) return raw;
+	return (await getGasPrices(chainId)).maxFeePerGas;
+}
+
+/** in-band 报销报价（供 confirm UI 显示 + 回传 sendInBand 逐字节签署）。 */
+export interface InBandFeeQuote {
+	/** 报销金额（fee 资产自身单位）。 */
+	amount: bigint;
+	/** relay 结算收款地址（报销腿的目标）。 */
+	recipient: Address;
+	asset: 'native' | 'erc20';
+	feeToken: Address | null;
+	decimals: number;
+	symbol: string;
+}
+
+/**
+ * 估算某笔 in-band 发送的 gas 报销费用——**不签名**。confirm UI 用它展示费用并把结果作为
+ * `quotedFee` 回传给 sendToken/sendContractCall（显示即签署）。Tempo 有独立定价，此处返回 null。
+ * `gasFeeToken` null = 原生币；否则为 Safe 持有的白名单稳定币地址。relay 无法报价时返回 null。
+ */
+export async function estimateInBandFee(input: {
+	safeAddress: Address;
+	publicKeyHex: string;
+	network: string;
+	calls: Call[];
+	gasFeeToken?: Address | null;
+}): Promise<InBandFeeQuote | null> {
+	const chain = chainInfoBySlug(input.network);
+	if (!chain || isTempoChain(chain.chainId)) return null;
+	const chainId = chain.chainId;
+	const gasFeeToken = input.gasFeeToken ?? null;
+
+	const quotes = await getInBandGasQuotes(input.safeAddress, chainId);
+	const quote = quotes ? findInBandGasQuote(quotes, gasFeeToken) : null;
+	const nativeQuote = quotes ? findInBandGasQuote(quotes, null) : null;
+	if (!quote || !nativeQuote) return null;
+
+	const deployed = await isDeployed(input.safeAddress, chainId);
+	const nonce = deployed ? await getNonce(input.safeAddress, chainId) : 0n;
+	const initCode: Hex = !deployed ? buildInitCode(input.publicKeyHex) : '0x';
+
+	const gas: GasParams = {
+		verificationGasLimit: deployed ? 300000n : NATIVE_VERIFICATION_GAS_UNDEPLOYED,
+		callGasLimit: 3000000n,
+		preVerificationGas: 60000n,
+		maxFeePerGas: 0n,
+		maxPriorityFeePerGas: 0n
+	};
+	const placeholder = inBandBatchCallData([
+		...input.calls,
+		buildInBandFeeLeg(gasFeeToken, input.safeAddress, 1n)
+	]);
+	const dummyOp = packOp(input.safeAddress, nonce, initCode, placeholder, gas, buildDummySignature());
+	try {
+		const est = await estimateUserOperationGas(formatUserOpForRpc(dummyOp), chainId);
+		gas.verificationGasLimit = deployed
+			? bigintMax((BigInt(est.verificationGasLimit) * 15n) / 10n, 300000n)
+			: NATIVE_VERIFICATION_GAS_UNDEPLOYED;
+		gas.callGasLimit = bigintMax((BigInt(est.callGasLimit) * 15n) / 10n, 200000n);
+		gas.preVerificationGas = BigInt(est.preVerificationGas) + 5000n;
+	} catch {
+		gas.callGasLimit = 200000n;
+	}
+
+	const gasPriceWei = await inBandGasPrice(chainId);
+	const totalGas = gas.verificationGasLimit + gas.callGasLimit + gas.preVerificationGas;
+	const amount = calculateInBandFeeAmount(totalGas, gasPriceWei, quote, nativeQuote);
+	if (amount === null) return null;
+	return {
+		amount,
+		recipient: quote.recipient,
+		asset: quote.asset,
+		feeToken: quote.feeToken,
+		decimals: quote.decimals,
+		symbol: quote.symbol
+	};
 }
 
 /** Tempo（稳定币付 gas）路径：maxFee=0 + 把报销 transfer 追加进 MultiSend。 */
@@ -199,9 +343,12 @@ async function sendTempo(ctx: SendCtx, params: ContractCallParams): Promise<Send
 	const feeToken = TEMPO_DEFAULT_FEE_TOKEN as Address;
 
 	onStatus('building');
-	// 1) 先取 bundler 的 per-Safe 报销收款 EOA（追加 transfer 的目标地址）。
-	const info = await fetchBundlerAccountInfo(chainId, safeAddress);
-	const feeCollector = info?.depositAddress;
+	// 1) 取 relay 的结算收款地址（pathUSD 报价里的 recipient）——追加 transfer 的目标。
+	//    旧的 per-Safe depositAddress 模型已被 relay 移除，统一走 in-band 结算地址。
+	const quotes = await getInBandGasQuotes(safeAddress, chainId);
+	const feeCollector =
+		findInBandGasQuote(quotes ?? [], feeToken)?.recipient ??
+		findInBandGasQuote(quotes ?? [], null)?.recipient;
 	if (!feeCollector || !/^0x[0-9a-fA-F]{40}$/.test(feeCollector)) {
 		onStatus('failed');
 		return { success: false, error: 'The Tempo gas relayer is unavailable right now. Please try again.' };
@@ -263,22 +410,20 @@ function bigintMax(a: bigint, b: bigint): bigint {
 	return a > b ? a : b;
 }
 
-/** 把用户子调用 + 报销 transfer 编码成 Safe delegatecall 进 MultiSend 的 executeUserOp callData。 */
+/** 把一组普通 CALL 编码成 Safe delegatecall 进 MultiSend 的 executeUserOp callData（op=1）。 */
+function inBandBatchCallData(calls: Call[]): Hex {
+	const queued = calls.map((c, i) => ({ id: String(i), label: '', signature: '', to: c.to, value: c.value, data: c.data }));
+	return buildCallData(MULTISEND_ADDRESS, 0n, encodeMultiSendCall(queued), 1);
+}
+
+/** 用户子调用 + Tempo pathUSD 报销 transfer 的 MultiSend callData（报销腿即通用 in-band fee leg）。 */
 function tempoBatchCallData(
 	userCalls: Call[],
 	feeToken: Address,
 	feeCollector: Address,
 	reimbursement: bigint
 ): Hex {
-	const transferData = encodeFunctionData({
-		abi: erc20Abi,
-		functionName: 'transfer',
-		args: [feeCollector, reimbursement]
-	});
-	const all: Call[] = [...userCalls, { to: feeToken, value: 0n, data: transferData }];
-	const queued = all.map((c, i) => ({ id: String(i), label: '', signature: '', to: c.to, value: c.value, data: c.data }));
-	const multiSendData = encodeMultiSendCall(queued);
-	return buildCallData(MULTISEND_ADDRESS, 0n, multiSendData, 1); // operation=1 delegatecall
+	return inBandBatchCallData([...userCalls, buildInBandFeeLeg(feeToken, feeCollector, reimbursement)]);
 }
 
 function packOp(

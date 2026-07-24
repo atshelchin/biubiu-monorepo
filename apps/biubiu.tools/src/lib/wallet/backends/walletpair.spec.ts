@@ -3,29 +3,27 @@ import { getAddress } from 'viem';
 import { NotSmartAccountError } from '../gate.js';
 
 /**
- * walletpair connection lifecycle (High-risk per agent-rules: pairing flow /
- * session state machine). The walletpair-sdk is mocked so we drive phase events
- * directly and assert: connected→gate→wallet, EOA→reject+close, closed→reject,
- * duplicate phase events are processed once, and cancel() closes the session.
- * The gate itself runs for real against the (mocked) provider's eth_getCode.
+ * walletpair connection lifecycle (High-risk per agent-rules: pairing flow / session state
+ * machine). The self-implemented WalletPair protocol session + the biubiu provider are mocked so
+ * we drive phase events directly and assert: connected→gate→wallet, EOA→reject+close, closed→
+ * reject, duplicate phase events processed once, cancel() closes the session. The gate itself runs
+ * for real against the (mocked) provider's eth_getCode.
  */
 const h = vi.hoisted(() => ({
 	sessions: [] as Array<{
-		sessionFingerprint: string;
+		pairingUri: string;
+		pairingCode: string;
 		closed: string[];
 		emitPhase: (p: string) => void;
-		createPairing: () => Promise<string>;
 	}>,
 	providerScript: {} as Record<string, () => unknown>,
 	requestLog: [] as string[]
 }));
 
-vi.mock('walletpair-sdk', () => {
-	class WebSocketTransport {
-		constructor(public url: string) {}
-	}
-	class DAppSession {
-		sessionFingerprint = '4242';
+vi.mock('../walletpair-protocol/index.js', () => {
+	class WalletPairSession {
+		pairingUri = 'walletpair:?ch=deadbeef';
+		pairingCode = '4242';
 		closed: string[] = [];
 		private phaseHandler?: (p: string) => void;
 		constructor(public opts: unknown) {
@@ -38,18 +36,18 @@ vi.mock('walletpair-sdk', () => {
 			this.phaseHandler?.(p);
 		}
 		async createPairing() {
-			return 'walletpair:?ch=deadbeef';
+			/* uri/code are set synchronously in the real session too */
 		}
-		close(reason?: string) {
-			this.closed.push(reason ?? 'normal');
+		close() {
+			this.closed.push('normal');
 		}
 	}
-	return { DAppSession, WebSocketTransport };
+	return { WalletPairSession };
 });
 
-vi.mock('walletpair-sdk/evm', () => {
+vi.mock('./walletpair-provider.js', () => {
 	class WalletPairProvider {
-		constructor(public opts: unknown) {}
+		constructor(public session: unknown) {}
 		async request({ method }: { method: string }) {
 			h.requestLog.push(method);
 			const fn = h.providerScript[method];
@@ -74,7 +72,7 @@ beforeEach(() => {
 });
 
 describe('startWalletPair', () => {
-	it('returns the pairing URI + fingerprint immediately (before connection)', async () => {
+	it('returns the pairing URI + fingerprint (from pairingCode)', async () => {
 		const pairing = await startWalletPair('wss://test/v1');
 		expect(pairing.uri).toBe('walletpair:?ch=deadbeef');
 		expect(pairing.fingerprint).toBe('4242');

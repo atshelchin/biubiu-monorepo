@@ -5,9 +5,9 @@ import { __resetChainIdCacheForTest } from './rpc-client.js';
 import { chainInfo } from './chains.js';
 
 /**
- * Tests for the shared X-Rpc-Url header assembly (extracted from bundler-client +
- * bundler-account x2). bundlerHeaders merges caller base headers with an X-Rpc-Url
- * of the chain's keyless public RPC, and omits the header when none resolves.
+ * Tests for the shared X-Rpc-Url header assembly used by bundler-client.
+ * bundlerHeaders merges caller base headers with an X-Rpc-Url of the chain's
+ * keyless public RPC, and omits the header when none resolves.
  */
 
 const BASE = 8453;

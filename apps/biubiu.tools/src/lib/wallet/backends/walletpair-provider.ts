@@ -83,6 +83,8 @@ export class WalletPairProvider implements Eip1193Provider {
 	constructor(private readonly session: WalletPairSession, initialChainId = 1) {
 		this.chainId = initialChainId;
 		session.on('ethereumEvent', (event: EthereumEvent) => this.onWalletEvent(event));
+		// The pinned Wallet leaving the channel is an EIP-1193 disconnect.
+		session.on('walletLeft', () => this.emit('disconnect', { code: 4900, message: 'Wallet disconnected' }));
 	}
 
 	private caip2(chainId = this.chainId): string {

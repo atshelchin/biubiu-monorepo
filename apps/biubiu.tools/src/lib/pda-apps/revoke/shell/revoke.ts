@@ -9,9 +9,9 @@
  * 进度不得点亮当前的进度条，而做出这个判断的是核心，不是这里。
  */
 import type { Address } from 'viem';
-import type { RevokeOperation } from '$lib/generated/RevokeOperation';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
-import type { SendPhase } from '$lib/generated/SendPhase';
+import type { RevokeOperation } from '$lib/generated/revoke/RevokeOperation';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
+import type { SendPhase } from '$lib/generated/revoke/SendPhase';
 import type { ApprovalRow } from '../types.js';
 import { runRevoke } from '../core/revoke.js';
 

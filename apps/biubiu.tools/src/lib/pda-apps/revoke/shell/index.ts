@@ -7,9 +7,9 @@
  *
  * 这里没有、也不得出现任何业务判断：什么时候能扫、结果算不算数、失败要不要回滚，全在核心。
  */
-import type { RevokeEvent } from '$lib/generated/RevokeEvent';
-import type { RevokeOperation } from '$lib/generated/RevokeOperation';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
+import type { RevokeEvent } from '$lib/generated/revoke/RevokeEvent';
+import type { RevokeOperation } from '$lib/generated/revoke/RevokeOperation';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
 import { executeScan } from './scan.js';
 import { executeRevoke } from './revoke.js';
 import { executeLoadCustomData, executePersistCustomData } from './custom-data.js';

@@ -13,7 +13,8 @@
 	import { authStore } from '$lib/auth/auth-store.svelte.js';
 	import { walletStore } from '$lib/wallet';
 	import { tokenSender as s } from '$lib/pda-apps/token-sender/store.svelte.js';
-	import type { TokenMetaError } from '$lib/pda-apps/token-sender/store.svelte.js';
+	import type { TokenMetaError } from '$lib/generated/sender/TokenMetaError';
+	import type { WizardStep } from '$lib/generated/sender/WizardStep';
 	import NetworkGrid from '$lib/widgets/NetworkGrid.svelte';
 	import MemberFeeWaiver from '$lib/subscription/MemberFeeWaiver.svelte';
 	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
@@ -23,12 +24,38 @@
 	import RecipientsEditor from './RecipientsEditor.svelte';
 
 	// 代表性子调用：给 in-band 选币器估算每批 gas 报销（实际每批发送时各自现算）。
+	// 核心返回的视图 —— 这个页面读的**全部**业务状态。
+	const v = $derived(s.view);
+	// 步骤在核心里是具名的；Stepper 要的是 0 基下标。
+	const STEPS: WizardStep[] = ['config', 'recipients', 'review', 'execute'];
+	const stepIndex = $derived(v ? STEPS.indexOf(v.step) : 0);
+	// NetworkGrid 要 camelCase 形状。
+	const gridNetworks = $derived(
+		(v?.networks ?? []).map((n) => ({
+			slug: n.slug,
+			name: n.name,
+			symbol: n.symbol,
+			chainId: n.chain_id,
+			isTestnet: n.is_testnet,
+			isCustom: n.is_custom,
+		})),
+	);
+	// 批次结果：核心已经算好每批的状态，这里只做展示分组。
+	const succeeded = $derived(
+		(v?.batches ?? [])
+			.map((b, index) => ({ b, index }))
+			.filter(({ b }) => b.state === 'succeeded'),
+	);
+	const failed = $derived(
+		(v?.batches ?? []).map((b, index) => ({ b, index })).filter(({ b }) => b.state === 'failed'),
+	);
+
 	const feeEstimateCalls = $derived.by<Call[]>(() => {
 		const u = authStore.user;
 		if (!u) return [];
 		const self = u.safeAddress as Address;
-		if (s.tokenType === 'native') return [{ to: self, value: 1n, data: '0x' as Hex }];
-		const token = s.tokenAddress.trim();
+		if (v?.token_type === 'native') return [{ to: self, value: 1n, data: '0x' as Hex }];
+		const token = (v?.token_address ?? '').trim();
 		if (!/^0x[0-9a-fA-F]{40}$/.test(token)) return [];
 		return [
 			{
@@ -51,12 +78,14 @@
 	let anRpc = $state('');
 	let anSymbol = $state('');
 	let anExplorer = $state('');
-	let anChecking = $state(false);
-	let anMsOk = $state<boolean | null>(null);
+	// MultiSend 部署校验的进行中/结果都从视图读 —— 核心持有它们。
 	let anError = $state<string | null>(null);
 
 	// RPC edit
 	let rpcEditText = $state('');
+
+	// 收件人文本是编辑器缓冲区，页面自己持有 —— 它不进核心的 Model，也不进 ViewModel。
+	let recipientsText = $state('');
 
 	const seoProps = $derived(
 		getBaseSEO({
@@ -66,19 +95,37 @@
 		})
 	);
 
+	// in-band gas 结算资产。子组件是 $bindable，这里留本地镜像，变化即送进核心；
+	// 切链时核心会清空它，本地跟着链的 slug 归零。
+	let feeToken = $state<Address | null>(null);
+	$effect(() => {
+		void v?.network?.slug;
+		feeToken = null;
+	});
+	$effect(() => {
+		s.setGasFeeToken(feeToken);
+	});
+
+	// 钱包变化时如实告知核心。
+	$effect(() => {
+		void walletStore.activeWallet?.address;
+		s.syncWallet();
+	});
+
 	onMount(() => {
-		s.loadHistory();
-		s.hydrateCustom();
+		// 自定义网络与历史的回灌由核心在 page_ready 时统一发起。
+		void s.start();
 		s.loadMembership();
+		return () => s.dispose();
 	});
 
 	function next2() {
-		s.parse();
-		s.goTo(2);
+		s.parse(recipientsText);
+		s.goTo('recipients');
 	}
-	async function next3() {
-		s.goTo(3);
-		await s.prepareReview();
+	function next3() {
+		s.goTo('review');
+		s.prepareReview();
 	}
 
 	function resetAddForm() {
@@ -87,29 +134,26 @@
 		anRpc = '';
 		anSymbol = '';
 		anExplorer = '';
-		anMsOk = null;
 		anError = null;
-		anChecking = false;
+		// 校验结果与进行中状态都在核心里 —— 这里不持有，也就无从重置。
+		// 下一次 verify_multi_send 会由核心自己清空上一次的结果。
 	}
-	async function checkAddNetwork() {
+	function checkAddNetwork() {
 		anError = null;
-		anMsOk = null;
 		if (!anName.trim() || !Number(anChainId) || !anRpc.trim()) {
 			anError = t('ts.addNetwork.errorRequired');
 			return;
 		}
-		anChecking = true;
-		anMsOk = await s.verifyMultiSend(anRpc);
-		anChecking = false;
+		s.verifyMultiSend(anRpc);
 	}
-	async function submitAddNetwork() {
+	function submitAddNetwork() {
 		anError = null;
 		const id = Number(anChainId);
 		if (!anName.trim() || !id || !anRpc.trim()) {
 			anError = t('ts.addNetwork.errorRequired');
 			return;
 		}
-		await s.addCustomNetwork({
+		s.addCustomNetwork({
 			name: anName,
 			chainId: id,
 			rpc: anRpc,
@@ -121,19 +165,19 @@
 	}
 
 	function openRpcEdit() {
-		rpcEditText = s.network.rpcs.join('\n');
+		rpcEditText = (v?.network?.rpcs ?? []).join('\n');
 		showRpcEdit = true;
 	}
-	async function saveRpcEdit() {
-		await s.setRpcOverride(s.network.slug, rpcEditText.split('\n'));
+	function saveRpcEdit() {
+		if (v?.network) s.setRpcOverride(v.network.slug, rpcEditText.split('\n'));
 		showRpcEdit = false;
 	}
-	async function restoreRpc() {
-		await s.clearRpcOverride(s.network.slug);
+	function restoreRpc() {
+		if (v?.network) s.clearRpcOverride(v.network.slug);
 		showRpcEdit = false;
 	}
-	async function removeCurrentNetwork() {
-		await s.removeCustomNetwork(s.network.slug);
+	function removeCurrentNetwork() {
+		if (v?.network) s.removeCustomNetwork(v.network.slug);
 		showRpcEdit = false;
 	}
 
@@ -226,20 +270,20 @@
 					t('ts.stepper.review'),
 					t('ts.stepper.send')
 				]}
-				current={s.step - 1}
-				onNavigate={(i: number) => s.goTo((i + 1) as 1 | 2 | 3 | 4)}
+				current={stepIndex}
+				onNavigate={(i: number) => s.goTo(STEPS[i])}
 			/>
 		</div>
 
 		<!-- ── Step 1: Network + Token ── -->
-		{#if s.step === 1}
+		{#if v?.step === 'config'}
 			<section class="card panel" use:fadeInUp={{ delay: 0 }}>
 				<h3>{t('ts.step1.heading')}</h3>
 
 				<div class="field-label">{t('ts.step1.network')}</div>
 				<NetworkGrid
-					networks={s.networks}
-					selectedSlug={s.networkSlug}
+					networks={gridNetworks}
+					selectedSlug={v?.network?.slug ?? null}
 					onSelect={(slug) => s.setNetwork(slug)}
 					onAddCustom={() => (showAddNetwork = true)}
 					addLabel={t('ts.step1.addNetwork')}
@@ -251,14 +295,14 @@
 				<!-- RPC line for the selected network -->
 				<div class="net-meta">
 					<span class="rpc-info">
-						{t('ts.step1.rpcLabel')} <code>{s.network.rpcs[0]}</code>
-						{#if s.rpcOverrides[s.network.slug]}<span class="tag">{t('ts.step1.rpcCustomTag')}</span
+						{t('ts.step1.rpcLabel')} <code>{v?.network?.rpcs[0]}</code>
+						{#if v?.rpc_overrides.some((o) => o.slug === v?.network?.slug)}<span class="tag">{t('ts.step1.rpcCustomTag')}</span
 							>{/if}
 					</span>
 					<button class="link-btn" onclick={openRpcEdit}>{t('ts.step1.editRpc')}</button>
 				</div>
 
-				{#if !s.sendSupported}
+				{#if v && !v.send_supported}
 					<p class="note">
 						<span class="note-ic" aria-hidden="true"><TriangleAlert size={15} /></span>
 						<span>
@@ -275,41 +319,42 @@
 				<div class="field-label">{t('ts.step1.token')}</div>
 				<div class="toggle">
 					<button
-						class:selected={s.tokenType === 'native'}
+						class:selected={v?.token_type === 'native'}
 						onclick={() => s.setTokenType('native')}
 					>
-						{t('ts.step1.native', { symbol: s.network.symbol })}
+						{t('ts.step1.native', { symbol: v?.network?.symbol ?? '' })}
 					</button>
-					<button class:selected={s.tokenType === 'erc20'} onclick={() => s.setTokenType('erc20')}>
+					<button class:selected={v?.token_type === 'erc20'} onclick={() => s.setTokenType('erc20')}>
 						{t('ts.step1.erc20')}
 					</button>
 				</div>
 
-				{#if s.tokenType === 'erc20'}
+				{#if v?.token_type === 'erc20'}
 					<div class="erc20-row">
 						<input
 							class="input"
 							placeholder={t('ts.step1.tokenAddressPlaceholder')}
-							bind:value={s.tokenAddress}
+							value={v?.token_address ?? ''}
+							oninput={(e) => s.setTokenAddress(e.currentTarget.value)}
 						/>
-						<button class="btn" onclick={() => s.loadTokenMeta()} disabled={s.tokenMetaLoading}>
-							{s.tokenMetaLoading ? t('ts.step1.loadingToken') : t('ts.step1.loadToken')}
+						<button class="btn" onclick={() => s.loadTokenMeta()} disabled={v?.token_meta_loading}>
+							{v?.token_meta_loading ? t('ts.step1.loadingToken') : t('ts.step1.loadToken')}
 						</button>
 					</div>
-					{#if s.tokenMetaError}
-						<p class="err">{tokenMetaErrorLabel[s.tokenMetaError]}</p>
-					{:else if s.tokenMeta}
+					{#if v?.token_meta_error}
+						<p class="err">{tokenMetaErrorLabel[v.token_meta_error]}</p>
+					{:else if v?.token_meta}
 						<p class="ok">
 							{t('ts.step1.tokenMetaOk', {
-								symbol: s.tokenMeta.symbol,
-								decimals: s.tokenMeta.decimals
+								symbol: v.token_meta.symbol,
+								decimals: v.token_meta.decimals
 							})}
 						</p>
 					{/if}
 				{/if}
 
 				<div class="panel-actions">
-					<button class="btn primary" disabled={!s.canProceedFromConfig} onclick={next2}>
+					<button class="btn primary" disabled={!v?.can_proceed_from_config} onclick={next2}>
 						{t('ts.step1.continue')}
 					</button>
 				</div>
@@ -317,85 +362,88 @@
 		{/if}
 
 		<!-- ── Step 2: Recipients ── -->
-		{#if s.step === 2}
+		{#if v?.step === 'recipients'}
 			<section class="card panel" use:fadeInUp={{ delay: 0 }}>
 				<h3>{t('ts.step2.heading')}</h3>
 
 				<div class="toggle">
 					<button
-						class:selected={s.distributionMode === 'specified'}
+						class:selected={v?.distribution_mode === 'specified'}
 						onclick={() => {
-							s.distributionMode = 'specified';
-							s.parse();
+							s.setDistributionMode('specified');
+							s.parse(recipientsText);
 						}}
 					>
 						{t('ts.step2.amountPerLine')}
 					</button>
 					<button
-						class:selected={s.distributionMode === 'equal'}
+						class:selected={v?.distribution_mode === 'equal'}
 						onclick={() => {
-							s.distributionMode = 'equal';
-							s.parse();
+							s.setDistributionMode('equal');
+							s.parse(recipientsText);
 						}}
 					>
 						{t('ts.step2.splitEqually')}
 					</button>
 				</div>
 
-				{#if s.distributionMode === 'equal'}
+				{#if v?.distribution_mode === 'equal'}
 					<label class="field-label" for="ts-total"
-						>{t('ts.step2.totalToSplit', { symbol: s.symbol })}</label
+						>{t('ts.step2.totalToSplit', { symbol: v?.symbol ?? '' })}</label
 					>
 					<input
 						id="ts-total"
 						class="input"
 						placeholder={t('ts.step2.totalPlaceholder')}
-						bind:value={s.totalAmountInput}
-						oninput={() => s.parse()}
+						value={v?.total_amount_input ?? ''}
+						oninput={(e) => {
+							s.setTotalAmountInput(e.currentTarget.value);
+							s.parse(recipientsText);
+						}}
 					/>
 				{/if}
 
 				<div class="field-label">
 					{t('ts.step2.recipientsLabel')}
-					{s.distributionMode === 'specified'
+					{v?.distribution_mode === 'specified'
 						? t('ts.step2.recipientsHintSpecified')
 						: t('ts.step2.recipientsHintEqual')}
 				</div>
 				<RecipientsEditor
-					mode={s.distributionMode}
-					symbol={s.symbol}
-					initial={s.recipientsText}
+					mode={v?.distribution_mode ?? 'specified'}
+					symbol={v?.symbol ?? ''}
+					initial={recipientsText}
 					onChange={(text) => {
-						s.recipientsText = text;
-						s.parse();
+						recipientsText = text;
+						s.parse(text);
 					}}
 				/>
 
-				{#if s.parsed && s.parsed.validCount > 0}
+				{#if v?.has_parsed && v.valid_count > 0}
 					<div class="parse-stats">
 						<span class="stat ok-stat"
-							>{t('ts.step2.recipientsCount', { count: s.parsed.validCount })}</span
+							>{t('ts.step2.recipientsCount', { count: v.valid_count })}</span
 						>
 						<span class="stat"
 							>{t('ts.step2.total', {
-								amount: s.fmt(s.parsed.totalAmount),
-								symbol: s.symbol
+								amount: s.fmt(v.total_amount),
+								symbol: v.symbol
 							})}</span
 						>
-						<span class="stat">{t('ts.step2.batches', { count: s.totalBatches })}</span>
+						<span class="stat">{t('ts.step2.batches', { count: v.total_batches })}</span>
 					</div>
 				{/if}
 
-				{#if (s.parsed?.validCount ?? 0) > 1000}
+				{#if (v?.valid_count ?? 0) > 1000}
 					<p class="note">
 						<span class="note-ic" aria-hidden="true"><TriangleAlert size={15} /></span>
-						<span>{t('ts.step2.largeWarning', { batches: s.totalBatches })}</span>
+						<span>{t('ts.step2.largeWarning', { batches: v?.total_batches ?? 0 })}</span>
 					</p>
 				{/if}
 
 				<div class="panel-actions">
-					<button class="btn ghost" onclick={() => s.goTo(1)}>{t('ts.step2.back')}</button>
-					<button class="btn primary" disabled={!s.canProceedFromRecipients} onclick={next3}>
+					<button class="btn ghost" onclick={() => s.goTo('config')}>{t('ts.step2.back')}</button>
+					<button class="btn primary" disabled={!v?.can_proceed_from_recipients} onclick={next3}>
 						{t('ts.step2.continue')}
 					</button>
 				</div>
@@ -403,51 +451,51 @@
 		{/if}
 
 		<!-- ── Step 3: Review + Fee ── -->
-		{#if s.step === 3}
+		{#if v?.step === 'review'}
 			<section class="card panel" use:fadeInUp={{ delay: 0 }}>
 				<h3>{t('ts.step3.heading')}</h3>
 
 				<div class="review-grid">
-					<div><span>{t('ts.step3.network')}</span><strong>{s.network.name}</strong></div>
-					<div><span>{t('ts.step3.token')}</span><strong>{s.symbol}</strong></div>
+					<div><span>{t('ts.step3.network')}</span><strong>{v?.network?.name}</strong></div>
+					<div><span>{t('ts.step3.token')}</span><strong>{v?.symbol}</strong></div>
 					<div>
-						<span>{t('ts.step3.recipients')}</span><strong>{s.parsed?.validCount ?? 0}</strong>
+						<span>{t('ts.step3.recipients')}</span><strong>{v?.valid_count ?? 0}</strong>
 					</div>
 					<div>
 						<span>{t('ts.step3.totalToSend')}</span><strong
-							>{s.fmt(s.parsed?.totalAmount ?? 0n)} {s.symbol}</strong
+							>{s.fmt(v?.total_amount ?? '0')} {v?.symbol}</strong
 						>
 					</div>
-					<div><span>{t('ts.step3.batches')}</span><strong>{s.totalBatches}</strong></div>
-					<div><span>{t('ts.step3.confirms')}</span><strong>{s.totalBatches}</strong></div>
+					<div><span>{t('ts.step3.batches')}</span><strong>{v?.total_batches}</strong></div>
+					<div><span>{t('ts.step3.confirms')}</span><strong>{v?.total_batches}</strong></div>
 				</div>
 
 				<div class="fee-card">
-					{#if s.feeLoading}
+					{#if v?.fee_loading}
 						<p>{t('ts.step3.calculatingFee')}</p>
-					{:else if s.fee}
+					{:else if v?.fee}
 						<div class="fee-head">
 							<span>{t('ts.step3.fee')}</span>
 							<strong>
-								{s.fee.amount === 0n
+								{v.fee.amount === '0'
 									? t('ts.step3.free')
-									: `${s.fmt(s.feeTotal, s.network.decimals)} ${s.network.symbol}`}
+									: `${s.fmt(v.fee_total, v.network?.decimals ?? 18)} ${v.network?.symbol}`}
 							</strong>
 						</div>
 						<p class="fee-note">
-							{feeSourceLabel[s.fee.source]}
-							{#if s.fee.source === 'usd' && s.fee.nativeUsdPrice}
-								· {s.network.symbol} ≈ ${s.fee.nativeUsdPrice < 1
-									? s.fee.nativeUsdPrice.toFixed(4)
-									: s.fee.nativeUsdPrice.toFixed(2)}
+							{feeSourceLabel[v.fee.source]}
+							{#if v.fee.source === 'usd' && v.fee.native_usd_price}
+								· {v.network?.symbol} ≈ ${v.fee.native_usd_price < 1
+									? v.fee.native_usd_price.toFixed(4)
+									: v.fee.native_usd_price.toFixed(2)}
 							{/if}
 						</p>
-						{#if s.fee.amount > 0n}
+						{#if v.fee.amount !== '0'}
 							<p class="fee-note muted">
 								{t('ts.step3.feePerTx', {
-									fee: s.fmt(s.fee.amount, s.network.decimals),
-									symbol: s.network.symbol,
-									count: s.totalBatches
+									fee: s.fmt(v.fee.amount, v.network?.decimals ?? 18),
+									symbol: v.network?.symbol ?? '',
+									count: v.total_batches
 								})}
 							</p>
 						{/if}
@@ -456,29 +504,29 @@
 
 				<InBandFeeRow
 					walletKind={walletStore.kind ?? ''}
-					chainId={s.network.chainId}
+					chainId={v?.network?.chain_id ?? 0}
 					calls={feeEstimateCalls}
-					active={s.step === 3 && s.sendSupported}
-					bind:gasFeeToken={s.gasFeeToken}
+					active={v?.step === 'review' && v.send_supported}
+					bind:gasFeeToken={feeToken}
 				/>
 
 				<MemberFeeWaiver proving={s.waiveProving} onProve={() => s.waiveFeeWithPasskey()} />
 
-				{#if s.preLoading}
+				{#if v?.preflight_loading}
 					<p class="muted">{t('ts.step3.checkingBalance')}</p>
-				{:else if s.pre}
-					{#if s.pre.ok}
+				{:else if v?.preflight}
+					{#if v.preflight.ok}
 						<div class="preflight">
 							{t('ts.step3.balanceSufficient')}
-							<span class="muted">{t('ts.step3.plusGas', { symbol: s.network.symbol })}</span>
+							<span class="muted">{t('ts.step3.plusGas', { symbol: v.network?.symbol ?? '' })}</span>
 						</div>
 					{:else}
-						{@const isToken = s.pre.reason === 'insufficient-token'}
-						{@const sym = isToken ? s.symbol : s.network.symbol}
-						{@const dec = isToken ? s.decimals : s.network.decimals}
-						{@const have = isToken ? (s.pre.tokenBalance ?? 0n) : s.pre.nativeBalance}
-						{@const need = isToken ? (s.pre.tokenNeeded ?? 0n) : s.pre.nativeNeeded}
-						{@const short = need > have ? need - have : 0n}
+						{@const isToken = v.preflight.reason === 'insufficient-token'}
+						{@const sym = isToken ? v.symbol : (v.network?.symbol ?? '')}
+						{@const dec = isToken ? v.decimals : (v.network?.decimals ?? 18)}
+						{@const have = isToken ? (v.preflight.token_balance ?? '0') : v.preflight.native_balance}
+						{@const need = isToken ? (v.preflight.token_needed ?? '0') : v.preflight.native_needed}
+						{@const short = (BigInt(need) > BigInt(have) ? BigInt(need) - BigInt(have) : 0n).toString()}
 						<div class="shortfall">
 							<div class="shortfall-rows">
 								<div><span>{t('ts.step3.youHave')}</span><b>{s.fmt(have, dec)} {sym}</b></div>
@@ -501,15 +549,15 @@
 							<button
 								class="btn ghost full"
 								onclick={() => s.prepareReview()}
-								disabled={s.preLoading}
+								disabled={v?.preflight_loading}
 							>
-								{s.preLoading ? t('ts.step3.checking') : t('ts.step3.recheckBalance')}
+								{v?.preflight_loading ? t('ts.step3.checking') : t('ts.step3.recheckBalance')}
 							</button>
 						</div>
 					{/if}
 				{/if}
 
-				{#if !s.sendSupported}
+				{#if v && !v.send_supported}
 					<p class="note">
 						<span class="note-ic" aria-hidden="true"><TriangleAlert size={15} /></span>
 						<span>
@@ -521,13 +569,13 @@
 					</p>
 				{/if}
 
-				{#if s.reviewError}
+				{#if v?.review_error}
 					<div class="status err" role="alert">
 						<TriangleAlert size={16} />
-						<span>{t('ts.errors.reviewFailed', { error: s.reviewError })}</span>
+						<span>{t('ts.errors.reviewFailed', { error: v.review_error })}</span>
 						<button
 							class="status-x"
-							onclick={() => (s.reviewError = null)}
+							onclick={() => s.prepareReview()}
 							aria-label={t('ts.alert.dismiss')}
 						>
 							<X size={14} />
@@ -535,15 +583,15 @@
 					</div>
 				{/if}
 
-				{#if s.totalBatches > 0 && s.sendSupported}
+				{#if (v?.total_batches ?? 0) > 0 && v?.send_supported}
 					<div class="info-note">
 						<span class="info-ic" aria-hidden="true"><Info size={15} /></span>
-						<p>{t('ts.step3.approvalsNote', { count: s.totalBatches })}</p>
+						<p>{t('ts.step3.approvalsNote', { count: v?.total_batches ?? 0 })}</p>
 					</div>
 				{/if}
 
 				<div class="panel-actions">
-					<button class="btn ghost" onclick={() => s.goTo(2)}>{t('ts.step3.back')}</button>
+					<button class="btn ghost" onclick={() => s.goTo('recipients')}>{t('ts.step3.back')}</button>
 					{#if walletStore.kind === 'biubiu'}
 						<button class="btn ghost" onclick={() => (showDeposit = true)}
 							>{t('ts.step3.depositFunds')}</button
@@ -551,7 +599,7 @@
 					{/if}
 					<button
 						class="btn primary"
-						disabled={s.feeLoading || s.preLoading || !s.sendSupported || !(s.pre?.ok ?? false)}
+						disabled={!v?.can_start_send || v.fee_loading || v.preflight_loading || !(v.preflight?.ok ?? false)}
 						onclick={() => s.send()}
 					>
 						{t('ts.step3.sendNow')}
@@ -561,49 +609,48 @@
 		{/if}
 
 		<!-- ── Step 4: Send / progress ── -->
-		{#if s.step === 4}
+		{#if v?.step === 'execute'}
 			<section class="card panel" use:fadeInUp={{ delay: 0 }}>
 				<h3>{t('ts.step4.heading')}</h3>
 
-				{#if s.execStatus === 'running'}
+				{#if v.send_status === 'running'}
 					<div class="progress-head">
 						<span>
 							{t('ts.step4.batchProgress', {
-								current: Math.min(s.progress.batchIndex + 1, s.progress.totalBatches),
-								total: s.progress.totalBatches
+								current: Math.min((v.current_batch_index ?? v.succeeded_batches) + 1, v.total_batches),
+								total: v.total_batches
 							})}
 						</span>
-						<span class="phase">{phaseLabel[s.progress.phase] ?? s.progress.phase}</span>
+						<span class="phase">{v.current_phase ? (phaseLabel[v.current_phase] ?? v.current_phase) : ''}</span>
 					</div>
 					<div class="bar">
 						<div
 							class="bar-fill"
-							style="width:{s.progress.totalBatches
-								? (s.results.length / s.progress.totalBatches) * 100
-								: 0}%"
+							style="width:{v.total_batches ? (v.succeeded_batches / v.total_batches) * 100 : 0}%"
 						></div>
 					</div>
 					<p class="muted">{t('ts.step4.approveHint')}</p>
 					<div class="panel-actions">
-						<button class="btn ghost" onclick={() => s.abort()}>{t('ts.step4.pause')}</button>
+						<!-- 暂停 = 不再开新批。**在途那批不会被撤回** —— 交易可能已上链。 -->
+						<button class="btn ghost" onclick={() => s.pause()}>{t('ts.step4.pause')}</button>
 					</div>
 				{:else}
-					<div class="result-summary" class:partial={s.failures.length > 0}>
-						{#if s.execStatus === 'aborted'}
-							{t('ts.step4.aborted', { sent: s.results.length, failed: s.failures.length })}
-						{:else if s.failures.length === 0}
-							{t('ts.step4.doneSuccess', { sent: s.results.length })}
+					<div class="result-summary" class:partial={v.failed_batches > 0}>
+						{#if v.send_status === 'paused'}
+							{t('ts.step4.aborted', { sent: v.succeeded_batches, failed: v.failed_batches })}
+						{:else if v.failed_batches === 0}
+							{t('ts.step4.doneSuccess', { sent: v.succeeded_batches })}
 						{:else}
 							{t('ts.step4.completedWithIssues', {
-								sent: s.results.length,
-								failed: s.failures.length
+								sent: v.succeeded_batches,
+								failed: v.failed_batches
 							})}
 						{/if}
 					</div>
 					<div class="panel-actions">
-						{#if s.remainingBatches > 0}
+						{#if v.can_resume}
 							<button class="btn primary" onclick={() => s.resume()}>
-								{t('ts.step4.continueRemaining', { count: s.remainingBatches })}
+								{t('ts.step4.continueRemaining', { count: v.remaining_batches })}
 							</button>
 							<button class="btn ghost" onclick={() => s.reset()}>{t('ts.step4.newSend')}</button>
 						{:else}
@@ -612,20 +659,26 @@
 					</div>
 				{/if}
 
-				{#if s.results.length > 0 || s.failures.length > 0}
+				{#if succeeded.length > 0 || failed.length > 0}
 					<ul class="batch-list">
-						{#each s.results as r (r.batchIndex)}
-							<li class="batch ok-row">
-								<span>{t('ts.step4.batch', { n: r.batchIndex + 1 })}</span>
-								<span>{t('ts.step4.batchSent', { count: r.successCount })}</span>
-								<a href={r.explorerUrl} target="_blank" rel="noopener">{shortHash(r.txHash)}</a>
-							</li>
+						{#each succeeded as { b, index } (index)}
+							{#if b.state === 'succeeded'}
+								<li class="batch ok-row">
+									<span>{t('ts.step4.batch', { n: index + 1 })}</span>
+									<span>{t('ts.step4.batchSent', { count: b.count })}</span>
+									<a href={b.explorer_url ?? undefined} target="_blank" rel="noopener"
+										>{shortHash(b.tx_hash)}</a
+									>
+								</li>
+							{/if}
 						{/each}
-						{#each s.failures as f (f.batchIndex)}
-							<li class="batch err-row">
-								<span>{t('ts.step4.batch', { n: f.batchIndex + 1 })}</span>
-								<span class="err">{f.error}</span>
-							</li>
+						{#each failed as { b, index } (index)}
+							{#if b.state === 'failed'}
+								<li class="batch err-row">
+									<span>{t('ts.step4.batch', { n: index + 1 })}</span>
+									<span class="err">{b.error}</span>
+								</li>
+							{/if}
 						{/each}
 					</ul>
 				{/if}
@@ -634,19 +687,19 @@
 	</WalletGate>
 
 	<!-- ── History ── -->
-	{#if s.history.length > 0}
+	{#if (v?.history.length ?? 0) > 0}
 		<section class="card panel" use:fadeInUp={{ delay: 120 }}>
 			<h3>{t('ts.history.heading')}</h3>
 			<ul class="history-list">
-				{#each s.history as h (h.id)}
+				{#each v?.history ?? [] as h (h.id)}
 					<li class="hist">
 						<button
 							class="hist-head"
 							onclick={() => (expandedHist = expandedHist === h.id ? null : h.id)}
 						>
 							<div class="hist-main">
-								<strong>{h.tokenSymbol}</strong>
-								<span class="muted">{h.networkName}</span>
+								<strong>{h.token_symbol}</strong>
+								<span class="muted">{h.network_name}</span>
 								<span class="badge {h.status}">{h.status}</span>
 								<span class="hist-chevron" class:open={expandedHist === h.id}>
 									<ChevronDown size={16} />
@@ -654,8 +707,8 @@
 							</div>
 							<div class="hist-meta muted">
 								{t('ts.history.recipientsMeta', {
-									count: h.totalRecipients,
-									date: fmtDate(h.createdAt)
+									count: h.total_recipients,
+									date: fmtDate(h.created_at)
 								})}
 							</div>
 						</button>
@@ -669,9 +722,9 @@
 												? t('ts.history.batchSent', { count: b.count })
 												: (b.error ?? b.status)}
 										</span>
-										{#if b.explorerUrl && b.txHash}
-											<a href={b.explorerUrl} target="_blank" rel="noopener"
-												>{shortHash(b.txHash)}</a
+										{#if b.explorer_url && b.tx_hash}
+											<a href={b.explorer_url} target="_blank" rel="noopener"
+												>{shortHash(b.tx_hash)}</a
 											>
 										{/if}
 									</li>
@@ -692,7 +745,7 @@
 		open={showDeposit}
 		onClose={() => {
 			showDeposit = false;
-			if (s.step === 3) s.prepareReview();
+			if (v?.step === 'review') s.prepareReview();
 		}}
 		address={authStore.user.safeAddress}
 	/>
@@ -751,16 +804,16 @@
 			placeholder={t('ts.addNetwork.explorerPlaceholder')}
 		/>
 
-		{#if anMsOk !== null}
-			<p class={anMsOk ? 'ok' : 'warn-text'}>
-				{anMsOk ? t('ts.addNetwork.multiSendOk') : t('ts.addNetwork.multiSendMissing')}
+		{#if (v?.multi_send_verified ?? null) !== null}
+			<p class={(v?.multi_send_verified ?? null) ? 'ok' : 'warn-text'}>
+				{(v?.multi_send_verified ?? null) ? t('ts.addNetwork.multiSendOk') : t('ts.addNetwork.multiSendMissing')}
 			</p>
 		{/if}
 		{#if anError}<p class="err">{anError}</p>{/if}
 
 		<div class="modal-actions">
-			<button class="btn ghost" onclick={checkAddNetwork} disabled={anChecking}>
-				{anChecking ? t('ts.addNetwork.checking') : t('ts.addNetwork.checkChain')}
+			<button class="btn ghost" onclick={checkAddNetwork} disabled={(v?.verifying_multi_send ?? false)}>
+				{(v?.verifying_multi_send ?? false) ? t('ts.addNetwork.checking') : t('ts.addNetwork.checkChain')}
 			</button>
 			<button class="btn primary" onclick={submitAddNetwork}>{t('ts.addNetwork.add')}</button>
 		</div>
@@ -774,14 +827,14 @@
 <ResponsiveModal
 	open={showRpcEdit}
 	onClose={() => (showRpcEdit = false)}
-	title={t('ts.rpc.title', { name: s.network.name })}
+	title={t('ts.rpc.title', { name: v?.network?.name ?? '' })}
 >
 	<div class="modal-body">
 		<label class="field-label" for="rpc-edit">{t('ts.rpc.endpoints')}</label>
 		<textarea id="rpc-edit" class="input textarea" rows="4" bind:value={rpcEditText}></textarea>
 		<p class="muted">{t('ts.rpc.note')}</p>
 		<div class="modal-actions">
-			{#if s.network.isCustom}
+			{#if v?.network?.is_custom}
 				<button class="btn danger" onclick={removeCurrentNetwork}
 					>{t('ts.rpc.removeNetwork')}</button
 				>

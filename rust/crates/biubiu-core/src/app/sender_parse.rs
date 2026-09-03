@@ -177,7 +177,9 @@ pub struct ParseInput<'a> {
 ///
 /// 空行与以 `#` 开头的行被忽略，**不计入任何计数**。地址去重保留首次出现。
 pub fn parse_recipients(input: ParseInput<'_>) -> ParseResult {
-    let mut seen: Vec<String> = Vec::new();
+    // **必须是集合**：用 Vec::contains 做去重是 O(n²)，实测 10 万行要 91 秒
+    // （research.md D23）。迁移前的 TS 用的就是 Set。
+    let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let mut recipients: Vec<Recipient> = Vec::new();
     let mut amounts: Vec<u128> = Vec::new();
     let mut invalid: Vec<InvalidLine> = Vec::new();
@@ -243,7 +245,7 @@ pub fn parse_recipients(input: ParseInput<'_>) -> ParseResult {
             amount = parsed;
         }
 
-        seen.push(key.clone());
+        seen.insert(key.clone());
         recipients.push(Recipient {
             // 与迁移前的 `getAddress(addr)` 一致：输出带校验和的形式。
             address: format!("0x{}", checksum_body(&key[2..])),

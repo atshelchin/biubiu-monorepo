@@ -77,19 +77,29 @@ bun run --cwd ../apps/biubiu.tools bindings:generate # 只重新生成 TypeScrip
    }
    ```
 
-3. **`crates/biubiu-core-wasm/src/lib.rs`** 一行：
+3. **契约生成** —— `src/bin/generate_bindings.rs` 里给新域**开一个自己的子目录**：
+
+   ```rust
+   let mine = Config::new().with_out_dir(&root.join("<domain>"));
+   MyEvent::export_all(&mine)?;   // Event / Operation / ShellResult / ViewModel 四个根
+   ```
+
+   `Operation` 从 Event/ViewModel 都不可达，**必须显式导出**，否则宿主的穷尽 switch 无从写起。
+
+   **为什么一定要分目录**：文件名就是类型名。两个域各有一个 `Network`，写进同一个目录就会
+   互相覆盖 —— `ts-rs` 不报错，后写的赢，直到 `svelte-check` 在十几处报「属性不存在」。
+   spec 002 真踩过（`specs/002-token-sender-core/results.md` §5）。
+
+4. **`crates/biubiu-core-wasm/src/lib.rs`** 一行：
    `bridge_class!(<D>Core, biubiu_core::app::<domain>::<D>App, debug);`
    （`debug` 可选，要求 ViewModel 实现 `DebugSnapshot`。）
 
-   以及 `src/bin/generate_bindings.rs` 里加上该域的导出根 —— `Operation` 从 Event/ViewModel
-   都不可达，**必须显式导出**，否则宿主的穷尽 switch 无从写起。
-
 ### 宿主侧（2 处）
 
-4. **`<domain>/shell/`** —— operation 路由，对 `operation.type` 做**穷尽** switch，末尾
+5. **`<domain>/shell/`** —— operation 路由，对 `operation.type` 做**穷尽** switch，末尾
    `assertNever(op)`。这是该域**唯一**做 I/O 的地方。
 
-5. **一次 `createCruxSession` 声明** —— 五个字段：`createCore` / `initialEvent` / `onView` /
+6. **一次 `createCruxSession` 声明** —— 五个字段：`createCore` / `initialEvent` / `onView` /
    `execute` / `toFailure`。没有一项是循环、编号或状态。
 
 就这些。事件泵、请求编号、取消传播、契约生成都已经有了。
@@ -106,4 +116,11 @@ bun run --cwd ../apps/biubiu.tools bindings:generate # 只重新生成 TypeScrip
 - **时钟、随机数、存储一律外化成请求。** 「6 秒后收起提示」里，6 秒是策略（核心），
   `setTimeout` 是机制（宿主）。
 - **搬迁语义要读实现，不能靠印象。** 合并两个列表的方向反了就是一次静默的行为变更
-  （research.md D13）。
+  （spec 001 D13）。
+- **既有测试是规则清单，源码只是其中一种表述。** spec 002 的解析器写完、用例全绿之后，
+  对照迁移前的测试才发现漏了三条规则 —— 其中一条是「零额转账」的拦截，源码注释里记着它是
+  修过的一次事故（spec 002 D22）。
+- **数据结构的复杂度也要搬对。** 把 TS 的 `Set` 搬成 Rust 的 `Vec` + `contains`，语义没变，
+  10 万行输入从 2 秒变成 91 秒。功能测试全绿，因为它们只有几行（spec 002 D23）。
+- **输入也不该进视图。** 十万行文本存进 Model 就意味着每次 render 都序列化 4.5MB 送过边界。
+  核心该拥有的是解析**结果**，不是编辑器缓冲区。

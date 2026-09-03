@@ -9,10 +9,10 @@
  * 迁移前就已经存在的 id 前缀约定，不是新规则。
  */
 import type { Address } from 'viem';
-import type { Network } from '$lib/generated/Network';
-import type { ScannedApproval } from '$lib/generated/ScannedApproval';
-import type { SpenderEntry as CoreSpender } from '$lib/generated/SpenderEntry';
-import type { TokenEntry as CoreToken } from '$lib/generated/TokenEntry';
+import type { Network } from '$lib/generated/revoke/Network';
+import type { ScannedApproval } from '$lib/generated/revoke/ScannedApproval';
+import type { SpenderEntry as CoreSpender } from '$lib/generated/revoke/SpenderEntry';
+import type { TokenEntry as CoreToken } from '$lib/generated/revoke/TokenEntry';
 import type {
 	ApprovalRow,
 	RevokeNetwork,

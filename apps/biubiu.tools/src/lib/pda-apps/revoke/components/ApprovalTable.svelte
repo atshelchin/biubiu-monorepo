@@ -3,7 +3,7 @@
 	import { ExternalLink, Copy, Check, LoaderCircle } from '@lucide/svelte';
 	import { t } from '$lib/i18n';
 	import { revoke as s } from '../store.svelte.js';
-	import type { ApprovalRowView } from '$lib/generated/ApprovalRowView';
+	import type { ApprovalRowView } from '$lib/generated/revoke/ApprovalRowView';
 
 	// 核心返回的视图。`is_selected` / `is_pending` 已经算好，这里不做任何集合查找。
 	const v = $derived(s.view);

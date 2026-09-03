@@ -7,8 +7,8 @@
  * （contracts/revoke.md §2）。「哪些目标该被探测」是业务规则，不是 I/O。
  */
 import type { Address } from 'viem';
-import type { RevokeOperation } from '$lib/generated/RevokeOperation';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
+import type { RevokeOperation } from '$lib/generated/revoke/RevokeOperation';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
 import { scanApprovals } from '../infra/multicall.js';
 import { toScannedApproval, toSpenderEntry, toTokenEntry } from './wire.js';
 

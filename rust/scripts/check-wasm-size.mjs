@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
  * 实测记录（release + wasm-opt）：
  *   骨架 + 一个最小占位域        142,255 字节  （2026-09-03）
  *   骨架 + revoke 域             322,553 字节  （+180,298）
- *   骨架 + revoke + sender 域    553,101 字节  （+230,548）
+ *   骨架 + revoke + sender 域    558032 字节  （+235,479）
  *
  * **第二个数据点推翻了第一个的猜测。** 当时以为 revoke 的 +180K 里「相当一部分是内置注册表
  * 的字符串数据（约 100 条代币/授权方）」。sender 的数据表只有 9 条网络，却加了 +230K —— 比
@@ -37,7 +37,7 @@ import { dirname, join } from 'node:path';
  * 当前上限 = 实测 × 1.3。一次让这个数字显著变化的改动，是一个要重新做的决定，
  * 不是一个可以顺手合入的 diff —— 新数值和理由要一并记进该 spec 的 results.md。
  */
-const MAX_BYTES = 719032;
+const MAX_BYTES = 725442;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wasmPath = join(here, '../../apps/biubiu.tools/src/lib/wasm/biubiu_core_wasm_bg.wasm');

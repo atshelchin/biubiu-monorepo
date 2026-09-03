@@ -8,8 +8,8 @@
  * 「不回滚、本次会话照常可用」。迁移前这条决定散落在四个「catch 后什么都不做」里，
  * 没有任何地方记录它是一个决定而不是偷懒。
  */
-import type { RevokeOperation } from '$lib/generated/RevokeOperation';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
+import type { RevokeOperation } from '$lib/generated/revoke/RevokeOperation';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
 import {
 	getCustomNetworks,
 	getCustomSpenders,

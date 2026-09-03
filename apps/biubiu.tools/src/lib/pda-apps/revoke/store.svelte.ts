@@ -13,11 +13,11 @@
  * 走错了地方。
  */
 import { createCruxSession, type CruxSession } from '$lib/crux/create-crux-session.js';
-import type { RevokeEvent } from '$lib/generated/RevokeEvent';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
-import type { RevokeViewModel } from '$lib/generated/RevokeViewModel';
-import type { RowFilter } from '$lib/generated/RowFilter';
-import type { TokenStandard } from '$lib/generated/TokenStandard';
+import type { RevokeEvent } from '$lib/generated/revoke/RevokeEvent';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
+import type { RevokeViewModel } from '$lib/generated/revoke/RevokeViewModel';
+import type { RowFilter } from '$lib/generated/revoke/RowFilter';
+import type { TokenStandard } from '$lib/generated/revoke/TokenStandard';
 import { walletStore } from '$lib/wallet';
 import { BUILTIN_NETWORKS } from './infra/networks.js';
 import { fetchErc20Meta, fetchNftMeta, isValidAddress } from './infra/metadata.js';

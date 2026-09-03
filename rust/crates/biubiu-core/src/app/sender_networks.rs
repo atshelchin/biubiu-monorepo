@@ -10,7 +10,7 @@
 //! 而且这些字段**直接参与业务规则**：每批上限决定批次数，批次数决定总费用。留在宿主，
 //! 「250 个收件人分几批、总共收多少费」就无从测起。
 
-use super::sender::Network;
+use super::sender::SenderNetwork;
 
 /// Safe MultiSend 1.4.1 —— 全链同址。
 pub const MULTI_SEND: &str = "0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526";
@@ -30,8 +30,8 @@ struct StaticNetwork {
 }
 
 impl StaticNetwork {
-    fn to_network(&self) -> Network {
-        Network {
+    fn to_network(&self) -> SenderNetwork {
+        SenderNetwork {
             slug: self.slug.to_owned(),
             name: self.name.to_owned(),
             chain_id: self.chain_id,
@@ -170,7 +170,7 @@ const BUILTIN: &[StaticNetwork] = &[
 ];
 
 /// 内置网络，注册顺序即显示顺序（与迁移前的 `Object.values(NETWORKS)` 一致）。
-pub fn builtin_networks() -> Vec<Network> {
+pub fn builtin_networks() -> Vec<SenderNetwork> {
     BUILTIN.iter().map(StaticNetwork::to_network).collect()
 }
 

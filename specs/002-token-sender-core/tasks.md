@@ -67,17 +67,17 @@ description: "Task list for 002-token-sender-core"
 
 ## Phase 3: 宿主接线（US4）
 
-- [ ] T119 [P] `shell/wire.ts`：形状转换（bigint ⇄ 十进制字符串、camelCase ⇄ snake_case）
-- [ ] T120 [P] `shell/send-batch.ts`：复用 `buildBatchSubTransactions` + `wallet.sendBatch`；
+- [X] T119 [P] `shell/wire.ts`：形状转换（bigint ⇄ 十进制字符串、camelCase ⇄ snake_case）
+- [X] T120 [P] `shell/send-batch.ts`：复用 `buildBatchSubTransactions` + `wallet.sendBatch`；
   进度回调转成带 id 的 `batch_phase_changed`
-- [ ] T121 [P] `shell/token-meta.ts` / `shell/fee.ts` / `shell/preflight.ts`
-- [ ] T122 [P] `shell/custom-data.ts` / `shell/history.ts`
-- [ ] T123 `shell/index.ts`：穷尽 switch + `toFailure`；`wait_between_batches` 的 `setTimeout`
+- [X] T121 [P] `shell/token-meta.ts` / `shell/fee.ts` / `shell/preflight.ts`
+- [X] T122 [P] `shell/custom-data.ts` / `shell/history.ts`
+- [X] T123 `shell/index.ts`：穷尽 switch + `toFailure`；`wait_between_batches` 的 `setTimeout`
   **不保存句柄、不做取消**
-- [ ] T124 改写 `store.svelte.ts` 为 ViewModel 持有者；删除 `AbortController`、批次循环、
+- [X] T124 改写 `store.svelte.ts` 为 ViewModel 持有者；删除 `AbortController`、批次循环、
   `await` 延时与全部派生 getter
-- [ ] T125 改写页面与相关组件为消费 ViewModel
-- [ ] T126 browser-mode 集成测试（沿用 spec 001 的形态）：替身只放在 `wallet` 与读链两处，
+- [X] T125 改写页面与相关组件为消费 ViewModel
+- [X] T126 browser-mode 集成测试（沿用 spec 001 的形态）：替身只放在 `wallet` 与读链两处，
   覆盖 US1/US2 的全部验收场景
 
 **Checkpoint**: 页面行为逐项等价
@@ -86,13 +86,13 @@ description: "Task list for 002-token-sender-core"
 
 ## Phase 4: 未迁移域不受影响 + 收尾
 
-- [ ] T127 构建 + 逐一打开 15 条路由 + 既有测试套件全绿（含 revoke 域不受影响）
-- [ ] T128 删除被核心取代的宿主代码与其测试（在等价用例通过之后）
-- [ ] T129 **十万级收件人的往返成本实测**（plan.md 风险 1）；超预期则记为独立条目
+- [X] T127 构建 + 逐一打开 15 条路由 + 既有测试套件全绿（含 revoke 域不受影响）
+- [X] T128 删除被核心取代的宿主代码与其测试（在等价用例通过之后）
+- [X] T129 **十万级收件人的往返成本实测**（plan.md 风险 1）；超预期则记为独立条目
 - [X] T130 体积实测 + 门禁重设 + 与 spec 001 的数值并列判读（research.md D20）
-- [ ] T131 `results.md`：判据核对、行数对照、发现但未修的缺陷（含**进度持久化**这一项）
-- [ ] T132 clippy / fmt / svelte-check 通过
-- [ ] T133 核对 spec 001 的通用层是否被改动过（SC-007）；若有，回补为通用能力
+- [X] T131 `results.md`：判据核对、行数对照、发现但未修的缺陷（含**进度持久化**这一项）
+- [X] T132 clippy / fmt / svelte-check 通过
+- [X] T133 核对 spec 001 的通用层是否被改动过（SC-007）；若有，回补为通用能力
 
 ---
 

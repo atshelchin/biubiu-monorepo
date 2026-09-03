@@ -102,3 +102,31 @@ export async function deleteRpcOverride(slug: string): Promise<void> {
 		tx.onerror = () => reject(tx.error);
 	});
 }
+
+// ── 整表回写 ───────────────────────────────────────────────────────────────
+//
+// 核心是这两张表的**唯一真相来源**，它下发的是完整状态而不是增量指令。逐条 put/delete
+// 要求宿主自己算差异，那等于把「哪些条目该在」这个判断又搬回了宿主。
+async function replaceAll(store: string, values: unknown[]): Promise<void> {
+	if (!hasIDB()) return;
+	const db = await openDB();
+	await new Promise<void>((resolve, reject) => {
+		const tx = db.transaction(store, 'readwrite');
+		const os = tx.objectStore(store);
+		os.clear();
+		for (const value of values) os.put(value);
+		tx.oncomplete = () => resolve();
+		tx.onerror = () => reject(tx.error);
+	});
+}
+
+export function replaceAllCustomNetworks(networks: TokenSenderNetwork[]): Promise<void> {
+	return replaceAll(NET_STORE, networks);
+}
+
+export function replaceAllRpcOverrides(overrides: Record<string, string[]>): Promise<void> {
+	return replaceAll(
+		RPC_STORE,
+		Object.entries(overrides).map(([slug, rpcs]) => ({ slug, rpcs })),
+	);
+}

@@ -14,7 +14,7 @@
 	import type { SendStatus } from '$lib/wallet';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { revoke as s } from '$lib/pda-apps/revoke/store.svelte.js';
-	import type { TokenStandard } from '$lib/generated/TokenStandard';
+	import type { TokenStandard } from '$lib/generated/revoke/TokenStandard';
 	import ApprovalTable from '$lib/pda-apps/revoke/components/ApprovalTable.svelte';
 	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
 	import { buildRevokeCall } from '$lib/pda-apps/revoke/core/revoke.js';

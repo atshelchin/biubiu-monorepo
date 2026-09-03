@@ -4,8 +4,8 @@
  * 取不到**不是错误**：核心会用 chainId 兜底命名，只在一条可用 RPC 都没有时才拒绝添加
  * （FR-019）。因此这里把「没找到」如实回报为 `found: false`，而不是抛异常。
  */
-import type { RevokeOperation } from '$lib/generated/RevokeOperation';
-import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
+import type { RevokeOperation } from '$lib/generated/revoke/RevokeOperation';
+import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
 import { extractRpcUrls } from '$lib/contract-caller/networks.js';
 import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
 

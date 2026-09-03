@@ -98,7 +98,7 @@ pub enum DistributionMode {
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "bindings", derive(TS))]
-pub struct Network {
+pub struct SenderNetwork {
     pub slug: String,
     pub name: String,
     #[cfg_attr(feature = "bindings", ts(type = "number"))]
@@ -143,12 +143,28 @@ pub enum TokenMetaError {
     TokenReadFailed,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+/// 计费来源。用户在界面上看得见它 —— 少一个取值就少一档解释。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "bindings", derive(TS))]
+#[serde(rename_all = "kebab-case")]
+pub enum FeeSource {
+    MemberFree,
+    Config,
+    Usd,
+    Fallback,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "bindings", derive(TS))]
 pub struct FeeQuote {
     /// 单批费用（十进制字符串）。会员豁免成立时为 "0"。
     pub amount: String,
     pub is_member: bool,
+    pub source: FeeSource,
+    /// 等值美元（`Usd` 来源时）。
+    pub usd: Option<f64>,
+    /// native/USD 单价（取到时）。**纯展示** —— 核心不对它做任何判断。
+    pub native_usd_price: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -166,7 +182,7 @@ pub struct PreflightResult {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "bindings", derive(TS))]
 #[serde(rename_all = "snake_case")]
-pub enum SendPhase {
+pub enum SenderPhase {
     Building,
     Checking,
     Estimating,
@@ -194,9 +210,9 @@ pub enum SendStatus {
 
 /// 一次发送的**不可变**输入。在 `StartSend` 时冻结 —— 之后改网络、改收件人都不影响
 /// 正在进行的这一轮。
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 struct SendPlan {
-    network: Network,
+    network: SenderNetwork,
     token_type: TokenType,
     token_address: String,
     decimals: u8,
@@ -255,8 +271,8 @@ enum InFlightOp {
 
 pub struct SenderModel {
     step: WizardStep,
-    builtin_networks: Vec<Network>,
-    custom_networks: Vec<Network>,
+    builtin_networks: Vec<SenderNetwork>,
+    custom_networks: Vec<SenderNetwork>,
     rpc_overrides: BTreeMap<String, Vec<String>>,
     network_slug: String,
     token_type: TokenType,
@@ -265,7 +281,6 @@ pub struct SenderModel {
     token_meta_loading: bool,
     token_meta_error: Option<TokenMetaError>,
     distribution_mode: DistributionMode,
-    recipients_text: String,
     total_amount_input: String,
     parsed: Option<ParseResult>,
     fee: Option<FeeQuote>,
@@ -288,9 +303,11 @@ pub struct SenderModel {
     /// 是**继续往下一批**，不是原地重试。少了这个游标，一个持续失败的批次会让整轮原地打转。
     /// `Failed` 只在**续发**时（游标归零）才重新成为候选。
     send_cursor: usize,
-    current_phase: Option<SendPhase>,
+    current_phase: Option<SenderPhase>,
 
     history: Vec<HistoryRecord>,
+    /// 上一次 MultiSend 部署校验的结果。`None` = 尚未校验 / 正在校验。
+    multi_send_verified: Option<bool>,
 
     in_flight: BTreeMap<u64, InFlightOp>,
     next_operation_id: u64,
@@ -310,7 +327,6 @@ impl Default for SenderModel {
             token_meta_loading: false,
             token_meta_error: None,
             distribution_mode: DistributionMode::Specified,
-            recipients_text: String::new(),
             total_amount_input: String::new(),
             parsed: None,
             fee: None,
@@ -327,6 +343,7 @@ impl Default for SenderModel {
             send_cursor: 0,
             current_phase: None,
             history: Vec::new(),
+            multi_send_verified: None,
             in_flight: BTreeMap::new(),
             next_operation_id: 0,
         }
@@ -346,12 +363,12 @@ impl SenderModel {
     }
 
     /// 内置 + 自定义，并套用该网络的 RPC 覆盖。
-    fn networks(&self) -> Vec<Network> {
+    fn networks(&self) -> Vec<SenderNetwork> {
         self.builtin_networks
             .iter()
             .chain(self.custom_networks.iter())
             .map(|n| match self.rpc_overrides.get(&n.slug) {
-                Some(rpcs) if !rpcs.is_empty() => Network {
+                Some(rpcs) if !rpcs.is_empty() => SenderNetwork {
                     rpcs: rpcs.clone(),
                     ..n.clone()
                 },
@@ -360,7 +377,7 @@ impl SenderModel {
             .collect()
     }
 
-    fn network(&self) -> Option<Network> {
+    fn network(&self) -> Option<SenderNetwork> {
         let all = self.networks();
         all.iter()
             .find(|n| n.slug == self.network_slug)
@@ -505,7 +522,7 @@ pub enum SenderEvent {
         has_wallet: bool,
     },
     CustomDataProvided {
-        networks: Vec<Network>,
+        networks: Vec<SenderNetwork>,
         rpc_overrides: Vec<RpcOverride>,
     },
     SetNetwork {
@@ -521,13 +538,17 @@ pub enum SenderEvent {
     SetDistributionMode {
         mode: DistributionMode,
     },
-    SetRecipientsText {
-        text: String,
-    },
     SetTotalAmountInput {
         amount: String,
     },
-    Parse,
+    /// 解析收件人。
+    ///
+    /// **文本随事件传入，核心不保存它。** 十万行文本约 4.5 MB；存进 Model 就意味着每次
+    /// `render()` 都要把它序列化一遍送过边界。它是编辑器的缓冲区，属于 UI 状态，
+    /// 不是业务状态（research.md D23）。
+    Parse {
+        text: String,
+    },
     GoToStep {
         step: WizardStep,
     },
@@ -594,7 +615,7 @@ pub enum SenderOperation {
         operation_id: u64,
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         batch_index: usize,
-        network: Network,
+        network: SenderNetwork,
         token_type: TokenType,
         token_address: String,
         decimals: u8,
@@ -615,19 +636,19 @@ pub enum SenderOperation {
     ReadErc20Meta {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        network: Network,
+        network: SenderNetwork,
         address: String,
     },
     QuoteFee {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        network: Network,
+        network: SenderNetwork,
         is_member: bool,
     },
     Preflight {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        network: Network,
+        network: SenderNetwork,
         token_type: TokenType,
         token_address: String,
         total_amount: String,
@@ -641,7 +662,7 @@ pub enum SenderOperation {
     PersistCustomData {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        networks: Vec<Network>,
+        networks: Vec<SenderNetwork>,
         rpc_overrides: Vec<RpcOverride>,
     },
     PersistHistory {
@@ -686,7 +707,7 @@ pub enum SenderShellResult {
     BatchPhaseChanged {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        phase: SendPhase,
+        phase: SenderPhase,
     },
     DelayElapsed {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
@@ -704,6 +725,9 @@ pub enum SenderShellResult {
         operation_id: u64,
         amount: String,
         is_member: bool,
+        source: FeeSource,
+        usd: Option<f64>,
+        native_usd_price: Option<f64>,
     },
     PreflightDone {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
@@ -718,7 +742,7 @@ pub enum SenderShellResult {
     CustomDataLoaded {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
-        networks: Vec<Network>,
+        networks: Vec<SenderNetwork>,
         rpc_overrides: Vec<RpcOverride>,
     },
     PersistCompleted {
@@ -781,15 +805,14 @@ pub enum BatchView {
 #[cfg_attr(feature = "bindings", ts(export))]
 pub struct SenderViewModel {
     pub step: WizardStep,
-    pub networks: Vec<Network>,
-    pub network: Option<Network>,
+    pub networks: Vec<SenderNetwork>,
+    pub network: Option<SenderNetwork>,
     pub token_type: TokenType,
     pub token_address: String,
     pub token_meta: Option<TokenMeta>,
     pub token_meta_loading: bool,
     pub token_meta_error: Option<TokenMetaError>,
     pub distribution_mode: DistributionMode,
-    pub recipients_text: String,
     pub total_amount_input: String,
 
     /// 解析的**摘要**。收件人清单不进视图 —— 十万条收件人每次 render 都序列化一遍，
@@ -817,7 +840,7 @@ pub struct SenderViewModel {
     pub send_status: SendStatus,
     pub batches: Vec<BatchView>,
     pub current_batch_index: Option<usize>,
-    pub current_phase: Option<SendPhase>,
+    pub current_phase: Option<SenderPhase>,
     pub succeeded_batches: usize,
     pub failed_batches: usize,
     pub remaining_batches: usize,
@@ -831,6 +854,9 @@ pub struct SenderViewModel {
 
     pub history: Vec<HistoryRecord>,
     pub rpc_overrides: Vec<RpcOverride>,
+    /// 上一次 MultiSend 部署校验的结果；`null` = 尚未校验 / 正在校验。
+    pub multi_send_verified: Option<bool>,
+    pub verifying_multi_send: bool,
 
     #[cfg(feature = "devtools")]
     #[cfg_attr(feature = "bindings", ts(skip))]
@@ -944,19 +970,14 @@ impl App for SenderApp {
                 render()
             }
 
-            SenderEvent::SetRecipientsText { text } => {
-                model.recipients_text = text;
-                render()
-            }
-
             SenderEvent::SetTotalAmountInput { amount } => {
                 model.total_amount_input = amount;
                 render()
             }
 
-            SenderEvent::Parse => {
+            SenderEvent::Parse { text } => {
                 model.parsed = Some(parse_recipients(super::sender_parse::ParseInput {
-                    text: &model.recipients_text,
+                    text: &text,
                     mode: model.distribution_mode,
                     decimals: model.decimals(),
                     total_amount: &model.total_amount_input,
@@ -1054,6 +1075,7 @@ impl App for SenderApp {
                 let Some(network) = model.network() else {
                     return Command::done();
                 };
+                model.multi_send_verified = None;
                 let id = model.begin(InFlightOp::VerifyMultiSend);
                 Command::all([
                     request(SenderOperation::VerifyMultiSend {
@@ -1112,7 +1134,6 @@ impl App for SenderApp {
             token_meta_loading: model.token_meta_loading,
             token_meta_error: model.token_meta_error,
             distribution_mode: model.distribution_mode,
-            recipients_text: model.recipients_text.clone(),
             total_amount_input: model.total_amount_input.clone(),
 
             valid_count: parsed.map(|p| p.valid_count).unwrap_or(0),
@@ -1177,6 +1198,11 @@ impl App for SenderApp {
             send_supported,
 
             history: model.history.clone(),
+            multi_send_verified: model.multi_send_verified,
+            verifying_multi_send: model
+                .in_flight
+                .values()
+                .any(|op| matches!(op, InFlightOp::VerifyMultiSend)),
             rpc_overrides: model
                 .rpc_overrides
                 .iter()
@@ -1279,7 +1305,7 @@ fn dispatch_next_batch(model: &mut SenderModel) -> Command<SenderEffect, SenderE
 
     let operation_id = model.begin(InFlightOp::SendBatch { batch_index: index });
     model.batches[index] = BatchState::InFlight { operation_id };
-    model.current_phase = Some(SendPhase::Building);
+    model.current_phase = Some(SenderPhase::Building);
 
     Command::all([
         request(SenderOperation::SendBatch {
@@ -1467,7 +1493,7 @@ fn prepare_review(model: &mut SenderModel) -> Command<SenderEffect, SenderEvent>
 
 fn apply_custom_data(
     model: &mut SenderModel,
-    networks: Vec<Network>,
+    networks: Vec<SenderNetwork>,
     rpc_overrides: Vec<RpcOverride>,
 ) {
     model.custom_networks = networks;
@@ -1505,7 +1531,7 @@ fn add_custom_network(
     explorer_tx_url: Option<String>,
 ) -> Command<SenderEffect, SenderEvent> {
     let slug = format!("custom-{chain_id}");
-    let network = Network {
+    let network = SenderNetwork {
         slug: slug.clone(),
         name: {
             let n = name.trim();
@@ -1655,12 +1681,21 @@ fn accept_result(
             operation_id,
             amount,
             is_member,
+            source,
+            usd,
+            native_usd_price,
         } => {
             if model.in_flight.remove(&operation_id).is_none() {
                 return Command::done();
             }
             model.fee_loading = false;
-            model.fee = Some(FeeQuote { amount, is_member });
+            model.fee = Some(FeeQuote {
+                amount,
+                is_member,
+                source,
+                usd,
+                native_usd_price,
+            });
 
             let (Some(network), Some(parsed), Some(fee)) =
                 (model.network(), model.parsed.clone(), model.fee.clone())
@@ -1739,8 +1774,14 @@ fn accept_result(
             render()
         }
 
-        SenderShellResult::MultiSendVerified { operation_id, .. } => {
-            model.in_flight.remove(&operation_id);
+        SenderShellResult::MultiSendVerified {
+            operation_id,
+            deployed,
+        } => {
+            if model.in_flight.remove(&operation_id).is_none() {
+                return Command::done();
+            }
+            model.multi_send_verified = Some(deployed);
             render()
         }
     }
@@ -1802,13 +1843,23 @@ mod tests {
             .map(|i| format!("{},1", addr(&format!("{:x}", i + 1))))
             .collect::<Vec<_>>()
             .join("\n");
-        dispatch(&mut model, SenderEvent::SetRecipientsText { text });
-        dispatch(&mut model, SenderEvent::Parse);
-        model.fee = Some(FeeQuote {
-            amount: "1000".to_owned(),
-            is_member: false,
-        });
+        dispatch(&mut model, SenderEvent::Parse { text });
+        model.fee = Some(fee("1000", false));
         model
+    }
+
+    fn fee(amount: &str, is_member: bool) -> FeeQuote {
+        FeeQuote {
+            amount: amount.to_owned(),
+            is_member,
+            source: if is_member {
+                FeeSource::MemberFree
+            } else {
+                FeeSource::Config
+            },
+            usd: None,
+            native_usd_price: None,
+        }
     }
 
     /// 让当前在途批次成功。
@@ -1951,10 +2002,7 @@ mod tests {
         fail_current(&mut model, "boom");
 
         // 用户在续发之前改了费用 —— 计划已冻结，不该受影响。
-        model.fee = Some(FeeQuote {
-            amount: "999999".to_owned(),
-            is_member: false,
-        });
+        model.fee = Some(fee("999999", false));
         dispatch(&mut model, SenderEvent::Resume);
 
         assert_eq!(
@@ -2076,13 +2124,15 @@ mod tests {
     fn starting_with_no_recipients_asks_the_shell_for_nothing() {
         let mut model = SenderModel {
             has_wallet: true,
-            fee: Some(FeeQuote {
-                amount: "1000".to_owned(),
-                is_member: false,
-            }),
+            fee: Some(fee("1000", false)),
             ..SenderModel::default()
         };
-        dispatch(&mut model, SenderEvent::Parse);
+        dispatch(
+            &mut model,
+            SenderEvent::Parse {
+                text: String::new(),
+            },
+        );
 
         let before = model.next_operation_id;
         start(&mut model);
@@ -2140,10 +2190,7 @@ mod tests {
     #[test]
     fn a_member_quote_of_zero_makes_the_total_zero() {
         let mut model = model_ready(250, 100);
-        model.fee = Some(FeeQuote {
-            amount: "0".to_owned(),
-            is_member: true,
-        });
+        model.fee = Some(fee("0", true));
         assert_eq!(SenderApp.view(&model).fee_total, "0");
     }
 

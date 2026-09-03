@@ -1,530 +1,216 @@
 /**
- * Token Sender 向导状态（Svelte 5 runes class，同 authStore/subscriptionStore 风格）。
+ * Token Sender —— **只是核心返回的视图的持有者**。
  *
- * 编排顺序：选网络/代币 → 录入收件人 → 复核+费用 → 逐批发送（每批一次 passkey）。
- * 发送层依赖注入 core/，UI 仅消费此 store。
+ * 迁移前（spec 002-token-sender-core）这里有 531 行，其中最重的一块是发送编排：
+ * `AbortController`、跨批次的 `for` 循环、`await abortableDelay(2500)`、以及十几个派生 getter。
+ * 那条执行流从头持有到尾，而进度只存在 `this.results` 这个内存数组里 —— 关掉页面，已成功的
+ * 批次就被彻底遗忘。
+ *
+ * 现在批次编排是核心里的一张表，一次只请求一批，由结果推进到下一批。
+ * 「不重发已成功批次」不再是循环里的一行 `continue`，而是核心的候选集里根本没有 `Succeeded`。
+ *
+ * **不要往这里加 `if`。** 什么时候能推进、失败要不要重试、哪个响应算过期，都是核心的。
+ * 这个文件里出现一个决定业务后果的分支，就说明那条规则走错了地方。
+ *
+ * 仍然留在宿主的只有一件事：`memberWaiver` 的 passkey 控制权证明。那是一次签名，属于平台；
+ * 核心拥有的是它的后果（费用归零、必须重算）—— research.md D18。
  */
-import type { Address } from 'viem';
-import { formatUnits, isAddress } from 'viem';
+import { formatUnits } from 'viem';
+import { createCruxSession, type CruxSession } from '$lib/crux/create-crux-session.js';
+import type { SenderEvent } from '$lib/generated/sender/SenderEvent';
+import type { SenderShellResult } from '$lib/generated/sender/SenderShellResult';
+import type { SenderViewModel } from '$lib/generated/sender/SenderViewModel';
+import type { DistributionMode } from '$lib/generated/sender/DistributionMode';
+import type { TokenType } from '$lib/generated/sender/TokenType';
+import type { WizardStep } from '$lib/generated/sender/WizardStep';
 import { walletStore } from '$lib/wallet';
 import {
 	memberWaiver,
 	proveMemberControl,
 	ensureMembershipLoaded,
-	type ProofResult
+	type ProofResult,
 } from '$lib/subscription';
-import { CONTRACTS } from '$lib/auth/safe-tx/constants';
-import type {
-	BatchOutput,
-	DistributionMode,
-	FeeQuote,
-	SendBatchRecord,
-	SendRecord,
-	TokenSenderNetwork,
-	TokenType
-} from './types.js';
-import { listNetworks } from './infra/networks.js';
-import { parseRecipients, type ParseResult } from './core/parse.js';
-import { quoteFee } from './core/fee.js';
-import { preflight, type PreflightResult } from './core/orchestrator.js';
-import { runSend, type RunSendDeps, type RunSendResult } from './core/orchestrator.js';
-import { createConnectedWallet } from './core/wallet.js';
-import { putSend, listSends } from './history/send-history.js';
-import {
-	getCustomNetworks,
-	saveCustomNetwork,
-	deleteCustomNetwork,
-	getRpcOverrides,
-	saveRpcOverride,
-	deleteRpcOverride
-} from './infra/custom-store.js';
+import { createSenderShell, type SenderEffect } from './shell/index.js';
 
-export type WizardStep = 1 | 2 | 3 | 4;
-export type ExecStatus = 'idle' | 'running' | 'done' | 'aborted';
-/** Token-load failure codes — the UI maps these to localized copy (keeps the store i18n-free). */
-export type TokenMetaError = 'no-wallet' | 'invalid-token-address' | 'token-read-failed';
-
-export interface ProgressState {
-	batchIndex: number;
-	totalBatches: number;
-	phase: string;
-}
-
-const DEFAULT_NETWORK = 'eth-mainnet';
+type Session = CruxSession<SenderViewModel, SenderEvent, SenderEffect, SenderShellResult>;
 
 class TokenSenderStore {
+	/** 核心返回的视图。页面只读这个。 */
+	view = $state<SenderViewModel | null>(null);
+	loadError = $state<string | null>(null);
+
+	#session: Session | null = null;
+	#starting: Promise<void> | null = null;
+
+	async start(): Promise<void> {
+		if (this.#session) return;
+		if (this.#starting) return this.#starting;
+
+		this.#starting = (async () => {
+			const shell = createSenderShell({ dispatch: (event) => this.#session?.dispatch(event) });
+			try {
+				this.#session = await createCruxSession<
+					SenderViewModel,
+					SenderEvent,
+					SenderEffect,
+					SenderShellResult
+				>({
+					createCore: (wasm) => new wasm.SenderCore(),
+					initialEvent: { type: 'page_ready' },
+					onView: (view) => {
+						this.view = view;
+					},
+					execute: (effect) => shell.execute(effect),
+					toFailure: (effect, error) => shell.toFailure(effect, error),
+					onError: (error) => {
+						this.loadError = error instanceof Error ? error.message : String(error);
+					},
+				});
+			} catch (error) {
+				this.loadError = error instanceof Error ? error.message : String(error);
+			} finally {
+				this.#starting = null;
+			}
+		})();
+
+		return this.#starting;
+	}
+
+	dispose(): void {
+		this.#session?.dispose();
+		this.#session = null;
+		this.view = null;
+	}
+
+	#send(event: SenderEvent): void {
+		this.#session?.dispatch(event);
+	}
+
+	/** 由页面的钱包 effect 调用。核心只需要知道「有没有钱包」。 */
+	syncWallet(): void {
+		this.#send({ type: 'wallet_changed', has_wallet: !!walletStore.activeWallet });
+	}
+
 	// ── 向导 ──
-	step = $state<WizardStep>(1);
+	goTo(step: WizardStep): void {
+		this.#send({ type: 'go_to_step', step });
+	}
+	reset(): void {
+		this.#send({ type: 'reset' });
+	}
 
 	// ── Step 1：网络 + 代币 ──
-	networkSlug = $state<string>(DEFAULT_NETWORK);
-	tokenType = $state<TokenType>('native');
-	tokenAddress = $state<string>('');
-	tokenMeta = $state<{ symbol: string; decimals: number } | null>(null);
-	tokenMetaLoading = $state(false);
-	tokenMetaError = $state<TokenMetaError | null>(null);
+	setNetwork(slug: string): void {
+		this.#send({ type: 'set_network', slug });
+	}
+	setTokenType(token_type: TokenType): void {
+		this.#send({ type: 'set_token_type', token_type });
+	}
+	setTokenAddress(address: string): void {
+		this.#send({ type: 'set_token_address', address });
+	}
+	loadTokenMeta(): void {
+		this.#send({ type: 'load_token_meta' });
+	}
 
 	// ── Step 2：收件人 ──
-	distributionMode = $state<DistributionMode>('specified');
-	recipientsText = $state('');
-	totalAmountInput = $state('');
-	parsed = $state<ParseResult | null>(null);
+	setDistributionMode(mode: DistributionMode): void {
+		this.#send({ type: 'set_distribution_mode', mode });
+	}
+	setTotalAmountInput(amount: string): void {
+		this.#send({ type: 'set_total_amount_input', amount });
+	}
+	/**
+	 * 解析收件人。**文本由调用方传入，核心不保存它。**
+	 *
+	 * 十万行文本约 4.5 MB —— 存进核心就意味着每次 render 都把它序列化一遍送回来。
+	 * 它是编辑器缓冲区，属于 UI 状态（research.md D23）。
+	 */
+	parse(text: string): void {
+		this.#send({ type: 'parse', text });
+	}
 
 	// ── Step 3：费用 + 预检 ──
-	fee = $state<FeeQuote | null>(null);
-	feeLoading = $state(false);
-	/** In-band 结算：整批用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
-	gasFeeToken = $state<Address | null>(null);
-	pre = $state<PreflightResult | null>(null);
-	preLoading = $state(false);
-	reviewError = $state<string | null>(null);
+	prepareReview(): void {
+		this.#send({ type: 'prepare_review' });
+	}
+	setGasFeeToken(token: string | null): void {
+		this.#send({ type: 'set_gas_fee_token', token });
+	}
 
-	// ── Step 4：执行 ──
-	execStatus = $state<ExecStatus>('idle');
-	progress = $state<ProgressState>({ batchIndex: 0, totalBatches: 0, phase: '' });
-	results = $state<BatchOutput[]>([]);
-	failures = $state<{ batchIndex: number; error: string }[]>([]);
-	private abortController: AbortController | null = null;
-	/** 本次发送的起始时间戳，作为历史记录 id；resume 复用以更新同一条记录 */
-	private sendStartedAt = 0;
-
-	// ── 历史 ──
-	history = $state<SendRecord[]>([]);
-
-	// ── 自定义网络 + RPC 覆盖 ──
-	customNetworks = $state<TokenSenderNetwork[]>([]);
-	rpcOverrides = $state<Record<string, string[]>>({});
-
-	// ── 派生 ──
-	private withRpc(n: TokenSenderNetwork): TokenSenderNetwork {
-		const ov = this.rpcOverrides[n.slug];
-		return ov && ov.length > 0 ? { ...n, rpcs: ov } : n;
-	}
-	get networks(): TokenSenderNetwork[] {
-		return [...listNetworks(), ...this.customNetworks].map((n) => this.withRpc(n));
-	}
-	get network(): TokenSenderNetwork {
-		return this.networks.find((n) => n.slug === this.networkSlug) ?? this.networks[0];
-	}
-	/** 自定义链暂不支持发送（需经 Chain Setup 部署 Safe 基建 + bundler 支持） */
-	get sendSupported(): boolean {
-		return !this.network.isCustom;
-	}
-	get decimals(): number {
-		return this.tokenType === 'native' ? this.network.decimals : (this.tokenMeta?.decimals ?? 18);
-	}
-	get symbol(): string {
-		return this.tokenType === 'native' ? this.network.symbol : (this.tokenMeta?.symbol ?? 'TOKEN');
-	}
-	/** 仅在本会话已 passkey 签名证明控制权后才为真 —— 防观察钱包/复制 session 绕过。 */
-	get isMember(): boolean {
-		return memberWaiver.isWaiverActive;
+	/** 懒加载链上会员状态（进入流程时调用）。 */
+	loadMembership(): void {
+		void ensureMembershipLoaded();
 	}
 	/** 有资格签名豁免：已登录 Pro，但本会话尚未签名。 */
 	get canWaiveFee(): boolean {
 		return memberWaiver.canProve;
 	}
-	/** 正在进行 passkey 签名。 */
 	get waiveProving(): boolean {
 		return memberWaiver.proving;
 	}
-	/** 懒加载链上会员状态（进入流程时调用）。 */
-	loadMembership(): void {
-		void ensureMembershipLoaded();
-	}
-	/** passkey 控制权证明；成功则重算费用（会员 = 0）。 */
+	/**
+	 * passkey 控制权证明。
+	 *
+	 * 签名本身是平台动作，留在宿主；证明**成功之后**要重算费用这条时序规则在核心 ——
+	 * 迁移前它藏在 `if (this.step === 3) await this.prepareReview()` 里，换个入口就会漏掉。
+	 */
 	async waiveFeeWithPasskey(): Promise<ProofResult> {
 		const res = await proveMemberControl();
-		if (res.ok && this.step === 3) await this.prepareReview();
+		this.#send({ type: 'member_proven', waived: res.ok });
 		return res;
 	}
-	get batchSize(): number {
-		return this.tokenType === 'native' ? this.network.maxBatchNative : this.network.maxBatchErc20;
+
+	// ── Step 4：执行 ──
+	/** 时钟在宿主：起始时间戳随事件传入，核心不读时间。 */
+	send(): void {
+		this.#send({ type: 'start_send', started_at_ms: Date.now() });
 	}
-	get totalBatches(): number {
-		const n = this.parsed?.validCount ?? 0;
-		return n === 0 ? 0 : Math.ceil(n / this.batchSize);
+	pause(): void {
+		this.#send({ type: 'pause' });
 	}
-	/** 本次发送总费用 = 每批费用 × 批次数（每笔交易都收；会员为 0） */
-	get feeTotal(): bigint {
-		return (this.fee?.amount ?? 0n) * BigInt(this.totalBatches);
-	}
-	get canProceedFromConfig(): boolean {
-		if (this.tokenType === 'native') return true;
-		return this.tokenMeta != null && this.tokenMetaError == null;
-	}
-	get canProceedFromRecipients(): boolean {
-		return (this.parsed?.validCount ?? 0) > 0 && (this.parsed?.totalAmount ?? 0n) > 0n;
-	}
-
-	// ── 操作 ──
-
-	setNetwork(slug: string): void {
-		if (!this.networks.some((n) => n.slug === slug)) return;
-		this.networkSlug = slug;
-		// 切链后 ERC20 元数据失效
-		this.tokenMeta = null;
-		this.tokenMetaError = null;
-		this.parsed = null;
-		// 切链后所选稳定币可能不存在于新链 → 回退原生
-		this.gasFeeToken = null;
-	}
-
-	setTokenType(t: TokenType): void {
-		this.tokenType = t;
-		this.tokenMeta = null;
-		this.tokenMetaError = null;
-		this.parsed = null;
-	}
-
-	async loadTokenMeta(): Promise<void> {
-		const connected = walletStore.activeWallet;
-		const addr = this.tokenAddress.trim();
-		if (!connected) {
-			this.tokenMetaError = 'no-wallet';
-			return;
-		}
-		// Shape-only check (mirrors the previous /^0x[a-fA-F0-9]{40}$/ regex). strict:false
-		// keeps non-checksummed mixed-case addresses accepted exactly as before — viem's
-		// default strict:true would reject them and change behavior.
-		if (!isAddress(addr, { strict: false })) {
-			this.tokenMetaError = 'invalid-token-address';
-			this.tokenMeta = null;
-			return;
-		}
-		this.tokenMetaLoading = true;
-		this.tokenMetaError = null;
-		try {
-			const wallet = createConnectedWallet(connected);
-			const meta = await wallet.getErc20Meta(this.network, addr as Address);
-			this.tokenMeta = meta;
-		} catch {
-			this.tokenMeta = null;
-			this.tokenMetaError = 'token-read-failed';
-		} finally {
-			this.tokenMetaLoading = false;
-		}
-	}
-
-	parse(): void {
-		this.parsed = parseRecipients({
-			text: this.recipientsText,
-			mode: this.distributionMode,
-			decimals: this.decimals,
-			totalAmount: this.totalAmountInput || undefined
-		});
-	}
-
-	/** 进入 Step 3：算费用 + 预检 */
-	async prepareReview(): Promise<void> {
-		const connected = walletStore.activeWallet;
-		this.reviewError = null;
-		// Step 3 is reached only behind <WalletGate>, so a missing wallet is unreachable
-		// in practice — bail quietly rather than surface a confusing error.
-		if (!connected) return;
-		if (!this.parsed || this.parsed.validCount === 0) return;
-
-		this.feeLoading = true;
-		this.preLoading = true;
-		try {
-			const fee = await quoteFee({ network: this.network, isMember: this.isMember });
-			this.fee = fee;
-
-			const wallet = createConnectedWallet(connected);
-			this.pre = await preflight({
-				wallet,
-				network: this.network,
-				tokenType: this.tokenType,
-				tokenAddress:
-					this.tokenType === 'erc20' ? (this.tokenAddress.trim() as Address) : undefined,
-				totalAmount: this.parsed.totalAmount,
-				// 每笔都收 → 预检用总费用（每批 × 批次数）
-				fee: { ...fee, amount: fee.amount * BigInt(this.totalBatches) }
-			});
-		} catch (e) {
-			this.reviewError = e instanceof Error ? e.message : String(e);
-		} finally {
-			this.feeLoading = false;
-			this.preLoading = false;
-		}
-	}
-
-	/** 执行发送（逐批 passkey 确认） */
-	async send(): Promise<void> {
-		const connected = walletStore.activeWallet;
-		if (!connected || !this.parsed || !this.fee) return;
-
-		this.step = 4;
-		this.execStatus = 'running';
-		this.results = [];
-		this.failures = [];
-		this.progress = { batchIndex: 0, totalBatches: this.totalBatches, phase: 'starting' };
-		this.abortController = new AbortController();
-
-		const wallet = createConnectedWallet(connected);
-		this.sendStartedAt = Date.now();
-		const startedAt = this.sendStartedAt;
-
-		const outcome = await this.runWithCallbacks(wallet);
-
-		this.execStatus = outcome.aborted ? 'aborted' : 'done';
-
-		await this.persistHistory(startedAt, outcome.results, outcome.failures);
-	}
-
-	/**
-	 * 共享的 runSend 调用：组装两条发送路径（send/resume）完全相同的 deps + 进度/结果回调，
-	 * 仅由 `extra` 注入差异（resume 传 completedBatchIndices）。这样 send()/resume() 只各自
-	 * 负责 state 的初始化/善后（reset results、step、execStatus），避免两份 deps 抄写漂移。
-	 */
-	private runWithCallbacks(
-		wallet: ReturnType<typeof createConnectedWallet>,
-		extra?: Partial<RunSendDeps>
-	): Promise<RunSendResult> {
-		if (!this.parsed || !this.fee) throw new Error('runWithCallbacks: parsed/fee required');
-		return runSend({
-			wallet,
-			network: this.network,
-			tokenType: this.tokenType,
-			tokenAddress: this.tokenType === 'erc20' ? (this.tokenAddress.trim() as Address) : undefined,
-			recipients: this.parsed.recipients,
-			batchSize: this.batchSize,
-			fee: this.fee,
-			interBatchDelayMs: 2500,
-			gasFeeToken: this.gasFeeToken,
-			signal: this.abortController!.signal,
-			onProgress: (p) => {
-				this.progress = {
-					batchIndex: p.batchIndex,
-					totalBatches: p.totalBatches,
-					phase: String(p.status)
-				};
-			},
-			onBatchDone: (b) => {
-				this.results = [...this.results, b];
-			},
-			onBatchFailed: (f) => {
-				this.failures = [...this.failures, f];
-			},
-			...extra
-		});
-	}
-
-	abort(): void {
-		this.abortController?.abort();
-	}
-
-	/** 尚未成功的批次数（>0 时显示「继续发送」） */
-	get remainingBatches(): number {
-		return Math.max(0, this.totalBatches - this.results.length);
-	}
-
-	/**
-	 * 继续发送：仅跑尚未成功的批次，跳过已完成的——不对已打款地址重复发送，
-	 * 费用也不重复收（已随首批支付）。失败的批会被重试。
-	 */
-	async resume(): Promise<void> {
-		const connected = walletStore.activeWallet;
-		if (!connected || !this.parsed || !this.fee || this.remainingBatches <= 0) return;
-
-		this.step = 4;
-		this.execStatus = 'running';
-		this.failures = [];
-		this.abortController = new AbortController();
-
-		const completed = new Set(this.results.map((r) => r.batchIndex));
-		const wallet = createConnectedWallet(connected);
-		const startedAt = this.sendStartedAt || Date.now();
-
-		const outcome = await this.runWithCallbacks(wallet, { completedBatchIndices: completed });
-
-		this.execStatus = outcome.aborted ? 'aborted' : 'done';
-		await this.persistHistory(startedAt, this.results, outcome.failures);
-	}
-
-	private async persistHistory(
-		startedAt: number,
-		results: BatchOutput[],
-		failures: { batchIndex: number; error: string }[]
-	): Promise<void> {
-		if (!this.parsed || !this.fee) return;
-		const batches: SendBatchRecord[] = [];
-		const sentCount = results.reduce((s, r) => s + r.successCount, 0);
-		for (const r of results) {
-			batches.push({
-				index: r.batchIndex,
-				txHash: r.txHash,
-				status: 'confirmed',
-				count: r.successCount,
-				explorerUrl: r.explorerUrl
-			});
-		}
-		for (const f of failures) {
-			batches.push({ index: f.batchIndex, status: 'failed', count: 0, error: f.error });
-		}
-		batches.sort((a, b) => a.index - b.index);
-
-		const status: SendRecord['status'] =
-			failures.length === 0 ? 'completed' : results.length === 0 ? 'failed' : 'partial';
-
-		const record: SendRecord = {
-			id: `send-${startedAt}`,
-			createdAt: startedAt,
-			network: this.network.slug,
-			networkName: this.network.name,
-			tokenType: this.tokenType,
-			tokenAddress: this.tokenType === 'erc20' ? this.tokenAddress.trim() : undefined,
-			tokenSymbol: this.symbol,
-			decimals: this.decimals,
-			totalRecipients: sentCount,
-			totalAmount: this.parsed.totalAmount.toString(),
-			feeWei: this.fee.amount.toString(),
-			isMember: this.isMember,
-			status,
-			batches
-		};
-
-		try {
-			await putSend(record);
-			await this.loadHistory();
-		} catch {
-			// 历史写入失败不影响主流程
-		}
-	}
-
-	async loadHistory(): Promise<void> {
-		try {
-			this.history = await listSends(50);
-		} catch {
-			this.history = [];
-		}
+	resume(): void {
+		this.#send({ type: 'resume' });
 	}
 
 	// ── 自定义网络 / RPC ──
-
-	async hydrateCustom(): Promise<void> {
-		try {
-			const [nets, ov] = await Promise.all([getCustomNetworks(), getRpcOverrides()]);
-			this.customNetworks = nets;
-			this.rpcOverrides = ov;
-		} catch {
-			// ignore
-		}
-	}
-
-	async addCustomNetwork(input: {
+	addCustomNetwork(input: {
 		name: string;
 		chainId: number;
 		rpc: string;
 		symbol: string;
 		explorerTxUrl?: string;
-	}): Promise<void> {
-		const slug = `custom-${input.chainId}`;
-		const net: TokenSenderNetwork = {
-			slug,
-			name: input.name.trim() || `Chain ${input.chainId}`,
-			chainId: input.chainId,
-			symbol: input.symbol.trim() || 'TOKEN',
-			decimals: 18,
-			rpcs: [input.rpc.trim()],
-			explorerTxUrl: (input.explorerTxUrl ?? '').trim(),
-			multiSendAddress: CONTRACTS.multiSend as Address,
-			maxBatchNative: 100,
-			maxBatchErc20: 100,
-			isCustom: true
-		};
-		this.customNetworks = [...this.customNetworks.filter((n) => n.slug !== slug), net];
-		this.networkSlug = slug;
-		this.tokenMeta = null;
-		this.parsed = null;
-		try {
-			await saveCustomNetwork(net);
-		} catch {
-			// 持久化失败不影响本次会话使用
-		}
+	}): void {
+		this.#send({
+			type: 'add_custom_network',
+			name: input.name,
+			chain_id: input.chainId,
+			rpc: input.rpc,
+			symbol: input.symbol,
+			explorer_tx_url: input.explorerTxUrl ?? null,
+		});
+	}
+	removeCustomNetwork(slug: string): void {
+		this.#send({ type: 'remove_custom_network', slug });
+	}
+	setRpcOverride(slug: string, rpcs: string[]): void {
+		this.#send({ type: 'set_rpc_override', slug, rpcs });
+	}
+	clearRpcOverride(slug: string): void {
+		this.#send({ type: 'clear_rpc_override', slug });
+	}
+	verifyMultiSend(rpc: string): void {
+		this.#send({ type: 'verify_multi_send', rpc });
 	}
 
-	async removeCustomNetwork(slug: string): Promise<void> {
-		this.customNetworks = this.customNetworks.filter((n) => n.slug !== slug);
-		if (this.networkSlug === slug) this.networkSlug = DEFAULT_NETWORK;
-		const next = { ...this.rpcOverrides };
-		delete next[slug];
-		this.rpcOverrides = next;
-		try {
-			await deleteCustomNetwork(slug);
-			await deleteRpcOverride(slug);
-		} catch {
-			// ignore
-		}
-	}
-
-	async setRpcOverride(slug: string, rpcs: string[]): Promise<void> {
-		const clean = rpcs.map((r) => r.trim()).filter(Boolean);
-		if (clean.length === 0) {
-			await this.clearRpcOverride(slug);
-			return;
-		}
-		this.rpcOverrides = { ...this.rpcOverrides, [slug]: clean };
-		try {
-			await saveRpcOverride(slug, clean);
-		} catch {
-			// ignore
-		}
-	}
-
-	async clearRpcOverride(slug: string): Promise<void> {
-		const next = { ...this.rpcOverrides };
-		delete next[slug];
-		this.rpcOverrides = next;
-		try {
-			await deleteRpcOverride(slug);
-		} catch {
-			// ignore
-		}
-	}
-
-	/** 校验某 RPC 上 MultiSend 1.4.1 是否部署（添加网络时给用户反馈） */
-	async verifyMultiSend(rpc: string): Promise<boolean> {
-		try {
-			const res = await fetch(rpc.trim(), {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({
-					jsonrpc: '2.0',
-					id: 1,
-					method: 'eth_getCode',
-					params: [CONTRACTS.multiSend, 'latest']
-				})
-			});
-			const json = await res.json();
-			const code = json?.result;
-			return typeof code === 'string' && code !== '0x' && code.length > 2;
-		} catch {
-			return false;
-		}
-	}
-
-	/** 格式化金额（用当前代币精度） */
-	fmt(wei: bigint, decimals = this.decimals): string {
-		return formatUnits(wei, decimals);
-	}
-
-	goTo(step: WizardStep): void {
-		this.step = step;
-	}
-
-	reset(): void {
-		this.step = 1;
-		this.execStatus = 'idle';
-		this.results = [];
-		this.failures = [];
-		this.parsed = null;
-		this.fee = null;
-		this.pre = null;
-		this.recipientsText = '';
-		this.totalAmountInput = '';
-		this.progress = { batchIndex: 0, totalBatches: 0, phase: '' };
-		this.abortController = null;
+	/**
+	 * 按精度格式化一个最小单位金额，供界面显示。
+	 *
+	 * 纯展示，不改变任何业务状态 —— 因此没必要绕核心一圈。金额本身（十进制字符串）
+	 * 是核心算出来的，这里只负责插小数点。
+	 */
+	fmt(amount: string, decimals = this.view?.decimals ?? 18): string {
+		return formatUnits(BigInt(amount || '0'), decimals);
 	}
 }
 

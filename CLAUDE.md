@@ -211,3 +211,37 @@ for await (const batch of data) {
 }
 return { merkleRoot }; // 返回值里根本没有 jobs
 ```
+
+---
+
+## 业务逻辑的归属边界（Rust 核心）
+
+> 权威约束：[`.specify/memory/constitution.md`](.specify/memory/constitution.md)
+> 接入指南：[`rust/README.md`](rust/README.md)
+> 设计论证：[`specs/001-biubiu-core-crux/`](specs/001-biubiu-core-crux/)
+
+业务规则、业务状态与状态转换住在 `rust/crates/biubiu-core`（Rust + Crux），不在 Svelte store 里。
+
+**写代码前先判断这段逻辑属于哪一侧：**
+
+| 进核心 | 留宿主 |
+|---|---|
+| 什么时候允许做某件事 | 怎么做（ABI 编码、RPC、IndexedDB） |
+| 失败后回滚到哪 | 请求怎么发、超时多久、重试几次 |
+| 哪个响应算过期 | 端点地址、凭据 |
+| 「6 秒后收起提示」的 **6 秒** | `setTimeout` 本身 |
+| 本域拥有的静态数据 | 尚未迁移的其他域拥有的数据 |
+
+**已迁移的域**：`revoke`。它的 store 只持有核心返回的 ViewModel —— 往那个文件里加 `if` 之前，
+先问这个判断是不是属于核心。
+
+**没迁移的域**照旧，不必为此改动。迁移逐域进行，走 Spec Kit 流程。
+
+### 三条最容易踩的
+
+1. **陈旧响应不要再手写代次计数器。** 每个跨宿主的操作带核心分配的 `operation_id`，
+   结果回来先查在途表，查不到就丢弃。这条规则在核心里只有一处实现。
+2. **`ShellCompleted` 用命名字段，不要用元组变体。** 内部标签枚举套内部标签枚举会序列化出
+   重复的 `type` 键且无法反序列化 —— 编译期不报错，第一次跨界才炸。
+3. **迁移不夹带改进。** 发现的缺陷记录成独立条目，等价迁移落地后单独修。混在一起，
+   任何回归都分不清是搬错了还是改错了。

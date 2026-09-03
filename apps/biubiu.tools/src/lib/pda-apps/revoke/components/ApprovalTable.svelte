@@ -3,26 +3,30 @@
 	import { ExternalLink, Copy, Check, LoaderCircle } from '@lucide/svelte';
 	import { t } from '$lib/i18n';
 	import { revoke as s } from '../store.svelte.js';
-	import type { ApprovalRow } from '../types.js';
+	import type { ApprovalRowView } from '$lib/generated/ApprovalRowView';
+
+	// 核心返回的视图。`is_selected` / `is_pending` 已经算好，这里不做任何集合查找。
+	const v = $derived(s.view);
 
 	function shortAddr(a: string): string {
 		return `${a.slice(0, 6)}…${a.slice(-4)}`;
 	}
 
-	function standardLabel(row: ApprovalRow): string {
-		if (row.id.startsWith('permit2:')) return 'Permit2';
+	function standardLabel(row: ApprovalRowView): string {
+		if (row.is_permit2) return 'Permit2';
 		if (row.standard === 'erc20') return 'ERC-20';
 		if (row.standard === 'erc721') return 'ERC-721';
 		return 'ERC-1155';
 	}
 
-	function amountLabel(row: ApprovalRow): string {
-		if (row.approvedForAll) return t('revoke.table.allItems');
+	function amountLabel(row: ApprovalRowView): string {
+		if (row.approved_for_all) return t('revoke.table.allItems');
 		if (row.unlimited) return t('revoke.table.unlimited');
 		if (row.allowance == null) return '—';
 		const dec = row.decimals ?? 18;
-		const n = Number(formatUnits(row.allowance, dec));
-		if (!Number.isFinite(n)) return row.allowance.toString();
+		// 额度以十进制字符串过界（bigint 不能进 JSON —— research.md D4）。
+		const n = Number(formatUnits(BigInt(row.allowance), dec));
+		if (!Number.isFinite(n)) return row.allowance;
 		return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
 	}
 
@@ -38,11 +42,11 @@
 	}
 
 	function explorerAddr(addr: string): string {
-		return `${s.network.explorerUrl}/address/${addr}`;
+		return `${v?.network?.explorer_url ?? ''}/address/${addr}`;
 	}
 
 	const allSelected = $derived(
-		s.visibleRows.length > 0 && s.visibleRows.every((r) => s.isSelected(r.id)),
+		(v?.rows.length ?? 0) > 0 && (v?.rows ?? []).every((r) => r.is_selected),
 	);
 	function toggleAll() {
 		if (allSelected) s.clearSelection();
@@ -62,30 +66,30 @@
 		<span class="th action"></span>
 	</div>
 
-	{#each s.visibleRows as row (row.id)}
-		{@const pending = s.pendingIds.includes(row.id)}
-		<div class="tr" role="row" class:selected={s.isSelected(row.id)}>
+	{#each v?.rows ?? [] as row (row.id)}
+		{@const pending = row.is_pending}
+		<div class="tr" role="row" class:selected={row.is_selected}>
 			<label class="cb">
 				<input
 					type="checkbox"
-					checked={s.isSelected(row.id)}
-					onchange={() => s.toggle(row.id)}
-					disabled={s.revoking}
-					aria-label={`${t('revoke.table.select')} ${row.tokenSymbol}`}
+					checked={row.is_selected}
+					onchange={() => s.toggleRow(row.id)}
+					disabled={v?.is_revoking}
+					aria-label={`${t('revoke.table.select')} ${row.token_symbol}`}
 				/>
 			</label>
 
 			<!-- Asset -->
 			<div class="td asset">
-				<span class="sym">{row.tokenSymbol}</span>
+				<span class="sym">{row.token_symbol}</span>
 				<span class="std">{standardLabel(row)}</span>
-				{#if row.tokenName}<span class="tname">{row.tokenName}</span>{/if}
+				{#if row.token_name}<span class="tname">{row.token_name}</span>{/if}
 			</div>
 
 			<!-- Spender -->
 			<div class="td spender">
-				{#if row.spenderLabel}
-					<span class="sp-label">{row.spenderLabel}</span>
+				{#if row.spender_label}
+					<span class="sp-label">{row.spender_label}</span>
 				{:else}
 					<span class="sp-unknown">{t('revoke.table.unknownSpender')}</span>
 				{/if}
@@ -107,7 +111,7 @@
 
 			<!-- Action -->
 			<div class="td action">
-				<button class="revoke-btn" onclick={() => s.revokeOne(row)} disabled={s.revoking || !s.sendSupported}>
+				<button class="revoke-btn" onclick={() => s.revokeOne(row.id)} disabled={v?.is_revoking || !v?.send_supported}>
 					{#if pending}
 						<LoaderCircle size={14} class="spin" /> {t('revoke.table.revoking')}
 					{:else}

@@ -1,0 +1,41 @@
+# biubiu 业务核心的 Cargo workspace（spec 001-biubiu-core-crux）。
+#
+# 这里是版本的单一来源：两个 crate 都从 [workspace.dependencies] 取依赖，
+# 不各自写版本号，避免 core 与 wasm 桥链接到两份 crux_core。
+[workspace]
+resolver = "2"
+members = [
+  "crates/biubiu-core",
+  "crates/biubiu-core-wasm",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace.dependencies]
+biubiu-core = { path = "crates/biubiu-core" }
+
+# 固定在 0.19 而不是现有的 0.20 —— specs/001-biubiu-core-crux/research.md D2。
+# 两个参考实现（crux-demo、vela-wallet）都跑在 0.19，其 API 形状（#[effect] 宏、
+# Command::request_from_shell(..).then_send(..)、Core::resolve(&mut request, result)）
+# 是已被验证可用的。第一个 spec 同时引入未验证的大版本，会让每个编译错误在
+# 「我们写错了」与「API 变了」之间无法归因。升级 0.20 是一次独立的决定。
+crux_core = "0.19"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Core<->Shell 线类型的 TypeScript 镜像，只在 `bindings` feature 下编译。
+# 永远不是运行期依赖。
+ts-rs = { version = "12.0.1", features = ["serde-compat"] }
+
+# 只出现在 biubiu-core-wasm。业务 crate 不依赖它，否则 `cargo test` 就只能
+# 编到 wasm 目标 —— research.md D1。
+wasm-bindgen = "0.2"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1

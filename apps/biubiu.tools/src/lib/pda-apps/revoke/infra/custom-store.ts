@@ -129,3 +129,40 @@ export async function saveCustomNetwork(net: RevokeNetwork): Promise<void> {
 export async function deleteCustomNetwork(slug: string): Promise<void> {
 	await del(NET_STORE, slug);
 }
+
+// ── 整表回写 ───────────────────────────────────────────────────────────────
+//
+// 核心是这三张表的**唯一真相来源**（research.md D10），它下发的是完整状态而不是增量指令。
+// 因此这里需要「清空后整批写入」，而不是逐条 put/delete —— 后者要求宿主自己算差异，
+// 那等于把「哪些条目该在」这个判断又搬回了宿主。
+async function replaceAll(store: string, values: unknown[]): Promise<void> {
+	if (!hasIDB()) return;
+	await withStore(store, 'readwrite', (os) => {
+		os.clear();
+		for (const value of values) os.put(value);
+	});
+}
+
+export function replaceAllCustomTokens(byChain: Record<number, TokenEntry[]>): Promise<void> {
+	const records: TokenRecord[] = [];
+	for (const [chainId, entries] of Object.entries(byChain)) {
+		for (const entry of entries) {
+			records.push({ id: tokenId(Number(chainId), entry.address), chainId: Number(chainId), entry });
+		}
+	}
+	return replaceAll(TOKEN_STORE, records);
+}
+
+export function replaceAllCustomSpenders(byChain: Record<number, SpenderEntry[]>): Promise<void> {
+	const records: SpenderRecord[] = [];
+	for (const [chainId, entries] of Object.entries(byChain)) {
+		for (const entry of entries) {
+			records.push({ id: tokenId(Number(chainId), entry.address), chainId: Number(chainId), entry });
+		}
+	}
+	return replaceAll(SPENDER_STORE, records);
+}
+
+export function replaceAllCustomNetworks(networks: RevokeNetwork[]): Promise<void> {
+	return replaceAll(NET_STORE, networks);
+}

@@ -1,412 +1,187 @@
 /**
- * Approval Revoke — wizard/page state (Svelte 5 runes singleton, same style as
- * tokenSender / walletSweep). The UI only consumes this store; scanning + sending
- * live in core/ + infra/.
+ * Approval Revoke —— **只是核心返回的视图的持有者**。
  *
- * Flow: connect wallet → pick chain → auto fast-scan → select approvals → revoke
- * (single or one atomic batch via the site ConnectedWallet).
+ * 迁移前（spec 001-biubiu-core-crux）这里有 413 行：扫描的代次计数器 `scanGen`、自动扫描的
+ * 去重键 `lastScanKey`、成功横幅的 `setTimeout` 句柄、以及十几个派生 getter。那些**全部**是
+ * 业务规则，现在住在 `rust/crates/biubiu-core/src/app/revoke.rs`，并且有 21 个不需要浏览器
+ * 就能跑的测试。
+ *
+ * 这里剩下的只有三件事：持有 ViewModel、把交互转成 Event、把 Event 送进核心。
+ *
+ * **不要往这里加 `if`。** 凡是「什么时候允许点这个按钮」「失败后回滚到哪」「哪个响应算过期」
+ * 这类判断，都是核心的（宪法原则 II）。这个文件里出现一个决定业务后果的分支，就说明那条规则
+ * 走错了地方。
  */
-import { getAddress, type Address } from 'viem';
+import { createCruxSession, type CruxSession } from '$lib/crux/create-crux-session.js';
+import type { RevokeEvent } from '$lib/generated/RevokeEvent';
+import type { RevokeShellResult } from '$lib/generated/RevokeShellResult';
+import type { RevokeViewModel } from '$lib/generated/RevokeViewModel';
+import type { RowFilter } from '$lib/generated/RowFilter';
+import type { TokenStandard } from '$lib/generated/TokenStandard';
 import { walletStore } from '$lib/wallet';
-import type { SendResult, SendStatus } from '$lib/wallet';
-import type { ApprovalRow, RevokeNetwork, SpenderEntry, TokenEntry, TokenStandard } from './types.js';
-import { listNetworks, networkBySlug, customNetworkKey, MULTICALL3, DEFAULT_SLUG } from './infra/networks.js';
-import { discover } from './core/discover.js';
-import { runRevoke } from './core/revoke.js';
+import { BUILTIN_NETWORKS } from './infra/networks.js';
 import { fetchErc20Meta, fetchNftMeta, isValidAddress } from './infra/metadata.js';
-import { extractRpcUrls } from '$lib/contract-caller/networks.js';
-import { getEthereumDataURL } from '$lib/wallet/infra/endpoints.js';
-import {
-	getCustomTokens,
-	saveCustomToken,
-	deleteCustomToken,
-	getCustomSpenders,
-	saveCustomSpender,
-	deleteCustomSpender,
-	getCustomNetworks,
-	saveCustomNetwork,
-	deleteCustomNetwork,
-} from './infra/custom-store.js';
+import { createRevokeShell, type RevokeEffect } from './shell/index.js';
+import { fromRevokeNetwork } from './shell/wire.js';
+import { networkBySlug } from './infra/networks.js';
 
-export type RowFilter = 'all' | 'unlimited';
+type Session = CruxSession<RevokeViewModel, RevokeEvent, RevokeEffect, RevokeShellResult>;
 
 class RevokeStore {
-	// ── selection / chain ──
-	networkSlug = $state<string>(DEFAULT_SLUG);
+	/** 核心返回的视图。页面只读这个。 */
+	view = $state<RevokeViewModel | null>(null);
+	/** 核心加载失败（WASM 取不到等），与业务失败无关。 */
+	loadError = $state<string | null>(null);
 
-	// ── scan results ──
-	rows = $state<ApprovalRow[]>([]);
-	scanning = $state(false);
-	scanned = $state(false);
-	scanError = $state<string | null>(null);
-	filter = $state<RowFilter>('all');
+	#session: Session | null = null;
+	#starting: Promise<void> | null = null;
 
-	// ── selection ──
-	selectedIds = $state<string[]>([]);
+	/** 幂等：页面重复挂载不会创建第二个核心。 */
+	async start(): Promise<void> {
+		if (this.#session) return;
+		if (this.#starting) return this.#starting;
 
-	// ── revoke ──
-	revoking = $state(false);
-	revokePhase = $state<SendStatus | null>(null);
-	revokeError = $state<string | null>(null);
-	lastResult = $state<SendResult | null>(null);
-	/** In-band 结算：整批用哪个资产付 gas（null = 原生；仅 biubiu Safe 生效）。 */
-	gasFeeToken = $state<Address | null>(null);
-	/** Row ids currently being revoked (for per-row spinners). */
-	pendingIds = $state<string[]>([]);
-	/** Auto-revert timer for the success banner. */
-	private successTimer: ReturnType<typeof setTimeout> | null = null;
+		this.#starting = (async () => {
+			const shell = createRevokeShell({ dispatch: (event) => this.#session?.dispatch(event) });
+			try {
+				this.#session = await createCruxSession<
+					RevokeViewModel,
+					RevokeEvent,
+					RevokeEffect,
+					RevokeShellResult
+				>({
+					createCore: (wasm) => new wasm.RevokeCore(),
+					initialEvent: { type: 'page_ready' },
+					onView: (view) => {
+						this.view = view;
+					},
+					execute: (effect) => shell.execute(effect),
+					toFailure: (effect, error) => shell.toFailure(effect, error),
+					onError: (error) => {
+						this.loadError = error instanceof Error ? error.message : String(error);
+					},
+				});
+				// 内置网络表由宿主供给：它派生自钱包的 CHAINS，属于尚未迁移的 wallet 域，
+				// 复制进核心会制造两份真相（research.md D12）。
+				this.#session.dispatch({
+					type: 'networks_provided',
+					networks: BUILTIN_NETWORKS.map(fromRevokeNetwork),
+				});
+			} catch (error) {
+				this.loadError = error instanceof Error ? error.message : String(error);
+			} finally {
+				this.#starting = null;
+			}
+		})();
 
-	// ── custom registries (scoped by chainId) + networks ──
-	customNetworks = $state<RevokeNetwork[]>([]);
-	customTokens = $state<Record<number, TokenEntry[]>>({});
-	customSpenders = $state<Record<number, SpenderEntry[]>>({});
-
-	/** Guards the page-driven auto-scan so it fires once per owner+chain. */
-	private lastScanKey = '';
-	/**
-	 * Monotonic scan token. Captured at the start of every scan() and bumped on
-	 * every chain switch / new scan; a scan only writes its results if its token
-	 * still matches `scanGen`. This discards results from a scan that started on a
-	 * now-stale chain (chain switched mid-scan) and ensures only the latest of
-	 * overlapping scans (e.g. add/remove custom token fired in quick succession)
-	 * wins — no cross-chain rows, no inconsistent loading state.
-	 */
-	private scanGen = 0;
-
-	// ── derived ──
-	get networks(): RevokeNetwork[] {
-		return listNetworks(this.customNetworks);
-	}
-	get network(): RevokeNetwork {
-		return networkBySlug(this.networkSlug, this.customNetworks);
-	}
-	get owner(): Address | null {
-		return walletStore.activeWallet?.address ?? null;
-	}
-	/** biubiu can't send on custom chains (no bundler infra); external wallets can. */
-	get sendSupported(): boolean {
-		return !(this.network.isCustom && walletStore.kind === 'biubiu');
-	}
-	get chainTokens(): TokenEntry[] {
-		return this.customTokens[this.network.chainId] ?? [];
-	}
-	get chainSpenders(): SpenderEntry[] {
-		return this.customSpenders[this.network.chainId] ?? [];
-	}
-	get visibleRows(): ApprovalRow[] {
-		return this.filter === 'unlimited' ? this.rows.filter((r) => r.unlimited) : this.rows;
-	}
-	get selectedRows(): ApprovalRow[] {
-		const set = new Set(this.selectedIds);
-		return this.rows.filter((r) => set.has(r.id));
-	}
-	get unlimitedCount(): number {
-		return this.rows.filter((r) => r.unlimited).length;
+		return this.#starting;
 	}
 
-	// ── selection helpers ──
-	isSelected(id: string): boolean {
-		return this.selectedIds.includes(id);
+	dispose(): void {
+		this.#session?.dispose();
+		this.#session = null;
+		this.view = null;
 	}
-	toggle(id: string): void {
-		this.selectedIds = this.isSelected(id)
-			? this.selectedIds.filter((x) => x !== id)
-			: [...this.selectedIds, id];
+
+	#send(event: RevokeEvent): void {
+		this.#session?.dispatch(event);
+	}
+
+	/** 由页面的钱包 effect 调用。是否算「换了目标」由核心判断。 */
+	syncWallet(): void {
+		this.#send({
+			type: 'wallet_changed',
+			owner: walletStore.activeWallet?.address ?? null,
+			is_biubiu: walletStore.kind === 'biubiu',
+		});
+	}
+
+	setNetwork(slug: string): void {
+		this.#send({ type: 'set_network', slug });
+	}
+	rescan(): void {
+		this.#send({ type: 'request_scan' });
+	}
+	setFilter(filter: RowFilter): void {
+		this.#send({ type: 'set_filter', filter });
+	}
+	toggleRow(id: string): void {
+		this.#send({ type: 'toggle_row', id });
 	}
 	selectAllVisible(): void {
-		this.selectedIds = this.visibleRows.map((r) => r.id);
+		this.#send({ type: 'select_all_visible' });
 	}
 	clearSelection(): void {
-		this.selectedIds = [];
+		this.#send({ type: 'clear_selection' });
+	}
+	setGasFeeToken(token: string | null): void {
+		this.#send({ type: 'set_gas_fee_token', token });
+	}
+	revokeOne(id: string): void {
+		this.#send({ type: 'revoke_one', id });
+	}
+	revokeSelected(): void {
+		this.#send({ type: 'revoke_selected' });
+	}
+	dismissNotice(): void {
+		this.#send({ type: 'dismiss_notice' });
 	}
 
-	// ── chain switching ──
-	setNetwork(slug: string): void {
-		if (slug === this.networkSlug) return;
-		this.networkSlug = slug;
-		// Invalidate any in-flight scan started on the previous chain so its results
-		// (chain-A approvals) can never land on the now-selected chain.
-		this.scanGen++;
-		this.scanning = false;
-		this.rows = [];
-		this.scanned = false;
-		this.scanError = null;
-		this.selectedIds = [];
-		this.lastResult = null;
-		this.gasFeeToken = null; // 切链后所选稳定币可能不存在于新链 → 回退原生
-		this.lastScanKey = ''; // force a fresh auto-scan on the new chain
-	}
-
-	// ── scanning ──
-	/** Called from the page effect; scans once per owner+chain change. */
-	autoScan(owner: Address): void {
-		const key = `${owner.toLowerCase()}:${this.network.chainId}`;
-		if (key === this.lastScanKey || this.scanning) return;
-		this.lastScanKey = key;
-		void this.scan();
-	}
-
-	async scan(): Promise<void> {
-		const owner = this.owner;
-		if (!owner) return;
-		// Claim this scan generation; any concurrent or later scan / chain switch
-		// bumps scanGen, so a stale scan's results are dropped below.
-		const gen = ++this.scanGen;
-		const network = this.network; // pin the target chain for this scan
-		this.scanning = true;
-		this.scanError = null;
-		this.selectedIds = [];
-		try {
-			const rows = await discover({
-				network,
-				owner,
-				customTokens: this.customTokens[network.chainId] ?? [],
-				customSpenders: this.customSpenders[network.chainId] ?? [],
-			});
-			if (gen !== this.scanGen) return; // superseded — discard stale results
-			this.rows = rows;
-			this.scanned = true;
-		} catch (e) {
-			if (gen !== this.scanGen) return; // superseded — don't surface a stale error
-			this.scanError = e instanceof Error ? e.message : String(e);
-			this.rows = [];
-		} finally {
-			// Only the latest scan owns the loading flag; an earlier scan hitting
-			// finally must not clear the spinner for a scan still in flight.
-			if (gen === this.scanGen) this.scanning = false;
-		}
-	}
-
-	// ── revoke ──
-	/** Dismiss the success / error banner (also cancels the auto-revert). */
-	dismissStatus(): void {
-		if (this.successTimer) {
-			clearTimeout(this.successTimer);
-			this.successTimer = null;
-		}
-		this.lastResult = null;
-		this.revokeError = null;
-	}
-
-	private async revokeRows(rows: ApprovalRow[]): Promise<void> {
-		if (rows.length === 0 || this.revoking) return;
-		this.revoking = true;
-		this.dismissStatus();
-		this.revokePhase = 'checking';
-		this.pendingIds = rows.map((r) => r.id);
-		try {
-			const res = await runRevoke({
-				network: this.network,
-				rows,
-				onPhase: (p) => (this.revokePhase = p),
-				gasFeeToken: this.gasFeeToken,
-			});
-			this.lastResult = res;
-			if (res.success) {
-				const ids = new Set(rows.map((r) => r.id));
-				this.rows = this.rows.filter((r) => !ids.has(r.id));
-				this.selectedIds = this.selectedIds.filter((id) => !ids.has(id));
-				// Success is transient — auto-revert the banner (kept long enough that the
-				// explorer link stays clickable). Error banners persist until dismissed.
-				this.successTimer = setTimeout(() => {
-					this.lastResult = null;
-					this.successTimer = null;
-				}, 6000);
-			} else {
-				this.revokeError = res.error ?? 'failed';
-			}
-		} catch (e) {
-			this.revokeError = e instanceof Error ? e.message : String(e);
-		} finally {
-			this.revoking = false;
-			this.revokePhase = null;
-			this.pendingIds = [];
-		}
-	}
-	revokeOne(row: ApprovalRow): Promise<void> {
-		return this.revokeRows([row]);
-	}
-	revokeSelected(): Promise<void> {
-		return this.revokeRows(this.selectedRows);
-	}
-
-	// ── custom tokens ──
-	async addCustomToken(
+	addCustomToken(
 		standard: TokenStandard,
 		address: string,
 		meta: { symbol: string; name?: string; decimals?: number },
-	): Promise<void> {
-		const addr = getAddress(address.trim());
-		const entry: TokenEntry = {
+	): void {
+		this.#send({
+			type: 'add_custom_token',
 			standard,
-			address: addr,
+			address,
 			symbol: meta.symbol,
-			name: meta.name,
-			decimals: meta.decimals,
-			isCustom: true,
-		};
-		const cid = this.network.chainId;
-		const list = (this.customTokens[cid] ?? []).filter(
-			(t) => !(t.address.toLowerCase() === addr.toLowerCase() && t.standard === standard),
-		);
-		this.customTokens = { ...this.customTokens, [cid]: [...list, entry] };
-		try {
-			await saveCustomToken(cid, entry);
-		} catch {
-			// persistence failure shouldn't block this session
-		}
-		await this.scan();
+			name: meta.name ?? null,
+			decimals: meta.decimals ?? null,
+		});
 	}
-	async removeCustomToken(address: Address): Promise<void> {
-		const cid = this.network.chainId;
-		this.customTokens = {
-			...this.customTokens,
-			[cid]: (this.customTokens[cid] ?? []).filter(
-				(t) => t.address.toLowerCase() !== address.toLowerCase(),
-			),
-		};
-		try {
-			await deleteCustomToken(cid, address);
-		} catch {
-			// ignore
-		}
-		await this.scan();
+	removeCustomToken(address: string): void {
+		this.#send({ type: 'remove_custom_token', address });
+	}
+	addCustomSpender(address: string, label: string): void {
+		this.#send({ type: 'add_custom_spender', address, label });
+	}
+	removeCustomSpender(address: string): void {
+		this.#send({ type: 'remove_custom_spender', address });
+	}
+	addNetworkByChainId(chainId: number, rpcOverride?: string): void {
+		this.#send({
+			type: 'add_network_by_chain_id',
+			chain_id: chainId,
+			rpc_override: rpcOverride?.trim() || null,
+		});
+	}
+	removeCustomNetwork(slug: string): void {
+		this.#send({ type: 'remove_custom_network', slug });
 	}
 
-	/** Resolve metadata for a custom token before adding (for the add form). */
-	async fetchTokenMeta(
+	/**
+	 * 添加自定义代币前，先把元数据读出来填进表单。
+	 *
+	 * 这是一次**纯读取**，不改变任何业务状态，因此不必绕核心一圈 —— 它更像是表单的自动填充，
+	 * 而不是一次业务转换。读到的值随 `addCustomToken` 一起进核心。
+	 */
+	fetchTokenMeta(
 		standard: TokenStandard,
 		address: string,
 	): Promise<{ symbol: string; name?: string; decimals?: number }> {
-		if (standard === 'erc20') return fetchErc20Meta(this.network, getAddress(address.trim()));
-		const m = await fetchNftMeta(this.network, getAddress(address.trim()));
-		return { symbol: m.symbol ?? 'NFT', name: m.name };
+		const slug = this.view?.network?.slug ?? '';
+		const network = networkBySlug(slug, []);
+		if (standard === 'erc20') return fetchErc20Meta(network, address as `0x${string}`);
+		return fetchNftMeta(network, address as `0x${string}`).then((m) => ({
+			symbol: m.symbol ?? 'NFT',
+			name: m.name,
+		}));
 	}
 
-	// ── custom spenders ──
-	async addCustomSpender(address: string, label: string): Promise<void> {
-		const addr = getAddress(address.trim());
-		const entry: SpenderEntry = {
-			address: addr,
-			label: label.trim() || `${addr.slice(0, 6)}…${addr.slice(-4)}`,
-			kind: 'other',
-			isCustom: true,
-		};
-		const cid = this.network.chainId;
-		const list = (this.customSpenders[cid] ?? []).filter(
-			(s) => s.address.toLowerCase() !== addr.toLowerCase(),
-		);
-		this.customSpenders = { ...this.customSpenders, [cid]: [...list, entry] };
-		try {
-			await saveCustomSpender(cid, entry);
-		} catch {
-			// ignore
-		}
-		await this.scan();
-	}
-	async removeCustomSpender(address: Address): Promise<void> {
-		const cid = this.network.chainId;
-		this.customSpenders = {
-			...this.customSpenders,
-			[cid]: (this.customSpenders[cid] ?? []).filter(
-				(s) => s.address.toLowerCase() !== address.toLowerCase(),
-			),
-		};
-		try {
-			await deleteCustomSpender(cid, address);
-		} catch {
-			// ignore
-		}
-		await this.scan();
-	}
-
-	// ── custom networks ──
-	/**
-	 * Add a custom network by chainId — name / symbol / explorer / public RPCs are
-	 * pulled from the ethereum-data index (same source the rest of the app uses), so
-	 * the user only searches & picks. An optional `rpcOverride` is preferred over the
-	 * fetched RPCs. Returns `need-rpc` when the chain exposes no public RPC and none
-	 * was supplied.
-	 */
-	async addNetworkByChainId(
-		chainId: number,
-		rpcOverride?: string,
-	): Promise<{ ok: boolean; error?: 'need-rpc' | 'failed' }> {
-		// Already available (built-in or previously added) → just select it, no duplicate.
-		const existing = this.networks.find((n) => n.chainId === chainId);
-		if (existing) {
-			this.setNetwork(existing.slug);
-			return { ok: true };
-		}
-
-		let meta: {
-			name?: string;
-			nativeCurrency?: { symbol?: string };
-			explorers?: Array<{ url?: string }>;
-			testnet?: boolean;
-			rpc?: unknown;
-		} | null = null;
-		try {
-			const res = await fetch(`${getEthereumDataURL()}/chains/eip155-${chainId}.json`);
-			if (res.ok) meta = await res.json();
-		} catch {
-			meta = null;
-		}
-
-		const override = rpcOverride?.trim();
-		const fetched = meta ? extractRpcUrls(meta) : [];
-		const rpcs = [...new Set([...(override ? [override] : []), ...fetched])];
-		if (rpcs.length === 0) return { ok: false, error: 'need-rpc' };
-
-		const slug = customNetworkKey(chainId);
-		const net: RevokeNetwork = {
-			slug,
-			chainId,
-			name: meta?.name ?? `Chain ${chainId}`,
-			symbol: meta?.nativeCurrency?.symbol ?? 'ETH',
-			rpcs,
-			explorerUrl: (meta?.explorers?.[0]?.url ?? '').replace(/\/$/, ''),
-			multicall3: MULTICALL3,
-			isCustom: true,
-			isTestnet: meta?.testnet === true,
-		};
-		this.customNetworks = [...this.customNetworks.filter((n) => n.slug !== slug), net];
-		try {
-			await saveCustomNetwork(net);
-		} catch {
-			// persistence failure shouldn't block this session
-		}
-		this.setNetwork(slug);
-		return { ok: true };
-	}
-	async removeCustomNetwork(slug: string): Promise<void> {
-		this.customNetworks = this.customNetworks.filter((n) => n.slug !== slug);
-		if (this.networkSlug === slug) this.setNetwork(DEFAULT_SLUG);
-		try {
-			await deleteCustomNetwork(slug);
-		} catch {
-			// ignore
-		}
-	}
-
-	// ── hydrate from IndexedDB ──
-	async hydrate(): Promise<void> {
-		try {
-			const [nets, toks, spenders] = await Promise.all([
-				getCustomNetworks(),
-				getCustomTokens(),
-				getCustomSpenders(),
-			]);
-			this.customNetworks = nets;
-			this.customTokens = toks;
-			this.customSpenders = spenders;
-		} catch {
-			// ignore — custom data is best-effort
-		}
-	}
-
-	isValidAddress(addr: string): boolean {
-		return isValidAddress(addr);
+	isValidAddress(address: string): boolean {
+		return isValidAddress(address);
 	}
 }
 

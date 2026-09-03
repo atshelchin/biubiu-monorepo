@@ -1,0 +1,22 @@
+[package]
+name = "biubiu-core-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "biubiu-core 的 wasm-bindgen 桥。只做 JSON 编解码与 pending 表管理，不含业务语义。"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = []
+# 透传 biubiu-core 的开发期快照，供页面右侧的 devtools 面板使用。
+devtools = ["biubiu-core/devtools"]
+
+[dependencies]
+# crux 在这里是**必开**的：这个 crate 的存在意义就是导出状态机。
+biubiu-core = { workspace = true, features = ["crux"] }
+crux_core = { workspace = true }
+wasm-bindgen = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

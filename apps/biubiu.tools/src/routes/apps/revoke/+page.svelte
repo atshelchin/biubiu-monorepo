@@ -14,13 +14,33 @@
 	import type { SendStatus } from '$lib/wallet';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { revoke as s } from '$lib/pda-apps/revoke/store.svelte.js';
-	import type { TokenStandard } from '$lib/pda-apps/revoke/types.js';
+	import type { TokenStandard } from '$lib/generated/TokenStandard';
 	import ApprovalTable from '$lib/pda-apps/revoke/components/ApprovalTable.svelte';
 	import InBandFeeRow from '$lib/auth/InBandFeeRow.svelte';
 	import { buildRevokeCall } from '$lib/pda-apps/revoke/core/revoke.js';
+	import type { ApprovalRow } from '$lib/pda-apps/revoke/types.js';
+
+	// 核心返回的视图 —— 这个页面读的**全部**业务状态。没有第二个真相来源。
+	const v = $derived(s.view);
+
+	// 选中的行。`is_selected` 是核心算好的，这里不做集合查找。
+	const selectedRows = $derived((v?.rows ?? []).filter((r) => r.is_selected));
 
 	// 所选行的 revoke 调用——供 in-band 选币器估算整批 gas 报销。
-	const revokeFeeCalls = $derived(s.selectedRows.map(buildRevokeCall));
+	// buildRevokeCall 只读 id / standard / token / spender。
+	const revokeFeeCalls = $derived(selectedRows.map((r) => buildRevokeCall(r as unknown as ApprovalRow)));
+
+	// NetworkGrid 要的是 camelCase 形状。
+	const gridNetworks = $derived(
+		(v?.networks ?? []).map((n) => ({
+			slug: n.slug,
+			name: n.name,
+			symbol: n.symbol,
+			chainId: n.chain_id,
+			isTestnet: n.is_testnet,
+			isCustom: n.is_custom,
+		})),
+	);
 	import { searchChains } from '$lib/contract-caller/networks.js';
 	import type { ChainSearchResult } from '$lib/contract-caller/types.js';
 	import { getChainLogoUrl, DEFAULT_CHAIN_LOGO } from '$lib/chains';
@@ -45,15 +65,27 @@
 		}),
 	);
 
-	// Auto-scan whenever the connected owner or selected chain changes.
+	// 钱包变化时通知核心。**「算不算换了目标、要不要重扫」由核心判断** —— 页面只负责如实报告。
 	$effect(() => {
-		const owner = walletStore.activeWallet?.address;
-		void s.networkSlug; // track chain switches
-		if (owner) s.autoScan(owner as Address);
+		void walletStore.activeWallet?.address;
+		void walletStore.kind;
+		s.syncWallet();
 	});
 
 	onMount(() => {
-		void s.hydrate();
+		void s.start();
+		return () => s.dispose();
+	});
+
+	// in-band gas 结算资产。子组件是 $bindable 的，所以这里留一个本地镜像，变化即送进核心。
+	// 切链时核心会把它清空（新链上原稳定币可能不存在），因此本地也跟着链的 slug 归零。
+	let feeToken = $state<Address | null>(null);
+	$effect(() => {
+		void v?.network?.slug;
+		feeToken = null;
+	});
+	$effect(() => {
+		s.setGasFeeToken(feeToken);
 	});
 
 	const phaseLabel: Record<SendStatus, string> = {
@@ -123,7 +155,7 @@
 			atError = t('revoke.addToken.needMeta');
 			return;
 		}
-		await s.addCustomToken(atStandard, atAddress, {
+		s.addCustomToken(atStandard, atAddress, {
 			symbol: atSymbol.trim(),
 			name: atName.trim() || undefined,
 			decimals: atStandard === 'erc20' ? (atDecimals ?? 18) : undefined,
@@ -143,7 +175,7 @@
 			asError = t('revoke.addSpender.invalidAddress');
 			return;
 		}
-		await s.addCustomSpender(asAddress, asLabel);
+		s.addCustomSpender(asAddress, asLabel);
 		showAddSpender = false;
 		asAddress = '';
 		asLabel = '';
@@ -188,18 +220,31 @@
 		anSearching = false;
 		anAdding = null;
 	}
-	async function pickChain(chainId: number) {
+	function pickChain(chainId: number) {
 		anError = null;
 		anAdding = chainId;
-		const res = await s.addNetworkByChainId(chainId, anRpc);
-		anAdding = null;
-		if (res.ok) {
+		s.addNetworkByChainId(chainId, anRpc);
+	}
+
+	// 添加结果由核心经视图告知，不是一个返回值：成功 ⇒ 该链成为当前网络；失败 ⇒ 一条 notice。
+	// 这正是 Core/Shell 的形状 —— 页面渲染状态，不等待过程。
+	$effect(() => {
+		if (anAdding === null) return;
+		if (v?.network?.chain_id === anAdding) {
+			anAdding = null;
 			showAddNetwork = false;
 			resetAddNetwork();
-		} else {
-			anError = res.error === 'need-rpc' ? t('revoke.addNetwork.needRpc') : t('revoke.addNetwork.addFailed');
+			return;
 		}
-	}
+		const notice = v?.notice;
+		if (notice && notice.kind === 'failure') {
+			anAdding = null;
+			anError =
+				notice.message === 'need-rpc'
+					? t('revoke.addNetwork.needRpc')
+					: t('revoke.addNetwork.addFailed');
+		}
+	});
 </script>
 
 <SEO {...seoProps} />
@@ -237,8 +282,8 @@
 		<section class="card panel" use:fadeInUp={{ delay: 80 }}>
 			<div class="field-label">{t('revoke.network.label')}</div>
 			<NetworkGrid
-				networks={s.networks}
-				selectedSlug={s.networkSlug}
+				networks={gridNetworks}
+				selectedSlug={v?.network?.slug ?? null}
 				onSelect={(slug) => s.setNetwork(slug)}
 				onAddCustom={() => (showAddNetwork = true)}
 				addLabel={t('revoke.network.addCustom')}
@@ -248,15 +293,15 @@
 			/>
 
 			<!-- Custom token / spender chips -->
-			{#if s.chainTokens.length > 0 || s.chainSpenders.length > 0}
+			{#if (v?.custom_tokens.length ?? 0) > 0 || (v?.custom_spenders.length ?? 0) > 0}
 				<div class="custom-chips">
-					{#each s.chainTokens as tok (tok.address)}
+					{#each v?.custom_tokens ?? [] as tok (tok.address)}
 						<span class="custom-chip">
 							{tok.symbol}
 							<button onclick={() => s.removeCustomToken(tok.address)} aria-label={t('revoke.custom.remove')}><X size={11} /></button>
 						</span>
 					{/each}
-					{#each s.chainSpenders as sp (sp.address)}
+					{#each v?.custom_spenders ?? [] as sp (sp.address)}
 						<span class="custom-chip spender">
 							{sp.label}
 							<button onclick={() => s.removeCustomSpender(sp.address)} aria-label={t('revoke.custom.remove')}><X size={11} /></button>
@@ -270,22 +315,22 @@
 		<section class="card panel" use:fadeInUp={{ delay: 120 }}>
 			<div class="toolbar">
 				<div class="toolbar-left">
-					{#if s.rows.length > 0}
+					{#if (v?.total_count ?? 0) > 0}
 						<div class="filter">
-							<button aria-pressed={s.filter === 'all'} class:selected={s.filter === 'all'} onclick={() => (s.filter = 'all')}>
-								{t('revoke.filter.all', { count: s.rows.length })}
+							<button aria-pressed={v?.filter === 'all'} class:selected={v?.filter === 'all'} onclick={() => s.setFilter('all')}>
+								{t('revoke.filter.all', { count: v?.total_count ?? 0 })}
 							</button>
-							<button aria-pressed={s.filter === 'unlimited'} class:selected={s.filter === 'unlimited'} onclick={() => (s.filter = 'unlimited')}>
-								{t('revoke.filter.unlimited', { count: s.unlimitedCount })}
+							<button aria-pressed={v?.filter === 'unlimited'} class:selected={v?.filter === 'unlimited'} onclick={() => s.setFilter('unlimited')}>
+								{t('revoke.filter.unlimited', { count: v?.unlimited_count ?? 0 })}
 							</button>
 						</div>
 					{/if}
 				</div>
 				<div class="toolbar-right">
-					<button class="btn ghost sm" onclick={() => (showAddToken = true)} disabled={s.revoking}><Plus size={14} /> {t('revoke.toolbar.addToken')}</button>
-					<button class="btn ghost sm" onclick={() => (showAddSpender = true)} disabled={s.revoking}><Plus size={14} /> {t('revoke.toolbar.addSpender')}</button>
-					<button class="btn ghost sm" onclick={() => s.scan()} disabled={s.scanning || s.revoking}>
-						{#if s.scanning}<LoaderCircle size={14} class="spin" />{:else}<RefreshCw size={14} />{/if}
+					<button class="btn ghost sm" onclick={() => (showAddToken = true)} disabled={v?.is_revoking}><Plus size={14} /> {t('revoke.toolbar.addToken')}</button>
+					<button class="btn ghost sm" onclick={() => (showAddSpender = true)} disabled={v?.is_revoking}><Plus size={14} /> {t('revoke.toolbar.addSpender')}</button>
+					<button class="btn ghost sm" onclick={() => s.rescan()} disabled={v?.is_scanning || v?.is_revoking}>
+						{#if v?.is_scanning}<LoaderCircle size={14} class="spin" />{:else}<RefreshCw size={14} />{/if}
 						{t('revoke.toolbar.rescan')}
 					</button>
 				</div>
@@ -297,36 +342,36 @@
 				<p>{t('revoke.scan.coverage')}</p>
 			</div>
 
-			{#if !s.sendSupported}
+			{#if v && !v.send_supported}
 				<p class="note"><TriangleAlert size={14} /> {t('revoke.note.customBiubiu')}</p>
 			{/if}
 
 			<!-- Revoke status / result -->
-			{#if s.revoking}
+			{#if v?.is_revoking}
 				<div class="status info">
 					<LoaderCircle size={16} class="spin" />
-					<span>{s.revokePhase ? phaseLabel[s.revokePhase] : t('revoke.phase.checking')}</span>
+					<span>{v?.revoke_phase ? phaseLabel[v.revoke_phase] : t('revoke.phase.checking')}</span>
 				</div>
-			{:else if s.lastResult?.success}
+			{:else if v?.notice?.kind === 'success'}
 				<div class="status ok" role="status">
 					<ShieldOff size={16} />
 					<span>{t('revoke.result.success')}</span>
-					{#if s.lastResult.explorerUrl}
-						<a href={s.lastResult.explorerUrl} target="_blank" rel="noopener">{t('revoke.result.viewTx')} <ExternalLink size={12} /></a>
+					{#if v.notice.explorer_url}
+						<a href={v.notice.explorer_url} target="_blank" rel="noopener">{t('revoke.result.viewTx')} <ExternalLink size={12} /></a>
 					{/if}
-					<button class="status-x" onclick={() => s.dismissStatus()} aria-label={t('revoke.alert.dismiss')}><X size={14} /></button>
+					<button class="status-x" onclick={() => s.dismissNotice()} aria-label={t('revoke.alert.dismiss')}><X size={14} /></button>
 				</div>
-			{:else if s.revokeError}
+			{:else if v?.notice?.kind === 'failure'}
 				<div class="status err" role="alert">
 					<TriangleAlert size={16} />
-					<span>{t('revoke.result.failed', { error: s.revokeError })}</span>
-					<button class="status-x" onclick={() => s.dismissStatus()} aria-label={t('revoke.alert.dismiss')}><X size={14} /></button>
+					<span>{t('revoke.result.failed', { error: v.notice.message })}</span>
+					<button class="status-x" onclick={() => s.dismissNotice()} aria-label={t('revoke.alert.dismiss')}><X size={14} /></button>
 				</div>
 			{/if}
 
 			<!-- Body states -->
-			{#if s.scanning && s.rows.length === 0}
-				<p class="scanning-label"><LoaderCircle size={14} class="spin" /> {t('revoke.scan.scanning', { network: s.network.name })}</p>
+			{#if v?.is_scanning && (v?.total_count ?? 0) === 0}
+				<p class="scanning-label"><LoaderCircle size={14} class="spin" /> {t('revoke.scan.scanning', { network: v?.network?.name ?? '' })}</p>
 				<div class="skel-table" aria-hidden="true">
 					{#each skeletonRows as i (i)}
 						<div class="skel-row">
@@ -339,43 +384,43 @@
 						</div>
 					{/each}
 				</div>
-			{:else if s.scanError}
+			{:else if v?.scan_error}
 				<div class="placeholder">
 					<TriangleAlert size={28} />
 					<p>{t('revoke.scan.error')}</p>
-					<button class="btn ghost sm" onclick={() => s.scan()}>{t('revoke.toolbar.rescan')}</button>
+					<button class="btn ghost sm" onclick={() => s.rescan()}>{t('revoke.toolbar.rescan')}</button>
 				</div>
-			{:else if s.scanned && s.rows.length === 0}
+			{:else if v?.has_scanned && (v?.total_count ?? 0) === 0}
 				<div class="placeholder">
 					<ShieldCheck size={28} />
-					<p>{t('revoke.scan.empty', { network: s.network.name })}</p>
+					<p>{t('revoke.scan.empty', { network: v?.network?.name ?? '' })}</p>
 					<p class="hint">{t('revoke.scan.emptyHint')}</p>
 				</div>
-			{:else if s.visibleRows.length > 0}
+			{:else if (v?.rows.length ?? 0) > 0}
 				<!-- Batch action bar -->
-				{#if s.selectedRows.length > 0}
+				{#if selectedRows.length > 0}
 					<InBandFeeRow
 						walletKind={walletStore.kind ?? ''}
-						chainId={s.network.chainId}
+						chainId={v?.network?.chain_id ?? 0}
 						calls={revokeFeeCalls}
-						active={s.selectedRows.length > 0 && !s.revoking}
-						bind:gasFeeToken={s.gasFeeToken}
+						active={selectedRows.length > 0 && !v?.is_revoking}
+						bind:gasFeeToken={feeToken}
 					/>
 					<div class="batch-bar">
-						<span class="batch-count">{t('revoke.batch.selected', { count: s.selectedRows.length })}</span>
-						<button class="btn ghost sm" onclick={() => s.clearSelection()} disabled={s.revoking}>{t('revoke.batch.clear')}</button>
-						<button class="btn danger" onclick={() => s.revokeSelected()} disabled={s.revoking || !s.sendSupported}>
-							{t('revoke.batch.revokeSelected', { count: s.selectedRows.length })}
+						<span class="batch-count">{t('revoke.batch.selected', { count: selectedRows.length })}</span>
+						<button class="btn ghost sm" onclick={() => s.clearSelection()} disabled={v?.is_revoking}>{t('revoke.batch.clear')}</button>
+						<button class="btn danger" onclick={() => s.revokeSelected()} disabled={v?.is_revoking || !v?.send_supported}>
+							{t('revoke.batch.revokeSelected', { count: selectedRows.length })}
 						</button>
 					</div>
 				{/if}
 
 				<ApprovalTable />
-			{:else if s.rows.length > 0 && s.filter === 'unlimited'}
+			{:else if (v?.total_count ?? 0) > 0 && v?.filter === 'unlimited'}
 				<div class="placeholder">
 					<ShieldCheck size={28} />
 					<p>{t('revoke.scan.noUnlimited')}</p>
-					<button class="btn ghost sm" onclick={() => (s.filter = 'all')}>{t('revoke.filter.showAll')}</button>
+					<button class="btn ghost sm" onclick={() => s.setFilter('all')}>{t('revoke.filter.showAll')}</button>
 				</div>
 			{/if}
 		</section>

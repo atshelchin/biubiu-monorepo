@@ -1,0 +1,37 @@
+[package]
+name = "biubiu-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "BiuBiu 共享业务核心：业务规则、业务状态与状态转换。无 I/O、无时钟、无随机数、无 FFI。"
+
+# ["lib"] 而不是 ["cdylib", "rlib"]：这个 crate 必须能在宿主架构上 `cargo test`。
+# wasm-bindgen 隔离在 biubiu-core-wasm —— research.md D1。
+[lib]
+crate-type = ["lib"]
+
+[features]
+# 宪法原则 VII：默认为空。不跑状态机的消费者，其依赖图里不出现 crux_core。
+default = []
+
+# 可移植状态机。默认关闭，因此 `cargo build` 的依赖树里没有 crux_core 及其子树。
+crux = ["dep:crux_core"]
+
+# Core<->Shell 线类型的 TypeScript 镜像，由 src/bin/generate_bindings.rs 产出。
+# 仅构建期使用，永不进入运行期产物。
+bindings = ["dep:ts-rs", "crux"]
+
+# 开发期的脱敏内部快照（在途请求表、单调计数器）。release 构建不含，
+# 因此 ViewModel 里不会出现内部记账。
+devtools = []
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+crux_core = { workspace = true, optional = true }
+ts-rs = { workspace = true, optional = true }
+
+[[bin]]
+name = "generate_bindings"
+path = "src/bin/generate_bindings.rs"
+required-features = ["bindings"]

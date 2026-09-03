@@ -1,0 +1,6 @@
+[toolchain]
+channel = "stable"
+# wasm-pack 构建 biubiu-core-wasm 需要这个目标；写在这里，新克隆的机器
+# 在第一次 cargo 调用时自动装上，不必记得手动 `rustup target add`。
+targets = ["wasm32-unknown-unknown"]
+components = ["clippy", "rustfmt"]

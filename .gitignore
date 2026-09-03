@@ -11,3 +11,10 @@ biubiu.env
 *.db-wal
 apps/chat.biubiu.tools/.wrangler/state/v3/cache/miniflare-CacheObject/metadata.sqlite-shm
 apps/chat.biubiu.tools/.wrangler/state/v3/do/chat-biubiu-tools-RoomDO/metadata.sqlite-shm
+
+# Rust 业务核心（spec 001-biubiu-core-crux）
+rust/target
+# 生成物，不入库：它们是 Rust 源码的函数。入库必然出现「TS 改了 Rust 没改」
+# 的僵尸差异，而 JSON 边界不会在编译期报错 —— 宪法原则 IV。
+apps/biubiu.tools/src/lib/wasm
+apps/biubiu.tools/src/lib/generated

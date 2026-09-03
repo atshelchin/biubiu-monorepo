@@ -9,6 +9,7 @@
 use std::{env, fs, path::PathBuf};
 
 use biubiu_core::app::revoke::{RevokeEvent, RevokeOperation, RevokeShellResult, RevokeViewModel};
+use biubiu_core::app::sender::{SenderEvent, SenderOperation, SenderShellResult, SenderViewModel};
 use ts_rs::{Config, TS};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,6 +23,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     RevokeOperation::export_all(&config)?;
     RevokeShellResult::export_all(&config)?;
     RevokeViewModel::export_all(&config)?;
+
+    SenderEvent::export_all(&config)?;
+    SenderOperation::export_all(&config)?;
+    SenderShellResult::export_all(&config)?;
+    SenderViewModel::export_all(&config)?;
 
     println!(
         "已生成 TypeScript 契约: {}",

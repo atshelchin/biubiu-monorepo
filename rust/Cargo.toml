@@ -25,6 +25,10 @@ biubiu-core = { path = "crates/biubiu-core" }
 crux_core = "0.19"
 
 serde = { version = "1", features = ["derive"] }
+
+# EIP-55 地址校验和需要的 keccak256（spec 002 research.md D21）。
+# 独立、无依赖树的实现 —— 只为一个哈希引入 RustCrypto 全家桶不划算。
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 serde_json = "1"
 
 # Core<->Shell 线类型的 TypeScript 镜像，只在 `bindings` feature 下编译。

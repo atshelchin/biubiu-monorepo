@@ -15,7 +15,7 @@ crate-type = ["lib"]
 default = []
 
 # 可移植状态机。默认关闭，因此 `cargo build` 的依赖树里没有 crux_core 及其子树。
-crux = ["dep:crux_core"]
+crux = ["dep:crux_core", "dep:tiny-keccak"]
 
 # Core<->Shell 线类型的 TypeScript 镜像，由 src/bin/generate_bindings.rs 产出。
 # 仅构建期使用，永不进入运行期产物。
@@ -29,6 +29,8 @@ devtools = []
 serde = { workspace = true }
 serde_json = { workspace = true }
 crux_core = { workspace = true, optional = true }
+# 只在状态机（crux feature）下需要 —— 默认构建不含。
+tiny-keccak = { workspace = true, optional = true }
 ts-rs = { workspace = true, optional = true }
 
 [[bin]]

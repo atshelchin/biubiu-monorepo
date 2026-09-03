@@ -5,3 +5,4 @@ mod bridge;
 use bridge::bridge_class;
 
 bridge_class!(RevokeCore, biubiu_core::app::revoke::RevokeApp, debug);
+bridge_class!(SenderCore, biubiu_core::app::sender::SenderApp, debug);

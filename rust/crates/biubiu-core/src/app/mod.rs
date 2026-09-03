@@ -9,6 +9,9 @@ use crux_core::capability::Operation;
 
 pub mod revoke;
 mod revoke_registry;
+pub mod sender;
+mod sender_networks;
+pub mod sender_parse;
 
 /// 让产品无关的管道（WASM 桥、测试驱动）能在不了解任何业务域的前提下，把
 /// 「重新渲染」和「请宿主做事」区分开。

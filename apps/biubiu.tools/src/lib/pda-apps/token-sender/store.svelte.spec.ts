@@ -94,8 +94,30 @@ beforeEach(async () => {
 	store.dispose();
 	indexedDB.deleteDatabase('biubiu-token-sender-config');
 	indexedDB.deleteDatabase('biubiu-token-sender-history');
+	indexedDB.deleteDatabase('biubiu-token-sender-pending');
 	await settle(20);
 });
+
+/**
+ * 模拟崩溃：丢掉内存里的一切（`dispose()`）再重新初始化。
+ *
+ * 磁盘上的未完成记录**不动** —— 那正是要验的东西。
+ */
+async function crashAndReopen() {
+	store.dispose();
+	await settle(30);
+	await store.start();
+	store.syncWallet();
+	await settle(400);
+}
+
+/** 让第 0 批成功、第 1 批永远挂着 —— 崩溃就发生在它在途时。 */
+function hangOnSecondBatch() {
+	sendResponder = (_args, index) =>
+		index === 0
+			? Promise.resolve({ success: true, txHash: '0xA' })
+			: new Promise<SendResult>(() => {});
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -145,7 +167,7 @@ describe('暂停：停止发新批，但不撤回在途那批', () => {
 				: Promise.resolve({ success: true, txHash: '0xB' });
 
 		store.send();
-		await settle(100);
+		await settle(600); // 每批发送前多一次落盘往返（spec 003 D24）
 		expect(view().send_status).toBe('running');
 		expect(sendCalls).toHaveLength(1);
 
@@ -167,7 +189,7 @@ describe('暂停：停止发新批，但不撤回在途那批', () => {
 	it('在批间喘息中暂停会立即生效，不等满 2.5 秒', async () => {
 		await readyToSend(250);
 		store.send();
-		await settle(200);
+		await settle(700); // 落盘 + 发送
 		expect(sendCalls).toHaveLength(1);
 
 		// 第一批已成功，现在处于批间喘息中。
@@ -248,4 +270,114 @@ describe('ViewModel 的边界', () => {
 		// 尚未开始发送时批次表为空。
 		expect(view().batches).toHaveLength(0);
 	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// spec 003：崩溃恢复
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('崩溃恢复：已打款的批次不会被再打一遍', () => {
+	it('恢复后已成功的批次产生的发送请求数为 0，且不自动开始', async () => {
+		await readyToSend(250); // 3 批
+		hangOnSecondBatch();
+		store.send();
+		await settle(5_000);
+		expect(view().succeeded_batches).toBe(1);
+
+		const before = sendCalls.length;
+		await crashAndReopen();
+
+		expect(view().restored).toBe(true);
+		// **绝不自动开始发送**（FR-007）。
+		expect(view().send_status).toBe('paused');
+		expect(sendCalls.length).toBe(before);
+		expect(view().succeeded_batches).toBe(1);
+		// 在途那批变成未知，不参与自动续发。
+		expect(view().unknown_batches).toEqual([1]);
+	}, 60_000);
+
+	it('续发跳过未知批次，只发真正待发的那些', async () => {
+		await readyToSend(250);
+		hangOnSecondBatch();
+		store.send();
+		await settle(5_000);
+		await crashAndReopen();
+
+		const before = sendCalls.length;
+		sendResponder = async () => ({ success: true, txHash: '0xB' });
+		store.resume();
+		await settle(5_000);
+
+		// 只有第 2 批被发出 —— 第 0 批已成功、第 1 批未知。
+		expect(sendCalls.length - before).toBe(1);
+		// 未知那批仍待裁决。
+		expect(view().unknown_batches).toEqual([1]);
+	}, 60_000);
+
+	it('用户裁决「未到账」之后，那一批才成为可发送的', async () => {
+		await readyToSend(250);
+		hangOnSecondBatch();
+		store.send();
+		await settle(5_000);
+		await crashAndReopen();
+
+		store.markBatchUnsent(1);
+		await settle(300);
+		expect(view().unknown_batches).toEqual([]);
+
+		const before = sendCalls.length;
+		sendResponder = async () => ({ success: true, txHash: '0xB' });
+		store.resume();
+		await settle(8_000);
+
+		// 第 1 批与第 2 批。
+		expect(sendCalls.length - before).toBe(2);
+		expect(view().succeeded_batches).toBe(3);
+	}, 60_000);
+
+	it('裁决「已到账」把它移出候选集，绝不再发', async () => {
+		await readyToSend(250);
+		hangOnSecondBatch();
+		store.send();
+		await settle(5_000);
+		await crashAndReopen();
+
+		store.markBatchDone(1);
+		await settle(300);
+
+		const before = sendCalls.length;
+		sendResponder = async () => ({ success: true, txHash: '0xB' });
+		store.resume();
+		await settle(5_000);
+
+		// 只发第 2 批 —— 第 1 批被用户确认已到账。
+		expect(sendCalls.length - before).toBe(1);
+		expect(view().succeeded_batches).toBe(3);
+	}, 60_000);
+
+	it('全部完成后磁盘上不再有未完成记录', async () => {
+		await readyToSend(100); // 1 批
+		store.send();
+		await settle(2_000);
+		expect(view().send_status).toBe('done');
+
+		await crashAndReopen();
+		// 没有可恢复的东西。
+		expect(view().restored).toBe(false);
+	}, 60_000);
+
+	it('丢弃之后不再提示', async () => {
+		await readyToSend(250);
+		hangOnSecondBatch();
+		store.send();
+		await settle(5_000);
+		await crashAndReopen();
+		expect(view().restored).toBe(true);
+
+		store.discardPending();
+		await settle(400);
+		await crashAndReopen();
+
+		expect(view().restored).toBe(false);
+	}, 60_000);
 });

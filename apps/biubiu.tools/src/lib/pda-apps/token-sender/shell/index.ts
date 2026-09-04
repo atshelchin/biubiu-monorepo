@@ -13,6 +13,12 @@ import type { SenderShellResult } from '$lib/generated/sender/SenderShellResult'
 import { executeSendBatch } from './send-batch.js';
 import { executeQuoteFee, executePreflight, executeReadErc20Meta } from './reads.js';
 import {
+	executeConfirmBatch,
+	executeDiscardPendingSend,
+	executeLoadPendingSend,
+	executePersistSendProgress,
+} from './progress.js';
+import {
 	executeLoadCustomData,
 	executeLoadHistory,
 	executePersistCustomData,
@@ -33,6 +39,8 @@ export function createSenderShell({ dispatch }: SenderShellHooks) {
 			case 'send_batch':
 				return executeSendBatch(op, {
 					onPhase: (result) => dispatch({ type: 'shell_completed', result }),
+					onHint: (batch_index, hint) =>
+						dispatch({ type: 'batch_hint_available', batch_index, hint }),
 				});
 
 			case 'wait_between_batches':
@@ -57,6 +65,15 @@ export function createSenderShell({ dispatch }: SenderShellHooks) {
 				return executeLoadHistory(op);
 			case 'verify_multi_send':
 				return executeVerifyMultiSend(op);
+
+			case 'persist_send_progress':
+				return executePersistSendProgress(op);
+			case 'load_pending_send':
+				return executeLoadPendingSend(op);
+			case 'discard_pending_send':
+				return executeDiscardPendingSend(op);
+			case 'confirm_batch':
+				return executeConfirmBatch(op);
 
 			default:
 				return assertNever(op);
@@ -107,6 +124,26 @@ export function createSenderShell({ dispatch }: SenderShellHooks) {
 
 			case 'verify_multi_send':
 				return { type: 'multi_send_verified', operation_id: op.operation_id, deployed: false };
+
+			case 'persist_send_progress':
+			case 'discard_pending_send':
+				// **落盘失败必须如实回报。** 核心据此不发送那一批 —— 宁可不发，
+				// 不可发了而不知道（spec 003 FR-004）。
+				return { type: 'progress_persisted', operation_id: op.operation_id, ok: false };
+
+			case 'load_pending_send':
+				// 读不到就当作没有未完成记录，一切照常。
+				return { type: 'pending_send_loaded', operation_id: op.operation_id, snapshot: null };
+
+			case 'confirm_batch':
+				// **确认不了是一个明确答案，不是猜一个结果**（research.md D25）。
+				return {
+					type: 'batch_confirmed',
+					operation_id: op.operation_id,
+					outcome: 'unresolved',
+					tx_hash: null,
+					explorer_url: null,
+				};
 
 			default:
 				return assertNever(op);

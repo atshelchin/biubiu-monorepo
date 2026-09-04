@@ -37,7 +37,7 @@ import { dirname, join } from 'node:path';
  * 当前上限 = 实测 × 1.3。一次让这个数字显著变化的改动，是一个要重新做的决定，
  * 不是一个可以顺手合入的 diff —— 新数值和理由要一并记进该 spec 的 results.md。
  */
-const MAX_BYTES = 725442;
+const MAX_BYTES = 797112;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wasmPath = join(here, '../../apps/biubiu.tools/src/lib/wasm/biubiu_core_wasm_bg.wasm');

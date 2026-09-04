@@ -276,6 +276,54 @@
 		</div>
 
 		<!-- ── Step 1: Network + Token ── -->
+		<!-- ── 上次发送未完成（spec 003） ── -->
+		{#if v?.restored}
+			<section class="card panel resumed" use:fadeInUp={{ delay: 0 }}>
+				<h3>{t('ts.resume.heading')}</h3>
+				<p>
+					{t('ts.resume.summary', {
+						remaining: v.remaining_batches,
+						total: v.total_batches,
+						when: v.plan_started_at_ms ? formatDateTime(v.plan_started_at_ms) : '',
+					})}
+				</p>
+
+				{#if v.unknown_batches.length > 0}
+					<!-- 系统无法确认这些批次是否到账 —— 不猜，交给用户 -->
+					<div class="unknown-block">
+						<p class="warn-text">
+							<TriangleAlert size={14} />
+							{t('ts.resume.unknownWarning', { count: v.unknown_batches.length })}
+						</p>
+						<ul class="unknown-list">
+							{#each v.unknown_batches as index (index)}
+								<li>
+									<span>{t('ts.step4.batch', { n: index + 1 })}</span>
+									<button class="btn ghost sm" onclick={() => s.markBatchUnsent(index)}>
+										{t('ts.resume.markUnsent')}
+									</button>
+									<button class="btn ghost sm" onclick={() => s.markBatchDone(index)}>
+										{t('ts.resume.markDone')}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+
+				<div class="panel-actions">
+					{#if v.can_resume}
+						<button class="btn primary" onclick={() => s.resume()}>
+							{t('ts.resume.continue', { count: v.remaining_batches })}
+						</button>
+					{/if}
+					<button class="btn ghost" onclick={() => s.discardPending()}>
+						{t('ts.resume.discard')}
+					</button>
+				</div>
+			</section>
+		{/if}
+
 		{#if v?.step === 'config'}
 			<section class="card panel" use:fadeInUp={{ delay: 0 }}>
 				<h3>{t('ts.step1.heading')}</h3>
@@ -1530,5 +1578,34 @@
 		.hist-chevron {
 			transition: none;
 		}
+	}
+
+	/* 上次发送未完成（spec 003） */
+	.resumed {
+		border-color: var(--warning);
+	}
+	.unknown-block {
+		margin-top: var(--space-3);
+		padding: var(--space-3);
+		background: var(--bg-sunken);
+		border-radius: var(--radius-md);
+	}
+	.unknown-list {
+		list-style: none;
+		margin: var(--space-2) 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.unknown-list li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+	}
+	.unknown-list li > span {
+		min-width: 6rem;
+		color: var(--fg-muted);
 	}
 </style>

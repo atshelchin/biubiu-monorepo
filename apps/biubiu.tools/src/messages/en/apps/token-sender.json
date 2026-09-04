@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Token Sender - BiuBiu Tools",
 	"ts.meta.description": "Batch-send native coins or ERC20 tokens to many addresses at once — from your own passkey self-custodial wallet, using Safe 1.4.1 MultiSend.",
-
 	"ts.title": "Token Sender",
 	"ts.subtitle": "Send a coin or token to many addresses at once — from your own wallet.",
-
 	"ts.safety.heading": "Your keys, your coins",
 	"ts.safety.chipKey": "Key stays on your device",
 	"ts.safety.chipNoMove": "BiuBiu can't move funds",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Deposit",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Recipients",
 	"ts.stepper.review": "Review",
 	"ts.stepper.send": "Send",
-
 	"ts.step1.heading": "Choose network & token",
 	"ts.step1.network": "Network",
 	"ts.step1.testnetSuffix": " · testnet",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Loading…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} decimals",
 	"ts.step1.continue": "Continue",
-
 	"ts.step2.heading": "Add recipients",
 	"ts.step2.amountPerLine": "Amount per line",
 	"ts.step2.splitEqually": "Split equally",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} batch(es) · {count} confirm(s)",
 	"ts.step2.back": "Back",
 	"ts.step2.continue": "Continue",
-
 	"ts.step3.heading": "Review & fee",
 	"ts.step3.network": "Network",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Back",
 	"ts.step3.depositFunds": "Deposit funds",
 	"ts.step3.sendNow": "Send now",
-
 	"ts.step4.heading": "Sending",
 	"ts.step4.batchProgress": "Batch {current} / {total}",
 	"ts.step4.approveHint": "Approve each batch in your wallet when prompted.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "New send",
 	"ts.step4.batch": "Batch {n}",
 	"ts.step4.batchSent": "{count} sent",
-
 	"ts.fee.memberFree": "Free (Premium member)",
 	"ts.fee.config": "Fixed (configured for this network)",
 	"ts.fee.usd": "$5 equivalent",
 	"ts.fee.fallback": "1 native coin (price unavailable)",
-
 	"ts.history.heading": "History",
 	"ts.history.recipientsMeta": "{count} recipients · {date}",
 	"ts.history.batch": "Batch {n}",
 	"ts.history.batchSent": "{count} sent",
-
 	"ts.addNetwork.title": "Add custom network",
 	"ts.addNetwork.name": "Network name",
 	"ts.addNetwork.namePlaceholder": "My Chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Add",
 	"ts.addNetwork.footnote": "Custom chains are read-capable now; sending also requires Safe 1.4.1 + bundler support on that chain.",
 	"ts.addNetwork.errorRequired": "Name, chain ID and RPC are required",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC endpoints (one per line)",
 	"ts.rpc.note": "Used for reading balances, token info and price. First reachable one is used.",
 	"ts.rpc.removeNetwork": "Remove network",
 	"ts.rpc.restoreDefault": "Restore default",
 	"ts.rpc.save": "Save",
-
 	"ts.editor.address": "Address",
 	"ts.editor.amount": "Amount ({symbol})",
 	"ts.editor.invalidAddress": "Invalid address",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…and {0} more",
 	"ts.editor.close": "Close",
 	"ts.editor.duplicateAddress": "Duplicate address",
-
 	"ts.errors.connectWallet": "Connect your wallet first",
 	"ts.errors.invalidTokenAddress": "Invalid token contract address",
 	"ts.errors.tokenMetaFailed": "Couldn't read the token — check the address and network",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Waiting for confirmation…",
 	"ts.phase.confirmed": "Confirmed",
 	"ts.phase.failed": "Failed",
-
 	"ts.gate.title": "Connect a wallet to start",
 	"ts.gate.desc": "You send from your own self-custodial wallet — a passkey wallet, a browser wallet, or paired by QR. Your funds stay in your hands, and you approve every batch yourself.",
 	"ts.step2.largeWarning": "That's about {batches} wallet approvals (one per 100 recipients). For a smooth send, keep each run to ~1,000 addresses and split longer lists into a few sends.",
-	"ts.step3.approvalsNote": "You'll approve {count} time(s) in your wallet — one per batch. Keep this tab open until it finishes."
+	"ts.step3.approvalsNote": "You'll approve {count} time(s) in your wallet — one per batch. Keep this tab open until it finishes.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

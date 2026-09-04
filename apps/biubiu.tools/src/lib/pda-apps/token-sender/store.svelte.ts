@@ -172,6 +172,27 @@ class TokenSenderStore {
 	resume(): void {
 		this.#send({ type: 'resume' });
 	}
+	/** 丢弃磁盘上的未完成发送记录。 */
+	discardPending(): void {
+		this.#send({ type: 'discard_pending_send' });
+	}
+	/**
+	 * 裁决一个状态未知的批次：**确认它没到账**，让它成为可重试的批次。
+	 *
+	 * 「未知」只由崩溃恢复产生，系统无法确认那一批是否上链。它不参与自动续发 ——
+	 * 必须由看得见链上情况的人来定（spec 003 research.md D25）。
+	 */
+	markBatchUnsent(batchIndex: number): void {
+		this.#send({ type: 'mark_batch_unsent', batch_index: batchIndex });
+	}
+	/** 裁决：**确认它已到账**，标记完成且不再发送。 */
+	markBatchDone(batchIndex: number, txHash?: string): void {
+		this.#send({
+			type: 'mark_batch_done',
+			batch_index: batchIndex,
+			tx_hash: txHash ?? null,
+		});
+	}
 
 	// ── 自定义网络 / RPC ──
 	addCustomNetwork(input: {

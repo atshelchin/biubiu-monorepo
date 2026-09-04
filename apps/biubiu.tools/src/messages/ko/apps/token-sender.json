@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "토큰 전송기 - BiuBiu Tools",
 	"ts.meta.description": "자신의 passkey 자가수탁 지갑에서 Safe 1.4.1 MultiSend로 네이티브 코인 또는 ERC20 토큰을 한 번에 여러 주소로 일괄 전송합니다.",
-
 	"ts.title": "토큰 전송기",
 	"ts.subtitle": "코인이나 토큰을 여러 주소로 한 번에 보내세요 — 본인의 지갑에서.",
-
 	"ts.safety.heading": "당신의 키, 당신의 코인",
 	"ts.safety.chipKey": "키는 기기에 남습니다",
 	"ts.safety.chipNoMove": "BiuBiu는 자금을 옮길 수 없습니다",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "입금",
-
 	"ts.stepper.token": "토큰",
 	"ts.stepper.recipients": "받는 주소",
 	"ts.stepper.review": "검토",
 	"ts.stepper.send": "전송",
-
 	"ts.step1.heading": "네트워크 및 토큰 선택",
 	"ts.step1.network": "네트워크",
 	"ts.step1.testnetSuffix": " · 테스트넷",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "불러오는 중…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · 소수점 {decimals}자리",
 	"ts.step1.continue": "계속",
-
 	"ts.step2.heading": "받는 주소 추가",
 	"ts.step2.amountPerLine": "줄마다 금액 지정",
 	"ts.step2.splitEqually": "균등 분배",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "배치 {count}개 · 확인 {count}회",
 	"ts.step2.back": "뒤로",
 	"ts.step2.continue": "계속",
-
 	"ts.step3.heading": "검토 및 수수료",
 	"ts.step3.network": "네트워크",
 	"ts.step3.token": "토큰",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "뒤로",
 	"ts.step3.depositFunds": "자금 입금",
 	"ts.step3.sendNow": "지금 전송",
-
 	"ts.step4.heading": "전송 중",
 	"ts.step4.batchProgress": "배치 {current} / {total}",
 	"ts.step4.approveHint": "요청이 뜨면 각 배치를 지갑에서 승인하세요.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "새 전송",
 	"ts.step4.batch": "배치 {n}",
 	"ts.step4.batchSent": "{count}개 전송됨",
-
 	"ts.fee.memberFree": "무료 (프리미엄 회원)",
 	"ts.fee.config": "고정 (이 네트워크에 설정됨)",
 	"ts.fee.usd": "$5 상당",
 	"ts.fee.fallback": "네이티브 코인 1개 (가격 조회 불가)",
-
 	"ts.history.heading": "이력",
 	"ts.history.recipientsMeta": "받는 주소 {count}개 · {date}",
 	"ts.history.batch": "배치 {n}",
 	"ts.history.batchSent": "{count}개 전송됨",
-
 	"ts.addNetwork.title": "사용자 지정 네트워크 추가",
 	"ts.addNetwork.name": "네트워크 이름",
 	"ts.addNetwork.namePlaceholder": "My Chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "추가",
 	"ts.addNetwork.footnote": "사용자 지정 체인은 지금 조회가 가능합니다. 전송하려면 해당 체인에 Safe 1.4.1 + bundler 지원도 필요합니다.",
 	"ts.addNetwork.errorRequired": "이름, 체인 ID, RPC는 필수입니다",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC 엔드포인트 (한 줄에 하나)",
 	"ts.rpc.note": "잔액, 토큰 정보, 가격 조회에 사용됩니다. 가장 먼저 응답하는 엔드포인트가 사용됩니다.",
 	"ts.rpc.removeNetwork": "네트워크 삭제",
 	"ts.rpc.restoreDefault": "기본값 복원",
 	"ts.rpc.save": "저장",
-
 	"ts.editor.address": "주소",
 	"ts.editor.amount": "금액 ({symbol})",
 	"ts.editor.invalidAddress": "유효하지 않은 주소",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…그리고 {0}개 더",
 	"ts.editor.close": "닫기",
 	"ts.editor.duplicateAddress": "중복된 주소",
-
 	"ts.errors.connectWallet": "먼저 지갑을 연결하세요",
 	"ts.errors.invalidTokenAddress": "유효하지 않은 토큰 컨트랙트 주소",
 	"ts.errors.tokenMetaFailed": "토큰을 읽을 수 없습니다 — 주소와 네트워크를 확인하세요",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "확인을 기다리는 중…",
 	"ts.phase.confirmed": "확인됨",
 	"ts.phase.failed": "실패",
-
 	"ts.gate.title": "지갑을 연결하여 시작하세요",
 	"ts.gate.desc": "본인의 자가수탁 지갑에서 전송합니다 — passkey 지갑, 브라우저 지갑 또는 QR 페어링. 자금은 항상 본인이 보유하며, 각 배치를 직접 승인합니다.",
 	"ts.step2.largeWarning": "지갑 승인이 약 {batches}회 필요합니다(수신자 100명당 1회). 원활한 전송을 위해 한 번에 1,000개 정도로 유지하고, 더 긴 목록은 여러 번에 나눠 보내세요.",
-	"ts.step3.approvalsNote": "지갑에서 {count}회 승인합니다(배치당 1회). 완료될 때까지 이 탭을 열어 두세요."
+	"ts.step3.approvalsNote": "지갑에서 {count}회 승인합니다(배치당 1회). 완료될 때까지 이 탭을 열어 두세요.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Invio Token - BiuBiu Tools",
 	"ts.meta.description": "Invia in blocco coin native o token ERC20 a molti indirizzi in una volta, dal tuo wallet self-custodial con passkey, usando Safe 1.4.1 MultiSend.",
-
 	"ts.title": "Invio Token",
 	"ts.subtitle": "Invia una coin o un token a molti indirizzi in una sola volta — dal tuo wallet.",
-
 	"ts.safety.heading": "Le tue chiavi, le tue coin",
 	"ts.safety.chipKey": "La chiave resta sul tuo dispositivo",
 	"ts.safety.chipNoMove": "BiuBiu non può spostare i fondi",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Deposita",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Destinatari",
 	"ts.stepper.review": "Verifica",
 	"ts.stepper.send": "Invia",
-
 	"ts.step1.heading": "Scegli rete e token",
 	"ts.step1.network": "Rete",
 	"ts.step1.testnetSuffix": " · testnet",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Caricamento…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} decimali",
 	"ts.step1.continue": "Continua",
-
 	"ts.step2.heading": "Aggiungi destinatari",
 	"ts.step2.amountPerLine": "Importo per riga",
 	"ts.step2.splitEqually": "Dividi equamente",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} batch · {count} conferme",
 	"ts.step2.back": "Indietro",
 	"ts.step2.continue": "Continua",
-
 	"ts.step3.heading": "Verifica e commissione",
 	"ts.step3.network": "Rete",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Indietro",
 	"ts.step3.depositFunds": "Deposita fondi",
 	"ts.step3.sendNow": "Invia ora",
-
 	"ts.step4.heading": "Invio in corso",
 	"ts.step4.batchProgress": "Batch {current} / {total}",
 	"ts.step4.approveHint": "Approva ogni batch nel tuo wallet quando richiesto.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Nuovo invio",
 	"ts.step4.batch": "Batch {n}",
 	"ts.step4.batchSent": "{count} inviati",
-
 	"ts.fee.memberFree": "Gratis (membro Premium)",
 	"ts.fee.config": "Fissa (configurata per questa rete)",
 	"ts.fee.usd": "Equivalente a $5",
 	"ts.fee.fallback": "1 coin nativa (prezzo non disponibile)",
-
 	"ts.history.heading": "Cronologia",
 	"ts.history.recipientsMeta": "{count} destinatari · {date}",
 	"ts.history.batch": "Batch {n}",
 	"ts.history.batchSent": "{count} inviati",
-
 	"ts.addNetwork.title": "Aggiungi rete personalizzata",
 	"ts.addNetwork.name": "Nome della rete",
 	"ts.addNetwork.namePlaceholder": "La mia chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Aggiungi",
 	"ts.addNetwork.footnote": "Le chain personalizzate sono già abilitate in lettura; l'invio richiede anche Safe 1.4.1 + il supporto del bundler su quella chain.",
 	"ts.addNetwork.errorRequired": "Nome, chain ID e RPC sono obbligatori",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "Endpoint RPC (uno per riga)",
 	"ts.rpc.note": "Usati per leggere saldi, info sui token e prezzo. Viene usato il primo raggiungibile.",
 	"ts.rpc.removeNetwork": "Rimuovi rete",
 	"ts.rpc.restoreDefault": "Ripristina predefiniti",
 	"ts.rpc.save": "Salva",
-
 	"ts.editor.address": "Indirizzo",
 	"ts.editor.amount": "Importo ({symbol})",
 	"ts.editor.invalidAddress": "Indirizzo non valido",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…e altri {0}",
 	"ts.editor.close": "Chiudi",
 	"ts.editor.duplicateAddress": "Indirizzo duplicato",
-
 	"ts.errors.connectWallet": "Connetti prima il tuo wallet",
 	"ts.errors.invalidTokenAddress": "Indirizzo del contratto del token non valido",
 	"ts.errors.tokenMetaFailed": "Impossibile leggere il token — controlla l'indirizzo e la rete",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "In attesa di conferma…",
 	"ts.phase.confirmed": "Confermata",
 	"ts.phase.failed": "Non riuscita",
-
 	"ts.gate.title": "Connetti un wallet per iniziare",
 	"ts.gate.desc": "Invii dal tuo wallet self-custodial — un wallet passkey, un wallet del browser o accoppiato via QR. I tuoi fondi restano nelle tue mani e approvi tu stesso ogni lotto.",
 	"ts.step2.largeWarning": "Sono circa {batches} approvazioni nel wallet (una ogni 100 destinatari). Per un invio fluido, mantieni ogni invio a ~1.000 indirizzi e suddividi le liste più lunghe in più invii.",
-	"ts.step3.approvalsNote": "Confermerai {count} volta/e nel wallet — una per lotto. Tieni aperta questa scheda fino al termine."
+	"ts.step3.approvalsNote": "Confermerai {count} volta/e nel wallet — una per lotto. Tieni aperta questa scheda fino al termine.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

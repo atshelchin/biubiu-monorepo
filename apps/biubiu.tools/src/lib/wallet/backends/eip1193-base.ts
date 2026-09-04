@@ -149,10 +149,16 @@ export abstract class Eip1193Wallet implements ConnectedWallet {
 			let ok: boolean;
 			if (calls.length === 1) {
 				txHash = await this.sendSingle(calls[0]);
-				onPhase('waiting');
+				// 交易哈希在等待收据之前就有了 —— 交给调用方，它可能需要在收到结果之前
+				// 就把凭据落盘（spec 003 research.md D26）。
+				onPhase('waiting', txHash);
 				ok = await this.waitForReceipt(txHash);
 			} else {
 				const batchId = await this.submitBatch(calls, opts.chainId);
+				// **批量路径不给凭据。** EIP-5792 这里只有一个 bundle id，它不是交易哈希，
+				// 而查询它需要 provider —— 恢复发生在新的页面加载时，钱包可能还没连上。
+				// 与其给一个查不了的东西，不如如实不给：调用方会走「由用户裁决」的路径
+				// （research.md D25）。
 				onPhase('waiting');
 				({ txHash, success: ok } = await this.waitForCallsStatus(batchId));
 			}

@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Token Sender - BiuBiu Tools",
 	"ts.meta.description": "Envie em lote moedas nativas ou tokens ERC20 para muitos endereços de uma vez, a partir da sua própria carteira de autocustódia com passkey, usando o MultiSend do Safe 1.4.1.",
-
 	"ts.title": "Token Sender",
 	"ts.subtitle": "Envie uma moeda ou token para muitos endereços de uma só vez — a partir da sua própria carteira.",
-
 	"ts.safety.heading": "Suas chaves, suas moedas",
 	"ts.safety.chipKey": "A chave fica no seu dispositivo",
 	"ts.safety.chipNoMove": "A BiuBiu não pode mover fundos",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Depositar",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Destinatários",
 	"ts.stepper.review": "Revisar",
 	"ts.stepper.send": "Enviar",
-
 	"ts.step1.heading": "Escolha a rede e o token",
 	"ts.step1.network": "Rede",
 	"ts.step1.testnetSuffix": " · testnet",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Carregando…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} casas decimais",
 	"ts.step1.continue": "Continuar",
-
 	"ts.step2.heading": "Adicionar destinatários",
 	"ts.step2.amountPerLine": "Quantia por linha",
 	"ts.step2.splitEqually": "Dividir igualmente",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} lote(s) · {count} confirmação(ões)",
 	"ts.step2.back": "Voltar",
 	"ts.step2.continue": "Continuar",
-
 	"ts.step3.heading": "Revisão e taxa",
 	"ts.step3.network": "Rede",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Voltar",
 	"ts.step3.depositFunds": "Depositar fundos",
 	"ts.step3.sendNow": "Enviar agora",
-
 	"ts.step4.heading": "Enviando",
 	"ts.step4.batchProgress": "Lote {current} / {total}",
 	"ts.step4.approveHint": "Aprove cada lote na sua carteira quando solicitado.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Novo envio",
 	"ts.step4.batch": "Lote {n}",
 	"ts.step4.batchSent": "{count} enviado(s)",
-
 	"ts.fee.memberFree": "Grátis (membro Premium)",
 	"ts.fee.config": "Fixa (configurada para esta rede)",
 	"ts.fee.usd": "Equivalente a $5",
 	"ts.fee.fallback": "1 moeda nativa (preço indisponível)",
-
 	"ts.history.heading": "Histórico",
 	"ts.history.recipientsMeta": "{count} destinatários · {date}",
 	"ts.history.batch": "Lote {n}",
 	"ts.history.batchSent": "{count} enviado(s)",
-
 	"ts.addNetwork.title": "Adicionar rede personalizada",
 	"ts.addNetwork.name": "Nome da rede",
 	"ts.addNetwork.namePlaceholder": "Minha Chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Adicionar",
 	"ts.addNetwork.footnote": "Chains personalizadas já permitem leitura; o envio também exige Safe 1.4.1 + suporte a bundler nessa chain.",
 	"ts.addNetwork.errorRequired": "Nome, chain ID e RPC são obrigatórios",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "Endpoints RPC (um por linha)",
 	"ts.rpc.note": "Usado para ler saldos, informações de tokens e preço. É usado o primeiro acessível.",
 	"ts.rpc.removeNetwork": "Remover rede",
 	"ts.rpc.restoreDefault": "Restaurar padrão",
 	"ts.rpc.save": "Salvar",
-
 	"ts.editor.address": "Endereço",
 	"ts.editor.amount": "Quantia ({symbol})",
 	"ts.editor.invalidAddress": "Endereço inválido",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…e mais {0}",
 	"ts.editor.close": "Fechar",
 	"ts.editor.duplicateAddress": "Endereço duplicado",
-
 	"ts.errors.connectWallet": "Conecte sua carteira primeiro",
 	"ts.errors.invalidTokenAddress": "Endereço de contrato do token inválido",
 	"ts.errors.tokenMetaFailed": "Não foi possível ler o token — verifique o endereço e a rede",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Aguardando confirmação…",
 	"ts.phase.confirmed": "Confirmada",
 	"ts.phase.failed": "Falhou",
-
 	"ts.gate.title": "Conecte uma carteira para começar",
 	"ts.gate.desc": "Você envia da sua própria carteira de autocustódia — uma carteira passkey, uma carteira de navegador ou pareada por QR. Seus fundos ficam com você, e você aprova cada lote.",
 	"ts.step2.largeWarning": "São cerca de {batches} aprovações na carteira (uma a cada 100 destinatários). Para um envio tranquilo, mantenha cada envio em ~1.000 endereços e divida listas maiores em vários envios.",
-	"ts.step3.approvalsNote": "Você aprovará {count} vez(es) na carteira — uma por lote. Mantenha esta aba aberta até terminar."
+	"ts.step3.approvalsNote": "Você aprovará {count} vez(es) na carteira — uma por lote. Mantenha esta aba aberta até terminar.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

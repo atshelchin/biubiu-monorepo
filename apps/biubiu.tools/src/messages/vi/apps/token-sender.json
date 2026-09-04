@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Trình Gửi Token - BiuBiu Tools",
 	"ts.meta.description": "Gửi hàng loạt native coin hoặc token ERC20 đến nhiều địa chỉ cùng lúc từ chính ví passkey tự quản lý của bạn, dùng Safe 1.4.1 MultiSend.",
-
 	"ts.title": "Trình Gửi Token",
 	"ts.subtitle": "Gửi một coin hoặc token đến nhiều địa chỉ cùng lúc — từ chính ví của bạn.",
-
 	"ts.safety.heading": "Khóa của bạn, coin của bạn",
 	"ts.safety.chipKey": "Khóa nằm trên thiết bị của bạn",
 	"ts.safety.chipNoMove": "BiuBiu không thể di chuyển tiền",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Nạp tiền",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Người nhận",
 	"ts.stepper.review": "Xem lại",
 	"ts.stepper.send": "Gửi",
-
 	"ts.step1.heading": "Chọn mạng và token",
 	"ts.step1.network": "Mạng",
 	"ts.step1.testnetSuffix": " · testnet",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Đang tải…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} decimals",
 	"ts.step1.continue": "Tiếp tục",
-
 	"ts.step2.heading": "Thêm người nhận",
 	"ts.step2.amountPerLine": "Số lượng theo từng dòng",
 	"ts.step2.splitEqually": "Chia đều",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} đợt · {count} lần xác nhận",
 	"ts.step2.back": "Quay lại",
 	"ts.step2.continue": "Tiếp tục",
-
 	"ts.step3.heading": "Xem lại và phí",
 	"ts.step3.network": "Mạng",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Quay lại",
 	"ts.step3.depositFunds": "Nạp tiền",
 	"ts.step3.sendNow": "Gửi ngay",
-
 	"ts.step4.heading": "Đang gửi",
 	"ts.step4.batchProgress": "Đợt {current} / {total}",
 	"ts.step4.approveHint": "Phê duyệt từng đợt trong ví của bạn khi được nhắc.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Gửi mới",
 	"ts.step4.batch": "Đợt {n}",
 	"ts.step4.batchSent": "đã gửi {count}",
-
 	"ts.fee.memberFree": "Miễn phí (thành viên Premium)",
 	"ts.fee.config": "Cố định (cấu hình cho mạng này)",
 	"ts.fee.usd": "tương đương $5",
 	"ts.fee.fallback": "1 native coin (không có giá)",
-
 	"ts.history.heading": "Lịch sử",
 	"ts.history.recipientsMeta": "{count} người nhận · {date}",
 	"ts.history.batch": "Đợt {n}",
 	"ts.history.batchSent": "đã gửi {count}",
-
 	"ts.addNetwork.title": "Thêm mạng tùy chỉnh",
 	"ts.addNetwork.name": "Tên mạng",
 	"ts.addNetwork.namePlaceholder": "Chuỗi của tôi",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Thêm",
 	"ts.addNetwork.footnote": "Các chuỗi tùy chỉnh có thể đọc được ngay; việc gửi còn cần Safe 1.4.1 + hỗ trợ bundler trên chuỗi đó.",
 	"ts.addNetwork.errorRequired": "Cần có tên, chain ID và RPC",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "Endpoint RPC (mỗi dòng một cái)",
 	"ts.rpc.note": "Dùng để đọc số dư, thông tin token và giá. Cái đầu tiên truy cập được sẽ được sử dụng.",
 	"ts.rpc.removeNetwork": "Xóa mạng",
 	"ts.rpc.restoreDefault": "Khôi phục mặc định",
 	"ts.rpc.save": "Lưu",
-
 	"ts.editor.address": "Địa chỉ",
 	"ts.editor.amount": "Số lượng ({symbol})",
 	"ts.editor.invalidAddress": "Địa chỉ không hợp lệ",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…và {0} dòng nữa",
 	"ts.editor.close": "Đóng",
 	"ts.editor.duplicateAddress": "Địa chỉ trùng lặp",
-
 	"ts.errors.connectWallet": "Hãy kết nối ví của bạn trước",
 	"ts.errors.invalidTokenAddress": "Địa chỉ hợp đồng token không hợp lệ",
 	"ts.errors.tokenMetaFailed": "Không đọc được token — hãy kiểm tra địa chỉ và mạng",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Đang chờ xác nhận…",
 	"ts.phase.confirmed": "Đã xác nhận",
 	"ts.phase.failed": "Thất bại",
-
 	"ts.gate.title": "Kết nối ví để bắt đầu",
 	"ts.gate.desc": "Bạn gửi từ chính ví tự quản lý của mình — ví passkey, ví trình duyệt hoặc ghép nối bằng QR. Tiền của bạn luôn nằm trong tay bạn, và bạn tự phê duyệt từng đợt.",
 	"ts.step2.largeWarning": "Tức là khoảng {batches} lần phê duyệt trong ví (mỗi 100 người nhận một lần). Để gửi mượt mà, hãy giữ mỗi lần ~1.000 địa chỉ và chia danh sách dài thành vài lần gửi.",
-	"ts.step3.approvalsNote": "Bạn sẽ phê duyệt {count} lần trong ví — mỗi đợt một lần. Hãy giữ tab này mở cho đến khi hoàn tất."
+	"ts.step3.approvalsNote": "Bạn sẽ phê duyệt {count} lần trong ví — mỗi đợt một lần. Hãy giữ tab này mở cho đến khi hoàn tất.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

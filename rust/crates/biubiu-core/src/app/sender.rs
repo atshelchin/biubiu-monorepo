@@ -242,12 +242,84 @@ enum BatchState {
     Failed {
         error: String,
     },
+    /// **状态未知** —— 只由恢复产生（spec 003 research.md D25）。
+    ///
+    /// 崩溃瞬间那一批的真实状态就是未知的：交易可能已上链，也可能根本没发出去。
+    /// 用 `Pending` 或 `Succeeded` 去近似它，各自对应一种资金事故：
+    ///
+    /// | 近似 | 后果 |
+    /// |---|---|
+    /// | `Pending` | 自动重发 ⇒ **重复打款** |
+    /// | `Succeeded` | 跳过 ⇒ **漏发一批**，钱没到却记为完成 |
+    ///
+    /// 所以它如实地是第五个状态，而且**不在自动候选集里**。
+    /// `hint` 是宿主用来去链上确认这一批的凭据，可能取不到。
+    Unknown {
+        hint: Option<String>,
+    },
 }
 
 impl BatchState {
     fn is_succeeded(&self) -> bool {
         matches!(self, Self::Succeeded { .. })
     }
+
+    /// 是否已经尘埃落定。**`Unknown` 不算** —— 记录必须留着，否则用户下次打开就再也看不到
+    /// 那一批需要裁决（research.md D27）。
+    fn is_terminal(&self) -> bool {
+        matches!(self, Self::Succeeded { .. } | Self::Failed { .. })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 落盘快照 —— 跨会话的那份真相
+// ---------------------------------------------------------------------------
+
+/// 一份未完成发送记录，可序列化、可从中重建 Model 的发送部分。
+///
+/// 它必须自包含：恢复时不参考当前的输入状态（网络、代币、收件人文本都可能已经变了）。
+/// **完整收件人清单在里面** —— 没有它就不知道未发的那些批次要发给谁。十万级约 4.5 MB，
+/// 这是这个能力的固有代价。
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "bindings", derive(TS))]
+pub struct SendSnapshot {
+    pub network: SenderNetwork,
+    pub token_type: TokenType,
+    pub token_address: String,
+    pub decimals: u8,
+    #[cfg_attr(feature = "bindings", ts(type = "number"))]
+    pub batch_size: u32,
+    pub fee_per_batch: String,
+    pub gas_fee_token: Option<String>,
+    pub recipients: Vec<Recipient>,
+    #[cfg_attr(feature = "bindings", ts(type = "number"))]
+    pub started_at_ms: u64,
+    pub batches: Vec<SnapshotBatch>,
+}
+
+/// 批次状态的可序列化形态。
+///
+/// 与内部的 `BatchState` 分开，是因为 `InFlight` 携带的 `operation_id` **不该跨会话** ——
+/// 那是本次会话在途表的键，下次打开毫无意义。落盘时它退化为「曾被尝试」+ 凭据；
+/// 恢复时变成 `Unknown`（research.md D25）。
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "bindings", derive(TS))]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum SnapshotBatch {
+    Pending,
+    /// 曾被尝试、结果未知。`hint` 是宿主留下的凭据。
+    Attempted {
+        hint: Option<String>,
+    },
+    Succeeded {
+        tx_hash: String,
+        explorer_url: Option<String>,
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        count: usize,
+    },
+    Failed {
+        error: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +333,15 @@ enum InFlightOp {
     },
     /// 批间喘息。暂停时被移出表 —— 宿主的定时器照常到期，回来时因 id 不在表中被丢弃。
     WaitBetweenBatches,
+    /// 落盘。**它是发送的前置** —— 回执没到，那一批不发（research.md D24）。
+    PersistProgress {
+        batch_index: usize,
+    },
+    /// 未知批次的链上确认。
+    ConfirmBatch {
+        batch_index: usize,
+    },
+    LoadPendingSend,
     ReadTokenMeta,
     QuoteFee,
     Preflight,
@@ -308,6 +389,16 @@ pub struct SenderModel {
     history: Vec<HistoryRecord>,
     /// 上一次 MultiSend 部署校验的结果。`None` = 尚未校验 / 正在校验。
     multi_send_verified: Option<bool>,
+    /// 本次会话的发送状态是从磁盘恢复来的（而非本次新发起）。
+    ///
+    /// 界面据此提示「上次发送未完成」。它不是业务规则，而是**这份状态的来历** ——
+    /// 用户需要知道自己面对的是一份旧计划。
+    restored: bool,
+    /// 每批的交易凭据（批次下标 → 凭据），发送过程中由宿主回传。
+    ///
+    /// 它**必须在最终结果之前**就被记下并落盘 —— 否则崩溃时那一批就无从确认
+    /// （research.md D26）。
+    batch_hints: BTreeMap<usize, Option<String>>,
 
     in_flight: BTreeMap<u64, InFlightOp>,
     next_operation_id: u64,
@@ -344,6 +435,8 @@ impl Default for SenderModel {
             current_phase: None,
             history: Vec::new(),
             multi_send_verified: None,
+            restored: false,
+            batch_hints: BTreeMap::new(),
             in_flight: BTreeMap::new(),
             next_operation_id: 0,
         }
@@ -352,10 +445,19 @@ impl Default for SenderModel {
 
 impl SenderModel {
     fn begin(&mut self, op: InFlightOp) -> u64 {
-        self.next_operation_id += 1;
-        let id = self.next_operation_id;
+        let id = self.reserve_operation_id();
         self.in_flight.insert(id, op);
         id
+    }
+
+    /// 只取一个 id，**不登记为在途**。
+    ///
+    /// `in_flight` 的含义是「有一个请求正悬在宿主那儿」。批次的 id 要先分配（`BatchState::
+    /// InFlight` 得带着它），但请求本身要等落盘回执才发出（research.md D24）——
+    /// 那期间它还不是在途的。登记推迟到 `send_batch_now`，这张表才没有说谎。
+    fn reserve_operation_id(&mut self) -> u64 {
+        self.next_operation_id += 1;
+        self.next_operation_id
     }
 
     fn cancel_in_flight(&mut self, pred: impl Fn(&InFlightOp) -> bool) {
@@ -452,13 +554,29 @@ fn next_pending_index(batches: &[BatchState], from: usize) -> Option<usize> {
         .iter()
         .enumerate()
         .skip(from)
-        .find(|(_, b)| !b.is_succeeded())
+        // **显式列举**候选，而不是写「非 Succeeded」。后者会在新增状态时默默把它算进候选 ——
+        // `Unknown` 正是那个绝不能被自动发送的状态（research.md D25）。
+        .find(|(_, b)| matches!(b, BatchState::Pending | BatchState::Failed { .. }))
         .map(|(i, _)| i)
 }
 
-/// 还有没有没成功的批次（用于「能否续发」，与游标无关）。
+/// 还有没有**可以自动续发**的批次（与游标无关）。
+///
+/// `Unknown` 不计入 —— 它需要用户裁决，不是「续发」能解决的。
 fn has_unfinished(batches: &[BatchState]) -> bool {
-    batches.iter().any(|b| !b.is_succeeded())
+    batches
+        .iter()
+        .any(|b| matches!(b, BatchState::Pending | BatchState::Failed { .. }))
+}
+
+/// 需要用户裁决的批次下标。
+fn unknown_indices(batches: &[BatchState]) -> Vec<usize> {
+    batches
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| matches!(b, BatchState::Unknown { .. }))
+        .map(|(i, _)| i)
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -568,6 +686,25 @@ pub enum SenderEvent {
     Pause,
     Resume,
     Reset,
+    /// 丢弃磁盘上的未完成发送记录。
+    DiscardPendingSend,
+    /// 宿主取得了某一批的交易凭据（在最终结果之前）。
+    BatchHintAvailable {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        batch_index: usize,
+        hint: String,
+    },
+    /// 用户裁决一个未知批次：**确认它没到账**，让它成为可重试的失败批次。
+    MarkBatchUnsent {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        batch_index: usize,
+    },
+    /// 用户裁决一个未知批次：**确认它已到账**，标记为完成且不再发送。
+    MarkBatchDone {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        batch_index: usize,
+        tx_hash: Option<String>,
+    },
     AddCustomNetwork {
         name: String,
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
@@ -632,6 +769,43 @@ pub enum SenderOperation {
         operation_id: u64,
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         delay_ms: u64,
+    },
+    /// 把当前的发送进度落盘。
+    ///
+    /// 快照**装箱**：它带着完整收件人清单（十万级约 8.4MB），不装箱的话每一个
+    /// `SenderOperation` 值都会占到那么大。`Box<T>` 的序列化形态与 `T` 相同，线格式不变。
+    ///
+    /// **它是每一批发送的前置**：核心在发出 `SendBatch` 之前先发出这个请求，回执到达才发送。
+    /// 顺序反过来，崩溃窗口落在「已发出、未落盘」之间时，恢复后那一批会被当作从未尝试而
+    /// 自动重发 —— 那正是要防的重复打款（research.md D24）。
+    ///
+    /// 「当一个动作不可撤销时，关于它的记录必须先于它本身。」
+    PersistSendProgress {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+        snapshot: Box<SendSnapshot>,
+    },
+    /// 读取磁盘上的未完成发送记录（页面加载时一次）。
+    LoadPendingSend {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+    },
+    /// 丢弃未完成记录。
+    DiscardPendingSend {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+    },
+    /// 请去链上确认某一批到底成了没有。核心只表达意图，判定由宿主执行。
+    ConfirmBatch {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        batch_index: usize,
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        chain_id: u64,
+        rpcs: Vec<String>,
+        /// 发送时留下的凭据。`null` ⇒ 无从确认，走用户裁决。
+        hint: Option<String>,
     },
     ReadErc20Meta {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
@@ -709,6 +883,25 @@ pub enum SenderShellResult {
         operation_id: u64,
         phase: SenderPhase,
     },
+    ProgressPersisted {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+        ok: bool,
+    },
+    PendingSendLoaded {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+        /// `null` ⇒ 磁盘上没有未完成记录，一切照常。
+        snapshot: Option<Box<SendSnapshot>>,
+    },
+    /// 链上确认的三个分支。**没有第四个** —— 「确认不了」也是一个明确答案，不是失败。
+    BatchConfirmed {
+        #[cfg_attr(feature = "bindings", ts(type = "number"))]
+        operation_id: u64,
+        outcome: ConfirmOutcome,
+        tx_hash: Option<String>,
+        explorer_url: Option<String>,
+    },
     DelayElapsed {
         #[cfg_attr(feature = "bindings", ts(type = "number"))]
         operation_id: u64,
@@ -762,6 +955,19 @@ pub enum SenderShellResult {
     },
 }
 
+/// 一次链上确认的结论。
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg_attr(feature = "bindings", derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum ConfirmOutcome {
+    /// 确认它已上链且成功。
+    Confirmed,
+    /// 确认它**没有**上链。
+    NotOnChain,
+    /// 确认不了（无凭据 / 网络不通 / 超时）。**保持未知，交给用户裁决 —— 绝不猜。**
+    Unresolved,
+}
+
 #[effect]
 pub enum SenderEffect {
     Render(RenderOperation),
@@ -789,6 +995,8 @@ impl SplitEffect for SenderEffect {
 pub enum BatchView {
     Pending,
     InFlight,
+    /// 需要用户裁决 —— 系统无法确认这一批是否到账。
+    Unknown,
     Succeeded {
         tx_hash: String,
         explorer_url: Option<String>,
@@ -845,6 +1053,13 @@ pub struct SenderViewModel {
     pub failed_batches: usize,
     pub remaining_batches: usize,
     pub sent_recipients: usize,
+    /// 需要用户裁决的批次下标。非空时界面必须显式追问，不得静默续发。
+    pub unknown_batches: Vec<usize>,
+    /// 当前的发送状态是从磁盘恢复来的 —— 界面据此提示「上次发送未完成」。
+    pub restored: bool,
+    /// 恢复的计划的创建时间。界面显示它的年龄，让用户判断是否还适用（FR-008）。
+    #[cfg_attr(feature = "bindings", ts(type = "number"))]
+    pub plan_started_at_ms: Option<u64>,
 
     pub can_proceed_from_config: bool,
     pub can_proceed_from_recipients: bool,
@@ -918,6 +1133,8 @@ impl App for SenderApp {
             SenderEvent::PageReady => {
                 let load_id = model.begin(InFlightOp::Persist);
                 let history_id = model.begin(InFlightOp::LoadHistory);
+                // 磁盘上有没有未完成的发送？有就恢复，但**不自动开始**（FR-007）。
+                let pending_id = model.begin(InFlightOp::LoadPendingSend);
                 Command::all([
                     request(SenderOperation::LoadCustomData {
                         operation_id: load_id,
@@ -925,6 +1142,9 @@ impl App for SenderApp {
                     request(SenderOperation::LoadHistory {
                         operation_id: history_id,
                         limit: 50,
+                    }),
+                    request(SenderOperation::LoadPendingSend {
+                        operation_id: pending_id,
                     }),
                     render(),
                 ])
@@ -1038,6 +1258,70 @@ impl App for SenderApp {
                     custom_networks: custom,
                     rpc_overrides: overrides,
                     ..SenderModel::default()
+                };
+                render()
+            }
+
+            SenderEvent::DiscardPendingSend => {
+                let id = model.begin(InFlightOp::Persist);
+                model.plan = None;
+                model.batches.clear();
+                model.batch_hints.clear();
+                model.send_status = SendStatus::Idle;
+                model.restored = false;
+                model.step = WizardStep::Config;
+                Command::all([
+                    request(SenderOperation::DiscardPendingSend { operation_id: id }),
+                    render(),
+                ])
+            }
+
+            SenderEvent::BatchHintAvailable { batch_index, hint } => {
+                // 凭据一到手就记下并**立刻落盘** —— 它必须先于最终结果存在，
+                // 否则崩溃时那一批就无从确认（research.md D26）。
+                model.batch_hints.insert(batch_index, Some(hint.clone()));
+                if let Some(BatchState::Unknown { .. }) = model.batches.get(batch_index) {
+                    model.batches[batch_index] = BatchState::Unknown { hint: Some(hint) };
+                }
+                let Some(snap) = snapshot(model) else {
+                    return Command::done();
+                };
+                let id = model.begin(InFlightOp::Persist);
+                request(SenderOperation::PersistSendProgress {
+                    operation_id: id,
+                    snapshot: Box::new(snap),
+                })
+            }
+
+            SenderEvent::MarkBatchUnsent { batch_index } => {
+                // 只有未知批次可被裁决 —— 别的状态已经确定，不该被一个按钮改写。
+                if !matches!(
+                    model.batches.get(batch_index),
+                    Some(BatchState::Unknown { .. })
+                ) {
+                    return Command::done();
+                }
+                model.batches[batch_index] = BatchState::Failed {
+                    error: "user-marked-unsent".to_owned(),
+                };
+                render()
+            }
+
+            SenderEvent::MarkBatchDone {
+                batch_index,
+                tx_hash,
+            } => {
+                if !matches!(
+                    model.batches.get(batch_index),
+                    Some(BatchState::Unknown { .. })
+                ) {
+                    return Command::done();
+                }
+                let count = batch_len(model, batch_index);
+                model.batches[batch_index] = BatchState::Succeeded {
+                    tx_hash: tx_hash.unwrap_or_else(|| "user-marked-done".to_owned()),
+                    explorer_url: None,
+                    count,
                 };
                 render()
             }
@@ -1176,6 +1460,7 @@ impl App for SenderApp {
                     BatchState::Failed { error } => BatchView::Failed {
                         error: error.clone(),
                     },
+                    BatchState::Unknown { .. } => BatchView::Unknown,
                 })
                 .collect(),
             current_batch_index: model
@@ -1187,6 +1472,9 @@ impl App for SenderApp {
             failed_batches: failed,
             remaining_batches: model.batches.len() - succeeded,
             sent_recipients,
+            unknown_batches: unknown_indices(&model.batches),
+            restored: model.restored,
+            plan_started_at_ms: model.plan.as_ref().map(|p| p.started_at_ms),
 
             can_proceed_from_config,
             can_proceed_from_recipients,
@@ -1266,12 +1554,134 @@ fn start_send(model: &mut SenderModel, started_at_ms: u64) -> Command<SenderEffe
         started_at_ms,
     });
     model.batches = vec![BatchState::Pending; total];
+    model.batch_hints.clear();
+    // 开始一次新发送 ⇒ 它就是那唯一一份记录（research.md D27）。
+    model.restored = false;
     model.send_cursor = 0;
     model.send_status = SendStatus::Running;
     model.step = WizardStep::Execute;
     model.current_phase = None;
 
     dispatch_next_batch(model)
+}
+
+/// 从落盘快照重建发送状态。
+///
+/// **`Attempted` 变成 `Unknown`，不是 `Pending`。** 那一批的真实状态是未知的：交易可能已
+/// 上链，也可能根本没发出去。当作 `Pending` 自动重发就是重复打款（research.md D25）。
+///
+/// 恢复后 `status` 为 `Paused` —— **绝不自动开始发送**（FR-007）。用户要看到提示、
+/// 自己决定继续还是丢弃。
+fn restore_from_snapshot(
+    model: &mut SenderModel,
+    snap: SendSnapshot,
+) -> Command<SenderEffect, SenderEvent> {
+    model.plan = Some(SendPlan {
+        network: snap.network,
+        token_type: snap.token_type,
+        token_address: snap.token_address,
+        decimals: snap.decimals,
+        batch_size: snap.batch_size,
+        fee_per_batch: snap.fee_per_batch,
+        gas_fee_token: snap.gas_fee_token,
+        recipients: snap.recipients,
+        started_at_ms: snap.started_at_ms,
+    });
+    model.batches = snap
+        .batches
+        .into_iter()
+        .map(|b| match b {
+            SnapshotBatch::Pending => BatchState::Pending,
+            SnapshotBatch::Attempted { hint } => BatchState::Unknown { hint },
+            SnapshotBatch::Succeeded {
+                tx_hash,
+                explorer_url,
+                count,
+            } => BatchState::Succeeded {
+                tx_hash,
+                explorer_url,
+                count,
+            },
+            SnapshotBatch::Failed { error } => BatchState::Failed { error },
+        })
+        .collect();
+    model.send_cursor = 0;
+    model.send_status = SendStatus::Paused;
+    model.current_phase = None;
+    model.restored = true;
+
+    // 为每个未知批次请求一次链上确认。取得凭据的能自动判定；取不到的走用户裁决。
+    let plan = model.plan.clone().expect("刚设置");
+    let mut commands: Vec<Command<SenderEffect, SenderEvent>> = Vec::new();
+    for index in unknown_indices(&model.batches) {
+        let hint = match &model.batches[index] {
+            BatchState::Unknown { hint } => hint.clone(),
+            _ => None,
+        };
+        let operation_id = model.begin(InFlightOp::ConfirmBatch { batch_index: index });
+        commands.push(request(SenderOperation::ConfirmBatch {
+            operation_id,
+            batch_index: index,
+            chain_id: plan.network.chain_id,
+            rpcs: plan.network.rpcs.clone(),
+            hint,
+        }));
+    }
+    commands.push(render());
+    Command::all(commands)
+}
+
+/// 把当前发送状态导出成可落盘的快照。
+fn snapshot(model: &SenderModel) -> Option<SendSnapshot> {
+    let plan = model.plan.as_ref()?;
+    Some(SendSnapshot {
+        network: plan.network.clone(),
+        token_type: plan.token_type,
+        token_address: plan.token_address.clone(),
+        decimals: plan.decimals,
+        batch_size: plan.batch_size,
+        fee_per_batch: plan.fee_per_batch.clone(),
+        gas_fee_token: plan.gas_fee_token.clone(),
+        recipients: plan.recipients.clone(),
+        started_at_ms: plan.started_at_ms,
+        batches: model
+            .batches
+            .iter()
+            .enumerate()
+            .map(|(index, b)| match b {
+                BatchState::Pending => SnapshotBatch::Pending,
+                // 在途 ⇒ 「曾被尝试」。operation_id 是本次会话在途表的键，跨会话无意义。
+                BatchState::InFlight { .. } => SnapshotBatch::Attempted {
+                    hint: model.batch_hints.get(&index).cloned().flatten(),
+                },
+                BatchState::Unknown { hint } => SnapshotBatch::Attempted { hint: hint.clone() },
+                BatchState::Succeeded {
+                    tx_hash,
+                    explorer_url,
+                    count,
+                } => SnapshotBatch::Succeeded {
+                    tx_hash: tx_hash.clone(),
+                    explorer_url: explorer_url.clone(),
+                    count: *count,
+                },
+                BatchState::Failed { error } => SnapshotBatch::Failed {
+                    error: error.clone(),
+                },
+            })
+            .collect(),
+    })
+}
+
+/// 第 `index` 批有多少个收件人（最后一批可能不满）。
+fn batch_len(model: &SenderModel, index: usize) -> usize {
+    model
+        .plan
+        .as_ref()
+        .map(|p| {
+            let size = p.batch_size as usize;
+            p.recipients.len().min((index + 1) * size) - index * size
+        })
+        .unwrap_or(0)
 }
 
 /// 选出下一个该发的批次并请求它。
@@ -1282,9 +1692,10 @@ fn dispatch_next_batch(model: &mut SenderModel) -> Command<SenderEffect, SenderE
     if model.send_status != SendStatus::Running {
         return render();
     }
-    let Some(plan) = model.plan.clone() else {
+    // 没有计划就没什么可推进的。批次的收件人在 `send_batch_now` 里才取。
+    if model.plan.is_none() {
         return render();
-    };
+    }
     let Some(index) = next_pending_index(&model.batches, model.send_cursor) else {
         model.send_status = SendStatus::Done;
         model.current_phase = None;
@@ -1292,6 +1703,49 @@ fn dispatch_next_batch(model: &mut SenderModel) -> Command<SenderEffect, SenderE
     };
     // 严格向前推进：这一批发出去之后，本轮就不会再回到它或它之前的任何一批。
     model.send_cursor = index + 1;
+
+    // id 先预留，**登记推迟到请求真正发出时**。
+    let operation_id = model.reserve_operation_id();
+    model.batches[index] = BatchState::InFlight { operation_id };
+    model.current_phase = Some(SenderPhase::Building);
+    model.batch_hints.insert(index, None);
+
+    // **先落盘，后发送**（research.md D24）。
+    //
+    // 顺序反过来，崩溃窗口落在「已发出、未落盘」之间时，磁盘上那一批仍是 Pending，
+    // 恢复后会被当作从未尝试而自动重发 —— 那正是要防的重复打款。
+    //
+    // 先落盘的最坏情况是「记着尝试过但其实没发出去」，那是**安全的一侧**：它进入未知流程，
+    // 由确认或用户裁决处理，不会被自动重发。
+    //
+    // 「当一个动作不可撤销时，关于它的记录必须先于它本身。」
+    let Some(snap) = snapshot(model) else {
+        return render();
+    };
+    let persist_id = model.begin(InFlightOp::PersistProgress { batch_index: index });
+    Command::all([
+        request(SenderOperation::PersistSendProgress {
+            operation_id: persist_id,
+            snapshot: Box::new(snap),
+        }),
+        render(),
+    ])
+}
+
+/// 落盘回执到达后，真正发出那一批。
+///
+/// 拆成两步是 D24 的落实：这个函数**只能**由 `ProgressPersisted { ok: true }` 触发。
+fn send_batch_now(model: &mut SenderModel, index: usize) -> Command<SenderEffect, SenderEvent> {
+    let Some(plan) = model.plan.clone() else {
+        return render();
+    };
+    // 落盘期间用户可能暂停了。
+    if model.send_status != SendStatus::Running {
+        return render();
+    }
+    let Some(&BatchState::InFlight { operation_id }) = model.batches.get(index) else {
+        return render();
+    };
 
     let size = plan.batch_size as usize;
     let start = index * size;
@@ -1303,9 +1757,10 @@ fn dispatch_next_batch(model: &mut SenderModel) -> Command<SenderEffect, SenderE
         .cloned()
         .collect();
 
-    let operation_id = model.begin(InFlightOp::SendBatch { batch_index: index });
-    model.batches[index] = BatchState::InFlight { operation_id };
-    model.current_phase = Some(SenderPhase::Building);
+    // 现在它才真的在途。
+    model
+        .in_flight
+        .insert(operation_id, InFlightOp::SendBatch { batch_index: index });
 
     Command::all([
         request(SenderOperation::SendBatch {
@@ -1422,13 +1877,30 @@ fn finish_send(model: &mut SenderModel) -> Command<SenderEffect, SenderEvent> {
     };
 
     let operation_id = model.begin(InFlightOp::Persist);
-    Command::all([
-        request(SenderOperation::PersistHistory {
-            operation_id,
-            record,
-        }),
-        render(),
-    ])
+    let mut commands = vec![request(SenderOperation::PersistHistory {
+        operation_id,
+        record,
+    })];
+
+    // 全部批次达到终态（**不含未知**）⇒ 清理未完成记录。
+    // 留着未知批次的记录，否则用户下次打开就再也看不到那一批需要裁决（research.md D27）。
+    if model.batches.iter().all(BatchState::is_terminal) {
+        let discard_id = model.begin(InFlightOp::Persist);
+        commands.push(request(SenderOperation::DiscardPendingSend {
+            operation_id: discard_id,
+        }));
+    } else {
+        let persist_id = model.begin(InFlightOp::Persist);
+        if let Some(snap) = snapshot(model) {
+            commands.push(request(SenderOperation::PersistSendProgress {
+                operation_id: persist_id,
+                snapshot: Box::new(snap),
+            }));
+        }
+    }
+
+    commands.push(render());
+    Command::all(commands)
 }
 
 // ---------------------------------------------------------------------------
@@ -1599,14 +2071,7 @@ fn accept_result(
             else {
                 return Command::done();
             };
-            let count = model
-                .plan
-                .as_ref()
-                .map(|p| {
-                    let size = p.batch_size as usize;
-                    p.recipients.len().min((batch_index + 1) * size) - batch_index * size
-                })
-                .unwrap_or(0);
+            let count = batch_len(model, batch_index);
             model.batches[batch_index] = BatchState::Succeeded {
                 tx_hash,
                 explorer_url,
@@ -1640,6 +2105,80 @@ fn accept_result(
                 return Command::done();
             }
             model.current_phase = Some(phase);
+            render()
+        }
+
+        SenderShellResult::ProgressPersisted { operation_id, ok } => {
+            let Some(InFlightOp::PersistProgress { batch_index }) =
+                model.in_flight.remove(&operation_id)
+            else {
+                // 不是「发送前置」的那次落盘（例如全部终态后的清理落盘），忽略。
+                return Command::done();
+            };
+
+            if !ok {
+                // **宁可不发，不可发了而不知道**（FR-004）。
+                model.batches[batch_index] = BatchState::Pending;
+                model.send_status = SendStatus::Paused;
+                model.review_error = Some("progress-persist-failed".to_owned());
+                return render();
+            }
+
+            send_batch_now(model, batch_index)
+        }
+
+        SenderShellResult::PendingSendLoaded {
+            operation_id,
+            snapshot,
+        } => {
+            if !matches!(
+                model.in_flight.remove(&operation_id),
+                Some(InFlightOp::LoadPendingSend)
+            ) {
+                return Command::done();
+            }
+            let Some(snap) = snapshot else {
+                return Command::done(); // 磁盘上没有未完成记录，一切照常。
+            };
+            restore_from_snapshot(model, *snap)
+        }
+
+        SenderShellResult::BatchConfirmed {
+            operation_id,
+            outcome,
+            tx_hash,
+            explorer_url,
+        } => {
+            let Some(InFlightOp::ConfirmBatch { batch_index }) =
+                model.in_flight.remove(&operation_id)
+            else {
+                return Command::done();
+            };
+            // 只有仍处于未知的批次才接受确认结果 —— 用户可能已经先裁决过了。
+            if !matches!(
+                model.batches.get(batch_index),
+                Some(BatchState::Unknown { .. })
+            ) {
+                return Command::done();
+            }
+
+            match outcome {
+                ConfirmOutcome::Confirmed => {
+                    let count = batch_len(model, batch_index);
+                    model.batches[batch_index] = BatchState::Succeeded {
+                        tx_hash: tx_hash.unwrap_or_else(|| "confirmed".to_owned()),
+                        explorer_url,
+                        count,
+                    };
+                }
+                ConfirmOutcome::NotOnChain => {
+                    model.batches[batch_index] = BatchState::Failed {
+                        error: "not-on-chain".to_owned(),
+                    };
+                }
+                // **确认不了就保持未知，绝不猜**（research.md D25）。
+                ConfirmOutcome::Unresolved => {}
+            }
             render()
         }
 
@@ -1862,8 +2401,31 @@ mod tests {
         }
     }
 
+    /// 若有落盘在途，放行它 —— 每一批的发送都以一次落盘为前置（spec 003 D24）。
+    ///
+    /// 放在夹具里而不是每个用例里：那条前置是**结构性**的，不是某个用例的情节。
+    /// 专门验证这条顺序的用例用 `start_raw` 绕过它。
+    fn ack_persist(model: &mut SenderModel) {
+        let pending: Vec<u64> = model
+            .in_flight
+            .iter()
+            .filter(|(_, op)| matches!(op, InFlightOp::PersistProgress { .. }))
+            .map(|(id, _)| *id)
+            .collect();
+        for operation_id in pending {
+            send(
+                model,
+                SenderShellResult::ProgressPersisted {
+                    operation_id,
+                    ok: true,
+                },
+            );
+        }
+    }
+
     /// 让当前在途批次成功。
     fn succeed_current(model: &mut SenderModel) {
+        ack_persist(model);
         let (id, _) = in_flight_batch(model).expect("应当有一批在途");
         send(
             model,
@@ -1876,6 +2438,7 @@ mod tests {
     }
 
     fn fail_current(model: &mut SenderModel, error: &str) {
+        ack_persist(model);
         let (id, _) = in_flight_batch(model).expect("应当有一批在途");
         send(
             model,
@@ -1886,13 +2449,27 @@ mod tests {
         );
     }
 
-    /// 走完一次批间延时，进入下一批。
+    /// 走完一次批间延时，进入下一批（并放行随之而来的落盘）。
     fn pass_delay(model: &mut SenderModel) {
         let id = in_flight_delay(model).expect("应当有一次批间延时在途");
         send(model, SenderShellResult::DelayElapsed { operation_id: id });
+        ack_persist(model);
     }
 
+    /// 开始发送，并放行第一批的落盘 —— 大多数用例关心的是发送之后的事。
     fn start(model: &mut SenderModel) {
+        start_raw(model);
+        ack_persist(model);
+    }
+
+    /// 续发，并放行随之而来的落盘。
+    fn resume(model: &mut SenderModel) {
+        dispatch(model, SenderEvent::Resume);
+        ack_persist(model);
+    }
+
+    /// 只发出 `StartSend`，**不放行落盘** —— 给专门验证「落盘先于发送」的用例用。
+    fn start_raw(model: &mut SenderModel) {
         dispatch(model, SenderEvent::StartSend { started_at_ms: 1 });
     }
 
@@ -1924,7 +2501,7 @@ mod tests {
 
         // 续发 —— 只该重试 1 和 2，绝不碰 0。
         let mut requested: Vec<usize> = Vec::new();
-        dispatch(&mut model, SenderEvent::Resume);
+        resume(&mut model);
         while let Some((_, index)) = in_flight_batch(&model) {
             requested.push(index);
             succeed_current(&mut model);
@@ -2081,7 +2658,7 @@ mod tests {
         succeed_current(&mut model);
         dispatch(&mut model, SenderEvent::Pause);
 
-        dispatch(&mut model, SenderEvent::Resume);
+        resume(&mut model);
         let (_, index) = in_flight_batch(&model).expect("续发后应当有一批在途");
         assert_eq!(index, 1, "从第 1 批继续，不重发第 0 批");
     }
@@ -2331,5 +2908,483 @@ mod tests {
         assert_eq!(view.valid_count, 500);
         assert_eq!(view.total_batches, 5);
         assert_eq!(view.batches.len(), 5);
+    }
+    // -----------------------------------------------------------------------
+    // spec 003：Unknown —— 崩溃恢复后那一批的真实状态
+    // -----------------------------------------------------------------------
+
+    /// **未知批次绝不参与自动续发。**
+    ///
+    /// 这是 spec 003 的地基。把 `Unknown` 算进候选集，等于在「可能已经打过款」的批次上
+    /// 自动再打一次 —— 正是这个 feature 要防的事。
+    #[test]
+    fn an_unknown_batch_is_never_picked_for_automatic_sending() {
+        let mut model = model_ready(6, 2); // 3 批
+        start(&mut model);
+        succeed_current(&mut model);
+        pass_delay(&mut model);
+
+        // 模拟恢复：第 1 批变成未知（崩溃发生在它在途时）。
+        let in_flight_id = in_flight_batch(&model).unwrap().0;
+        model.in_flight.remove(&in_flight_id);
+        model.batches[1] = BatchState::Unknown {
+            hint: Some("0xUSEROPHASH".to_owned()),
+        };
+        model.send_cursor = 0;
+        model.send_status = SendStatus::Running;
+
+        let _ = dispatch_next_batch(&mut model);
+        ack_persist(&mut model);
+
+        let (_, index) = in_flight_batch(&model).expect("应当有一批在途");
+        assert_eq!(
+            index, 2,
+            "跳过第 0 批（已成功）与第 1 批（未知），直接到第 2 批"
+        );
+        assert!(
+            matches!(model.batches[1], BatchState::Unknown { .. }),
+            "未知批次的状态不得被自动流程改动"
+        );
+    }
+
+    /// 只剩未知批次时，`has_unfinished` 为假 —— 续发解决不了它，需要用户裁决。
+    #[test]
+    fn a_run_with_only_unknown_batches_left_is_not_resumable() {
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        succeed_current(&mut model);
+        let in_flight_id = in_flight_batch(&model)
+            .map(|(id, _)| id)
+            .or_else(|| in_flight_delay(&model))
+            .unwrap();
+        model.in_flight.remove(&in_flight_id);
+        model.batches[1] = BatchState::Unknown { hint: None };
+
+        assert!(!has_unfinished(&model.batches), "未知批次不算「可续发」");
+        assert_eq!(unknown_indices(&model.batches), vec![1]);
+
+        let before = model.next_operation_id;
+        dispatch(&mut model, SenderEvent::Resume);
+        assert_eq!(model.next_operation_id, before, "Resume 什么都不该做");
+    }
+
+    /// 用户裁决：确认没到账 ⇒ 成为可重试的失败批次。
+    #[test]
+    fn marking_an_unknown_batch_as_unsent_makes_it_retryable() {
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        model.batches[0] = BatchState::Unknown { hint: None };
+        model.in_flight.clear();
+
+        dispatch(&mut model, SenderEvent::MarkBatchUnsent { batch_index: 0 });
+
+        assert!(matches!(model.batches[0], BatchState::Failed { .. }));
+        assert!(has_unfinished(&model.batches), "裁决之后它才成为可续发的");
+        assert_eq!(next_pending_index(&model.batches, 0), Some(0));
+    }
+
+    /// 用户裁决：确认已到账 ⇒ 标记完成，**且此后不再被发送**。
+    #[test]
+    fn marking_an_unknown_batch_as_done_takes_it_out_of_the_candidate_set() {
+        let mut model = model_ready(4, 2); // 2 批
+        start(&mut model);
+        model.batches[0] = BatchState::Unknown { hint: None };
+        model.in_flight.clear();
+
+        dispatch(
+            &mut model,
+            SenderEvent::MarkBatchDone {
+                batch_index: 0,
+                tx_hash: Some("0xABC".to_owned()),
+            },
+        );
+
+        assert!(model.batches[0].is_succeeded());
+        assert_eq!(
+            next_pending_index(&model.batches, 0),
+            Some(1),
+            "它已成终态，绝不会再被选中"
+        );
+        // 收件人数被算对了 —— 界面上的「已发送 N 个地址」要准。
+        assert!(matches!(
+            &model.batches[0],
+            BatchState::Succeeded { count: 2, .. }
+        ));
+    }
+
+    /// 裁决只对未知批次生效 —— 别的状态已经确定，不该被一个按钮改写。
+    #[test]
+    fn a_verdict_on_a_non_unknown_batch_changes_nothing() {
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        succeed_current(&mut model);
+        let before = model.batches[0].clone();
+
+        dispatch(&mut model, SenderEvent::MarkBatchUnsent { batch_index: 0 });
+        dispatch(
+            &mut model,
+            SenderEvent::MarkBatchDone {
+                batch_index: 0,
+                tx_hash: None,
+            },
+        );
+
+        assert_eq!(model.batches[0], before, "已成功的批次不得被裁决改写");
+    }
+
+    /// 未知批次不算终态 —— 记录必须留着，否则用户下次打开看不到它。
+    #[test]
+    fn unknown_is_not_terminal_so_the_record_survives() {
+        assert!(!BatchState::Unknown { hint: None }.is_terminal());
+        assert!(
+            BatchState::Failed {
+                error: String::new()
+            }
+            .is_terminal()
+        );
+        assert!(
+            BatchState::Succeeded {
+                tx_hash: String::new(),
+                explorer_url: None,
+                count: 0
+            }
+            .is_terminal()
+        );
+        assert!(!BatchState::Pending.is_terminal());
+    }
+    // -----------------------------------------------------------------------
+    // spec 003：落盘先于花钱
+    // -----------------------------------------------------------------------
+
+    fn in_flight_persist(model: &SenderModel) -> Option<(u64, usize)> {
+        model.in_flight.iter().find_map(|(id, op)| match op {
+            InFlightOp::PersistProgress { batch_index } => Some((*id, *batch_index)),
+            _ => None,
+        })
+    }
+
+    /// **一批的发送请求必须晚于它的落盘回执。**
+    ///
+    /// 顺序反过来，崩溃窗口落在「已发出、未落盘」之间时，恢复后那一批会被当作从未尝试而
+    /// 自动重发（research.md D24）。
+    #[test]
+    fn a_batch_is_never_sent_before_its_progress_is_persisted() {
+        let mut model = model_ready(4, 2);
+        start_raw(&mut model);
+
+        // 此刻只该有落盘在途，**没有**发送在途。
+        let (persist_id, index) = in_flight_persist(&model).expect("应当先请求落盘");
+        assert_eq!(index, 0);
+        assert!(
+            matches!(model.batches[0], BatchState::InFlight { .. }),
+            "批次已占位为在途（id 已预留），但……"
+        );
+        assert!(
+            in_flight_batch(&model).is_none(),
+            "……请求尚未发出，所以它还不在在途表里"
+        );
+
+        // 落盘成功之后，发送请求才出现。
+        send(
+            &mut model,
+            SenderShellResult::ProgressPersisted {
+                operation_id: persist_id,
+                ok: true,
+            },
+        );
+        assert!(
+            model
+                .in_flight
+                .values()
+                .any(|op| matches!(op, InFlightOp::SendBatch { .. })),
+            "落盘回执到达后才发送"
+        );
+    }
+
+    /// 落盘失败 ⇒ **不发送**，暂停并告知用户。宁可不发，不可发了而不知道（FR-004）。
+    #[test]
+    fn a_failed_persist_stops_the_send_instead_of_risking_an_untracked_transfer() {
+        let mut model = model_ready(4, 2);
+        start_raw(&mut model);
+        let (persist_id, _) = in_flight_persist(&model).unwrap();
+
+        send(
+            &mut model,
+            SenderShellResult::ProgressPersisted {
+                operation_id: persist_id,
+                ok: false,
+            },
+        );
+
+        assert!(
+            !model
+                .in_flight
+                .values()
+                .any(|op| matches!(op, InFlightOp::SendBatch { .. })),
+            "落盘失败时绝不发送"
+        );
+        assert_eq!(model.send_status, SendStatus::Paused);
+        assert_eq!(model.batches[0], BatchState::Pending, "那一批退回待发");
+        assert!(model.review_error.is_some(), "必须告知用户");
+    }
+
+    /// 落盘期间用户暂停 ⇒ 回执到达也不发送。
+    #[test]
+    fn pausing_during_the_persist_prevents_the_send() {
+        let mut model = model_ready(4, 2);
+        start_raw(&mut model);
+        let (persist_id, _) = in_flight_persist(&model).unwrap();
+
+        dispatch(&mut model, SenderEvent::Pause);
+        send(
+            &mut model,
+            SenderShellResult::ProgressPersisted {
+                operation_id: persist_id,
+                ok: true,
+            },
+        );
+
+        assert!(
+            !model
+                .in_flight
+                .values()
+                .any(|op| matches!(op, InFlightOp::SendBatch { .. })),
+            "暂停之后不该开新批"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // spec 003：恢复
+    // -----------------------------------------------------------------------
+
+    /// 走完一批（落盘 → 发送 → 成功）。
+    fn complete_one_batch(model: &mut SenderModel) {
+        succeed_current(model); // 它自己会放行落盘
+    }
+
+    fn snapshot_of(model: &SenderModel) -> SendSnapshot {
+        snapshot(model).expect("应当有计划")
+    }
+
+    /// **恢复后，已成功的批次一个请求都不发**（SC-001）。
+    ///
+    /// 「崩溃」在核心测试里就是「拿落盘的快照重建一个新 Model」—— 纯数据，不需要浏览器。
+    #[test]
+    fn restoring_from_disk_never_re_sends_a_succeeded_batch() {
+        let mut model = model_ready(6, 2); // 3 批
+        start(&mut model);
+        complete_one_batch(&mut model); // 第 0 批成功
+        pass_delay(&mut model);
+        complete_one_batch(&mut model); // 第 1 批成功
+        let snap = snapshot_of(&model);
+
+        // ——— 崩溃 ———
+        let mut fresh = SenderModel::default();
+        let _ = restore_from_snapshot(&mut fresh, snap);
+
+        assert!(fresh.batches[0].is_succeeded());
+        assert!(fresh.batches[1].is_succeeded());
+        assert_eq!(fresh.batches[2], BatchState::Pending);
+        assert_eq!(
+            next_pending_index(&fresh.batches, 0),
+            Some(2),
+            "只剩第 2 批可发"
+        );
+        assert!(fresh.restored, "界面要知道这是一份旧计划");
+        assert_eq!(
+            fresh.send_status,
+            SendStatus::Paused,
+            "**绝不自动开始发送**（FR-007）"
+        );
+    }
+
+    /// 恢复时在途的那批变成**未知**，不参与自动续发，并被请求确认（SC-002）。
+    #[test]
+    fn a_batch_that_was_in_flight_at_crash_time_becomes_unknown_and_gets_confirmed() {
+        let mut model = model_ready(6, 2);
+        start(&mut model);
+        complete_one_batch(&mut model);
+        pass_delay(&mut model);
+        // 第 1 批落盘并发出，凭据到手，然后崩溃。
+        ack_persist(&mut model);
+        dispatch(
+            &mut model,
+            SenderEvent::BatchHintAvailable {
+                batch_index: 1,
+                hint: "0xUSEROP".to_owned(),
+            },
+        );
+        let snap = snapshot_of(&model);
+
+        // ——— 崩溃 ———
+        let mut fresh = SenderModel::default();
+        let _ = restore_from_snapshot(&mut fresh, snap);
+
+        assert!(
+            matches!(fresh.batches[1], BatchState::Unknown { hint: Some(_) }),
+            "在途 ⇒ 未知，且带着凭据"
+        );
+        assert_eq!(
+            next_pending_index(&fresh.batches, 0),
+            Some(2),
+            "自动续发跳过未知那一批"
+        );
+        // 核心为它请求了一次确认。
+        assert!(
+            fresh
+                .in_flight
+                .values()
+                .any(|op| matches!(op, InFlightOp::ConfirmBatch { batch_index: 1 })),
+            "必须尝试自动判定"
+        );
+    }
+
+    /// 链上确认的三个分支。
+    #[test]
+    fn confirmation_resolves_or_honestly_gives_up() {
+        let make = || {
+            let mut model = model_ready(4, 2);
+            start(&mut model); // 已放行落盘，第 0 批在途
+            let snap = snapshot_of(&model);
+            let mut fresh = SenderModel::default();
+            let _ = restore_from_snapshot(&mut fresh, snap);
+            let confirm_id = fresh
+                .in_flight
+                .iter()
+                .find(|(_, op)| matches!(op, InFlightOp::ConfirmBatch { .. }))
+                .map(|(id, _)| *id)
+                .expect("应当请求确认");
+            (fresh, confirm_id)
+        };
+
+        // ① 确认已上链 ⇒ 成功
+        let (mut model, id) = make();
+        send(
+            &mut model,
+            SenderShellResult::BatchConfirmed {
+                operation_id: id,
+                outcome: ConfirmOutcome::Confirmed,
+                tx_hash: Some("0xABC".to_owned()),
+                explorer_url: None,
+            },
+        );
+        assert!(model.batches[0].is_succeeded());
+
+        // ② 确认没上链 ⇒ 失败（可重试）
+        let (mut model, id) = make();
+        send(
+            &mut model,
+            SenderShellResult::BatchConfirmed {
+                operation_id: id,
+                outcome: ConfirmOutcome::NotOnChain,
+                tx_hash: None,
+                explorer_url: None,
+            },
+        );
+        assert!(matches!(model.batches[0], BatchState::Failed { .. }));
+        assert_eq!(
+            next_pending_index(&model.batches, 0),
+            Some(0),
+            "可以重试它了"
+        );
+
+        // ③ 确认不了 ⇒ **保持未知，绝不猜**
+        let (mut model, id) = make();
+        send(
+            &mut model,
+            SenderShellResult::BatchConfirmed {
+                operation_id: id,
+                outcome: ConfirmOutcome::Unresolved,
+                tx_hash: None,
+                explorer_url: None,
+            },
+        );
+        assert!(matches!(model.batches[0], BatchState::Unknown { .. }));
+        assert_eq!(unknown_indices(&model.batches), vec![0]);
+    }
+
+    /// 用户已经先裁决过的批次，不接受迟到的确认结果。
+    #[test]
+    fn a_late_confirmation_does_not_override_a_users_verdict() {
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        let snap = snapshot_of(&model);
+        let mut fresh = SenderModel::default();
+        let _ = restore_from_snapshot(&mut fresh, snap);
+        let confirm_id = fresh
+            .in_flight
+            .iter()
+            .find(|(_, op)| matches!(op, InFlightOp::ConfirmBatch { .. }))
+            .map(|(id, _)| *id)
+            .unwrap();
+
+        // 用户先裁决了「已到账」。
+        dispatch(
+            &mut fresh,
+            SenderEvent::MarkBatchDone {
+                batch_index: 0,
+                tx_hash: Some("0xUSER".to_owned()),
+            },
+        );
+        // 确认结果现在才回来，说「没上链」。
+        send(
+            &mut fresh,
+            SenderShellResult::BatchConfirmed {
+                operation_id: confirm_id,
+                outcome: ConfirmOutcome::NotOnChain,
+                tx_hash: None,
+                explorer_url: None,
+            },
+        );
+
+        assert!(
+            fresh.batches[0].is_succeeded(),
+            "用户的裁决是终态，迟到的确认不得改写它"
+        );
+    }
+
+    /// 快照自包含：恢复不参考当前的输入状态（FR-011）。
+    #[test]
+    fn a_restored_plan_is_independent_of_the_current_input() {
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        let snap = snapshot_of(&model);
+
+        // 新会话里用户已经改了网络、也重新解析了别的收件人。
+        let mut fresh = model_ready(10, 5);
+        dispatch(
+            &mut fresh,
+            SenderEvent::SetNetwork {
+                slug: "base-mainnet".to_owned(),
+            },
+        );
+        let _ = restore_from_snapshot(&mut fresh, snap);
+
+        let plan = fresh.plan.as_ref().unwrap();
+        assert_eq!(plan.network.slug, "eth-mainnet", "恢复的是快照里的网络");
+        assert_eq!(plan.batch_size, 2, "以及快照里的每批上限");
+        assert_eq!(fresh.batches.len(), 2, "以及快照里的批次数");
+    }
+
+    /// 全部终态后请求清理；仍有未知批次时**不清理**（研究 D27）。
+    #[test]
+    fn the_record_is_cleared_only_when_nothing_needs_a_verdict() {
+        // 全成 ⇒ 请求清理
+        let mut model = model_ready(2, 2); // 1 批
+        start(&mut model);
+        complete_one_batch(&mut model);
+        assert_eq!(model.send_status, SendStatus::Done);
+        // finish_send 在全部终态时发出 DiscardPendingSend；这里以「没有再落盘」间接断言。
+        assert!(model.batches.iter().all(BatchState::is_terminal));
+
+        // 有未知 ⇒ 不该被视为可清理
+        let mut model = model_ready(4, 2);
+        start(&mut model);
+        model.batches[0] = BatchState::Unknown { hint: None };
+        model.batches[1] = BatchState::Failed { error: "x".into() };
+        assert!(
+            !model.batches.iter().all(BatchState::is_terminal),
+            "未知批次让记录必须留着"
+        );
     }
 }

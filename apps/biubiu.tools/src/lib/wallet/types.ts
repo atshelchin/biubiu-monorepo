@@ -69,7 +69,15 @@ export interface SendCallsOptions {
 	 * 进度回调。沿用 passkey 流程的 `SendStatus` 词表作为统一阶段标签——外部钱包
 	 * 把自己的阶段映射到最接近的标签，这样功能页 UI 无需为每种钱包改文案。
 	 */
-	onPhase?: (phase: SendStatus) => void;
+	/**
+	 * 进度回调。第二个参数是该次发送的**交易凭据**（userOpHash / txHash），
+	 * 在 `submitting` 之后、最终结果之前就可用。
+	 *
+	 * 它是**可选的**：老的调用点不传第二个参数照旧工作。加它的原因是批量发送需要在
+	 * 收到结果之前就把凭据落盘 —— 否则崩溃时那一批就无从确认
+	 * （spec 003-send-progress-durable，research.md D26）。
+	 */
+	onPhase?: (phase: SendStatus, hint?: string) => void;
 	/**
 	 * 可选：区块浏览器 tx 链接前缀（如 `https://basescan.org/tx/`）。外部钱包据此
 	 * 拼出 `explorerUrl`；biubiu 用自带 CHAIN_CONFIG，忽略该字段。

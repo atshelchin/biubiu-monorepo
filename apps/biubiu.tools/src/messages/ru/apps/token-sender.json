@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Отправитель токенов — BiuBiu Tools",
 	"ts.meta.description": "Массовая отправка нативных монет или токенов ERC20 на множество адресов сразу — из вашего самостоятельного passkey-кошелька через Safe 1.4.1 MultiSend.",
-
 	"ts.title": "Отправитель токенов",
 	"ts.subtitle": "Отправьте монету или токен сразу на множество адресов — из вашего собственного кошелька.",
-
 	"ts.safety.heading": "Ваши ключи — ваши монеты",
 	"ts.safety.chipKey": "Ключ остаётся на устройстве",
 	"ts.safety.chipNoMove": "BiuBiu не может двигать средства",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Пополнить",
-
 	"ts.stepper.token": "Токен",
 	"ts.stepper.recipients": "Получатели",
 	"ts.stepper.review": "Проверка",
 	"ts.stepper.send": "Отправка",
-
 	"ts.step1.heading": "Выберите сеть и токен",
 	"ts.step1.network": "Сеть",
 	"ts.step1.testnetSuffix": " · тестовая",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Загрузка…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} знаков",
 	"ts.step1.continue": "Продолжить",
-
 	"ts.step2.heading": "Добавьте получателей",
 	"ts.step2.amountPerLine": "Сумма в каждой строке",
 	"ts.step2.splitEqually": "Поровну",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} пакет(ов) · {count} подтверждений",
 	"ts.step2.back": "Назад",
 	"ts.step2.continue": "Продолжить",
-
 	"ts.step3.heading": "Проверка и комиссия",
 	"ts.step3.network": "Сеть",
 	"ts.step3.token": "Токен",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Назад",
 	"ts.step3.depositFunds": "Пополнить средства",
 	"ts.step3.sendNow": "Отправить",
-
 	"ts.step4.heading": "Отправка",
 	"ts.step4.batchProgress": "Пакет {current} / {total}",
 	"ts.step4.approveHint": "Подтверждайте каждый пакет в кошельке по запросу.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Новая отправка",
 	"ts.step4.batch": "Пакет {n}",
 	"ts.step4.batchSent": "{count} отправлено",
-
 	"ts.fee.memberFree": "Бесплатно (Premium-участник)",
 	"ts.fee.config": "Фиксированная (задана для этой сети)",
 	"ts.fee.usd": "Эквивалент $5",
 	"ts.fee.fallback": "1 нативная монета (курс недоступен)",
-
 	"ts.history.heading": "История",
 	"ts.history.recipientsMeta": "{count} получателей · {date}",
 	"ts.history.batch": "Пакет {n}",
 	"ts.history.batchSent": "{count} отправлено",
-
 	"ts.addNetwork.title": "Добавить свою сеть",
 	"ts.addNetwork.name": "Название сети",
 	"ts.addNetwork.namePlaceholder": "Моя сеть",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Добавить",
 	"ts.addNetwork.footnote": "Свои сети уже доступны для чтения; для отправки также нужны Safe 1.4.1 и поддержка bundler в этой сети.",
 	"ts.addNetwork.errorRequired": "Нужны название, chain ID и RPC",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "Адреса RPC (по одному в строке)",
 	"ts.rpc.note": "Используется для чтения балансов, данных токена и курса. Берётся первый доступный.",
 	"ts.rpc.removeNetwork": "Удалить сеть",
 	"ts.rpc.restoreDefault": "Сбросить по умолчанию",
 	"ts.rpc.save": "Сохранить",
-
 	"ts.editor.address": "Адрес",
 	"ts.editor.amount": "Сумма ({symbol})",
 	"ts.editor.invalidAddress": "Неверный адрес",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…и ещё {0}",
 	"ts.editor.close": "Закрыть",
 	"ts.editor.duplicateAddress": "Повторяющийся адрес",
-
 	"ts.errors.connectWallet": "Сначала подключите кошелёк",
 	"ts.errors.invalidTokenAddress": "Неверный адрес контракта токена",
 	"ts.errors.tokenMetaFailed": "Не удалось прочитать токен — проверьте адрес и сеть",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Ожидание подтверждения…",
 	"ts.phase.confirmed": "Подтверждено",
 	"ts.phase.failed": "Ошибка",
-
 	"ts.gate.title": "Подключите кошелёк, чтобы начать",
 	"ts.gate.desc": "Вы отправляете из своего самостоятельного кошелька — passkey-кошелька, браузерного кошелька или сопряжённого по QR. Средства остаются у вас, и каждую партию вы подтверждаете сами.",
 	"ts.step2.largeWarning": "Это около {batches} подтверждений в кошельке (по одному на каждые 100 получателей). Для удобства держите каждую отправку в пределах ~1 000 адресов, а длинные списки разбивайте на несколько отправок.",
-	"ts.step3.approvalsNote": "Вы подтвердите {count} раз(а) в кошельке — по одному на партию. Не закрывайте эту вкладку до завершения."
+	"ts.step3.approvalsNote": "Вы подтвердите {count} раз(а) в кошельке — по одному на партию. Не закрывайте эту вкладку до завершения.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

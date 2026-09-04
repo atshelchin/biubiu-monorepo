@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "代幣發送器 - BiuBiu Tools",
 	"ts.meta.description": "用你自己的 passkey 自我託管錢包，透過 Safe 1.4.1 MultiSend，一次把原生幣或 ERC20 代幣批量發送給多個地址。",
-
 	"ts.title": "代幣發送器",
 	"ts.subtitle": "一次把一種幣或代幣發送給多個地址——全程從你自己的錢包出帳。",
-
 	"ts.safety.heading": "你的金鑰，你的幣",
 	"ts.safety.chipKey": "金鑰只留在你的裝置",
 	"ts.safety.chipNoMove": "BiuBiu 無法動用資金",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "相同（Safe 1.4.1 + passkey）。",
 	"ts.safety.deposit": "儲值",
-
 	"ts.stepper.token": "代幣",
 	"ts.stepper.recipients": "收款人",
 	"ts.stepper.review": "確認",
 	"ts.stepper.send": "發送",
-
 	"ts.step1.heading": "選擇網路與代幣",
 	"ts.step1.network": "網路",
 	"ts.step1.testnetSuffix": " · 測試網",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "載入中…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} 位小數",
 	"ts.step1.continue": "繼續",
-
 	"ts.step2.heading": "新增收款人",
 	"ts.step2.amountPerLine": "每行指定金額",
 	"ts.step2.splitEqually": "平均分配",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} 批 · {count} 次確認",
 	"ts.step2.back": "返回",
 	"ts.step2.continue": "繼續",
-
 	"ts.step3.heading": "確認與手續費",
 	"ts.step3.network": "網路",
 	"ts.step3.token": "代幣",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "返回",
 	"ts.step3.depositFunds": "儲值資金",
 	"ts.step3.sendNow": "立即發送",
-
 	"ts.step4.heading": "發送中",
 	"ts.step4.batchProgress": "第 {current} / {total} 批",
 	"ts.step4.approveHint": "出現提示時，請在你的錢包中核准每一批。",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "新建發送",
 	"ts.step4.batch": "第 {n} 批",
 	"ts.step4.batchSent": "已發送 {count} 筆",
-
 	"ts.fee.memberFree": "免費（Premium 會員）",
 	"ts.fee.config": "固定（本網路已設定）",
 	"ts.fee.usd": "等值 $5",
 	"ts.fee.fallback": "1 個原生幣（價格無法取得）",
-
 	"ts.history.heading": "歷史",
 	"ts.history.recipientsMeta": "{count} 個收款人 · {date}",
 	"ts.history.batch": "第 {n} 批",
 	"ts.history.batchSent": "已發送 {count} 筆",
-
 	"ts.addNetwork.title": "新增自訂網路",
 	"ts.addNetwork.name": "網路名稱",
 	"ts.addNetwork.namePlaceholder": "我的鏈",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "新增",
 	"ts.addNetwork.footnote": "自訂鏈現在即可讀取；發送另需該鏈具備 Safe 1.4.1 + bundler 支援。",
 	"ts.addNetwork.errorRequired": "名稱、鏈 ID 與 RPC 為必填",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC 端點（每行一個）",
 	"ts.rpc.note": "用於讀取餘額、代幣資訊與價格。使用第一個可連線的端點。",
 	"ts.rpc.removeNetwork": "移除網路",
 	"ts.rpc.restoreDefault": "還原預設",
 	"ts.rpc.save": "儲存",
-
 	"ts.editor.address": "地址",
 	"ts.editor.amount": "金額（{symbol}）",
 	"ts.editor.invalidAddress": "地址無效",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…還有 {0} 個",
 	"ts.editor.close": "關閉",
 	"ts.editor.duplicateAddress": "重複地址",
-
 	"ts.errors.connectWallet": "請先連接錢包",
 	"ts.errors.invalidTokenAddress": "無效的代幣合約地址",
 	"ts.errors.tokenMetaFailed": "無法讀取代幣 —— 請檢查地址與網路",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "等待確認中…",
 	"ts.phase.confirmed": "已確認",
 	"ts.phase.failed": "失敗",
-
 	"ts.gate.title": "連接錢包即可開始",
 	"ts.gate.desc": "用你自己的自我託管錢包發送 —— passkey 錢包、瀏覽器錢包，或掃碼配對。資產始終在你手裡，每一批都由你親自確認。",
 	"ts.step2.largeWarning": "這大約需要 {batches} 次錢包確認（每 100 個一批）。為了順暢，建議單次控制在 1000 個地址以內，較長的清單請分幾次發送。",
-	"ts.step3.approvalsNote": "發送時你需要在錢包裡確認 {count} 次（每批一次）。請保持此頁面開啟直到完成。"
+	"ts.step3.approvalsNote": "發送時你需要在錢包裡確認 {count} 次（每批一次）。請保持此頁面開啟直到完成。",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

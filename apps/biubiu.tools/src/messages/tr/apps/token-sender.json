@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Token Gönderici - BiuBiu Tools",
 	"ts.meta.description": "Kendi passkey kendinden saklamalı cüzdanınızdan, Safe 1.4.1 MultiSend ile yerel coin veya ERC20 token'larını tek seferde birçok adrese toplu gönderin.",
-
 	"ts.title": "Token Gönderici",
 	"ts.subtitle": "Bir coin veya token'ı tek seferde birçok adrese gönderin — kendi cüzdanınızdan.",
-
 	"ts.safety.heading": "Anahtarlarınız sizde, coinleriniz sizde",
 	"ts.safety.chipKey": "Anahtar cihazınızda kalır",
 	"ts.safety.chipNoMove": "BiuBiu fonları hareket ettiremez",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Para yatır",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Alıcılar",
 	"ts.stepper.review": "İncele",
 	"ts.stepper.send": "Gönder",
-
 	"ts.step1.heading": "Ağ ve token seçin",
 	"ts.step1.network": "Ağ",
 	"ts.step1.testnetSuffix": " · test ağı",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Yükleniyor…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} ondalık",
 	"ts.step1.continue": "Devam",
-
 	"ts.step2.heading": "Alıcı ekle",
 	"ts.step2.amountPerLine": "Satır başına tutar",
 	"ts.step2.splitEqually": "Eşit böl",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} grup · {count} onay",
 	"ts.step2.back": "Geri",
 	"ts.step2.continue": "Devam",
-
 	"ts.step3.heading": "İnceleme ve ücret",
 	"ts.step3.network": "Ağ",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Geri",
 	"ts.step3.depositFunds": "Para yatır",
 	"ts.step3.sendNow": "Şimdi gönder",
-
 	"ts.step4.heading": "Gönderiliyor",
 	"ts.step4.batchProgress": "Grup {current} / {total}",
 	"ts.step4.approveHint": "İstendiğinde her grubu cüzdanınızda onaylayın.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Yeni gönderim",
 	"ts.step4.batch": "Grup {n}",
 	"ts.step4.batchSent": "{count} gönderildi",
-
 	"ts.fee.memberFree": "Ücretsiz (Premium üye)",
 	"ts.fee.config": "Sabit (bu ağ için yapılandırılmış)",
 	"ts.fee.usd": "$5 karşılığı",
 	"ts.fee.fallback": "1 yerel coin (fiyat alınamadı)",
-
 	"ts.history.heading": "Geçmiş",
 	"ts.history.recipientsMeta": "{count} alıcı · {date}",
 	"ts.history.batch": "Grup {n}",
 	"ts.history.batchSent": "{count} gönderildi",
-
 	"ts.addNetwork.title": "Özel ağ ekle",
 	"ts.addNetwork.name": "Ağ adı",
 	"ts.addNetwork.namePlaceholder": "Zincirim",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Ekle",
 	"ts.addNetwork.footnote": "Özel zincirler şimdi okuma yapabilir; gönderme ayrıca o zincirde Safe 1.4.1 + bundler desteği gerektirir.",
 	"ts.addNetwork.errorRequired": "Ad, zincir ID'si ve RPC zorunludur",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC uç noktaları (satır başına bir tane)",
 	"ts.rpc.note": "Bakiyeleri, token bilgisini ve fiyatı okumak için kullanılır. Erişilebilen ilk uç nokta kullanılır.",
 	"ts.rpc.removeNetwork": "Ağı kaldır",
 	"ts.rpc.restoreDefault": "Varsayılanı geri yükle",
 	"ts.rpc.save": "Kaydet",
-
 	"ts.editor.address": "Adres",
 	"ts.editor.amount": "Tutar ({symbol})",
 	"ts.editor.invalidAddress": "Geçersiz adres",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…ve {0} tane daha",
 	"ts.editor.close": "Kapat",
 	"ts.editor.duplicateAddress": "Yinelenen adres",
-
 	"ts.errors.connectWallet": "Önce cüzdanını bağla",
 	"ts.errors.invalidTokenAddress": "Geçersiz token sözleşme adresi",
 	"ts.errors.tokenMetaFailed": "Token okunamadı — adresi ve ağı kontrol et",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Onay bekleniyor…",
 	"ts.phase.confirmed": "Onaylandı",
 	"ts.phase.failed": "Başarısız",
-
 	"ts.gate.title": "Başlamak için bir cüzdan bağlayın",
 	"ts.gate.desc": "Kendi kendinden saklamalı cüzdanınızdan gönderirsiniz — passkey cüzdanı, tarayıcı cüzdanı veya QR ile eşleştirilmiş. Paranız sizde kalır ve her grubu kendiniz onaylarsınız.",
 	"ts.step2.largeWarning": "Bu yaklaşık {batches} cüzdan onayı demek (her 100 alıcı için bir tane). Sorunsuz bir gönderim için her seferinde ~1.000 adresle sınırlı kalın ve daha uzun listeleri birkaç gönderime bölün.",
-	"ts.step3.approvalsNote": "Cüzdanınızda {count} kez onaylayacaksınız — her grup için bir kez. İşlem bitene kadar bu sekmeyi açık tutun."
+	"ts.step3.approvalsNote": "Cüzdanınızda {count} kez onaylayacaksınız — her grup için bir kez. İşlem bitene kadar bu sekmeyi açık tutun.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

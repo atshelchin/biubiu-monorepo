@@ -23,11 +23,18 @@ type SendBatchOp = Extract<SenderOperation, { type: 'send_batch' }>;
 export interface SendBatchOptions {
 	/** 进度档位回传通道。每一档都带上本次操作的 id。 */
 	onPhase(result: SenderShellResult): void;
+	/**
+	 * 交易凭据一到手就回传 —— **在最终结果之前**。
+	 *
+	 * 核心据此落盘，好让崩溃后那一批能被自动确认（research.md D26）。拿不到凭据
+	 * （外部钱包的批量路径）时这个回调不会被调用，那一批就走用户裁决。
+	 */
+	onHint(batchIndex: number, hint: string): void;
 }
 
 export async function executeSendBatch(
 	op: SendBatchOp,
-	{ onPhase }: SendBatchOptions,
+	{ onPhase, onHint }: SendBatchOptions,
 ): Promise<SenderShellResult> {
 	const connected = walletStore.activeWallet;
 	if (!connected) {

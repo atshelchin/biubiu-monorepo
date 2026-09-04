@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "Pengirim Token - BiuBiu Tools",
 	"ts.meta.description": "Kirim koin native atau token ERC20 secara massal ke banyak alamat sekaligus dari dompet swakelola passkey milikmu sendiri, menggunakan Safe 1.4.1 MultiSend.",
-
 	"ts.title": "Pengirim Token",
 	"ts.subtitle": "Kirim koin atau token ke banyak alamat sekaligus — dari dompetmu sendiri.",
-
 	"ts.safety.heading": "Kuncimu, koinmu",
 	"ts.safety.chipKey": "Kunci tetap di perangkatmu",
 	"ts.safety.chipNoMove": "BiuBiu tak bisa memindahkan dana",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "(Safe 1.4.1 + passkey).",
 	"ts.safety.deposit": "Setor",
-
 	"ts.stepper.token": "Token",
 	"ts.stepper.recipients": "Penerima",
 	"ts.stepper.review": "Tinjau",
 	"ts.stepper.send": "Kirim",
-
 	"ts.step1.heading": "Pilih jaringan & token",
 	"ts.step1.network": "Jaringan",
 	"ts.step1.testnetSuffix": " · testnet",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "Memuat…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} desimal",
 	"ts.step1.continue": "Lanjut",
-
 	"ts.step2.heading": "Tambah penerima",
 	"ts.step2.amountPerLine": "Jumlah per baris",
 	"ts.step2.splitEqually": "Bagi rata",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} batch · {count} konfirmasi",
 	"ts.step2.back": "Kembali",
 	"ts.step2.continue": "Lanjut",
-
 	"ts.step3.heading": "Tinjau & biaya",
 	"ts.step3.network": "Jaringan",
 	"ts.step3.token": "Token",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "Kembali",
 	"ts.step3.depositFunds": "Setor dana",
 	"ts.step3.sendNow": "Kirim sekarang",
-
 	"ts.step4.heading": "Mengirim",
 	"ts.step4.batchProgress": "Batch {current} / {total}",
 	"ts.step4.approveHint": "Setujui setiap batch di dompetmu saat diminta.",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "Kirim baru",
 	"ts.step4.batch": "Batch {n}",
 	"ts.step4.batchSent": "{count} terkirim",
-
 	"ts.fee.memberFree": "Gratis (anggota Premium)",
 	"ts.fee.config": "Tetap (dikonfigurasi untuk jaringan ini)",
 	"ts.fee.usd": "Setara $5",
 	"ts.fee.fallback": "1 koin native (harga tak tersedia)",
-
 	"ts.history.heading": "Riwayat",
 	"ts.history.recipientsMeta": "{count} penerima · {date}",
 	"ts.history.batch": "Batch {n}",
 	"ts.history.batchSent": "{count} terkirim",
-
 	"ts.addNetwork.title": "Tambah jaringan kustom",
 	"ts.addNetwork.name": "Nama jaringan",
 	"ts.addNetwork.namePlaceholder": "Chain Saya",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "Tambah",
 	"ts.addNetwork.footnote": "Chain kustom kini bisa dibaca; pengiriman juga butuh Safe 1.4.1 + dukungan bundler di chain itu.",
 	"ts.addNetwork.errorRequired": "Nama, chain ID, dan RPC wajib diisi",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "Endpoint RPC (satu per baris)",
 	"ts.rpc.note": "Dipakai untuk membaca saldo, info token, dan harga. Yang pertama dapat dijangkau akan dipakai.",
 	"ts.rpc.removeNetwork": "Hapus jaringan",
 	"ts.rpc.restoreDefault": "Pulihkan default",
 	"ts.rpc.save": "Simpan",
-
 	"ts.editor.address": "Alamat",
 	"ts.editor.amount": "Jumlah ({symbol})",
 	"ts.editor.invalidAddress": "Alamat tidak valid",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…dan {0} lagi",
 	"ts.editor.close": "Tutup",
 	"ts.editor.duplicateAddress": "Alamat duplikat",
-
 	"ts.errors.connectWallet": "Hubungkan dompet Anda dulu",
 	"ts.errors.invalidTokenAddress": "Alamat kontrak token tidak valid",
 	"ts.errors.tokenMetaFailed": "Tidak bisa membaca token — periksa alamat dan jaringan",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "Menunggu konfirmasi…",
 	"ts.phase.confirmed": "Terkonfirmasi",
 	"ts.phase.failed": "Gagal",
-
 	"ts.gate.title": "Hubungkan dompet untuk memulai",
 	"ts.gate.desc": "Anda mengirim dari dompet swakelola Anda sendiri — dompet passkey, dompet browser, atau dipasangkan via QR. Dana tetap di tangan Anda, dan Anda menyetujui setiap batch sendiri.",
 	"ts.step2.largeWarning": "Itu sekitar {batches} persetujuan dompet (satu per 100 penerima). Agar lancar, batasi setiap pengiriman ~1.000 alamat dan bagi daftar yang lebih panjang menjadi beberapa pengiriman.",
-	"ts.step3.approvalsNote": "Anda akan menyetujui {count} kali di dompet — satu per batch. Biarkan tab ini terbuka sampai selesai."
+	"ts.step3.approvalsNote": "Anda akan menyetujui {count} kali di dompet — satu per batch. Biarkan tab ini terbuka sampai selesai.",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

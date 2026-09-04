@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "代币发送器 - BiuBiu Tools",
 	"ts.meta.description": "用你自己的 passkey 自托管钱包，基于 Safe 1.4.1 MultiSend，一次把原生币或 ERC20 代币批量发送给多个地址。",
-
 	"ts.title": "代币发送器",
 	"ts.subtitle": "一次性把币或代币发给多个地址 —— 用你自己的钱包。",
-
 	"ts.safety.heading": "你的私钥，你的币",
 	"ts.safety.chipKey": "私钥只留在你的设备",
 	"ts.safety.chipNoMove": "BiuBiu 动不了你的资产",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "相同（Safe 1.4.1 + passkey）。",
 	"ts.safety.deposit": "充值",
-
 	"ts.stepper.token": "代币",
 	"ts.stepper.recipients": "收款地址",
 	"ts.stepper.review": "确认",
 	"ts.stepper.send": "发送",
-
 	"ts.step1.heading": "选择网络与代币",
 	"ts.step1.network": "网络",
 	"ts.step1.testnetSuffix": " · 测试网",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "读取中…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} 位小数",
 	"ts.step1.continue": "继续",
-
 	"ts.step2.heading": "添加收款地址",
 	"ts.step2.amountPerLine": "每行指定金额",
 	"ts.step2.splitEqually": "平均分配",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} 批 · 需 {count} 次确认",
 	"ts.step2.back": "返回",
 	"ts.step2.continue": "继续",
-
 	"ts.step3.heading": "确认与手续费",
 	"ts.step3.network": "网络",
 	"ts.step3.token": "代币",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "返回",
 	"ts.step3.depositFunds": "充值",
 	"ts.step3.sendNow": "立即发送",
-
 	"ts.step4.heading": "发送中",
 	"ts.step4.batchProgress": "第 {current} / {total} 批",
 	"ts.step4.approveHint": "出现提示时，请在钱包中逐批确认。",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "新建发送",
 	"ts.step4.batch": "第 {n} 批",
 	"ts.step4.batchSent": "已发送 {count} 个",
-
 	"ts.fee.memberFree": "免费（高级会员）",
 	"ts.fee.config": "固定（已为本网络配置）",
 	"ts.fee.usd": "等值 $5",
 	"ts.fee.fallback": "1 个原生币（价格不可用）",
-
 	"ts.history.heading": "历史",
 	"ts.history.recipientsMeta": "{count} 个收款地址 · {date}",
 	"ts.history.batch": "第 {n} 批",
 	"ts.history.batchSent": "已发送 {count} 个",
-
 	"ts.addNetwork.title": "添加自定义网络",
 	"ts.addNetwork.name": "网络名称",
 	"ts.addNetwork.namePlaceholder": "My Chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "添加",
 	"ts.addNetwork.footnote": "自定义链现已支持读取；发送还需该链具备 Safe 1.4.1 + bundler 支持。",
 	"ts.addNetwork.errorRequired": "名称、链 ID 和 RPC 为必填项",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC 节点（每行一个）",
 	"ts.rpc.note": "用于读取余额、代币信息和价格。优先使用第一个可达的节点。",
 	"ts.rpc.removeNetwork": "移除网络",
 	"ts.rpc.restoreDefault": "恢复默认",
 	"ts.rpc.save": "保存",
-
 	"ts.editor.address": "地址",
 	"ts.editor.amount": "金额（{symbol}）",
 	"ts.editor.invalidAddress": "无效地址",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…还有 {0} 个",
 	"ts.editor.close": "关闭",
 	"ts.editor.duplicateAddress": "重复地址",
-
 	"ts.errors.connectWallet": "请先连接钱包",
 	"ts.errors.invalidTokenAddress": "无效的代币合约地址",
 	"ts.errors.tokenMetaFailed": "无法读取代币 —— 请检查地址和网络",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "等待确认中…",
 	"ts.phase.confirmed": "已确认",
 	"ts.phase.failed": "失败",
-
 	"ts.gate.title": "连接钱包即可开始",
 	"ts.gate.desc": "用你自己的自托管钱包发送 —— passkey 钱包、浏览器钱包，或扫码配对。资产始终在你手里，每一批都由你亲自确认。",
 	"ts.step2.largeWarning": "这大约需要 {batches} 次钱包确认（每 100 个一批）。为了顺畅，建议单次控制在 1000 个地址以内，更长的列表请分几次发送。",
-	"ts.step3.approvalsNote": "发送时你需要在钱包里确认 {count} 次（每批一次）。请保持此页面打开直到完成。"
+	"ts.step3.approvalsNote": "发送时你需要在钱包里确认 {count} 次（每批一次）。请保持此页面打开直到完成。",
+	"ts.resume.heading": "发现未完成的发送",
+	"ts.resume.summary": "共 {total} 批，还有 {remaining} 批没发出去。开始于 {when}。",
+	"ts.resume.unknownWarning": "有 {count} 批无法确认是否已到账。它们**不会**被自动重发 —— 请在区块浏览器上核对后告诉我们。",
+	"ts.resume.markUnsent": "未到账，重发这一批",
+	"ts.resume.markDone": "已到账，标记完成",
+	"ts.resume.continue": "继续发送（还有 {count} 批）",
+	"ts.resume.discard": "丢弃这次发送"
 }

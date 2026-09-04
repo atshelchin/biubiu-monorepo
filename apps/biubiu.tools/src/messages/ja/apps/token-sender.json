@@ -1,10 +1,8 @@
 {
 	"ts.meta.title": "トークン送信 - BiuBiu Tools",
 	"ts.meta.description": "自分の passkey によるセルフカストディウォレットから、Safe 1.4.1 MultiSend を使って、ネイティブコインや ERC20 トークンを一度に多数のアドレスへ一括送信します。",
-
 	"ts.title": "トークン送信",
 	"ts.subtitle": "コインやトークンを、自分のウォレットから多数のアドレスへ一度に送ります。",
-
 	"ts.safety.heading": "鍵もコインも、あなたのもの",
 	"ts.safety.chipKey": "鍵はデバイスに留まります",
 	"ts.safety.chipNoMove": "BiuBiu は資金を動かせません",
@@ -15,12 +13,10 @@
 	"ts.safety.velaLink": "Vela Wallet",
 	"ts.safety.detailAfter": "（Safe 1.4.1 + passkey）。",
 	"ts.safety.deposit": "入金",
-
 	"ts.stepper.token": "トークン",
 	"ts.stepper.recipients": "宛先",
 	"ts.stepper.review": "確認",
 	"ts.stepper.send": "送信",
-
 	"ts.step1.heading": "ネットワークとトークンを選択",
 	"ts.step1.network": "ネットワーク",
 	"ts.step1.testnetSuffix": " · テストネット",
@@ -42,7 +38,6 @@
 	"ts.step1.loadingToken": "読み込み中…",
 	"ts.step1.tokenMetaOk": "✓ {symbol} · {decimals} decimals",
 	"ts.step1.continue": "次へ",
-
 	"ts.step2.heading": "宛先を追加",
 	"ts.step2.amountPerLine": "行ごとに金額を指定",
 	"ts.step2.splitEqually": "均等に分割",
@@ -56,7 +51,6 @@
 	"ts.step2.batches": "{count} バッチ · {count} 回の確認",
 	"ts.step2.back": "戻る",
 	"ts.step2.continue": "次へ",
-
 	"ts.step3.heading": "確認と手数料",
 	"ts.step3.network": "ネットワーク",
 	"ts.step3.token": "トークン",
@@ -84,7 +78,6 @@
 	"ts.step3.back": "戻る",
 	"ts.step3.depositFunds": "資金を入金",
 	"ts.step3.sendNow": "今すぐ送信",
-
 	"ts.step4.heading": "送信中",
 	"ts.step4.batchProgress": "バッチ {current} / {total}",
 	"ts.step4.approveHint": "確認を求められたら、ウォレットで各バッチを承認してください。",
@@ -96,17 +89,14 @@
 	"ts.step4.newSend": "新規送信",
 	"ts.step4.batch": "バッチ {n}",
 	"ts.step4.batchSent": "{count} 件送信",
-
 	"ts.fee.memberFree": "無料（プレミアム会員）",
 	"ts.fee.config": "固定（このネットワーク用に設定済み）",
 	"ts.fee.usd": "$5 相当",
 	"ts.fee.fallback": "ネイティブコイン 1 枚（価格を取得できません）",
-
 	"ts.history.heading": "履歴",
 	"ts.history.recipientsMeta": "宛先 {count} 件 · {date}",
 	"ts.history.batch": "バッチ {n}",
 	"ts.history.batchSent": "{count} 件送信",
-
 	"ts.addNetwork.title": "カスタムネットワークを追加",
 	"ts.addNetwork.name": "ネットワーク名",
 	"ts.addNetwork.namePlaceholder": "My Chain",
@@ -125,14 +115,12 @@
 	"ts.addNetwork.add": "追加",
 	"ts.addNetwork.footnote": "カスタムチェーンは今すぐ読み取り可能です。送信にはそのチェーン上の Safe 1.4.1 + bundler のサポートも必要です。",
 	"ts.addNetwork.errorRequired": "名前、チェーン ID、RPC は必須です",
-
 	"ts.rpc.title": "RPC · {name}",
 	"ts.rpc.endpoints": "RPC エンドポイント（1 行に 1 つ）",
 	"ts.rpc.note": "残高、トークン情報、価格の読み取りに使います。最初に到達できたものが使われます。",
 	"ts.rpc.removeNetwork": "ネットワークを削除",
 	"ts.rpc.restoreDefault": "デフォルトに戻す",
 	"ts.rpc.save": "保存",
-
 	"ts.editor.address": "アドレス",
 	"ts.editor.amount": "金額（{symbol}）",
 	"ts.editor.invalidAddress": "無効なアドレス",
@@ -146,7 +134,6 @@
 	"ts.editor.andMore": "…他 {0} 件",
 	"ts.editor.close": "閉じる",
 	"ts.editor.duplicateAddress": "重複したアドレス",
-
 	"ts.errors.connectWallet": "先にウォレットを接続してください",
 	"ts.errors.invalidTokenAddress": "無効なトークンコントラクトアドレスです",
 	"ts.errors.tokenMetaFailed": "トークンを読み取れません — アドレスとネットワークを確認してください",
@@ -161,9 +148,15 @@
 	"ts.phase.waiting": "確認を待っています…",
 	"ts.phase.confirmed": "確認済み",
 	"ts.phase.failed": "失敗",
-
 	"ts.gate.title": "ウォレットを接続して開始",
 	"ts.gate.desc": "送信はあなた自身のセルフカストディウォレットから行います — passkey ウォレット、ブラウザウォレット、または QR ペアリング。資産は常にあなたの手元にあり、各バッチはあなた自身が承認します。",
 	"ts.step2.largeWarning": "ウォレットでの承認が約 {batches} 回必要です（100 件ごとに 1 回）。スムーズに送るため、1 回あたり 1,000 件程度に抑え、長いリストは数回に分けて送信してください。",
-	"ts.step3.approvalsNote": "送信時にウォレットで {count} 回承認します（バッチごとに 1 回）。完了するまでこのタブを開いたままにしてください。"
+	"ts.step3.approvalsNote": "送信時にウォレットで {count} 回承認します（バッチごとに 1 回）。完了するまでこのタブを開いたままにしてください。",
+	"ts.resume.heading": "Unfinished send found",
+	"ts.resume.summary": "{remaining} of {total} batches still need to go out. Started {when}.",
+	"ts.resume.unknownWarning": "We could not confirm whether {count} batch(es) reached the chain. They will NOT be re-sent automatically — check the explorer and tell us.",
+	"ts.resume.markUnsent": "Not received — resend it",
+	"ts.resume.markDone": "Already received — mark done",
+	"ts.resume.continue": "Continue ({count} batches)",
+	"ts.resume.discard": "Discard this send"
 }

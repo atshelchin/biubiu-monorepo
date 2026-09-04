@@ -103,7 +103,7 @@ export interface ContractCallParams {
 	calls?: Call[];
 	/** 网络标识（如 'arb-mainnet'） */
 	network: string;
-	onStatus: (status: SendStatus) => void;
+	onStatus: (status: SendStatus, hint?: string) => void;
 	/** 自定义 gas 参数，未设置时自动估算 */
 	gasOverrides?: GasOverrides;
 	/**
@@ -126,7 +126,7 @@ interface SendCtx {
 	deployed: boolean;
 	nonce: bigint;
 	initCode: Hex;
-	onStatus: (status: SendStatus) => void;
+	onStatus: (status: SendStatus, hint?: string) => void;
 }
 
 export async function sendContractCall(params: ContractCallParams): Promise<SendResult> {
@@ -252,6 +252,9 @@ async function sendInBand(ctx: SendCtx, params: ContractCallParams): Promise<Sen
 
 	onStatus('submitting');
 	const userOpHash = await sendUserOperation(formatUserOpForRpc(finalUserOp), chainId);
+	// 凭据在这里就有了，而结果要等收据。把它交出去 —— 调用方（批量发送）需要在收到结果
+	// 之前就落盘，否则崩溃时那一批无从确认（spec 003 research.md D26）。
+	onStatus('waiting', userOpHash);
 	return waitReceipt(userOpHash, chainId, onStatus, params.confirmTimeoutMs);
 }
 
@@ -462,7 +465,7 @@ async function signOp(
 async function waitReceipt(
 	userOpHash: Hex,
 	chainId: number,
-	onStatus: (status: SendStatus) => void,
+	onStatus: (status: SendStatus, hint?: string) => void,
 	timeoutMs = 120_000
 ): Promise<SendResult> {
 	onStatus('waiting');

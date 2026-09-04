@@ -17,6 +17,7 @@
  */
 import { formatUnits } from 'viem';
 import { createCruxSession, type CruxSession } from '$lib/crux/create-crux-session.js';
+import type { JsonWasmCore } from '$lib/crux/json-wasm-shell.js';
 import type { SenderEvent } from '$lib/generated/sender/SenderEvent';
 import type { SenderShellResult } from '$lib/generated/sender/SenderShellResult';
 import type { SenderViewModel } from '$lib/generated/sender/SenderViewModel';
@@ -55,7 +56,8 @@ class TokenSenderStore {
 					SenderEffect,
 					SenderShellResult
 				>({
-					createCore: (wasm) => new wasm.SenderCore(),
+					domain: 'sender',
+					createCore: (wasm) => new (wasm.SenderCore as new () => JsonWasmCore)(),
 					initialEvent: { type: 'page_ready' },
 					onView: (view) => {
 						this.view = view;

@@ -43,3 +43,10 @@ wasm-bindgen = "0.2"
 lto = true
 opt-level = "z"
 codegen-units = 1
+# wasm 上 panic 无处可 unwind。收益很小（-1.6KB），但是免费的。
+panic = "abort"
+# **不要加 `strip = true`** —— 实测 +44.6KB。
+#
+# 它去掉的符号正是 wasm-bindgen / wasm-opt 用来做死代码消除的依据，剥早了反而让后面少删了
+# 一大块。这一条是分离测量才看出来的：`panic + strip` 一起加时产物变大 45KB，看上去像是
+# panic 的锅，实际两者方向相反（specs/004-wasm-per-domain/research.md D30）。

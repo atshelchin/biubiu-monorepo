@@ -13,6 +13,7 @@
  * 走错了地方。
  */
 import { createCruxSession, type CruxSession } from '$lib/crux/create-crux-session.js';
+import type { JsonWasmCore } from '$lib/crux/json-wasm-shell.js';
 import type { RevokeEvent } from '$lib/generated/revoke/RevokeEvent';
 import type { RevokeShellResult } from '$lib/generated/revoke/RevokeShellResult';
 import type { RevokeViewModel } from '$lib/generated/revoke/RevokeViewModel';
@@ -50,7 +51,8 @@ class RevokeStore {
 					RevokeEffect,
 					RevokeShellResult
 				>({
-					createCore: (wasm) => new wasm.RevokeCore(),
+					domain: 'revoke',
+					createCore: (wasm) => new (wasm.RevokeCore as new () => JsonWasmCore)(),
 					initialEvent: { type: 'page_ready' },
 					onView: (view) => {
 						this.view = view;

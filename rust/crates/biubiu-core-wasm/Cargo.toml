@@ -9,7 +9,16 @@ description = "biubiu-core 的 wasm-bindgen 桥。只做 JSON 编解码与 pendi
 crate-type = ["cdylib"]
 
 [features]
+# **默认不导出任何域。** 每个域一个 feature，构建脚本按清单逐个开启并各构建一次 ——
+# 这样一个页面加载的产物只含它用到的那个域（spec 004 research.md D31/D32）。
+#
+# 新增一个域是两行：这里一个 feature，`src/lib.rs` 里一个 `bridge_class!`。
+# 清单在 `rust/scripts/domains.mjs`，同时驱动构建与体积门禁。
 default = []
+
+domain-revoke = []
+domain-sender = []
+
 # 透传 biubiu-core 的开发期快照，供页面右侧的 devtools 面板使用。
 devtools = ["biubiu-core/devtools"]
 
@@ -20,3 +29,8 @@ crux_core = { workspace = true }
 wasm-bindgen = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# wasm-opt 的优化级别。默认是 `-O`；这里改成 `-Oz`（体积优先）。
+# 实测差异见 specs/004-wasm-per-domain/research.md。
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-Oz']
